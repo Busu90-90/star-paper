@@ -1,0 +1,1647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Star Paper</title>
+    <link rel="manifest" href="manifest.json?v=14">
+    <meta name="theme-color" content="#0B0B0B">
+    <link rel="icon" type="image/svg+xml" href="./logo.svg?v=11">
+    <link rel="icon" type="image/png" sizes="192x192" href="./logo-192.png?v=11">
+    <link rel="icon" type="image/png" sizes="32x32" href="./logo-32.png?v=11">
+    <link rel="shortcut icon" type="image/png" href="./logo-32.png?v=11">
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=11">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+    
+    <link rel="stylesheet" href="styles.css">
+    <!-- Phosphor Icons — unified icon system -->
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+    <!-- Supabase integration — must load BEFORE app.js -->
+    <script src="supabase.js"></script>
+</head>
+<body>
+    <div class="app-boot-loader" id="appBootLoader" aria-live="polite">
+        <div class="app-boot-loader__inner">
+            <img src="./logo.svg" alt="Star Paper" class="app-boot-loader__logo" />
+            <div class="app-boot-loader__text">Loading Star Paper...</div>
+        </div>
+    </div>
+
+    <!-- Landing Page -->
+    <div class="landing-container" id="landingScreen">
+        <!-- Falling gold coins background -->
+        <canvas id="coinRainCanvas" aria-hidden="true"></canvas>
+
+        <!-- Sticky mini-nav (appears after scrolling past hero CTA on mobile) -->
+        <div class="landing-mini-nav" id="landingMiniNav" aria-hidden="true">
+            <img src="./logo.svg" alt="Star Paper" class="mini-nav-logo">
+            <span class="mini-nav-brand">STAR PAPER</span>
+            <button class="mini-nav-cta" data-action="showSignupForm" onclick="showSignupForm()">Get Started</button>
+        </div>
+
+        <div class="landing-top-controls">
+            <button class="theme-toggle icon-toggle landing-theme-toggle" id="landingThemeToggle" type="button" aria-label="Toggle theme">
+                <i class="ph ph-moon" aria-hidden="true" style="font-size:15px;"></i>
+            </button>
+        </div>
+        <div class="landing-card landing-mainstage-card">
+            <div class="landing-hero-grid">
+                <div class="landing-hero-left">
+                    <div class="hero-brand-row">
+                        <span class="logo-wrapper hero-logo-wrapper">
+                            <img src="./logo.svg" alt="Star Paper Logo" class="brand-logo brand-logo-landing" loading="eager">
+                        </span>
+                        <div class="hero-product-name">STAR PAPER</div>
+                    </div>
+                    <h1 class="landing-hero-heading">
+                        Run your entire artist operation from one command center.
+                    </h1>
+                    <p class="landing-hero-subtitle">
+                        Built for managers, labels, and teams who need clarity, speed, and control.
+                    </p>
+                    <div class="landing-buttons">
+                        <button class="landing-btn" id="createAccountBtn" data-action="showSignupForm" onclick="showSignupForm()">Get Started</button>
+                        <button class="landing-btn landing-btn--ghost landing-btn--how" data-action="scrollToFeatures" onclick="document.getElementById('landing-features')?.scrollIntoView({behavior:'smooth',block:'center'})">How It Works ↓</button>
+                    </div>
+                </div>
+                <div class="landing-hero-right" aria-hidden="true">
+                    <div class="landing-dashboard-preview">
+                        <!-- Animated Feature Reel — replaces static screenshot -->
+                        <div class="feature-reel">
+                            <div class="reel-chrome">
+                                <div class="reel-dots">
+                                    <span class="reel-dot"></span>
+                                    <span class="reel-dot"></span>
+                                    <span class="reel-dot"></span>
+                                </div>
+                                <div class="reel-tabs">
+                                    <span class="reel-tab reel-tab--1">
+                                        <i class="ph ph-calendar-blank" aria-hidden="true" style="font-size:10px;"></i>
+                                        Bookings
+                                    </span>
+                                    <span class="reel-tab reel-tab--2">
+                                        <i class="ph ph-currency-dollar" aria-hidden="true" style="font-size:10px;"></i>
+                                        Finances
+                                    </span>
+                                    <span class="reel-tab reel-tab--3">
+                                        <i class="ph ph-user" aria-hidden="true" style="font-size:10px;"></i>
+                                        Artists
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="reel-body">
+                                <!-- Slide 1: Bookings -->
+                                <div class="reel-slide reel-slide--1">
+                                    <div class="reel-section-label">All Bookings</div>
+                                    <div class="reel-table">
+                                        <div class="reel-thead">
+                                            <span>Event</span><span>Artist</span><span>Fee</span><span>Status</span>
+                                        </div>
+                                        <div class="reel-trow">
+                                            <span class="reel-td-main">Zanzibar Beach</span>
+                                            <span>Wizkid</span>
+                                            <span class="reel-income">24M</span>
+                                            <span class="reel-badge reel-badge--confirmed">Confirmed</span>
+                                        </div>
+                                        <div class="reel-trow">
+                                            <span class="reel-td-main">Lake Victoria</span>
+                                            <span>Davido</span>
+                                            <span class="reel-income">20M</span>
+                                            <span class="reel-badge reel-badge--pending">Pending</span>
+                                        </div>
+                                        <div class="reel-trow">
+                                            <span class="reel-td-main">Fort Portal Jazz</span>
+                                            <span>Tiwa S.</span>
+                                            <span class="reel-income">14M</span>
+                                            <span class="reel-badge reel-badge--confirmed">Confirmed</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Slide 2: Finances -->
+                                <div class="reel-slide reel-slide--2">
+                                    <div class="reel-section-label">Monthly Financials</div>
+                                    <div class="reel-kpi-grid">
+                                        <div class="reel-kpi">
+                                            <div class="reel-kpi-label">Show Income</div>
+                                            <div class="reel-kpi-value reel-income">UGX 58M</div>
+                                        </div>
+                                        <div class="reel-kpi">
+                                            <div class="reel-kpi-label">Net Profit</div>
+                                            <div class="reel-kpi-value reel-income">UGX 41M</div>
+                                        </div>
+                                        <div class="reel-kpi">
+                                            <div class="reel-kpi-label">Expenses</div>
+                                            <div class="reel-kpi-value reel-expense">UGX 9.2M</div>
+                                        </div>
+                                        <div class="reel-kpi">
+                                            <div class="reel-kpi-label">Net Profit</div>
+                                            <div class="reel-kpi-value reel-income">UGX 31.8M</div>
+                                        </div>
+                                    </div>
+                                    <div class="reel-bars">
+                                        <div class="reel-bar"><div class="reel-bar-fill" style="height:62%"></div></div>
+                                        <div class="reel-bar"><div class="reel-bar-fill" style="height:80%"></div></div>
+                                        <div class="reel-bar"><div class="reel-bar-fill" style="height:45%"></div></div>
+                                        <div class="reel-bar"><div class="reel-bar-fill" style="height:90%"></div></div>
+                                        <div class="reel-bar"><div class="reel-bar-fill" style="height:68%"></div></div>
+                                        <div class="reel-bar"><div class="reel-bar-fill" style="height:55%"></div></div>
+                                    </div>
+                                </div>
+
+                                <!-- Slide 3: Artists -->
+                                <div class="reel-slide reel-slide--3">
+                                    <div class="reel-section-label">Your Artists</div>
+                                    <div class="reel-artists">
+                                        <div class="reel-artist">
+                                            <div class="reel-avatar">W</div>
+                                            <div class="reel-artist-name">Wizkid</div>
+                                            <div class="reel-artist-genre">Afrobeats</div>
+                                            <div class="reel-artist-stat reel-income">3 shows</div>
+                                        </div>
+                                        <div class="reel-artist">
+                                            <div class="reel-avatar">D</div>
+                                            <div class="reel-artist-name">Davido</div>
+                                            <div class="reel-artist-genre">Afropop</div>
+                                            <div class="reel-artist-stat reel-income">2 shows</div>
+                                        </div>
+                                        <div class="reel-artist">
+                                            <div class="reel-avatar">T</div>
+                                            <div class="reel-artist-name">Tiwa Savage</div>
+                                            <div class="reel-artist-genre">R&amp;B / Afro</div>
+                                            <div class="reel-artist-stat reel-pending">1 pending</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div><!-- /reel-body -->
+                        </div><!-- /feature-reel -->
+                    </div>
+                </div>
+            </div>
+            <div class="landing-feature-carousel" id="landingFeatureCarousel">
+                <button class="landing-feature-nav landing-feature-nav--prev" type="button" aria-label="Previous feature card" data-action="landingFeaturePrev">
+                    <i class="ph ph-caret-left" aria-hidden="true" style="font-size:18px;"></i>
+                </button>
+                <div class="landing-feature-strip" aria-label="Star Paper Core Features">
+                    <article class="landing-feature-card">
+                        <span class="landing-feature-icon" aria-hidden="true"><i class="ph ph-microphone-stage" style="font-size:28px;"></i></span>
+                        <h3>Manage Artists</h3>
+                        <p>Keep every artist profile, manager ownership, and artist records organized in one command center.</p>
+                    </article>
+                    <article class="landing-feature-card">
+                        <span class="landing-feature-icon" aria-hidden="true"><i class="ph ph-calendar-check" style="font-size:28px;"></i></span>
+                        <h3>Track Bookings</h3>
+                        <p>Plan events, monitor status, and stay ahead of schedules with a clear booking timeline.</p>
+                    </article>
+                    <article class="landing-feature-card">
+                        <span class="landing-feature-icon" aria-hidden="true"><i class="ph ph-chart-line-up" style="font-size:28px;"></i></span>
+                        <h3>Control Finances</h3>
+                        <p>See income, expenses, balances, and net performance with precision and confidence.</p>
+                    </article>
+                </div>
+                <button class="landing-feature-nav landing-feature-nav--next" type="button" aria-label="Next feature card" data-action="landingFeatureNext">
+                    <i class="ph ph-caret-right" aria-hidden="true" style="font-size:18px;"></i>
+                </button>
+            </div>
+            <div class="landing-feature-dots" id="landingFeatureDots" aria-hidden="true"></div>
+            <div class="landing-metrics-strip" id="landing-features" aria-label="Mainstage Metrics">
+                <div class="landing-metric-item">
+                    <div class="landing-metric-value">150+</div>
+                    <div class="landing-metric-label">bookings coordinated</div>
+                </div>
+                <div class="landing-metric-item">
+                    <div class="landing-metric-value">30+</div>
+                    <div class="landing-metric-label">artists on the roster</div>
+                </div>
+                <div class="landing-metric-item">
+                    <div class="landing-metric-value">UGX 500M+</div>
+                    <div class="landing-metric-label">in artist revenue tracked</div>
+                </div>
+            </div>
+
+            <div class="landing-testimonial">
+                <i class="ph ph-quotes landing-quote-icon" aria-hidden="true" style="font-size:20px;"></i>
+                <p class="landing-quote-text">Finally a tool that keeps my artists, bookings, and money in one place. I stopped using spreadsheets on day one.</p>
+                <div class="landing-quote-attr">- AGGIE BEST, Artist Manager, Kampala</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Container -->
+    <div class="login-container" id="loginScreen">
+        <div class="login-box">
+            <div class="loading-overlay" id="loginLoading" aria-hidden="true">
+                <div class="spinner"></div>
+                <div>Logging in...</div>
+            </div>
+            <div class="logo">
+                <img src="./logo.svg" alt="Star Paper" class="login-box-logo" />
+                <p id="loginBoxHeading">Welcome back to Star Paper</p>
+                <small class="login-subtext" id="loginBoxSubtext">Sign in to continue to your dashboard.</small>
+            </div>
+            <div id="loginForm" style="display: none;">
+                <input type="text" id="loginName" placeholder="Username" autocomplete="username" />
+                <div class="validation-message" id="loginNameError"></div>
+                <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password" />
+                <div class="validation-message" id="loginPasswordError"></div>
+                <label class="remember-me">
+                    <input type="checkbox" id="rememberMe" />
+                    Remember me
+                </label>
+                <button id="loginButton" class="btn-primary" type="button">Login</button>
+                <div class="auth-oauth-divider"><span>or</span></div>
+                <button class="btn-google" type="button" data-action="signInWithGoogle" onclick="signInWithGoogle()">
+                    <span class="btn-google-icon" aria-hidden="true">G</span>
+                    Continue with Google
+                </button>
+                <button class="back-btn" data-action="showLanding" onclick="showLanding()">Back</button>
+                <button class="forgot-password-link" type="button" data-action="showForgotPassword" onclick="showForgotPassword()">Forgot password?</button>
+                <div class="auth-oauth-divider" style="margin-top:18px;"><span>dev</span></div>
+                <button type="button" onclick="window.enterLocalTestMode()" class="btn-local-test"
+                    title="Bypass all auth — for local testing only. No data is sent to the cloud.">
+                    🧪 Local Test Mode
+                </button>
+            </div>
+            <div id="forgotPasswordForm" style="display: none;">
+                <p class="forgot-password-intro">Enter your username and we'll help you reset your password through your account settings.</p>
+                <input type="text" id="forgotUsername" placeholder="Username" autocomplete="username" />
+                <div class="forgot-password-hint" id="forgotPasswordResult"></div>
+                <button class="btn-primary" type="button" data-action="submitForgotPassword" onclick="submitForgotPassword()">Find Account</button>
+                <button class="back-btn" type="button" data-action="showLoginForm" onclick="showLoginForm()">Back to Login</button>
+            </div>
+            <div id="signupForm" style="display: none;">
+                <input type="text" id="signupName" placeholder="Name" autocomplete="name" />
+                <input type="password" id="signupPassword" placeholder="Password" autocomplete="new-password" />
+                <input type="email" id="signupEmail" placeholder="Email (required for cloud signup)" autocomplete="email" />
+                <input type="tel" id="signupPhone" placeholder="Phone (optional)" autocomplete="tel" />
+                <button class="btn-primary" data-action="signup" onclick="signup()">Create Account</button>
+                <div class="auth-oauth-divider"><span>or</span></div>
+                <button class="btn-google" type="button" data-action="signInWithGoogle" onclick="signInWithGoogle()">
+                    <span class="btn-google-icon" aria-hidden="true">G</span>
+                    Continue with Google
+                </button>
+                <p class="auth-switch-text">Already have an account? <a href="#" class="auth-switch-link" data-action="showLoginForm">Login</a></p>
+                <button class="back-btn" data-action="showLanding" onclick="showLanding()">Back</button>
+                <div class="auth-oauth-divider" style="margin-top:18px;"><span>dev</span></div>
+                <button type="button" onclick="window.enterLocalTestMode()" class="btn-local-test"
+                    title="Bypass all auth — for local testing only. No data is sent to the cloud.">
+                    🧪 Local Test Mode
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Delete Confirmation Modal -->
+    <div class="receipt-modal" id="confirmDeleteModal" role="alertdialog" aria-modal="true" aria-labelledby="confirmDeleteTitle">
+        <div class="receipt-modal-content confirm-delete-modal-content">
+            <div class="confirm-delete-icon" aria-hidden="true">
+                <i class="ph ph-trash" aria-hidden="true" style="font-size:28px;"></i>
+            </div>
+            <h3 id="confirmDeleteTitle" class="confirm-delete-title">Delete this entry?</h3>
+            <p class="confirm-delete-body" id="confirmDeleteBody">This action cannot be undone.</p>
+            <div class="confirm-delete-actions">
+                <button class="btn-primary confirm-delete-confirm" id="confirmDeleteYes" type="button">Delete</button>
+                <button class="back-btn confirm-delete-cancel" id="confirmDeleteNo" type="button">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Receipt Modal -->
+    <div class="receipt-modal" id="receiptModal">
+        <div class="receipt-modal-content">
+            <button class="close-receipt" data-action="closeReceiptModal" onclick="closeReceiptModal()" aria-label="Close">&times;</button>
+            <img id="receiptModalImage" src="" alt="Receipt">
+        </div>
+    </div>
+
+    <div class="app-container" id="appContainer">
+        <!-- Collapse toggle — lives outside sidebar to escape overflow clipping -->
+        <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" aria-label="Toggle sidebar" type="button">
+            <i class="scb-icon scb-icon--close ph ph-caret-left" aria-hidden="true" style="font-size:14px;"></i>
+            <i class="scb-icon scb-icon--open ph ph-caret-right" aria-hidden="true" style="font-size:14px;"></i>
+        </button>
+                <div class="sidebar" id="sidebar">
+            <!-- Profile Header Section -->
+            <div class="sidebar-profile">
+                <div class="sidebar-profile-content">
+                    <div class="sidebar-avatar">
+                        <img src="./logo.png" alt="User Avatar" class="avatar-img" id="sidebarAvatarImg">
+                    </div>
+                    <div class="sidebar-greeting">
+                        <div class="greeting-name" id="sidebarUserName">Manager</div>
+                    </div>
+                </div>
+                <button class="back-btn sidebar-profile-edit-btn" type="button" data-action="openProfileModal" onclick="openProfileModal()">Edit Profile</button>
+            </div>
+
+            <!-- Theme Toggle Section -->
+            <div class="sidebar-theme-section">
+                <div class="sidebar-theme-label">Theme</div>
+                <div class="sidebar-theme-toggle">
+                    <button class="theme-btn theme-btn-light active" id="sidebarLightBtn" type="button">
+                        <i class="ph ph-sun" aria-hidden="true" style="font-size:16px;"></i>
+                        Light
+                    </button>
+                    <button class="theme-btn theme-btn-dark" id="sidebarDarkBtn" type="button">
+                        <i class="ph ph-moon" aria-hidden="true" style="font-size:16px;"></i>
+                        Dark
+                    </button>
+                </div>
+                <!-- Density toggle -->
+                <div class="sidebar-theme-label" style="margin-top:10px;">Density</div>
+                <div class="sidebar-theme-toggle">
+                    <button class="theme-btn sp-density-btn sp-density-btn--comfortable active" id="densityComfortableBtn" type="button" title="Comfortable spacing">
+                        <i class="ph ph-rows" aria-hidden="true" style="font-size:14px;"></i>
+                        Comfy
+                    </button>
+                    <button class="theme-btn sp-density-btn sp-density-btn--compact" id="densityCompactBtn" type="button" title="Compact spacing">
+                        <i class="ph ph-list" aria-hidden="true" style="font-size:14px;"></i>
+                        Compact
+                    </button>
+                </div>
+            </div>
+
+            <!-- Navigation List — Phosphor Icons -->
+            <nav class="sidebar-nav">
+                <button type="button" class="nav-item active" data-action="showSection" onclick="showSection('dashboard')" data-section="dashboard" data-tooltip="Dashboard">
+                    <i class="ph ph-squares-four nav-icon-svg" aria-hidden="true" style="font-size:20px;"></i>
+                    <span class="nav-label">Dashboard</span>
+                </button>
+                <button type="button" class="nav-item" data-action="showSection" onclick="showSection('money')" data-section="money" data-tooltip="Money">
+                    <i class="ph ph-currency-circle-dollar nav-icon-svg" aria-hidden="true" style="font-size:20px;"></i>
+                    <span class="nav-label">Money</span>
+                </button>
+                <button type="button" class="nav-item" data-action="showSection" onclick="showSection('schedule')" data-section="schedule" data-tooltip="Schedule">
+                    <i class="ph ph-calendar-blank nav-icon-svg" aria-hidden="true" style="font-size:20px;"></i>
+                    <span class="nav-label">Schedule</span>
+                </button>
+                <button type="button" class="nav-item" data-action="showSection" onclick="showSection('tasks')" data-section="tasks" data-tooltip="Tasks">
+                    <i class="ph ph-clipboard-text nav-icon-svg" aria-hidden="true" style="font-size:20px;"></i>
+                    <span class="nav-label">Tasks</span>
+                    <span class="task-badge-nav" id="taskBadgeNav" style="display:none;margin-left:auto;min-width:20px;height:20px;padding:0 6px;background:#f44336;color:white;border-radius:10px;font-size:11px;font-weight:700;display:none;align-items:center;justify-content:center;">0</span>
+                </button>
+                <button type="button" class="nav-item" data-action="showSection" onclick="showSection('artists')" data-section="artists" data-tooltip="Artists">
+                    <i class="ph ph-microphone-stage nav-icon-svg" aria-hidden="true" style="font-size:20px;"></i>
+                    <span class="nav-label">Artists</span>
+                </button>
+            </nav>
+
+            <!-- Spacer -->
+            <div class="sidebar-spacer"></div>
+
+            <!-- Bottom utility bar: About · Settings · Logout -->
+            <div class="sidebar-logout-section">
+                <div class="sidebar-util-row">
+                    <button type="button" class="sidebar-util-btn" id="sidebarAboutBtn" data-action="showAboutModal" onclick="showAboutModal()" title="About Star Paper">
+                        <i class="ph ph-info" aria-hidden="true" style="font-size:18px;"></i>
+                        <span class="nav-label">About</span>
+                    </button>
+                    <button type="button" class="sidebar-util-btn" id="sidebarSettingsBtn" data-action="showAdminSettings" onclick="showAdminSettings()" title="Admin Settings">
+                        <i class="ph ph-gear" aria-hidden="true" style="font-size:18px;"></i>
+                        <span class="nav-label">Settings</span>
+                    </button>
+                    <button type="button" class="nav-item sidebar-util-btn sidebar-util-btn--logout" id="sidebarLogoutBtn" title="Logout">
+                        <i class="ph ph-sign-out" aria-hidden="true" style="font-size:18px;"></i>
+                        <span class="nav-label">Logout</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="sidebar-overlay" id="sidebarOverlay" aria-hidden="true"></div>
+
+        <!-- Mobile bottom navigation bar -->
+        <nav class="bottom-nav" id="bottomNav" aria-label="Quick navigation">
+            <button class="bottom-nav-item" data-action="showSection" onclick="showSection('dashboard')" data-section="dashboard" data-tooltip="Dashboard" aria-label="Dashboard">
+                <i class="ph ph-squares-four" aria-hidden="true" style="font-size:22px;"></i>
+                <span>Home</span>
+            </button>
+            <button class="bottom-nav-item" data-action="showSection" onclick="showSection('schedule')" data-section="schedule" data-tooltip="Schedule" aria-label="Schedule">
+                <i class="ph ph-calendar-blank" aria-hidden="true" style="font-size:22px;"></i>
+                <span>Schedule</span>
+            </button>
+            <button class="bottom-nav-item" data-action="showSection" onclick="showSection('money')" data-section="money" data-tooltip="Money" aria-label="Money">
+                <i class="ph ph-currency-circle-dollar" aria-hidden="true" style="font-size:22px;"></i>
+                <span>Money</span>
+            </button>
+            <button class="bottom-nav-item" data-action="showSection" onclick="showSection('tasks')" data-section="tasks" data-tooltip="Tasks" aria-label="Tasks">
+                <i class="ph ph-clipboard-text" aria-hidden="true" style="font-size:22px;"></i>
+                <span>Tasks</span>
+            </button>
+        </nav>
+
+        <!-- Scroll-to-top FAB (appears after scrolling down) -->
+        <button class="scroll-top-fab" id="scrollTopFab" aria-label="Scroll to top" title="Scroll to top">
+            <i class="ph ph-caret-up" aria-hidden="true" style="font-size:18px;"></i>
+        </button>
+
+        <div class="main-content">
+            <div class="header">
+                <div class="header-left">
+                    <button class="hamburger" id="hamburgerBtn" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+                    <!-- In-app back / forward navigation -->
+                    <div class="nav-hist-wrap" id="navHistWrap">
+                        <button class="nav-hist-btn" id="navBackBtn" aria-label="Go back" title="Go back" disabled>
+                            <i class="ph ph-caret-left" aria-hidden="true" style="font-size:15px;"></i>
+                        </button>
+                        <button class="nav-hist-btn" id="navFwdBtn" aria-label="Go forward" title="Go forward" disabled>
+                            <i class="ph ph-caret-right" aria-hidden="true" style="font-size:15px;"></i>
+                        </button>
+                    </div>
+                    <div class="app-title-icon" id="appTitleIcon" aria-hidden="true"></div>
+                    <h1 id="pageTitle">Overview</h1>
+                </div>
+                <div class="user-info">
+                    <span id="userName" style="display:none;"></span>
+                </div>
+            </div>
+            <!-- Welcome Message -->
+            <div id="welcomeMessage" class="welcome-message" style="display: none;">
+                <canvas id="mainstageCoinRainCanvas" aria-hidden="true"></canvas>
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                    <div style="flex: 1;">
+                        <h3><span id="welcomeUserName">STAR PAPER</span></h3>
+                        <p>The Manager's Mainstage!</p>
+                        <div class="welcome-search">
+                            <div class="welcome-search-row">
+                                <div class="search-bar">
+                                    <input type="text" id="dashboardSearch" placeholder=" " aria-label="Search anything" autocomplete="off" spellcheck="false">
+                                    <span class="search-center-label" aria-hidden="true">
+                                        <i class="ph ph-magnifying-glass" aria-hidden="true" style="font-size:16px;"></i>
+                                        <span>Search anything</span>
+                                    </span>
+                                </div>
+                                <div class="quick-add" id="quickAdd">
+                                    <div class="quick-add-panel" id="quickAddPanel">
+                                        <button type="button" data-action="openQuickAdd" onclick="openQuickAdd('booking')" data-type="booking" data-target-section="bookings">+ New Booking</button>
+                                        <button type="button" data-action="openQuickAdd" onclick="openQuickAdd('expense')" data-type="expense" data-target-section="expenses">+ New Expense</button>
+                                        <button type="button" data-action="openQuickAdd" onclick="openQuickAdd('income')" data-type="income" data-target-section="otherIncome">+ Other Income</button>
+                                        <button type="button" data-action="openQuickAdd" onclick="openQuickAdd('artists')" data-type="artists" data-target-section="artists">+ New Artist</button>
+                                    </div>
+                                    <button class="quick-add-btn" id="quickAddBtn" type="button" aria-label="Quick add">+</button>
+                                </div>
+                            </div>
+                            <div class="search-results" id="dashboardSearchResults" role="listbox" aria-live="polite" aria-label="Search results"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard Section -->
+            <div class="section active" id="dashboard">
+                <!-- Smart Nudge Banner -->
+                <div class="nudge-banner" id="nudgeBanner" style="display: none;">
+                    <div class="nudge-banner__content">
+                        <div class="nudge-banner__icon"><i class="ph ph-warning" aria-hidden="true"></i></div>
+                        <div class="nudge-banner__text" id="nudgeBannerText"></div>
+                    </div>
+                    <button class="nudge-banner__dismiss" data-action="dismissNudge" onclick="dismissNudge(this)" aria-label="Dismiss">&times;</button>
+                </div>
+
+                <div class="dashboard-home-layout">
+                    <!-- Today Board - Dominant Command Center -->
+                    <div class="card dashboard-section-card today-board-card">
+                        <div class="today-board__header">
+                            <div class="today-board__date">
+                                <div class="today-board__day" id="todayBoardDay">Monday</div>
+                                <div class="today-board__date-full" id="todayBoardDate">January 1, 2026</div>
+                            </div>
+                            <div class="today-board__status" id="todayBoardStatus">All clear</div>
+                        </div>
+
+                        <div class="today-board__alerts timeline-list" id="todayBoardAlerts">
+                            <!-- Dynamic alerts will be inserted here -->
+                        </div>
+
+                    </div>
+
+                    <!-- At a Glance - Secondary Supporting Data -->
+                    <div class="card dashboard-section-card dashboard-at-glance-card">
+                        <div class="mainstage-strip__head">
+                            <h3 class="section-title" data-icon="dashboard">At a Glance (This Month)</h3>
+                            <div class="mainstage-strip__updated" id="mainstageLiveDate">Updated now</div>
+                        </div>
+                        <div class="monthly-goal-track">
+                            <div class="monthly-goal-track__top">
+                                <div class="monthly-goal-track__title">Monthly Revenue Goal</div>
+                                <button class="action-btn" type="button" data-action="toggleMonthlyGoalEditor" onclick="toggleMonthlyGoalEditor()">Set Goal</button>
+                            </div>
+                            <div class="monthly-goal-track__metrics">
+                                <div class="monthly-goal-metric">
+                                    <div class="monthly-goal-metric__label">Goal Amount</div>
+                                    <div class="monthly-goal-metric__value" id="monthlyGoalAmount"><span class="sp-skeleton"></span></div>
+                                </div>
+                                <div class="monthly-goal-metric">
+                                    <div class="monthly-goal-metric__label">Current Revenue</div>
+                                    <div class="monthly-goal-metric__value" id="monthlyGoalCurrentRevenue"><span class="sp-skeleton"></span></div>
+                                </div>
+                                <div class="monthly-goal-metric">
+                                    <div class="monthly-goal-metric__label">Completion</div>
+                                    <div class="monthly-goal-metric__value" id="monthlyGoalPercent">0%</div>
+                                </div>
+                            </div>
+                            <div class="monthly-goal-progress" aria-hidden="true">
+                                <div class="monthly-goal-progress__bar" id="monthlyGoalProgressBar" style="width: 0%;"></div>
+                            </div>
+                            <div class="monthly-goal-editor" id="monthlyGoalEditor" style="display: none;">
+                                <input type="number" id="monthlyGoalInput" min="0" step="1000" placeholder="Enter monthly goal (UGX)" />
+                                <button class="action-btn" type="button" data-action="saveMonthlyRevenueGoal" onclick="saveMonthlyRevenueGoal()">Save Goal</button>
+                                <button class="back-btn" type="button" data-action="toggleMonthlyGoalEditor" onclick="toggleMonthlyGoalEditor()">Cancel</button>
+                            </div>
+                        </div>
+                        <div class="dashboard-glance-grid">
+                            <div class="mainstage-kpi">
+                                <div class="mainstage-kpi__label">This Month's Revenue</div>
+                                <div class="mainstage-kpi__value income-green" id="totalIncome"><span class="sp-skeleton"></span></div>
+                            </div>
+                            <div class="mainstage-kpi">
+                                <div class="mainstage-kpi__label">Deposits Received</div>
+                                <div class="mainstage-kpi__value deposit-blue" id="dashboardDepositsReceived"><span class="sp-skeleton"></span></div>
+                            </div>
+                            <div class="mainstage-kpi">
+                                <div class="mainstage-kpi__label">Expenses (This Month)</div>
+                                <div class="mainstage-kpi__value expense-red" id="dashboardExpenses"><span class="sp-skeleton"></span></div>
+                            </div>
+                            <div class="mainstage-kpi">
+                                <div class="mainstage-kpi__label">Net Profit</div>
+                                <div class="mainstage-kpi__value income-green" id="dashboardCashAtHand"><span class="sp-skeleton"></span></div>
+                            </div>
+                            <div class="mainstage-kpi">
+                                <div class="mainstage-kpi__label">Balances Due</div>
+                                <div class="mainstage-kpi__value expense-red" id="balancesOverdue"><span class="sp-skeleton"></span></div>
+                            </div>
+                            <div class="mainstage-kpi mainstage-kpi--bbf">
+                                <div class="mainstage-kpi__label">Balance Brought Forward <span class="bbf-month-label" id="bbfMonthLabel">(prev. month)</span></div>
+                                <div class="mainstage-kpi__value deposit-blue" id="dashboardBBF"><span class="sp-skeleton"></span></div>
+                                <div class="mainstage-kpi__sub">
+                                    <button class="bbf-edit-btn action-btn" type="button" data-action="toggleBBFEditor" onclick="toggleBBFEditor()">Set Balance</button>
+                                </div>
+                                <div class="bbf-editor" id="bbfEditor" style="display:none;">
+                                    <input type="number" id="bbfInput" min="0" step="1000" placeholder="Enter opening balance (UGX)" />
+                                    <button class="action-btn" type="button" data-action="saveBBF" onclick="saveBBF()">Save</button>
+                                    <button class="back-btn" type="button" data-action="toggleBBFEditor" onclick="toggleBBFEditor()">Cancel</button>
+                                </div>
+                            </div>
+                            <div class="mainstage-kpi">
+                                <div class="mainstage-kpi__label">Upcoming Shows</div>
+                                <div class="mainstage-kpi__value deposit-blue" id="upcomingShows"><span class="sp-skeleton"></span></div>
+                            </div>
+                            <div class="mainstage-kpi">
+                                <div class="mainstage-kpi__label">Active Artists</div>
+                                <div class="mainstage-kpi__value deposit-blue" id="activeArtistsCount"><span class="sp-skeleton"></span></div>
+                            </div>
+                        </div>
+                        <!-- Booking Velocity Gauge -->
+                        <div class="velocity-gauge-wrap">
+                            <div class="velocity-gauge__label">Booking Velocity</div>
+                            <div class="velocity-gauge__chart">
+                                <svg class="velocity-gauge__svg" id="velocityGaugeSvg" viewBox="0 0 200 110" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                    <!-- Track arc -->
+                                    <path class="vg-track" d="M 20 100 A 80 80 0 0 1 180 100" stroke="rgba(255,179,0,0.12)" stroke-width="14" stroke-linecap="round" fill="none"/>
+                                    <!-- Fill arc (JS-driven stroke-dasharray) -->
+                                    <path class="vg-fill" id="velocityGaugeFill" d="M 20 100 A 80 80 0 0 1 180 100" stroke="url(#vgGrad)" stroke-width="14" stroke-linecap="round" fill="none"
+                                        stroke-dasharray="0 251" style="transition: stroke-dasharray 0.9s cubic-bezier(0.22,0.61,0.36,1)"/>
+                                    <defs>
+                                        <linearGradient id="vgGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                            <stop offset="0%"   stop-color="#c9920a"/>
+                                            <stop offset="100%" stop-color="#FFD700"/>
+                                        </linearGradient>
+                                    </defs>
+                                    <!-- Needle (JS-driven transform) -->
+                                    <line class="vg-needle" id="velocityGaugeNeedle"
+                                        x1="100" y1="100" x2="100" y2="28"
+                                        stroke="#FFB300" stroke-width="2.5" stroke-linecap="round"
+                                        style="transform-origin: 100px 100px; transform: rotate(-90deg); transition: transform 0.9s cubic-bezier(0.22,0.61,0.36,1)"/>
+                                    <circle cx="100" cy="100" r="5" fill="#FFB300"/>
+                                </svg>
+                                <div class="velocity-gauge__center">
+                                    <div class="velocity-gauge__this" id="velocityThisMonth">0</div>
+                                    <div class="velocity-gauge__unit">shows</div>
+                                </div>
+                            </div>
+                            <div class="velocity-gauge__compare">
+                                <span class="velocity-gauge__prev">Last month: <strong id="velocityLastMonth">0</strong></span>
+                                <span class="velocity-gauge__delta" id="velocityDelta"></span>
+                            </div>
+                        </div>
+                        <div class="mainstage-live-pulse">
+                            <div class="mainstage-live-pulse__head">
+                                <h4 class="mainstage-live-pulse__title">Live Pulse</h4>
+                                <div class="mainstage-live-pulse__chips">
+                                    <div class="mainstage-live-chip">Next 7 Days <strong id="mainstageUpcomingCount">0</strong></div>
+                                    <div class="mainstage-live-chip">Pending Deposits <strong id="mainstageDepositPending">0</strong></div>
+                                    <div class="mainstage-live-chip">Balance Alerts <strong id="mainstageBalanceAlerts">0</strong></div>
+                                    <div class="mainstage-live-chip">Overdue <strong id="mainstageOverdueCount">0</strong></div>
+                                </div>
+                            </div>
+                            <div class="mainstage-pulse-grid">
+                                <div class="pulse-item">
+                                    <div class="pulse-item__label">Revenue Pace</div>
+                                    <div class="pulse-item__value income-green" id="mainstageRevenuePace"><span class="sp-skeleton"></span></div>
+                                    <div class="pulse-item__hint" id="mainstageRevenuePaceHint">No baseline yet.</div>
+                                </div>
+                                <div class="pulse-item">
+                                    <div class="pulse-item__label">Collections Health</div>
+                                    <div class="pulse-item__value deposit-blue" id="mainstageCollectionsHealth">0%</div>
+                                    <div class="pulse-item__hint" id="mainstageCollectionsHint">No collection data yet.</div>
+                                </div>
+                                <div class="pulse-item">
+                                    <div class="pulse-item__label">Burn Rate</div>
+                                    <div class="pulse-item__value expense-red" id="mainstageBurnRate">0%</div>
+                                    <div class="pulse-item__hint" id="mainstageBurnHint">No spend data yet.</div>
+                                </div>
+                                <div class="pulse-item">
+                                    <div class="pulse-item__label">Profit Trend</div>
+                                    <div class="pulse-item__value income-green" id="mainstageProfitTrend"><span class="sp-skeleton"></span></div>
+                                    <div class="pulse-item__hint" id="mainstageProfitHint">No trend data yet.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card dashboard-section-card">
+                        <h3 class="section-title" data-icon="calendar">Upcoming Shows</h3>
+                        <div class="timeline-list" id="dashboardUpcomingList"></div>
+                    </div>
+
+                    <div class="card dashboard-section-card">
+                        <h3 class="section-title" data-icon="reports">Recent Activity</h3>
+                        <div class="timeline-list" id="dashboardActivityFeed"></div>
+                    </div>
+
+                    <div class="card dashboard-section-card dashboard-performance-card">
+                        <h3 class="section-title" data-icon="tour">Tour Map</h3>
+                        <div class="performance-map" id="performanceMap"></div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Financials Section -->
+            <!-- MONEY SECTION (Financials + Expenses + Other Income) -->
+            <!-- MONEY SECTION -->
+            <div class="section" id="money">
+                <div class="sp-tabs" id="moneyTabs">
+                    <button class="sp-tab sp-tab--active" data-tab="financials" data-action="switchMoneyTab" onclick="switchMoneyTab('financials')"><i class="ph ph-chart-bar" aria-hidden="true"></i> Overview</button>
+                    <button class="sp-tab" data-tab="expenses" data-action="switchMoneyTab" onclick="switchMoneyTab('expenses')"><i class="ph ph-receipt" aria-hidden="true"></i> Expenses</button>
+                    <button class="sp-tab" data-tab="otherIncome" data-action="switchMoneyTab" onclick="switchMoneyTab('otherIncome')"><i class="ph ph-plus-circle" aria-hidden="true"></i> Other Income</button>
+                    <button class="sp-tab" data-tab="reports" data-action="switchMoneyTab" onclick="switchMoneyTab('reports')"><i class="ph ph-clipboard-text" aria-hidden="true"></i> Reports</button>
+                </div>
+                <div class="sp-tab-panel sp-tab-panel--active" id="moneyPanel-financials">
+                <div class="card mainstage-pulse-card dashboard-financials-card">
+                    <div class="mainstage-strip__head">
+                        <h3 class="section-title" data-icon="dashboard" id="dashboardFinancialHeading">Current Month Financials</h3>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-card stat-card-clickable" data-action="showDetailView" data-detail-key="deposits"
+                             title="Click to view deposits">
+                            <div class="stat-label">Deposits Received</div>
+                            <div class="stat-value deposit-blue" id="depositsReceived">UGX 0</div>
+                            <div class="stat-click-hint">View deposits -></div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Other Income</div>
+                            <div class="stat-value income-green" id="otherIncomeTotal">UGX 0</div>
+                            <div class="stat-click-hint">Current month</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Expenses</div>
+                            <div class="stat-value expense-red" id="financialsExpenses">UGX 0</div>
+                            <div class="stat-click-hint">Current month</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Net Profit</div>
+                            <div class="stat-value income-green" id="financialsCashAtHand">UGX 0</div>
+                            <div class="stat-click-hint">Current month</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Balances Due</div>
+                            <div class="stat-value expense-red" id="financialsBalancesDue">UGX 0</div>
+                            <div class="stat-click-hint">Outstanding this month</div>
+                        </div>
+                    </div>
+                    <div class="monthly-goal-track monthly-goal-track--financials">
+                        <div class="monthly-goal-track__top">
+                            <div class="monthly-goal-track__title">Monthly Revenue Goal</div>
+                            <button class="action-btn" type="button" data-action="toggleFinancialsMonthlyGoalEditor" onclick="toggleFinancialsMonthlyGoalEditor()">Set Goal</button>
+                        </div>
+                        <div class="monthly-goal-track__metrics">
+                            <div class="monthly-goal-metric">
+                                <div class="monthly-goal-metric__label">Goal Amount</div>
+                                <div class="monthly-goal-metric__value" id="financialsMonthlyGoalAmount">UGX 0</div>
+                            </div>
+                            <div class="monthly-goal-metric">
+                                <div class="monthly-goal-metric__label">Current Revenue</div>
+                                <div class="monthly-goal-metric__value" id="financialsMonthlyGoalCurrentRevenue">UGX 0</div>
+                            </div>
+                            <div class="monthly-goal-metric">
+                                <div class="monthly-goal-metric__label">Completion</div>
+                                <div class="monthly-goal-metric__value" id="financialsMonthlyGoalPercent">0%</div>
+                            </div>
+                        </div>
+                        <div class="monthly-goal-progress" aria-hidden="true">
+                            <div class="monthly-goal-progress__bar" id="financialsMonthlyGoalProgressBar" style="width: 0%;"></div>
+                        </div>
+                        <div class="monthly-goal-editor" id="financialsMonthlyGoalEditor" style="display: none;">
+                            <input type="number" id="financialsMonthlyGoalInput" min="0" step="1000" placeholder="Enter monthly goal (UGX)" />
+                            <button class="action-btn" type="button" data-action="saveFinancialsMonthlyRevenueGoal" onclick="saveFinancialsMonthlyRevenueGoal()">Save Goal</button>
+                            <button class="back-btn" type="button" data-action="toggleFinancialsMonthlyGoalEditor" onclick="toggleFinancialsMonthlyGoalEditor()">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="section-title" data-icon="reports">Cashflow (This Month)</h3>
+                    <div class="timeline-list" id="cashFlowTimeline"></div>
+                </div>
+
+                <div class="card">
+                    <h3 class="section-title" data-icon="reports">Financial Snapshot</h3>
+                    <div class="chart-container">
+                        <canvas id="performanceChart"></canvas>
+                    </div>
+                </div>
+
+                </div>
+                <div class="sp-tab-panel" id="moneyPanel-expenses">
+                <!-- Removed: FAB button handles this -->
+
+                <div class="card" id="addExpenseForm" style="display: none;">
+                    <h3 class="section-title" data-icon="expenses">New Expense</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Description</label>
+                            <input type="text" id="expenseDesc" />
+                        </div>
+                        <div class="form-group">
+                            <label>Amount (UGX)</label>
+                            <input type="number" id="expenseAmount" />
+                        </div>
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="expenseDate" />
+                        </div>
+                        <div class="form-group">
+                            <label>Category</label>
+                            <select id="expenseCategory">
+                                <option value="transport">Transport</option>
+                                <option value="accommodation">Accommodation</option>
+                                <option value="equipment">Equipment</option>
+                                <option value="food">Food & Beverages</option>
+                                <option value="marketing">Marketing</option>
+                                <option value="supplies">Supplies</option>
+                                <option value="costumes">Costumes</option>
+                                <option value="salary">Salary</option>
+                                <option value="miscellaneous">Miscellaneous</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label>Upload Receipt (Optional)</label>
+                        <div class="receipt-upload">
+                            <input type="file" id="expenseReceipt" accept="image/*" data-change-action="previewReceipt" />
+                        </div>
+                        <img id="receiptPreview" class="receipt-preview" style="display: none;" />
+                    </div>
+                    <button id="saveExpenseBtn" class="btn-primary" data-action="saveExpense">Save Expense</button>
+                    <button class="back-btn" data-action="cancelExpense" onclick="cancelExpense()">Cancel</button>
+                </div>
+
+                <div class="card" id="expensesListCard">
+                    <div class="card-header-row">
+                        <h3 class="section-title" data-icon="expenses">All Expenses</h3>
+                        <button class="section-fab" aria-label="Add expense" onclick="showAddExpense()">+</button>
+                    </div>
+                    <div class="table-wrap">
+                        <table id="expensesTable" class="expenses-table">
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th>Category</th>
+                                <th>Amount</th>
+                                <th>Date</th>
+                                <th>Receipt</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                        </table>
+                    </div>
+                    <div id="expensesCards" class="expenses-cards" style="margin-top: 16px;"></div>
+                </div>
+
+                </div>
+                <div class="sp-tab-panel" id="moneyPanel-otherIncome">
+                <!-- Removed: FAB button handles this -->
+
+                <div class="card" id="addOtherIncomeForm" style="display: none;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                        <button class="back-btn" data-action="cancelOtherIncome" onclick="cancelOtherIncome()" style="margin: 0;">Back to All Other Income</button>
+                        <h3 class="section-title" data-icon="otherIncome" style="margin: 0;">New Other Income</h3>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Source</label>
+                            <input type="text" id="otherIncomeSource" placeholder="Tips, merch, sponsorship, etc." />
+                        </div>
+                        <div class="form-group">
+                            <label>Amount (UGX)</label>
+                            <input type="number" id="otherIncomeAmount" />
+                        </div>
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="otherIncomeDate" />
+                        </div>
+                        <div class="form-group">
+                            <label>Type</label>
+                            <select id="otherIncomeType">
+                                <option value="tips">Tips</option>
+                                <option value="donation">Donation</option>
+                                <option value="merch">Merchandise</option>
+                                <option value="endorsement">Endorsement</option>
+                                <option value="sponsorship">Sponsorship</option>
+                                <option value="gift">Gift</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Payer / Brand</label>
+                            <input type="text" id="otherIncomePayer" placeholder="Name or brand" />
+                        </div>
+                        <div class="form-group">
+                            <label>Method</label>
+                            <select id="otherIncomeMethod">
+                                <option value="cash">Cash</option>
+                                <option value="mobile">Mobile Money</option>
+                                <option value="bank">Bank Transfer</option>
+                                <option value="online">Online</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select id="otherIncomeStatus">
+                                <option value="received">Received</option>
+                                <option value="pending">Pending</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label>Notes (Optional)</label>
+                        <textarea id="otherIncomeNotes" placeholder="Optional details"></textarea>
+                    </div>
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label>Upload Proof (Optional)</label>
+                        <div class="receipt-upload">
+                            <input type="file" id="otherIncomeProof" accept="image/*" data-change-action="previewOtherIncomeProof" />
+                        </div>
+                        <img id="otherIncomeProofPreview" class="receipt-preview" style="display: none;" />
+                    </div>
+                    <button id="saveOtherIncomeBtn" class="btn-primary" data-action="saveOtherIncome">Save Other Income</button>
+                    <button class="back-btn" data-action="cancelOtherIncome" onclick="cancelOtherIncome()">Cancel</button>
+                </div>
+
+                <div class="card" id="otherIncomeListCard">
+                    <div class="card-header-row">
+                        <h3 class="section-title" data-icon="otherIncome">Other Income</h3>
+                        <button class="section-fab" aria-label="Add income" onclick="showAddOtherIncome()">+</button>
+                    </div>
+                    <div class="table-wrap">
+                        <table id="otherIncomeTable" class="other-income-table">
+                        <thead>
+                            <tr>
+                                <th>Source</th>
+                                <th>Type</th>
+                                <th>Amount</th>
+                                <th>Date</th>
+                                <th>Payer</th>
+                                <th>Method</th>
+                                <th>Status</th>
+                                <th>Proof</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                        </table>
+                    </div>
+                    <div id="otherIncomeCards" class="other-income-cards" style="margin-top: 16px;"></div>
+                </div>
+
+                </div>
+                <div class="sp-tab-panel" id="moneyPanel-reports">
+                <!-- Report Controls (period, closing thoughts, mock data) -->
+                <div class="card" id="reportControlsCard">
+                    <h3 class="section-title" data-icon="reports">Generate Report</h3>
+                    <div class="report-controls">
+                        <select id="reportPeriod" style="flex: 1;" data-native="always" data-change-action="handleReportPeriodChange">
+                            <option value="month">This Month</option>
+                            <option value="prevMonth">Previous Month</option>
+                            <option value="quarter">This Quarter</option>
+                            <option value="year">This Year</option>
+                            <option value="prevYear">Previous Year</option>
+                            <option value="all">All Time</option>
+                        </select>
+                        <button class="add-btn" data-action="generateCleanReport" onclick="generateCleanReport()" style="margin:0;"><i class="ph ph-download-simple" aria-hidden="true"></i> Generate &amp; Download PDF</button>
+                        <button class="action-btn" data-action="toggleClosingThoughts" onclick="toggleClosingThoughts()" style="margin: 0;">Closing Thoughts</button>
+                        <button class="action-btn" data-action="loadMockPortfolioData" onclick="loadMockPortfolioData()" style="margin: 0;">Load Mock Data</button>
+                        <button class="action-btn action-btn--danger" data-action="clearMockData" onclick="clearMockData()" style="margin: 0;">Clear Mock Data</button>
+                    </div>
+                    <div class="closing-thoughts-panel" id="closingThoughtsPanel" style="display: none;">
+                        <label for="closingThoughtsInput">Manager Closing Thoughts (Optional)</label>
+                        <textarea id="closingThoughtsInput" rows="4" maxlength="600" data-input-action="updateClosingThoughtsMeta" placeholder="Add final notes for this period. Example: top wins, key risks, and priorities for next month."></textarea>
+                        <div class="closing-thoughts-meta">
+                            <span id="closingThoughtsStatus">Not saved</span>
+                            <span id="closingThoughtsCount">0 / 600</span>
+                        </div>
+                        <div class="closing-thoughts-actions">
+                            <button class="action-btn" data-action="saveClosingThoughts" onclick="saveClosingThoughts()" style="margin: 0;">Save Thoughts</button>
+                            <button class="action-btn" data-action="clearClosingThoughts" onclick="clearClosingThoughts()" style="margin: 0;">Clear</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="section-title" data-icon="reports">Summary Statistics</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card"><div class="stat-label">Total Bookings</div><div class="stat-value" id="reportBookings">0</div></div>
+                        <div class="stat-card"><div class="stat-label">Show Income</div><div class="stat-value income-green" id="reportIncome">UGX 0</div></div>
+                        <div class="stat-card"><div class="stat-label">Other Income</div><div class="stat-value income-green" id="reportOtherIncome">UGX 0</div></div>
+                        <div class="stat-card"><div class="stat-label">Total Expenses</div><div class="stat-value expense-red" id="reportExpenses">UGX 0</div></div>
+                        <div class="stat-card"><div class="stat-label">Net Profit</div><div class="stat-value income-green" id="reportProfit">UGX 0</div></div>
+                        <div class="stat-card"><div class="stat-label">Balances Due</div><div class="stat-value expense-red" id="reportBalancesDue">UGX 0</div></div>
+                    </div>
+                </div>
+
+                </div>
+            </div>
+
+            <!-- ARTISTS SECTION -->
+            <div class="section" id="artists">
+                <!-- Removed: FAB button handles this -->
+
+                <div class="card" id="addArtistForm" style="display: none;">
+                    <h3 class="section-title" data-icon="artists">Add New Artist</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Full Name</label>
+                            <input type="text" id="artistName" />
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="artistEmail" />
+                        </div>
+                        <div class="form-group">
+                            <label>Phone Number</label>
+                            <input type="tel" id="artistPhone" />
+                        </div>
+                        <div class="form-group">
+                            <label>Specialty/Genre</label>
+                            <input type="text" id="artistSpecialty" placeholder="e.g., Hip Hop, Gospel, Afrobeat" />
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label>Bio/Description</label>
+                        <textarea id="artistBio" placeholder="Brief description of the artist..."></textarea>
+                    </div>
+                    <button class="btn-primary" data-action="saveArtist">Save Artist</button>
+                    <button class="back-btn" data-action="cancelAddArtist" onclick="cancelAddArtist()">Cancel</button>
+                </div>
+
+                <div class="card" id="artistsListCard">
+                    <div class="card-header-row">
+                        <h3 class="section-title" data-icon="artists">All Artists</h3>
+                        <button class="section-fab" aria-label="Add artist" onclick="showAddArtistForm()">+</button>
+                    </div>
+                    <div class="artist-grid" id="artistGrid"></div>
+                </div>
+
+            </div>
+
+            <!-- SCHEDULE SECTION -->
+            <div class="section" id="schedule">
+                <div class="sp-tabs" id="scheduleTabs">
+                    <button class="sp-tab sp-tab--active" data-tab="bookings" data-action="switchScheduleTab" onclick="switchScheduleTab('bookings')"><i class="ph ph-calendar-check" aria-hidden="true"></i> Bookings</button>
+                    <button class="sp-tab" data-tab="calendar" data-action="switchScheduleTab" onclick="switchScheduleTab('calendar')"><i class="ph ph-calendar-blank" aria-hidden="true"></i> Calendar</button>
+                </div>
+                <div class="sp-tab-panel sp-tab-panel--active" id="schedulePanel-bookings">
+                <button class="add-btn bookings-list-btn" onclick="showAddBooking()">+ Add New Booking</button>
+
+                <div class="card" id="addBookingForm" style="display: none;">
+                    <div class="form-header-row">
+                        <h3 class="section-title" data-icon="bookings">New Booking</h3>
+                        <button class="back-to-list" type="button" data-action="cancelBooking" onclick="cancelBooking()">Back to Bookings</button>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Event Name</label>
+                            <input type="text" id="bookingEvent" />
+                        </div>
+                        <div class="form-group">
+                            <label>Artist</label>
+                            <select id="bookingArtist">
+                                <option value="">Select Artist</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="bookingDate" />
+                        </div>
+                        <div class="form-group">
+                            <label>Total Fee (UGX)</label>
+                            <input type="number" id="bookingFee" data-input-action="calculateBalance" />
+                        </div>
+                        <div class="form-group">
+                            <label>Deposit (UGX)</label>
+                            <input type="number" id="bookingDeposit" data-input-action="calculateBalance" />
+                        </div>
+                        <div class="form-group">
+                            <label>Balance Due (UGX)</label>
+                            <input type="number" id="bookingBalance" readonly />
+                        </div>
+                        <div class="form-group">
+                            <label>Contact Person</label>
+                            <input type="text" id="bookingContact" />
+                        </div>
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select id="bookingStatus">
+                                <option value="confirmed">Confirmed</option>
+                                <option value="pending">Pending</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Location Type</label>
+                            <select id="bookingLocationType" data-change-action="updateLocationDropdown">
+                                <option value="uganda">Uganda</option>
+                                <option value="abroad">Abroad</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="ugandaLocationGroup">
+                            <label>District</label>
+                            <select id="bookingUgandaLocation"></select>
+                        </div>
+                        <div class="form-group" id="abroadLocationGroup" style="display: none;">
+                            <label>Country</label>
+                            <select id="bookingAbroadLocation"></select>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label>Notes</label>
+                        <textarea id="bookingNotes"></textarea>
+                    </div>
+                    <button id="saveBookingBtn" class="btn-primary" data-action="saveBooking">Save Booking</button>
+                    <button class="back-btn" data-action="cancelBooking" onclick="cancelBooking()">Cancel</button>
+                </div>
+
+                <div class="card" id="bookingsListCard">
+                    <div class="card-header-row">
+                        <h3 class="section-title" data-icon="bookings">All Bookings</h3>
+                        <button class="section-fab" aria-label="Add booking" onclick="showAddBooking()">+</button>
+                    </div>
+                    <div class="table-wrap">
+                        <table id="bookingsTable" class="bookings-table">
+                        <thead>
+                            <tr>
+                                <th>Event</th>
+                                <th>Artist</th>
+                                <th>Date</th>
+                                <th>Location</th>
+                                <th>Total Fee</th>
+                                <th>Deposit</th>
+                                <th>Balance Due</th>
+                                <th>Contact</th>
+                                <th>Status</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div id="bookingsCards" class="bookings-cards" style="margin-top: 16px;"></div>
+                </div>
+
+                </div>
+                <div class="sp-tab-panel" id="schedulePanel-calendar">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 id="calendarMonth">January 2026</h3>
+                        <div class="calendar-nav" style="display: flex; gap: 10px;">
+                            <button data-action="previousMonth" onclick="previousMonth()" style="width: auto; padding: 10px 15px; margin: 0;">Previous</button>
+                            <button data-action="goToToday" onclick="goToToday()" style="width: auto; padding: 10px 15px; margin: 0;">Today</button>
+                            <button data-action="nextMonth" onclick="nextMonth()" style="width: auto; padding: 10px 15px; margin: 0;">Next</button>
+                        </div>
+                    </div>
+                    
+                    <div class="calendar-grid calendar-compact" id="calendarGrid"></div>
+                    
+                    <div style="margin-top: 20px;">
+                        <button class="add-btn" onclick="showAddEventToCalendar()" style="width: auto; margin: 0;">+ Add Event to Selected Date</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="section-title" data-icon="calendar">Availability Checker</h3>
+                    <div class="availability-checker" style="display: flex; gap: 10px; margin: 20px 0; flex-wrap: wrap;">
+                        <select id="availabilityArtist" style="flex: 1;">
+                            <option value="">Select Artist</option>
+                        </select>
+                        <input type="date" id="availabilityDate" style="flex: 1;" />
+                        <button class="add-btn" onclick="checkAvailability()" style="width: auto; margin: 0;">Check Availability</button>
+                    </div>
+                    <div id="availabilityResult" style="margin-top: 15px;"></div>
+                </div>
+
+                <div class="card" style="display: none;">
+                    <h3 class="section-title" data-icon="calendar">Event Details</h3>
+                    <div id="calendarEventDetails">
+                        <p style="color: #888;">Hover a date to see details</p>
+                    </div>
+                </div>
+
+                </div>
+            </div>
+
+            <!-- TASKS SECTION -->
+            <div class="section" id="tasks">
+                <div class="card">
+                    <div class="task-widget-header" style="margin-bottom: 14px;">
+                        <div class="task-widget-title">
+                            <span>Task Board</span>
+                            <span class="task-badge" id="taskBadge" style="display:none;">0</span>
+                        </div>
+                        <button class="action-btn" type="button" data-action="clearCompletedTasks" onclick="clearCompletedTasks()">Clear Completed</button>
+                    </div>
+                    <div class="task-list" id="taskList"></div>
+                </div>
+                <div class="card">
+                    <h3 class="section-title" data-icon="tasks">Add Task</h3>
+                    <div class="task-add-form" style="margin-top: 0;">
+                        <div class="task-input-group" style="flex-wrap: wrap;">
+                            <input type="text" id="taskInput" class="task-input" placeholder="Add a task..." />
+                            <input type="date" id="taskDueDate" class="task-date-input">
+                            <button class="task-add-btn" type="button" onclick="handleAddTask()">Add Task</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div></div>
+        </div>
+    </div>
+
+    <div class="receipt-modal" id="profileModal">
+        <div class="receipt-modal-content profile-modal-content">
+            <button class="close-receipt" data-action="closeProfileModal" onclick="closeProfileModal()" aria-label="Close">&times;</button>
+            <h3 class="section-title" data-icon="dashboard">Edit Profile</h3>
+            <div class="profile-avatar-row">
+                <div class="sidebar-avatar profile-avatar-preview">
+                    <img src="./logo.png" alt="Profile Avatar" class="avatar-img" id="profileAvatarPreview">
+                </div>
+                <div class="profile-avatar-actions">
+                    <label class="action-btn profile-upload-btn" for="profileAvatarUpload">Upload Photo</label>
+                    <input type="file" id="profileAvatarUpload" accept="image/*" style="display:none;">
+                </div>
+            </div>
+            <div class="profile-avatar-presets" id="profileAvatarPresets">
+                <button type="button" class="avatar-preset" data-avatar="A" style="--preset-bg:#FFB300;--preset-color:#000">A</button>
+                <button type="button" class="avatar-preset" data-avatar="B" style="--preset-bg:#1565c0;--preset-color:#fff">B</button>
+                <button type="button" class="avatar-preset" data-avatar="C" style="--preset-bg:#2e7d32;--preset-color:#fff">C</button>
+                <button type="button" class="avatar-preset" data-avatar="D" style="--preset-bg:#6a1b9a;--preset-color:#fff">D</button>
+                <button type="button" class="avatar-preset" data-avatar="E" style="--preset-bg:#c62828;--preset-color:#fff">E</button>
+                <button type="button" class="avatar-preset" data-avatar="M" style="--preset-bg:#00695c;--preset-color:#fff">M</button>
+                <button type="button" class="avatar-preset" data-avatar="P" style="--preset-bg:#4527a0;--preset-color:#fff">P</button>
+                <button type="button" class="avatar-preset" data-avatar="R" style="--preset-bg:#bf360c;--preset-color:#fff">R</button>
+                <button type="button" class="avatar-preset" data-avatar="S" style="--preset-bg:#37474f;--preset-color:#fff">S</button>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="profileUsername" />
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="profilePassword" placeholder="Leave blank to keep current password" />
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="profileEmail" />
+                </div>
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <input type="tel" id="profilePhone" />
+                </div>
+            </div>
+            <div class="form-group" style="margin-top: 12px;">
+                <label>Bio</label>
+                <textarea id="profileBio" rows="3"></textarea>
+            </div>
+            <div class="message-reply-actions">
+                <button type="button" class="btn-primary" data-action="saveProfileChanges">Save Changes</button>
+                <button type="button" class="back-btn" data-action="closeProfileModal" onclick="closeProfileModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <div class="footer-content">
+
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <a href="#" data-action="showSection" data-section="dashboard" data-tooltip="Dashboard">Overview</a>
+                    <a href="#" data-action="showSection" data-section="schedule" data-tooltip="Schedule">Schedule</a>
+                    <a href="#" data-action="showSection" data-section="reports" data-tooltip="Reports">Reports</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Support</h4>
+                    <a href="#" data-action="showHelpCenterAlert">Help Center</a>
+                    <a href="#" data-action="showContactAlert">Contact Us</a>
+                </div>
+                <div class="footer-section footer-bottom">
+                    <div class="footer-copyright-wrap">
+                        <span class="logo-wrapper footer-logo-wrapper">
+                            <img src="./logo.svg" alt="Star Paper Footer Logo" class="brand-logo logo-footer" loading="lazy">
+                        </span>
+                        <p class="footer-copyright">&copy; 2026 Star Paper. All rights reserved.</p>
+                    </div>
+                    <p class="footer-version">Version 1.0.0</p>
+                </div>
+            </div>
+        </footer>
+
+        <script src="app.migrations.js?v=9"></script>
+        <script src="app.actions.js?v=8"></script>
+        <script src="app.todayboard.js?v=1"></script>
+        <script src="app.tasks.js?v=1"></script>
+        <script src="app.js?v=17"></script>
+        <script>
+        // ── FILE:// PROTOCOL GUARD ───────────────────────────────────────────────
+        // When the app is opened as a local file (double-clicked), window.location.origin
+        // is "null". OAuth (Google sign-in) cannot work on file:// — it requires http/https.
+        // This block shows a clear warning and disables the Google button gracefully.
+        (function fileProtocolGuard() {
+            if (window.location.protocol !== 'file:') return;
+
+            // Show a banner on the login/landing screen
+            window.addEventListener('DOMContentLoaded', function() {
+                var banner = document.createElement('div');
+                banner.id = 'spLocalFileBanner';
+                banner.style.cssText = [
+                    'position:fixed', 'top:0', 'left:0', 'right:0', 'z-index:99999',
+                    'background:#b45309', 'color:#fff', 'font-size:13px',
+                    'padding:10px 16px', 'text-align:center', 'line-height:1.5',
+                    'font-family:sans-serif'
+                ].join(';');
+                banner.innerHTML =
+                    '<strong>⚠ Local file detected.</strong> ' +
+                    'Google sign-in requires a local server. ' +
+                    'Run <code style="background:rgba(0,0,0,.3);padding:1px 6px;border-radius:3px">npx serve .</code> ' +
+                    'in this folder, then open <strong>http://localhost:3000</strong>. ' +
+                    'Email/password login works as normal. ' +
+                    '<button onclick="this.parentElement.remove()" ' +
+                    'style="margin-left:12px;background:rgba(0,0,0,.3);border:none;' +
+                    'color:#fff;padding:2px 8px;border-radius:3px;cursor:pointer">✕</button>';
+                document.body.appendChild(banner);
+
+                // Disable & label Google sign-in buttons
+                document.querySelectorAll('.btn-google, [data-action="signInWithGoogle"]').forEach(function(btn) {
+                    btn.disabled = true;
+                    btn.title = 'Google sign-in requires http://localhost — not file://';
+                    btn.style.opacity = '0.4';
+                    btn.style.cursor = 'not-allowed';
+                });
+            });
+        })();
+        </script>
+        <script>
+        // ── LOCAL TEST MODE ──────────────────────────────────────────────────────
+        // Bypasses ALL auth (Supabase + local) and logs straight into the app
+        // with a "TestUser" session stored only in sessionStorage (cleared on tab close).
+        // Safe to ship — it does nothing on https:// and shows a visible DEV badge.
+        window.enterLocalTestMode = function() {
+            console.log('[StarPaper] Entering Local Test Mode...');
+            try {
+                // 1. Write a minimal session directly into localStorage
+                //    (same keys checkAuth() reads, so it will auto-restore on reload)
+                var testUser = 'TestUser';
+                localStorage.setItem('starPaper_session',     JSON.stringify('active'));
+                localStorage.setItem('starPaperSessionUser',  JSON.stringify(testUser));
+                localStorage.setItem('starPaperRemember',     JSON.stringify(false));
+
+                // 2. Ensure the user record exists in the users array
+                if (typeof window.applyAuthSession === 'function') {
+                    window.applyAuthSession(testUser, { remember: false });
+                } else {
+                    // Fallback if applyAuthSession isn't ready yet
+                    window.currentUser = testUser;
+                    window.currentManagerId = 'test-' + testUser;
+                }
+
+                // 3. Load any existing local data then show the app
+                if (typeof window.loadUserData === 'function') window.loadUserData();
+                if (typeof window.showApp     === 'function') window.showApp();
+
+                // 4. Show a persistent DEV MODE badge so it's always obvious
+                var badge = document.getElementById('spDevModeBadge');
+                if (!badge) {
+                    badge = document.createElement('div');
+                    badge.id = 'spDevModeBadge';
+                    badge.style.cssText = [
+                        'position:fixed','bottom:12px','left:12px','z-index:99999',
+                        'background:#7c3aed','color:#fff','font-size:11px','font-weight:700',
+                        'padding:4px 10px','border-radius:20px','letter-spacing:.5px',
+                        'pointer-events:none','opacity:.85'
+                    ].join(';');
+                    badge.textContent = '🧪 LOCAL TEST MODE';
+                    document.body.appendChild(badge);
+                }
+                console.log('[StarPaper] Local Test Mode active. User: ' + testUser);
+            } catch(err) {
+                console.error('[StarPaper] enterLocalTestMode failed:', err);
+                alert('Local Test Mode failed: ' + err.message + '\nCheck the console for details.');
+            }
+        };
+
+        // Inject btn-local-test styles
+        (function() {
+            var style = document.createElement('style');
+            style.textContent = [
+                '.btn-local-test {',
+                '  width:100%;padding:10px 16px;',
+                '  background:transparent;',
+                '  border:1px dashed rgba(124,58,237,.6);',
+                '  color:rgba(167,139,250,.9);',
+                '  border-radius:8px;cursor:pointer;font-size:13px;',
+                '  transition:background .15s,border-color .15s;',
+                '  margin-top:4px;',
+                '}',
+                '.btn-local-test:hover {',
+                '  background:rgba(124,58,237,.12);',
+                '  border-color:rgba(124,58,237,.9);',
+                '  color:#c4b5fd;',
+                '}',
+            ].join('\n');
+            document.head.appendChild(style);
+        })();
+        // This runs after ALL scripts load. It directly calls window functions for
+        // every add/action button. Works regardless of app.actions.js, data-action
+        // routing, or onclick attributes. Belt-AND-suspenders.
+        (function wireCriticalButtons() {
+            var MAP = {
+                // FAB / header add buttons
+                'showAddBooking':         function() { if (typeof window.showAddBooking  === 'function') window.showAddBooking(); },
+                'showAddExpense':         function() { if (typeof window.showAddExpense  === 'function') window.showAddExpense(); },
+                'showAddOtherIncome':     function() { if (typeof window.showAddOtherIncome === 'function') window.showAddOtherIncome(); },
+                'showAddArtistForm':      function() { if (typeof window.showAddArtistForm === 'function') window.showAddArtistForm(); },
+                'showAddEventToCalendar': function() { if (typeof window.showAddEventToCalendar === 'function') window.showAddEventToCalendar(); },
+                // Auth
+                'showSignupForm':         function() { if (typeof window.showSignupForm  === 'function') window.showSignupForm(); },
+                'showLoginForm':          function() { if (typeof window.showLoginForm   === 'function') window.showLoginForm(); },
+                'showLanding':            function() { if (typeof window.showLanding     === 'function') window.showLanding(); },
+                'showForgotPassword':     function() {
+                    document.getElementById('loginForm') && (document.getElementById('loginForm').style.display = 'none');
+                    document.getElementById('signupForm') && (document.getElementById('signupForm').style.display = 'none');
+                    document.getElementById('forgotPasswordForm') && (document.getElementById('forgotPasswordForm').style.display = 'block');
+                },
+                'signup':                 function() { if (typeof window.signup          === 'function') window.signup(); },
+                'signInWithGoogle':       function() { if (typeof window.signInWithGoogle === 'function') window.signInWithGoogle(); },
+                'submitForgotPassword':   function() { if (typeof window.submitForgotPassword === 'function') window.submitForgotPassword(); },
+                // Cancel / close
+                'cancelExpense':          function() { if (typeof window.cancelExpense   === 'function') window.cancelExpense(); },
+                'cancelBooking':          function() { if (typeof window.cancelBooking   === 'function') window.cancelBooking(); },
+                'cancelOtherIncome':      function() { if (typeof window.cancelOtherIncome === 'function') window.cancelOtherIncome(); },
+                'cancelAddArtist':        function() { if (typeof window.cancelAddArtist === 'function') window.cancelAddArtist(); },
+                'closeReceiptModal':      function() { if (typeof window.closeReceiptModal === 'function') window.closeReceiptModal(); },
+                'closeProfileModal':      function() { if (typeof window.closeProfileModal === 'function') window.closeProfileModal(); },
+                'openProfileModal':       function() { if (typeof window.openProfileModal === 'function') window.openProfileModal(); },
+                // Save (profile / goals only — main form saves stay with app.actions.js)
+                'saveProfileChanges':     function() { if (typeof window.saveProfileChanges === 'function') window.saveProfileChanges(); },
+                'saveMonthlyRevenueGoal': function() { if (typeof window.saveMonthlyRevenueGoal === 'function') window.saveMonthlyRevenueGoal(); },
+                'saveFinancialsMonthlyRevenueGoal': function() { if (typeof window.saveFinancialsMonthlyRevenueGoal === 'function') window.saveFinancialsMonthlyRevenueGoal(); },
+                'saveBBF':                function() { if (typeof window.saveBBF         === 'function') window.saveBBF(); },
+                'saveClosingThoughts':    function() { if (typeof window.saveClosingThoughts === 'function') window.saveClosingThoughts(); },
+                // Tasks
+                'handleAddTask':          function() { if (typeof window.handleAddTask   === 'function') window.handleAddTask(); },
+                'clearCompletedTasks':    function() { if (typeof window.clearCompletedTasks === 'function') window.clearCompletedTasks(); },
+                // Dashboard widgets
+                'toggleMonthlyGoalEditor':           function() { if (typeof window.toggleMonthlyGoalEditor === 'function') window.toggleMonthlyGoalEditor(); },
+                'toggleFinancialsMonthlyGoalEditor': function() { if (typeof window.toggleFinancialsMonthlyGoalEditor === 'function') window.toggleFinancialsMonthlyGoalEditor(); },
+                'toggleBBFEditor':        function() { if (typeof window.toggleBBFEditor  === 'function') window.toggleBBFEditor(); },
+                'toggleClosingThoughts':  function() { if (typeof window.toggleClosingThoughts === 'function') window.toggleClosingThoughts(); },
+                'clearClosingThoughts':   function() { if (typeof window.clearClosingThoughts === 'function') window.clearClosingThoughts(); },
+                // Calendar
+                'previousMonth':          function() { if (typeof window.previousMonth   === 'function') window.previousMonth(); },
+                'nextMonth':              function() { if (typeof window.nextMonth        === 'function') window.nextMonth(); },
+                'goToToday':              function() { if (typeof window.goToToday        === 'function') window.goToToday(); },
+                'checkAvailability':      function() { if (typeof window.checkAvailability === 'function') window.checkAvailability(); },
+                // Reports / data
+                'generateCleanReport':    function() { if (typeof window.generateCleanReport === 'function') window.generateCleanReport(); },
+                'loadMockPortfolioData':  function() { if (typeof window.loadMockPortfolioData === 'function') window.loadMockPortfolioData(); },
+                'clearMockData':          function() { if (typeof window.clearMockData    === 'function') window.clearMockData(); },
+                'exportAllData':          function() { if (typeof window.exportAllData    === 'function') window.exportAllData(); },
+                'clearAllData':           function() { if (typeof window.clearAllData     === 'function') window.clearAllData(); },
+                // Modals
+                'showAboutModal':         function() { if (typeof window.showAboutModal   === 'function') window.showAboutModal(); },
+                'showAdminSettings':      function() { if (typeof window.showAdminSettings === 'function') window.showAdminSettings(); },
+                // Nudge
+                'dismissNudge':           function(el) { if (typeof window.dismissNudge  === 'function') window.dismissNudge(el); },
+            };
+
+            // Navigation needs special handling (data-section attr)
+            function handleShowSection(el) {
+                var section = el.dataset.section;
+                if (section && typeof window.showSection === 'function') window.showSection(section, el);
+            }
+            // Quick-add needs data-type
+            function handleOpenQuickAdd(el) {
+                var type = el.dataset.targetSection || el.dataset.type;
+                if (type && typeof window.openQuickAdd === 'function') window.openQuickAdd(type, el);
+            }
+            // Tab switches
+            function handleSwitchMoneyTab(el) {
+                var tab = el.dataset.tab;
+                if (tab && typeof window.switchMoneyTab === 'function') window.switchMoneyTab(tab);
+            }
+            function handleSwitchScheduleTab(el) {
+                var tab = el.dataset.tab;
+                if (tab && typeof window.switchScheduleTab === 'function') window.switchScheduleTab(tab);
+            }
+
+            document.addEventListener('click', function(e) {
+                var el = e.target && typeof e.target.closest === 'function'
+                    ? e.target.closest('[data-action]') : null;
+                if (!el) return;
+                var action = el.dataset.action;
+                if (!action) return;
+
+                // Let app.actions.js handle save actions to avoid double-fire
+                if (action === 'saveBooking' || action === 'saveExpense' ||
+                    action === 'saveOtherIncome' || action === 'saveArtist') return;
+
+                if (action === 'showSection')       { handleShowSection(el); return; }
+                if (action === 'openQuickAdd')       { handleOpenQuickAdd(el); return; }
+                if (action === 'switchMoneyTab')     { handleSwitchMoneyTab(el); return; }
+                if (action === 'switchScheduleTab')  { handleSwitchScheduleTab(el); return; }
+
+                var fn = MAP[action];
+                if (typeof fn === 'function') {
+                    try { fn(el); }
+                    catch(err) { console.error('[StarPaper] action "' + action + '" threw:', err); }
+                } else {
+                    // Only warn for actions that should be in MAP (not data-* routing ones)
+                    if (action && !['showSection','openQuickAdd','switchMoneyTab','switchScheduleTab',
+                                    'saveBooking','saveExpense','saveOtherIncome','saveArtist',
+                                    'saveProfileChanges','switchScheduleTab','showDetailView',
+                                    'landingFeaturePrev','landingFeatureNext'].includes(action)) {
+                        console.warn('[StarPaper] No handler for "' + action + '". window.' + action + '=', typeof window[action]);
+                    }
+                }
+            }, true); // capture phase — fires before any other listener
+        })();
+        </script>
+        <script>
+            // Scroll-to-features handler for landing page secondary CTA
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('[data-action="scrollToFeatures"]')) {
+                    var el = document.getElementById('landing-features');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                if (e.target.closest('[data-action="showForgotPassword"]')) {
+                    document.getElementById('loginForm').style.display = 'none';
+                    document.getElementById('signupForm').style.display = 'none';
+                    document.getElementById('forgotPasswordForm').style.display = 'block';
+                    document.getElementById('forgotPasswordResult').textContent = '';
+                    document.getElementById('forgotUsername').value = '';
+                }
+                if (e.target.closest('[data-action="submitForgotPassword"]')) {
+                    var username = (document.getElementById('forgotUsername').value || '').trim();
+                    var result = document.getElementById('forgotPasswordResult');
+                    if (!username) { result.textContent = 'Please enter your username.'; result.className = 'forgot-password-hint forgot-password-hint--error'; return; }
+                    // Check if username exists in stored credentials
+                    var stored = JSON.parse(localStorage.getItem('starPaperCredentials') || '{}');
+                    if (stored[username]) {
+                        result.textContent = 'Account found. Passwords are securely stored and cannot be displayed.';
+                        result.className = 'forgot-password-hint forgot-password-hint--success';
+                    } else {
+                        result.textContent = 'No account found with that username.';
+                        result.className = 'forgot-password-hint forgot-password-hint--error';
+                    }
+                }
+            });
+        </script>
+
+    <!-- Premium toast stack -->
+    <div class="sp-toast-stack" id="spToastStack" aria-live="polite" aria-atomic="false"></div>
+
+    <!-- About Modal -->
+    <div class="sp-about-modal" id="spAboutModal" style="display:none;" role="dialog" aria-modal="true" aria-label="About Star Paper">
+        <div class="sp-modal-backdrop" id="spAboutBackdrop"></div>
+        <div class="sp-modal-box">
+            <button class="sp-modal-close" id="spAboutClose" aria-label="Close">✕</button>
+            <div class="sp-modal-logo">
+                <div class="sp-modal-logo-icon"><i class="ph ph-star" aria-hidden="true" style="font-size:28px;color:#FFB300;"></i></div>
+                <div>
+                    <div class="sp-modal-title">Star Paper</div>
+                    <div class="sp-modal-subtitle">Artist Management Platform</div>
+                </div>
+            </div>
+            <div class="sp-modal-body">
+                <p>Star Paper is a premium management tool built for artist managers in Uganda and beyond. Track bookings, monitor finances, manage your roster, and generate professional reports — all in one place.</p>
+                <p>Designed for the realities of the African music industry: offline-capable, mobile-first, and built around the workflows that actually matter.</p>
+                <div class="sp-modal-divider"></div>
+                <p style="margin:0; font-size:13px; color:var(--text-muted);">Built with care for the creative economy.</p>
+                <span class="sp-modal-version">v2.0 · Phase 5</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Settings Modal -->
+    <div class="sp-admin-modal" id="spAdminModal" style="display:none;" role="dialog" aria-modal="true" aria-label="Admin Settings">
+        <div class="sp-modal-backdrop" id="spAdminBackdrop"></div>
+        <div class="sp-modal-box" style="max-width:560px;">
+            <button class="sp-modal-close" id="spAdminClose" aria-label="Close">✕</button>
+            <div class="sp-modal-logo">
+                <div class="sp-modal-logo-icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);"><i class="ph ph-gear" aria-hidden="true" style="font-size:28px;color:#fff;"></i></div>
+                <div>
+                    <div class="sp-modal-title" style="background:linear-gradient(135deg,#818cf8,#c4b5fd);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Admin Settings</div>
+                    <div class="sp-modal-subtitle">Root user controls</div>
+                </div>
+            </div>
+            <div class="sp-modal-body">
+                <h4 style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">User Management</h4>
+                <div id="spAdminUserList">
+                    <div class="sp-admin-empty">Loading users…</div>
+                </div>
+                <div class="sp-modal-divider"></div>
+                <h4 style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">System</h4>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="action-btn" data-action="exportAllData" onclick="exportAllData()" style="margin:0;font-size:12px;"><i class="ph ph-download-simple" aria-hidden="true"></i> Export All Data</button>
+                    <button class="action-btn action-btn--danger" data-action="clearAllData" onclick="clearAllData()" style="margin:0;font-size:12px;"><i class="ph ph-trash" aria-hidden="true"></i> Reset App Data</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Command Palette -->
+    <div class="sp-palette-backdrop" id="spPaletteBackdrop" aria-hidden="true"></div>
+    <div class="sp-palette" id="spPalette" role="dialog" aria-modal="true" aria-label="Command palette" style="display:none">
+        <div class="sp-palette__header">
+            <span class="sp-palette__icon">⌘</span>
+            <input class="sp-palette__input" id="spPaletteInput" type="text"
+                placeholder="Search sections, artists, bookings… or type a command"
+                autocomplete="off" spellcheck="false" aria-autocomplete="list" aria-controls="spPaletteResults">
+            <kbd class="sp-palette__esc">ESC</kbd>
+        </div>
+        <ul class="sp-palette__results" id="spPaletteResults" role="listbox"></ul>
+        <div class="sp-palette__footer">
+            <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+            <span><kbd>↵</kbd> select</span>
+            <span><kbd>Esc</kbd> close</span>
+            <span class="sp-palette__footer-hint">Try "add booking" or an artist name</span>
+        </div>
+    </div>
+
+    <!-- Keyboard shortcut hint toast -->
+    <div class="sp-kbd-hint" id="spKbdHint" aria-hidden="true"></div>
+
+    <!-- Keyboard Shortcut Cheat Sheet -->
+    <div class="sp-cheatsheet-backdrop" id="spCheatsheetBackdrop" aria-hidden="true"></div>
+    <div class="sp-cheatsheet" id="spCheatsheet" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" style="display:none">
+        <div class="sp-cheatsheet__header">
+            <span class="sp-cheatsheet__title"><i class="ph ph-keyboard" aria-hidden="true"></i> Keyboard Shortcuts</span>
+            <button class="sp-cheatsheet__close" id="spCheatsheetClose" aria-label="Close">✕</button>
+        </div>
+        <div class="sp-cheatsheet__body">
+            <div class="sp-cheatsheet__group">
+                <div class="sp-cheatsheet__group-label">Navigation (press G then…)</div>
+                <div class="sp-cheatsheet__rows">
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>D</kbd><span>Dashboard</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>M</kbd><span>Money (Overview)</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>F</kbd><span>Money → Financials</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>E</kbd><span>Money → Expenses</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>I</kbd><span>Money → Other Income</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>R</kbd><span>Money → Reports</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>S</kbd><span>Schedule</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>B</kbd><span>Schedule → Bookings</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>C</kbd><span>Schedule → Calendar</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>A</kbd><span>Artists</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>T</kbd><span>Tasks</span></div>
+                </div>
+            </div>
+            <div class="sp-cheatsheet__group">
+                <div class="sp-cheatsheet__group-label">Global</div>
+                <div class="sp-cheatsheet__rows">
+                    <div class="sp-cheatsheet__row"><kbd>⌘</kbd><kbd>K</kbd><span>Command Palette</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>?</kbd><span>This cheat sheet</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>Esc</kbd><span>Close modal / palette</span></div>
+                </div>
+            </div>
+        </div>
+        <div class="sp-cheatsheet__footer">Press <kbd>Esc</kbd> or <kbd>?</kbd> to close</div>
+    </div>
+</body>
+</html>
+

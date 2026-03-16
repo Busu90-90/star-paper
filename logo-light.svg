@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Star Paper Light Logo">
+  <defs>
+    <linearGradient id="starBase" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1f242d"/>
+      <stop offset="58%" stop-color="#0b0e13"/>
+      <stop offset="100%" stop-color="#030406"/>
+    </linearGradient>
+    <linearGradient id="goldFill" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffebb4"/>
+      <stop offset="44%" stop-color="#efc161"/>
+      <stop offset="100%" stop-color="#9b651a"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <ellipse id="soft-shadow" cx="256" cy="420" rx="118" ry="16" fill="#000000" opacity="0.24"/>
+  <polygon id="base-shape" filter="url(#shadow)" points="256,107.52 294.144,207.616 409.344,213.76 319.232,290.048 351.744,387.584 256,335.36 160.256,387.584 192.768,290.048 102.656,213.76 217.856,207.616" fill="url(#starBase)"/>
+  <polygon id="edge-rim" points="256,107.52 294.144,207.616 409.344,213.76 319.232,290.048 351.744,387.584 256,335.36 160.256,387.584 192.768,290.048 102.656,213.76 217.856,207.616" fill="none" stroke="#2f3642" stroke-width="15" stroke-linejoin="round"/>
+  <polygon id="glass-highlight" points="256,107.52 294.144,207.616 217.856,207.616" fill="#ffffff" opacity="0.7"/>
+  <polygon points="129,229 194,277 171,340" fill="#ffffff" opacity="0.1"/>
+  <ellipse id="contact-occlusion" cx="255" cy="303" rx="66" ry="16" fill="#000000" opacity="0.2"/>
+  <path id="metal-gold-chain" d="M194 191 C218 163 294 163 318 191" fill="none" stroke="url(#goldFill)" stroke-width="20" stroke-linecap="round"/>
+  <path d="M194 191 C218 163 294 163 318 191" fill="none" stroke="#91601a" stroke-width="5" stroke-linecap="round" opacity="0.56"/>
+  <ellipse cx="195" cy="191" rx="10" ry="12" fill="url(#goldFill)" stroke="#8f5f1b" stroke-width="2"/>
+  <ellipse cx="318" cy="191" rx="10" ry="12" fill="url(#goldFill)" stroke="#8f5f1b" stroke-width="2"/>
+  <text x="256" y="332" text-anchor="middle" font-size="250" font-family="'Segoe UI Black', 'Arial Black', sans-serif" font-weight="900" fill="url(#goldFill)" stroke="#9d6a1f" stroke-width="6">$</text>
+</svg>

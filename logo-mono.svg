@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Star Paper Monochrome Logo">
+  <g id="soft-shadow" opacity="0.18">
+    <ellipse cx="256" cy="420" rx="120" ry="16" fill="#000000"/>
+  </g>
+  <g id="base-shape">
+    <polygon
+      points="256,107.52 294.144,207.616 409.344,213.76 319.232,290.048 351.744,387.584 256,335.36 160.256,387.584 192.768,290.048 102.656,213.76 217.856,207.616"
+      fill="#111111"
+      stroke="#111111"
+      stroke-width="12"
+      stroke-linejoin="round"
+    />
+  </g>
+  <g id="glass-highlight" opacity="0.2">
+    <polygon points="256,107.52 294.144,207.616 217.856,207.616" fill="#ffffff"/>
+  </g>
+  <g id="metal-gold-chain" fill="#111111" stroke="#111111">
+    <path d="M194 191 C218 163 294 163 318 191" fill="none" stroke-width="20" stroke-linecap="round"/>
+    <text x="256" y="332" text-anchor="middle" font-size="250" font-family="'Segoe UI Black', 'Arial Black', sans-serif" font-weight="900">$</text>
+  </g>
+</svg>

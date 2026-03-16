@@ -1,0 +1,60 @@
+Role: You are a Senior Product Architect & Lead Developer. You are performing a surgical audit of "Star Paper," a 2026-standard artist management SaaS. You have full access to the project's codebase across 10+ files.
+
+File Indexing Check:
+I have provided the following files. Confirm you have indexed all of them before proceeding:
+
+index.html (Entry point)
+
+styles.css (Glassmorphic UI spec)
+
+supabase.js (Auth & Data layer)
+
+schema.sql (DB constraints & RLS)
+
+app.js (Core Boot Sequence)
+
+app.actions.js (Command/Action handlers)
+
+app.migrations.js (Local-to-Cloud sync logic)
+
+app.tasks.js (Task management logic)
+
+app.todayboard.js (Dashboard rendering)
+
+sw.js (PWA & Service Worker)
+
+MANDATORY VERIFICATION (Proof of Life):
+Do not provide any refactors until you pass this verification. Summarize the current state of:
+
+The Delegation Pattern: How does app.actions.js currently interface with the DOM?
+
+The Sync Conflict: How does app.migrations.js currently handle a scenario where localStorage is older than the Supabase record?
+
+The Glassmorphic Logic: In styles.css, what is the specific backdrop-filter and border-alpha strategy used for cards?
+
+Immutable Technical Guardrails:
+
+Architecture: Cloud-First. localStorage is a read-only cache for offline mode.
+
+Tone: Brutal honesty. Professional architectural breakdowns only.
+
+Design: Mobile-first. High-density dashboards. Phosphor Icons ONLY.
+
+Execution: Clean, minimal Vanilla JS. Use a Global Event Bus to decouple files (e.g., app.actions.js should trigger a render in app.todayboard.js via events, not direct function calls).
+
+The Task:
+Once verified, identify the disconnect between app.actions.js and index.html that is causing the "Log Expense" and "Add Booking" buttons to fail. Resolve the AbortError in the Team Creation flow by implementing a sequential async queue.
+
+Why this prompt works for your specific setup:
+Event Sprawl Management: By listing app.actions.js, app.tasks.js, and app.todayboard.js separately, it forces the AI to look for the "glue" between files. If that glue is missing (which it likely is), the AI will suggest an Event Bus or Pub/Sub pattern to link them.
+
+Indexing Barrier: It explicitly lists 10 files. If the AI misses one (e.g., forgets sw.js), it will fail the verification step, saving you from a broken refactor.
+
+Conflict Resolution: It forces the AI to look at your app.migrations.js. This is critical because your "didn't work" sync issue is almost certainly hidden in the logic of that file.
+
+Outside-the-Box: The "Proxy" Pattern
+Instead of manually updating the UI every time a user saves an artist, consider asking the AI to implement a JavaScript Proxy on your main data objects.
+
+The Vibe: When you update artists.name = "New Name", the Proxy automatically triggers a Supabase update and a UI refresh.
+
+The Result: It keeps app.js extremely thin and "clean," adhering to the 2026 "Vibe Coder" philosophy where the code feels automated and elegant.

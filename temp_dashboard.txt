@@ -1,0 +1,120 @@
+﻿<!-- Dashboard Section -->
+            <div class="section active" id="dashboard">
+                <div class="dashboard-home-layout">
+                    <div class="card dashboard-section-card dashboard-at-glance-card">
+                        <div class="mainstage-strip__head">
+                            <h3 class="section-title" data-icon="dashboard">At a Glance (This Month)</h3>
+                            <div class="mainstage-strip__updated" id="mainstageLiveDate">Updated now</div>
+                        </div>
+                        <div class="monthly-goal-track">
+                            <div class="monthly-goal-track__top">
+                                <div class="monthly-goal-track__title">Monthly Revenue Goal</div>
+                                <button class="action-btn" type="button" data-action="toggleMonthlyGoalEditor">Set Goal</button>
+                            </div>
+                            <div class="monthly-goal-track__metrics">
+                                <div class="monthly-goal-metric">
+                                    <div class="monthly-goal-metric__label">Goal Amount</div>
+                                    <div class="monthly-goal-metric__value" id="monthlyGoalAmount">UGX 0</div>
+                                </div>
+                                <div class="monthly-goal-metric">
+                                    <div class="monthly-goal-metric__label">Current Revenue</div>
+                                    <div class="monthly-goal-metric__value" id="monthlyGoalCurrentRevenue">UGX 0</div>
+                                </div>
+                                <div class="monthly-goal-metric">
+                                    <div class="monthly-goal-metric__label">Completion</div>
+                                    <div class="monthly-goal-metric__value" id="monthlyGoalPercent">0%</div>
+                                </div>
+                            </div>
+                            <div class="monthly-goal-progress" aria-hidden="true">
+                                <div class="monthly-goal-progress__bar" id="monthlyGoalProgressBar" style="width: 0%;"></div>
+                            </div>
+                            <div class="monthly-goal-editor" id="monthlyGoalEditor" style="display: none;">
+                                <input type="number" id="monthlyGoalInput" min="0" step="1000" placeholder="Enter monthly goal (UGX)" />
+                                <button class="action-btn" type="button" data-action="saveMonthlyRevenueGoal">Save Goal</button>
+                                <button class="back-btn" type="button" data-action="toggleMonthlyGoalEditor">Cancel</button>
+                            </div>
+                        </div>
+                        <div class="dashboard-glance-grid">
+                            <div class="mainstage-kpi">
+                                <div class="mainstage-kpi__label">This Month's Revenue</div>
+                                <div class="mainstage-kpi__value income-green" id="totalIncome">UGX 0</div>
+                            </div>
+                            <div class="mainstage-kpi">
+                                <div class="mainstage-kpi__label">Deposits Received</div>
+                                <div class="mainstage-kpi__value deposit-blue" id="dashboardDepositsReceived">UGX 0</div>
+                            </div>
+                            <div class="mainstage-kpi">
+                                <div class="mainstage-kpi__label">Expenses (This Month)</div>
+                                <div class="mainstage-kpi__value expense-red" id="dashboardExpenses">UGX 0</div>
+                            </div>
+                            <div class="mainstage-kpi">
+                                <div class="mainstage-kpi__label">Cash at Hand (Net Profit)</div>
+                                <div class="mainstage-kpi__value income-green" id="dashboardCashAtHand">UGX 0</div>
+                                <div class="mainstage-kpi__sub" id="dashboardNetProfitInline">(Net Profit: UGX 0)</div>
+                            </div>
+                            <div class="mainstage-kpi">
+                                <div class="mainstage-kpi__label">Balances Due</div>
+                                <div class="mainstage-kpi__value expense-red" id="balancesOverdue">UGX 0</div>
+                            </div>
+                            <div class="mainstage-kpi">
+                                <div class="mainstage-kpi__label">Upcoming Shows</div>
+                                <div class="mainstage-kpi__value deposit-blue" id="upcomingShows">0</div>
+                            </div>
+                            <div class="mainstage-kpi">
+                                <div class="mainstage-kpi__label">Active Artists</div>
+                                <div class="mainstage-kpi__value deposit-blue" id="activeArtistsCount">0</div>
+                            </div>
+                        </div>
+                        <div class="mainstage-live-pulse">
+                            <div class="mainstage-live-pulse__head">
+                                <h4 class="mainstage-live-pulse__title">Live Pulse</h4>
+                                <div class="mainstage-live-pulse__chips">
+                                    <div class="mainstage-live-chip">Next 7 Days <strong id="mainstageUpcomingCount">0</strong></div>
+                                    <div class="mainstage-live-chip">Pending Deposits <strong id="mainstageDepositPending">0</strong></div>
+                                    <div class="mainstage-live-chip">Balance Alerts <strong id="mainstageBalanceAlerts">0</strong></div>
+                                    <div class="mainstage-live-chip">Overdue <strong id="mainstageOverdueCount">0</strong></div>
+                                </div>
+                            </div>
+                            <div class="mainstage-pulse-grid">
+                                <div class="pulse-item">
+                                    <div class="pulse-item__label">Revenue Pace</div>
+                                    <div class="pulse-item__value income-green" id="mainstageRevenuePace">UGX 0</div>
+                                    <div class="pulse-item__hint" id="mainstageRevenuePaceHint">No baseline yet.</div>
+                                </div>
+                                <div class="pulse-item">
+                                    <div class="pulse-item__label">Collections Health</div>
+                                    <div class="pulse-item__value deposit-blue" id="mainstageCollectionsHealth">0%</div>
+                                    <div class="pulse-item__hint" id="mainstageCollectionsHint">No collection data yet.</div>
+                                </div>
+                                <div class="pulse-item">
+                                    <div class="pulse-item__label">Burn Rate</div>
+                                    <div class="pulse-item__value expense-red" id="mainstageBurnRate">0%</div>
+                                    <div class="pulse-item__hint" id="mainstageBurnHint">No spend data yet.</div>
+                                </div>
+                                <div class="pulse-item">
+                                    <div class="pulse-item__label">Profit Trend</div>
+                                    <div class="pulse-item__value income-green" id="mainstageProfitTrend">UGX 0</div>
+                                    <div class="pulse-item__hint" id="mainstageProfitHint">No trend data yet.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card dashboard-section-card">
+                        <h3 class="section-title" data-icon="calendar">Upcoming Shows</h3>
+                        <div class="timeline-list" id="dashboardUpcomingList"></div>
+                    </div>
+
+                    <div class="card dashboard-section-card">
+                        <h3 class="section-title" data-icon="reports">Recent Activity</h3>
+                        <div class="timeline-list" id="dashboardActivityFeed"></div>
+                    </div>
+
+                    <div class="card dashboard-section-card dashboard-performance-card">
+                        <h3 class="section-title" data-icon="tour">Tour Map</h3>
+                        <div class="performance-map" id="performanceMap"></div>
+                    </div>
+                </div>
+            </div>
+
+            
