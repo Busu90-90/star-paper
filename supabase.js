@@ -14,7 +14,7 @@
 
 // ── CONFIG: Replace these with your Supabase project values ──────────────────
 const SP_SUPABASE_URL  = 'https://fxcyocdwvjiyatqnaahg.supabase.co';
-const SP_SUPABASE_KEY  = 'sb_publishable_lJxIHBfiSxl_6wOtp9LbCQ_vjxF6ZjF';
+const SP_SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4Y3lvY2R3dmppeWF0cW5hYWhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5Nzg4NDEsImV4cCI6MjA4ODU1NDg0MX0.OTtDpyfA69rbVOTJkBh51pwj3wEkR1L04x4ouDkeWZ0';
 const SP_SUPABASE_CONFIGURED =
   typeof SP_SUPABASE_URL === 'string' &&
   typeof SP_SUPABASE_KEY === 'string' &&
@@ -77,8 +77,10 @@ const SP_CURRENCIES = {
   let _session  = null;
   let _profile  = null;
   let _activeTeamId = localStorage.getItem('sp_active_team') || null;
+  let _activeTeamRole = null;
   let _currency = localStorage.getItem('sp_currency') || 'UGX';
   let _realtimeChannel = null;
+  let _bootstrapping = false;
 
   // ── SERIAL DB QUEUE ──────────────────────────────────────────────────────────
   // Supabase JS v2 acquires a Web Lock for every auth-bearing request. Firing
@@ -102,6 +104,56 @@ const SP_CURRENCIES = {
     if (typeof fn === 'function') fn(msg);
   }
 
+  function ensureAppBootReady() {
+    return Boolean(window.__spAppBooted) ||
+      (typeof window.showApp === 'function' && typeof window.loadUserData === 'function');
+  }
+
+  function scheduleAppBoot(maxWaitMs = 5000, intervalMs = 50) {
+    if (window.__spAppBooted) return;
+    const start = Date.now();
+    const tick = () => {
+      if (window.__spAppBooted) return;
+      if (ensureAppBootReady()) {
+        try {
+          if (typeof window.loadUserData === 'function') {
+            window.loadUserData();
+          }
+          if (typeof window.showApp === 'function' && !window.__spAppBooted) {
+            window.showApp();
+          }
+          log('bootstrap.uiReady');
+        } catch (err) {
+          warn('Deferred app boot failed:', err);
+        }
+        return;
+      }
+      if (Date.now() - start >= maxWaitMs) {
+        log('bootstrap.uiDeferredTimeout');
+        return;
+      }
+      setTimeout(tick, intervalMs);
+    };
+    setTimeout(tick, 0);
+  }
+
+  function withTimeout(task, ms, label) {
+    const promise = typeof task === 'function' ? task() : task;
+    let timer = null;
+    return Promise.race([
+      Promise.resolve(promise),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => {
+          const err = new Error(`${label} timed out after ${Math.round(ms / 1000)}s`);
+          err.name = 'TimeoutError';
+          reject(err);
+        }, ms);
+      }),
+    ]).finally(() => {
+      if (timer) clearTimeout(timer);
+    });
+  }
+
   function getOwnerId() {
     return _session?.user?.id || null;
   }
@@ -113,6 +165,27 @@ const SP_CURRENCIES = {
       : { team_id: null, owner_id: getOwnerId() };
   }
 
+  function getActiveTeamRole() {
+    return _activeTeamRole;
+  }
+
+  function setActiveTeamRole(role) {
+    _activeTeamRole = role || null;
+    if (typeof window.setTeamRole === 'function') {
+      window.setTeamRole(_activeTeamRole);
+    }
+  }
+
+  function applyScopeFilter(query, ownerColumn = 'owner_id') {
+    if (_activeTeamId) return query.eq('team_id', _activeTeamId);
+    return query.eq(ownerColumn, getOwnerId()).is('team_id', null);
+  }
+
+  function applyUserScopeFilter(query, userColumn = 'user_id') {
+    if (_activeTeamId) return query.eq('team_id', _activeTeamId);
+    return query.eq(userColumn, getOwnerId()).is('team_id', null);
+  }
+
   // ── MIGRATION: import existing localStorage data on first login ─────────────
   async function migrateLocalStorageData() {
     const migrationKey = 'sp_migrated_' + getOwnerId();
@@ -121,6 +194,9 @@ const SP_CURRENCIES = {
     try {
       const managerData = JSON.parse(localStorage.getItem('starPaperManagerData') || '{}');
       const localArtists = JSON.parse(localStorage.getItem('starPaperArtists') || '[]');
+      const localRevenueGoals = JSON.parse(localStorage.getItem('starPaperRevenueGoals') || '{}');
+      const localBBF = JSON.parse(localStorage.getItem('starPaperBBF') || '{}');
+      const localClosingThoughts = JSON.parse(localStorage.getItem('starPaperClosingThoughtsByPeriod') || '{}');
 
       // Find current user's manager ID by matching username
       const localUsers = JSON.parse(localStorage.getItem('starPaperUsers') || '[]');
@@ -136,6 +212,15 @@ const SP_CURRENCIES = {
 
       const data = managerData[managerId];
       const ctx = getContext();
+      const goalConflict = ctx.team_id ? 'team_id,period' : 'user_id,period';
+      const tasksKey = `starPaperTasks:${managerId}`;
+      const fallbackTasksKey = `starPaperTasks:${window.currentUser || ''}`;
+      const localTasks = JSON.parse(
+        localStorage.getItem(tasksKey) ||
+        localStorage.getItem(fallbackTasksKey) ||
+        localStorage.getItem('starPaperTasks') ||
+        '[]'
+      );
 
       // Migrate artists
       const artistMap = {};
@@ -191,6 +276,7 @@ const SP_CURRENCIES = {
           amount: Number(e.amount) || 0,
           date: e.date || null,
           category: e.category || 'other',
+          receipt: e.receipt || '',
           mock_key: e.mockKey || null,
         }));
         if (rows.length) {
@@ -219,6 +305,65 @@ const SP_CURRENCIES = {
         }
       }
 
+      // Migrate tasks
+      if (Array.isArray(localTasks) && localTasks.length) {
+        const rows = localTasks.map(t => ({
+          id: String(t.id || ''),
+          user_id: getOwnerId(),
+          team_id: ctx.team_id,
+          text: String(t.text || '').trim(),
+          due_date: t.dueDate || t.due || null,
+          completed: Boolean(t.completed || t.done),
+          created_at: t.createdAt || new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })).filter(r => r.id && r.text);
+        if (rows.length) {
+          await db.from('tasks').upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
+        }
+      }
+
+      // Migrate revenue goal
+      const goalKey = String(managerId || window.currentUser || '');
+      const goalValue = Number(localRevenueGoals?.[goalKey] || 0);
+      if (Number.isFinite(goalValue) && goalValue > 0) {
+        await db.from('revenue_goals').upsert([{
+          user_id: getOwnerId(),
+          team_id: ctx.team_id,
+          amount: goalValue,
+          period: 'monthly',
+          updated_at: new Date().toISOString(),
+        }], { onConflict: goalConflict, ignoreDuplicates: true });
+      }
+
+      // Migrate BBF entries
+      if (localBBF && typeof localBBF === 'object') {
+        const rows = Object.keys(localBBF).filter((key) => key.startsWith(`${goalKey}_`)).map((key) => ({
+          user_id: getOwnerId(),
+          team_id: ctx.team_id,
+          period: key.replace(`${goalKey}_`, ''),
+          amount: Number(localBBF[key]) || 0,
+          updated_at: new Date().toISOString(),
+        })).filter(r => r.period);
+        if (rows.length) {
+          await db.from('bbf_entries').upsert(rows, { onConflict: goalConflict, ignoreDuplicates: true });
+        }
+      }
+
+      // Migrate closing thoughts
+      const managerThoughts = localClosingThoughts?.[goalKey];
+      if (managerThoughts && typeof managerThoughts === 'object') {
+        const rows = Object.keys(managerThoughts).map((period) => ({
+          user_id: getOwnerId(),
+          team_id: ctx.team_id,
+          period,
+          content: String(managerThoughts[period] || ''),
+          updated_at: new Date().toISOString(),
+        })).filter(r => r.period && r.content);
+        if (rows.length) {
+          await db.from('closing_thoughts').upsert(rows, { onConflict: goalConflict, ignoreDuplicates: true });
+        }
+      }
+
       localStorage.setItem(migrationKey, '1');
       log('Local data migrated to Supabase successfully.');
       toastSafe('Success', '✅ Your local data has been securely saved to the cloud!');
@@ -234,6 +379,7 @@ const SP_CURRENCIES = {
       event: row.event,
       artist: row.artist_name,
       artistId: row.artist_id,
+      teamId: row.team_id,
       date: row.date,
       fee: Number(row.fee),
       deposit: Number(row.deposit),
@@ -279,6 +425,7 @@ const SP_CURRENCIES = {
       date: row.date,
       category: row.category,
       receipt: row.receipt || null,
+      teamId: row.team_id,
       mockKey: row.mock_key,
       createdAt: new Date(row.created_at).getTime(),
     };
@@ -295,6 +442,7 @@ const SP_CURRENCIES = {
       amount: Number(e.amount) || 0,
       date: e.date || null,
       category: e.category || 'other',
+      receipt: e.receipt || '',
       mock_key: e.mockKey || null,
     };
   }
@@ -310,6 +458,7 @@ const SP_CURRENCIES = {
       method: row.method,
       status: row.status,
       notes: row.notes,
+      teamId: row.team_id,
       mockKey: row.mock_key,
       createdAt: new Date(row.created_at).getTime(),
     };
@@ -344,7 +493,93 @@ const SP_CURRENCIES = {
       bio: row.bio || '',
       avatar: row.avatar || '',
       managerId: row.owner_id,
+      teamId: row.team_id,
       createdAt: row.created_at,
+    };
+  }
+
+  // â”€â”€ TASKS â€” rows â†” app â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  function rowToTask(row) {
+    return {
+      id: row.id,
+      text: row.text,
+      dueDate: row.due_date || '',
+      completed: Boolean(row.completed),
+      createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+    };
+  }
+
+  function taskToRow(task, ownerId, teamId) {
+    const createdAt = task?.createdAt || new Date().toISOString();
+    return {
+      id: String(task?.id || ''),
+      user_id: ownerId,
+      team_id: teamId || null,
+      text: String(task?.text || '').trim(),
+      due_date: task?.dueDate || null,
+      completed: Boolean(task?.completed),
+      created_at: createdAt,
+      updated_at: new Date().toISOString(),
+    };
+  }
+
+  // â”€â”€ REVENUE GOALS â€” rows â†” app â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  function rowToRevenueGoal(row) {
+    return {
+      id: row.id,
+      amount: Number(row.amount) || 0,
+      period: row.period || 'monthly',
+      updatedAt: row.updated_at || null,
+    };
+  }
+
+  function revenueGoalToRow(goal, ownerId, teamId) {
+    return {
+      user_id: teamId ? null : ownerId,
+      team_id: teamId || null,
+      amount: Number(goal?.amount) || 0,
+      period: goal?.period || 'monthly',
+      updated_at: new Date().toISOString(),
+    };
+  }
+
+  // â”€â”€ BBF â€” rows â†” app â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  function rowToBBF(row) {
+    return {
+      id: row.id,
+      period: row.period,
+      amount: Number(row.amount) || 0,
+      updatedAt: row.updated_at || null,
+    };
+  }
+
+  function bbfToRow(entry, ownerId, teamId) {
+    return {
+      user_id: teamId ? null : ownerId,
+      team_id: teamId || null,
+      period: entry?.period || '',
+      amount: Number(entry?.amount) || 0,
+      updated_at: new Date().toISOString(),
+    };
+  }
+
+  // â”€â”€ Closing Thoughts â€” rows â†” app â”€â”€â”€â”€â”€â”€â”€
+  function rowToClosingThought(row) {
+    return {
+      id: row.id,
+      period: row.period,
+      content: row.content || '',
+      updatedAt: row.updated_at || null,
+    };
+  }
+
+  function closingThoughtToRow(entry, ownerId, teamId) {
+    return {
+      user_id: teamId ? null : ownerId,
+      team_id: teamId || null,
+      period: entry?.period || '',
+      content: String(entry?.content || ''),
+      updated_at: new Date().toISOString(),
     };
   }
 
@@ -360,10 +595,7 @@ const SP_CURRENCIES = {
     const ownerId = getOwnerId();
     if (!ownerId) return null;
 
-    const ctx = getContext();
-    const filter = ctx.team_id
-      ? (q) => q.eq('team_id', ctx.team_id)
-      : (q) => q.eq('owner_id', ownerId);
+    const filter = (q) => applyScopeFilter(q, 'owner_id');
 
     try {
       const [bRes, eRes, iRes, aRes] = await Promise.all([
@@ -487,19 +719,265 @@ const SP_CURRENCIES = {
     }
   }
 
+  async function loadTasks() {
+    const ownerId = getOwnerId();
+    if (!ownerId) return [];
+    try {
+      const { data, error } = await applyUserScopeFilter(
+        db.from('tasks').select('*').order('created_at', { ascending: true }),
+        'user_id'
+      );
+      if (error) { warn('Tasks load error:', error); return []; }
+      return (data || []).map(rowToTask);
+    } catch (err) {
+      warn('Tasks load failed:', err);
+      return [];
+    }
+  }
+
+  async function saveTasks(tasks) {
+    const ownerId = getOwnerId();
+    if (!ownerId || !Array.isArray(tasks)) return;
+    const ctx = getContext();
+    const rows = tasks
+      .map((task) => taskToRow(task, ownerId, ctx.team_id))
+      .filter((row) => row.id && row.text);
+    if (rows.length === 0) return;
+    try {
+      const { error } = await db.from('tasks').upsert(rows, { onConflict: 'id' });
+      if (error) warn('Tasks save error:', error);
+    } catch (err) {
+      warn('Tasks save failed:', err);
+    }
+  }
+
+  async function loadRevenueGoal() {
+    const ownerId = getOwnerId();
+    if (!ownerId) return null;
+    try {
+      const { data, error } = await applyUserScopeFilter(
+        db.from('revenue_goals').select('*').eq('period', 'monthly').limit(1),
+        'user_id'
+      );
+      if (error) { warn('Revenue goal load error:', error); return null; }
+      const row = (data || [])[0];
+      return row ? rowToRevenueGoal(row) : null;
+    } catch (err) {
+      warn('Revenue goal load failed:', err);
+      return null;
+    }
+  }
+
+  async function saveRevenueGoal(goal) {
+    const ownerId = getOwnerId();
+    if (!ownerId || !goal) return;
+    const ctx = getContext();
+    try {
+      const { error } = await db.from('revenue_goals').upsert(
+        [revenueGoalToRow(goal, ownerId, ctx.team_id)],
+        { onConflict: ctx.team_id ? 'team_id,period' : 'user_id,period' }
+      );
+      if (error) warn('Revenue goal save error:', error);
+    } catch (err) {
+      warn('Revenue goal save failed:', err);
+    }
+  }
+
+  async function loadBBFEntries() {
+    const ownerId = getOwnerId();
+    if (!ownerId) return [];
+    try {
+      const { data, error } = await applyUserScopeFilter(
+        db.from('bbf_entries').select('*').order('period', { ascending: true }),
+        'user_id'
+      );
+      if (error) { warn('BBF load error:', error); return []; }
+      return (data || []).map(rowToBBF);
+    } catch (err) {
+      warn('BBF load failed:', err);
+      return [];
+    }
+  }
+
+  async function saveBBFEntries(entries) {
+    const ownerId = getOwnerId();
+    if (!ownerId || !Array.isArray(entries)) return;
+    const ctx = getContext();
+    const rows = entries
+      .map((entry) => bbfToRow(entry, ownerId, ctx.team_id))
+      .filter((row) => row.period);
+    if (rows.length === 0) return;
+    try {
+      const { error } = await db.from('bbf_entries').upsert(
+        rows,
+        { onConflict: ctx.team_id ? 'team_id,period' : 'user_id,period' }
+      );
+      if (error) warn('BBF save error:', error);
+    } catch (err) {
+      warn('BBF save failed:', err);
+    }
+  }
+
+  async function loadClosingThoughts() {
+    const ownerId = getOwnerId();
+    if (!ownerId) return [];
+    try {
+      const { data, error } = await applyUserScopeFilter(
+        db.from('closing_thoughts').select('*').order('updated_at', { ascending: true }),
+        'user_id'
+      );
+      if (error) { warn('Closing thoughts load error:', error); return []; }
+      return (data || []).map(rowToClosingThought);
+    } catch (err) {
+      warn('Closing thoughts load failed:', err);
+      return [];
+    }
+  }
+
+  async function saveClosingThoughts(entries) {
+    const ownerId = getOwnerId();
+    if (!ownerId || !Array.isArray(entries)) return;
+    const ctx = getContext();
+    const rows = entries
+      .map((entry) => closingThoughtToRow(entry, ownerId, ctx.team_id))
+      .filter((row) => row.period && row.content);
+    if (rows.length === 0) return;
+    try {
+      const { error } = await db.from('closing_thoughts').upsert(
+        rows,
+        { onConflict: ctx.team_id ? 'team_id,period' : 'user_id,period' }
+      );
+      if (error) warn('Closing thoughts save error:', error);
+    } catch (err) {
+      warn('Closing thoughts save failed:', err);
+    }
+  }
+
+  async function loadAllData() {
+    const ownerId = getOwnerId();
+    if (!ownerId) return null;
+    const profile = _profile || await getProfile();
+    try {
+      const [core, tasks, revenueGoal, bbfEntries, closingThoughts] = await Promise.all([
+        loadData(),
+        loadTasks(),
+        loadRevenueGoal(),
+        loadBBFEntries(),
+        loadClosingThoughts(),
+      ]);
+      if (!core) return null;
+      return {
+        ...core,
+        tasks,
+        revenueGoal,
+        bbfEntries,
+        closingThoughts,
+        theme: profile?.preferred_theme || null,
+      };
+    } catch (err) {
+      warn('loadAllData failed:', err);
+      return null;
+    }
+  }
+
+  async function saveAllData(payload = {}) {
+    const ownerId = getOwnerId();
+    if (!ownerId) return;
+    const {
+      bookings,
+      expenses,
+      otherIncome,
+      artists,
+      tasks,
+      revenueGoal,
+      bbfEntries,
+      closingThoughts,
+      theme,
+    } = payload || {};
+
+    if (Array.isArray(bookings) || Array.isArray(expenses) || Array.isArray(otherIncome)) {
+      await saveData({
+        bookings: Array.isArray(bookings) ? bookings : (window.bookings || []),
+        expenses: Array.isArray(expenses) ? expenses : (window.expenses || []),
+        otherIncome: Array.isArray(otherIncome) ? otherIncome : (window.otherIncome || []),
+      });
+    }
+    if (Array.isArray(artists)) {
+      await saveArtists(artists);
+    }
+    if (Array.isArray(tasks)) {
+      await saveTasks(tasks);
+    }
+    if (revenueGoal) {
+      await saveRevenueGoal(revenueGoal);
+    }
+    if (Array.isArray(bbfEntries)) {
+      await saveBBFEntries(bbfEntries);
+    }
+    if (Array.isArray(closingThoughts)) {
+      await saveClosingThoughts(closingThoughts);
+    }
+    if (theme) {
+      await updateProfile({ preferred_theme: theme });
+    }
+  }
+
   async function deleteBooking(id) {
-    const { error } = await db.from('bookings').delete().eq('id', id).eq('owner_id', getOwnerId());
+    if (!id) return;
+    const base = db.from('bookings').delete();
+    const isUuid = isCloudId(id);
+    let query = isUuid ? base.eq('id', id) : base.eq('legacy_id', String(id));
+    query = _activeTeamId
+      ? query.eq('team_id', _activeTeamId)
+      : query.eq('owner_id', getOwnerId()).is('team_id', null);
+    const { error } = await query;
     if (error) warn('Delete booking error:', error);
   }
 
   async function deleteExpense(id) {
-    const { error } = await db.from('expenses').delete().eq('id', id).eq('owner_id', getOwnerId());
+    if (!id) return;
+    const base = db.from('expenses').delete();
+    const isUuid = isCloudId(id);
+    let query = isUuid ? base.eq('id', id) : base.eq('legacy_id', String(id));
+    query = _activeTeamId
+      ? query.eq('team_id', _activeTeamId)
+      : query.eq('owner_id', getOwnerId()).is('team_id', null);
+    const { error } = await query;
     if (error) warn('Delete expense error:', error);
   }
 
   async function deleteOtherIncome(id) {
-    const { error } = await db.from('other_income').delete().eq('id', id).eq('owner_id', getOwnerId());
+    if (!id) return;
+    const base = db.from('other_income').delete();
+    const isUuid = isCloudId(id);
+    let query = isUuid ? base.eq('id', id) : base.eq('legacy_id', String(id));
+    query = _activeTeamId
+      ? query.eq('team_id', _activeTeamId)
+      : query.eq('owner_id', getOwnerId()).is('team_id', null);
+    const { error } = await query;
     if (error) warn('Delete other income error:', error);
+  }
+
+  async function deleteArtist(id) {
+    if (!id) return;
+    const base = db.from('artists').delete();
+    const isUuid = isCloudId(id);
+    let query = isUuid ? base.eq('id', id) : base.eq('legacy_id', String(id));
+    query = _activeTeamId
+      ? query.eq('team_id', _activeTeamId)
+      : query.eq('owner_id', getOwnerId()).is('team_id', null);
+    const { error } = await query;
+    if (error) warn('Delete artist error:', error);
+  }
+
+  async function deleteTask(id) {
+    if (!id) return;
+    let query = db.from('tasks').delete().eq('id', String(id));
+    query = _activeTeamId
+      ? query.eq('team_id', _activeTeamId)
+      : query.eq('user_id', getOwnerId()).is('team_id', null);
+    const { error } = await query;
+    if (error) warn('Delete task error:', error);
   }
 
   // ── AUTH ─────────────────────────────────────────────────────────────────────
@@ -509,7 +987,7 @@ const SP_CURRENCIES = {
   // would fall back to the Supabase dashboard Site URL (the live Netlify URL),
   // redirecting the user away from their local file. This helper always returns
   // a usable URL: the current http/https origin, or the production URL as fallback.
-  const SP_PRODUCTION_URL = 'https://starpaper.netlify.app';
+  const SP_PRODUCTION_URL = 'https://star-paper.netlify.app';
   function getSafeRedirectUrl() {
     const origin = window.location.origin;
     const isValidOrigin = origin && origin !== 'null' && origin.startsWith('http');
@@ -523,6 +1001,80 @@ const SP_CURRENCIES = {
       'Use a local server instead: run `npx serve .` or use VS Code Live Server.\n' +
       'Email/password login works normally on http://localhost.'
     );
+  }
+
+  async function handleAuthRedirect() {
+    const url = new URL(window.location.href);
+    const hashParams = new URLSearchParams((url.hash || '').replace(/^#/, ''));
+    const accessToken = hashParams.get('access_token') || url.searchParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token') || url.searchParams.get('refresh_token');
+    const code = url.searchParams.get('code');
+
+    // No OAuth params present — nothing to do.
+    if (!accessToken && !refreshToken && !code) return;
+
+    try {
+      let session = null;
+      let exchangeError = null;
+
+      if (accessToken && refreshToken && typeof db.auth.setSession === 'function') {
+        const { data, error } = await db.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (error) { exchangeError = error; }
+        else { session = data?.session || null; }
+
+      } else if (code && typeof db.auth.exchangeCodeForSession === 'function') {
+        const { data, error } = await db.auth.exchangeCodeForSession(code);
+        if (error) { exchangeError = error; }
+        else { session = data?.session || null; }
+      }
+
+      if (exchangeError) {
+        warn('Auth redirect exchange failed:', exchangeError);
+      }
+
+      // If exchange didn't give us a session, try fetching the stored one.
+      if (!session) {
+        const { data, error } = await db.auth.getSession();
+        if (error) { warn('Auth redirect session fallback failed:', error); }
+        else { session = data?.session || null; }
+      }
+
+      if (session) {
+        await bootstrapFromSupabaseSession(session, {
+          remember: true,
+          showWelcome: true,
+          runMigration: true,
+        });
+      } else {
+        // Exchange failed AND no stored session — clear the loader and show login
+        // so the user isn't stranded on a blank page after a bad OAuth redirect.
+        warn('Auth redirect: no valid session recovered — showing login.');
+        if (typeof window.hideBootLoaderElement === 'function') window.hideBootLoaderElement();
+        if (typeof window.showLoginForm === 'function') window.showLoginForm();
+        if (typeof window.toastError === 'function') {
+          window.toastError('Sign-in link expired or invalid. Please log in again.');
+        }
+      }
+
+    } catch (err) {
+      warn('Auth redirect handling failed:', err);
+      // Safety net: always clear the loader even on unexpected throws.
+      if (typeof window.hideBootLoaderElement === 'function') window.hideBootLoaderElement();
+      if (!window.__spAppBooted && typeof window.showLoginForm === 'function') {
+        window.showLoginForm();
+      }
+    } finally {
+      // Always strip auth tokens from the URL regardless of outcome.
+      url.hash = '';
+      ['access_token', 'refresh_token', 'type', 'token_type', 'expires_in', 'code'].forEach((key) => {
+        url.searchParams.delete(key);
+      });
+      const cleanUrl = url.pathname + url.search;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
   }
 
   async function signUp(username, email, password, phone) {
@@ -578,15 +1130,32 @@ const SP_CURRENCIES = {
 
   async function ensureProfileRecord(user, usernameHint = '') {
     if (!user?.id) return null;
+
+    // ── Step 1: try to fetch existing profile ───────────────────────────────
     const { data: existing, error: existingError } = await db.from('profiles')
       .select('*')
       .eq('id', user.id)
       .maybeSingle();
-    if (!existingError && existing) {
+
+    if (existing) {
       _profile = existing;
       return existing;
     }
 
+    // A real RLS or network error on SELECT — build a minimal in-memory profile
+    // so downstream code (currency, theme) always has something to work with.
+    if (existingError && existingError.code !== 'PGRST116') {
+      warn('Profile SELECT error (non-fatal):', existingError);
+      _profile = _profile || {
+        id: user.id,
+        username: deriveUsernameFromAuth(user, usernameHint),
+        email: user.email || '',
+        phone: user.user_metadata?.phone || '',
+      };
+      return _profile;
+    }
+
+    // ── Step 2: profile doesn't exist yet — upsert (DB trigger may race us) ─
     const username = deriveUsernameFromAuth(user, usernameHint);
     const upsertPayload = {
       id: user.id,
@@ -594,15 +1163,33 @@ const SP_CURRENCIES = {
       email: user.email || '',
       phone: user.user_metadata?.phone || '',
     };
+
     const { data: created, error: upsertError } = await db.from('profiles')
-      .upsert(upsertPayload)
+      .upsert(upsertPayload, { onConflict: 'id', ignoreDuplicates: false })
       .select()
       .maybeSingle();
-    if (upsertError) {
-      warn('Profile upsert failed:', upsertError);
-      return null;
+
+    if (!upsertError && created) {
+      _profile = created;
+      return _profile;
     }
-    _profile = created || upsertPayload;
+
+    // ── Step 3: upsert failed (most likely the DB trigger beat us to it) ────
+    // Do one final SELECT to recover the trigger-created row.
+    if (upsertError) {
+      warn('Profile upsert failed — attempting recovery SELECT:', upsertError);
+      const { data: recovered } = await db.from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (recovered) {
+        _profile = recovered;
+        return _profile;
+      }
+    }
+
+    // ── Step 4: absolute fallback — keep an in-memory shape so nothing breaks ─
+    _profile = _profile || upsertPayload;
     return _profile;
   }
 
@@ -610,6 +1197,7 @@ const SP_CURRENCIES = {
     const normalized = String(username || '').trim();
     if (!normalized) return;
     const profileShape = {
+      id: profile?.id || null,
       email: profile?.email || '',
       phone: profile?.phone || '',
     };
@@ -622,6 +1210,32 @@ const SP_CURRENCIES = {
       return;
     }
 
+    // Ensure the local user registry exists for checkAuth() on fresh OAuth boots.
+    try {
+      const normalizeKey = (value) => String(value || '').trim().toLowerCase();
+      const storedUsers = JSON.parse(localStorage.getItem('starPaperUsers') || '[]');
+      const users = Array.isArray(storedUsers) ? storedUsers : [];
+      const existing = users.find((u) => normalizeKey(u?.username) === normalizeKey(normalized));
+      if (!existing) {
+        const userId = profileShape.id ? `mgr_${profileShape.id}` : `mgr_${normalizeKey(normalized)}`;
+        users.push({
+          id: userId,
+          username: normalized,
+          email: profileShape.email || '',
+          phone: profileShape.phone || '',
+          bio: '',
+          avatar: '',
+          createdAt: new Date().toISOString(),
+        });
+      } else {
+        existing.email = profileShape.email || existing.email || '';
+        existing.phone = profileShape.phone || existing.phone || '';
+      }
+      localStorage.setItem('starPaperUsers', JSON.stringify(users));
+    } catch (err) {
+      warn('Local user registry update failed:', err);
+    }
+
     localStorage.setItem('starPaperRemember', JSON.stringify(Boolean(remember)));
     localStorage.setItem('starPaperCurrentUser', JSON.stringify(Boolean(remember) ? normalized : null));
     localStorage.setItem('starPaper_session', JSON.stringify('active'));
@@ -630,42 +1244,120 @@ const SP_CURRENCIES = {
   }
 
   async function bootstrapFromSupabaseSession(session, options = {}) {
+    log('bootstrap.start');
     const activeSession = session || _session || await getSession();
     if (!activeSession?.user) return false;
 
-    _session = activeSession;
-    const profile = await ensureProfileRecord(activeSession.user, options.usernameHint || '');
-    const username = profile?.username || deriveUsernameFromAuth(activeSession.user, options.usernameHint || '');
-    const remember = options.remember !== undefined ? Boolean(options.remember) : true;
-    syncAuthIntoAppSession(username, profile || { email: activeSession.user.email || '' }, remember);
+    // Step C: A real authenticated user exists — clear the "explicitly logged out"
+    // flag so that onAuthStateChange and checkAuth() can bootstrap normally from
+    // this point forward. This is the only place we clear it, ensuring it always
+    // takes effect on the very next successful login.
+    localStorage.removeItem('sp_logged_out');
 
-    try {
-      const fresh = await loadData();
-      if (fresh && window._SP_syncFromCloud) {
-        window._SP_syncFromCloud(fresh);
-      }
-      if (typeof window.loadUserData === 'function') {
-        window.loadUserData();
-      }
-    } catch (dataError) {
-      warn('Cloud data bootstrap failed:', dataError);
-    }
+    _session = activeSession;
+    log('bootstrap.session', { user: activeSession.user?.email || activeSession.user?.id });
+
+    const remember = options.remember !== undefined ? Boolean(options.remember) : true;
+    const usernameHint = options.usernameHint || '';
+    const fallbackProfile = { email: activeSession.user.email || '' };
+    const username = deriveUsernameFromAuth(activeSession.user, usernameHint);
+    syncAuthIntoAppSession(username, fallbackProfile, remember);
+    scheduleAppBoot();
 
     if (typeof window.updateCurrentManagerContext === 'function') {
-      window.updateCurrentManagerContext();
+      try {
+        window.updateCurrentManagerContext();
+      } catch (err) {
+        warn('updateCurrentManagerContext failed:', err);
+      }
     }
-    if (typeof window.showApp === 'function') {
+    // Guard: only call showApp() once. If checkAuth() already booted the app
+    // via a localStorage session, __spAppBooted is true and we skip this to
+    // prevent a double-render. This is the safe path for returning users whose
+    // localStorage session was written on a previous visit.
+    if (typeof window.showApp === 'function' && !window.__spAppBooted) {
       window.showApp();
+      log('bootstrap.uiReady');
     }
     if (options.showWelcome && typeof window.showWelcomeMessage === 'function') {
       window.showWelcomeMessage();
     }
-    if (profile?.preferred_currency) {
-      applyCurrency(profile.preferred_currency);
-    }
-    if (options.runMigration !== false) {
-      setTimeout(() => migrateLocalStorageData(), 2000);
-    }
+
+    // Background work: profile + data load should never block UI.
+    (async () => {
+      let profile = null;
+      try {
+        profile = await withTimeout(
+          () => ensureProfileRecord(activeSession.user, usernameHint),
+          4000,
+          'ensureProfileRecord'
+        );
+        log('bootstrap.profile.done', { ok: Boolean(profile) });
+      } catch (err) {
+        warn('Profile load failed or timed out:', err);
+        log('bootstrap.profile.done', { ok: false, error: err?.message || 'unknown' });
+      }
+
+      if (profile?.preferred_currency) {
+        applyCurrency(profile.preferred_currency);
+      }
+      if (profile?.preferred_theme && typeof window.applyTheme === 'function') {
+        window.applyTheme(profile.preferred_theme, { persist: false });
+      }
+
+      let fresh = null;
+      try {
+        fresh = await withTimeout(() => loadAllData(), 8000, 'loadAllData');
+        log('bootstrap.data.done', { ok: Boolean(fresh) });
+      } catch (dataError) {
+        warn('Cloud data bootstrap failed or timed out:', dataError);
+        log('bootstrap.data.timeout');
+        // Non-blocking toast — do NOT re-throw; we must always continue to loadUserData.
+        toastSafe('Warn', 'Cloud data took too long. Showing local data now.');
+      }
+
+      // Always sync cloud data if we got it; otherwise loadUserData falls back
+      // to localStorage automatically — this is the Single Source of Truth path.
+      if (fresh && window._SP_syncFromCloud) {
+        window._SP_syncFromCloud(fresh);
+      }
+
+      // CRITICAL: loadUserData MUST always be called — cloud or local —
+      // so the app arrays (bookings, expenses, etc.) are never left empty.
+      if (typeof window.loadUserData === 'function') {
+        try {
+          window.loadUserData();
+        } catch (err) {
+          warn('loadUserData failed:', err);
+        }
+      }
+
+      // Only re-render views if the app shell is already visible.
+      if (window.__spAppBooted) {
+        if (typeof window.updateDashboard === 'function') window.updateDashboard();
+        if (typeof window.renderBookings === 'function') window.renderBookings();
+        if (typeof window.renderExpenses === 'function') window.renderExpenses();
+        if (typeof window.renderOtherIncome === 'function') window.renderOtherIncome();
+        if (typeof window.renderArtists === 'function') window.renderArtists();
+        if (typeof window.updateTodayBoard === 'function') window.updateTodayBoard();
+      }
+
+      if (options.runMigration !== false) {
+        setTimeout(() => migrateLocalStorageData(), 2000);
+      }
+      if (_activeTeamId) {
+        try {
+          const teams = await withTimeout(() => getMyTeams(), 5000, 'getMyTeams');
+          const active = teams.find(t => t.id === _activeTeamId);
+          setActiveTeamRole(active?.myRole || null);
+        } catch (err) {
+          warn('Active team role refresh failed:', err);
+        }
+      } else {
+        setActiveTeamRole(null);
+      }
+    })();
+
     return true;
   }
 
@@ -694,6 +1386,7 @@ const SP_CURRENCIES = {
     _profile = null;
     _activeTeamId = null;
     localStorage.removeItem('sp_active_team');
+    setActiveTeamRole(null);
   }
 
   async function getSession() {
@@ -721,12 +1414,70 @@ const SP_CURRENCIES = {
 
   // Auth state listener
   db.auth.onAuthStateChange(async (event, session) => {
+    // Guard: if the user explicitly logged out, do NOT re-bootstrap even if
+    // the Supabase SDK fires INITIAL_SESSION with a stale token (e.g. because
+    // the server-side revocation hasn't propagated yet). Clean up and bail out.
+    if (localStorage.getItem('sp_logged_out') === '1') {
+      _session = null;
+      if (session) {
+        // A stale token survived — revoke it silently.
+        db.auth.signOut().catch(() => {});
+      }
+      return;
+    }
+
     _session = session;
-    if (event === 'SIGNED_IN' && session) {
-      _profile = await ensureProfileRecord(session.user);
+
+    // Always keep _profile warm on any session event.
+    if (session && !_profile) {
+      try {
+        _profile = await ensureProfileRecord(session.user);
+      } catch (err) {
+        warn('onAuthStateChange: ensureProfileRecord failed (non-fatal):', err);
+      }
       if (_profile?.preferred_currency) {
         _currency = _profile.preferred_currency;
         applyCurrency(_currency);
+      }
+    }
+
+    // Full bootstrap path: app not yet booted, not already in progress.
+    const shouldBootstrap =
+      Boolean(session) &&
+      !window.__spAppBooted &&
+      !_bootstrapping &&
+      (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED');
+
+    if (shouldBootstrap) {
+      _bootstrapping = true;
+      try {
+        await bootstrapFromSupabaseSession(session, {
+          remember: true,
+          showWelcome: event === 'SIGNED_IN',
+          runMigration: true,
+        });
+      } finally {
+        _bootstrapping = false;
+      }
+      return;
+    }
+
+    // App is already booted (returning user with localStorage session) but a fresh
+    // SIGNED_IN just fired — pull cloud data so the new-device scenario stays in sync.
+    if (event === 'SIGNED_IN' && session && window.__spAppBooted && !_bootstrapping) {
+      try {
+        const fresh = await withTimeout(() => loadAllData(), 8000, 'loadAllData[reSync]');
+        if (fresh && window._SP_syncFromCloud) {
+          window._SP_syncFromCloud(fresh);
+        }
+        if (typeof window.loadUserData === 'function') window.loadUserData();
+        if (typeof window.updateDashboard === 'function') window.updateDashboard();
+        if (typeof window.renderBookings === 'function') window.renderBookings();
+        if (typeof window.renderExpenses === 'function') window.renderExpenses();
+        if (typeof window.renderOtherIncome === 'function') window.renderOtherIncome();
+        if (typeof window.renderArtists === 'function') window.renderArtists();
+      } catch (reSyncErr) {
+        warn('onAuthStateChange re-sync failed (non-fatal):', reSyncErr);
       }
     }
   });
@@ -754,7 +1505,12 @@ const SP_CURRENCIES = {
       .select('role, teams(id, name, invite_code, owner_id)')
       .eq('user_id', getOwnerId());
     if (error) { warn('getMyTeams error:', error); return []; }
-    return (data || []).map(row => ({ ...row.teams, myRole: row.role }));
+    const teams = (data || []).map(row => ({ ...row.teams, myRole: row.role }));
+    if (_activeTeamId) {
+      const active = teams.find(t => t.id === _activeTeamId);
+      setActiveTeamRole(active?.myRole || null);
+    }
+    return teams;
   }
 
   async function joinTeamByCode(inviteCode) {
@@ -770,11 +1526,12 @@ const SP_CURRENCIES = {
 
   async function getTeamMembers(teamId) {
     const { data, error } = await db.from('team_members')
-      .select('role, joined_at, profiles(username, email, avatar)')
+      .select('user_id, role, joined_at, profiles(id, username, email, avatar)')
       .eq('team_id', teamId);
     if (error) { warn('getTeamMembers error:', error); return []; }
     return (data || []).map(row => ({
       ...row.profiles,
+      userId: row.user_id,
       role: row.role,
       joinedAt: row.joined_at,
     }));
@@ -783,6 +1540,17 @@ const SP_CURRENCIES = {
   async function switchTeam(teamId) {
     _activeTeamId = teamId;
     localStorage.setItem('sp_active_team', teamId || '');
+    if (_activeTeamId) {
+      try {
+        const teams = await getMyTeams();
+        const active = teams.find(t => t.id === _activeTeamId);
+        setActiveTeamRole(active?.myRole || null);
+      } catch (err) {
+        warn('switchTeam role refresh failed:', err);
+      }
+    } else {
+      setActiveTeamRole(null);
+    }
     // Reload data in the app
     if (typeof window.loadUserData === 'function') {
       await reloadAppData();
@@ -797,6 +1565,58 @@ const SP_CURRENCIES = {
     if (_activeTeamId === teamId) {
       _activeTeamId = null;
       localStorage.removeItem('sp_active_team');
+      setActiveTeamRole(null);
+    }
+  }
+
+  async function updateTeamMemberRole(teamId, userId, role) {
+    if (!teamId || !userId || !role) return;
+    try {
+      const { error } = await db.from('team_members')
+        .update({ role })
+        .eq('team_id', teamId)
+        .eq('user_id', userId);
+      if (error) throw error;
+      toastSafe('Success', 'Member role updated.');
+      showTeamModal();
+    } catch (err) {
+      toastSafe('Error', err.message || 'Failed to update role.');
+    }
+  }
+
+  async function removeTeamMember(teamId, userId) {
+    if (!teamId || !userId) return;
+    try {
+      const { error } = await db.from('team_members')
+        .delete()
+        .eq('team_id', teamId)
+        .eq('user_id', userId);
+      if (error) throw error;
+      toastSafe('Success', 'Member removed.');
+      showTeamModal();
+    } catch (err) {
+      toastSafe('Error', err.message || 'Failed to remove member.');
+    }
+  }
+
+  async function migratePersonalDataToTeam(teamId) {
+    if (!teamId) return;
+    const ownerId = getOwnerId();
+    if (!ownerId) return;
+    const previousTeamId = _activeTeamId;
+    _activeTeamId = null;
+    const personalData = await loadAllData();
+    _activeTeamId = teamId;
+    localStorage.setItem('sp_active_team', teamId);
+    setActiveTeamRole('owner');
+    if (personalData) {
+      await saveAllData(personalData);
+    }
+    if (typeof window.loadUserData === 'function') {
+      await reloadAppData();
+    }
+    if (previousTeamId !== teamId && previousTeamId) {
+      warn('Personal data migrated to team; previous team context replaced.');
     }
   }
 
@@ -887,7 +1707,7 @@ const SP_CURRENCIES = {
 
   // ── APP RELOAD HELPER ─────────────────────────────────────────────────────────
   async function reloadAppData() {
-    const fresh = await loadData();
+    const fresh = await loadAllData();
     if (!fresh) return;
 
     // Inject data into app's global scope
@@ -977,6 +1797,89 @@ const SP_CURRENCIES = {
     `;
   }
 
+  // Override team panel builder to include role management controls.
+  function buildTeamPanelHTML(teams, activeTeamId, members) {
+    const activeTeam = teams.find(t => t.id === activeTeamId);
+    const isOwner = activeTeam && activeTeam.owner_id === getOwnerId();
+
+    const membersHTML = members.length ? members.map(m => {
+      const displayName = m.username || m.email || 'Member';
+      const isSelf = m.userId && m.userId === getOwnerId();
+      const canManageMember = isOwner && !isSelf && m.role !== 'owner';
+      const roleControl = canManageMember
+        ? `
+            <select class="sp-team-role-select" onchange="window.SP.updateTeamMemberRole('${activeTeamId}','${m.userId}', this.value)">
+              <option value="manager" ${m.role === 'manager' ? 'selected' : ''}>Manager</option>
+              <option value="viewer" ${m.role === 'viewer' ? 'selected' : ''}>Viewer</option>
+            </select>
+          `
+        : `<div class="sp-team-member-role">${m.role}</div>`;
+      const removeButton = canManageMember
+        ? `<button class="action-btn action-btn--danger sp-team-remove-btn" onclick="window.SP.removeTeamMember('${activeTeamId}','${m.userId}')">Remove</button>`
+        : '';
+      return `
+        <div class="sp-team-member">
+          <div class="sp-team-member-avatar">${displayName[0].toUpperCase()}</div>
+          <div class="sp-team-member-info">
+            <div class="sp-team-member-name">${displayName}</div>
+            ${roleControl}
+          </div>
+          ${removeButton}
+        </div>
+      `;
+    }).join('') : '<p class="sp-muted">No members yet</p>';
+
+    const teamsHTML = teams.map(t => `
+      <div class="sp-team-item ${t.id === activeTeamId ? 'sp-team-item--active' : ''}"
+           onclick="window.SP.switchTeam('${t.id}')">
+        <div class="sp-team-name">${t.name}</div>
+        <div class="sp-team-role">${t.myRole}</div>
+      </div>
+    `).join('');
+
+    return `
+      <div class="sp-team-panel">
+        <div class="sp-team-panel-header">
+          <h3>Team Workspace</h3>
+          <button class="sp-modal-close" onclick="document.getElementById('spTeamModal').style.display='none'">âœ•</button>
+        </div>
+
+        <div class="sp-team-section">
+          <h4>My Teams</h4>
+          ${teamsHTML || '<p class="sp-muted">No teams yet</p>'}
+          <div class="sp-team-actions">
+            <button class="action-btn" onclick="window.SP.showCreateTeamForm()">+ Create Team</button>
+            <button class="action-btn" onclick="window.SP.showJoinTeamForm()"><i class="ph ph-link" aria-hidden="true"></i> Join by Code</button>
+          </div>
+        </div>
+
+        ${activeTeamId ? `
+        <div class="sp-team-section">
+          <h4>Team Members</h4>
+          ${membersHTML}
+          <div class="sp-team-invite-code">
+            <label>Invite Code</label>
+            <div class="sp-team-code-row">
+              <code id="spTeamInviteCode">${activeTeam?.invite_code || '-'}</code>
+              <button class="action-btn" onclick="window.SP.copyInviteCode()">Copy</button>
+            </div>
+            <p class="sp-muted">Share this code so others can join your team.</p>
+          </div>
+        </div>
+        <div class="sp-team-section">
+          <h4>Team Chat</h4>
+          <div id="spTeamChatMessages" class="sp-chat-messages"></div>
+          <div class="sp-chat-input-row">
+            <input type="text" id="spChatInput" class="form-input" placeholder="Type a message..." 
+                   onkeydown="if(event.key==='Enter')window.SP.sendChatMessage()">
+            <button class="action-btn" onclick="window.SP.sendChatMessage()">Send</button>
+          </div>
+        </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
   async function showTeamModal() {
     // Guard: must be logged in
     if (!getOwnerId()) {
@@ -1016,6 +1919,8 @@ const SP_CURRENCIES = {
 
     try {
       const teams   = await withTimeout(getMyTeams(), 8000, 'getMyTeams');
+      const active = teams.find(t => t.id === _activeTeamId);
+      setActiveTeamRole(active?.myRole || null);
       const members = _activeTeamId
         ? await withTimeout(getTeamMembers(_activeTeamId), 8000, 'getTeamMembers')
         : [];
@@ -1095,7 +2000,8 @@ const SP_CURRENCIES = {
       // Await createTeam fully — the RPC lock must be released before showTeamModal
       // fires getMyTeams(), otherwise two lock acquisitions overlap and race.
       const team = await createTeam(name.trim());
-      toastSafe('Success', `Team "${team.name}" created!`);
+      toastSafe('Success', `Team "${team.name}" created! Migrating your data...`);
+      await migratePersonalDataToTeam(team.id);
       // Small yield so the JS event loop fully clears the previous lock state
       await new Promise(r => setTimeout(r, 80));
       showTeamModal();
@@ -1113,6 +2019,7 @@ const SP_CURRENCIES = {
       // 500ms yield — lets Postgres fully commit the new team_members row
       // before getMyTeams() reads it back inside showTeamModal.
       await new Promise(r => setTimeout(r, 500));
+      await switchTeam(team.id);
       showTeamModal();
     } catch (err) {
       if (err?.name !== 'AbortError') toastSafe('Error', err.message || 'Invalid invite code');
@@ -1225,12 +2132,18 @@ const SP_CURRENCIES = {
     const _origLogout = window.logout;
     
     window.signInWithGoogle = async function supabaseGoogleSignIn() {
+      if (window.__spGoogleSignInPending) return;
+      window.__spGoogleSignInPending = true;
+      setTimeout(() => {
+        window.__spGoogleSignInPending = false;
+      }, 10000);
       try {
         await signInWithGoogle();
         if (typeof window.toastInfo === 'function') {
           window.toastInfo('Continuing with Google...');
         }
       } catch (err) {
+        window.__spGoogleSignInPending = false;
         const msg = String(err?.message || '').toLowerCase();
         if (msg.includes('provider is not enabled') || msg.includes('provider disabled')) {
           if (typeof window.toastError === 'function') {
@@ -1264,28 +2177,27 @@ const SP_CURRENCIES = {
           const { data: profile } = await db.from('profiles')
             .select('email')
             .ilike('username', nameOrEmail)
-            .single();
+            .maybeSingle();
           if (profile?.email) {
             email = profile.email;
-          } else {
-            // Fallback: treat username as email
-            email = nameOrEmail;
           }
+          // No match — fall through with nameOrEmail; signIn will reject with a clear error.
         }
 
         const { data } = await signIn(email, password);
-        const remember = document.getElementById('rememberMe')?.checked;
+        // bootstrapFromSupabaseSession handles showApp + showWelcomeMessage internally.
+        // Do NOT call them again here — that causes a double-render.
         const booted = await bootstrapFromSupabaseSession(data?.session, {
           usernameHint: nameOrEmail,
-          remember: Boolean(remember),
+          remember: Boolean(document.getElementById('rememberMe')?.checked),
           showWelcome: true,
           runMigration: true,
         });
-        if (!booted) throw new Error('Login failed');
-
-        setLoading(false);
+        if (!booted) {
+          // Session was valid but bootstrap couldn't show the app — surface an error.
+          throw new Error('Login failed: could not initialise session.');
+        }
       } catch (err) {
-        setLoading(false);
         const errMsg = String(err?.message || '').toLowerCase();
         const shouldFallback =
           typeof _origLogin === 'function' &&
@@ -1298,11 +2210,16 @@ const SP_CURRENCIES = {
           if (typeof window.toastWarn === 'function') {
             window.toastWarn('Cloud login unavailable. Using local login on this device.');
           }
+          setLoading(false);
           return _origLogin();
         }
         let msg = 'Invalid credentials. Please try again.';
-        if (err.message?.includes('Email not confirmed')) msg = 'Please check your email to confirm your account first.';
+        if (errMsg.includes('email not confirmed')) msg = 'Please check your email to confirm your account first.';
+        if (errMsg.includes('invalid login credentials')) msg = 'Incorrect email or password.';
         if (typeof window.toastError === 'function') window.toastError(msg);
+      } finally {
+        // Guaranteed: spinner always stops, button always re-enables.
+        setLoading(false);
       }
     };
 
@@ -1360,13 +2277,23 @@ const SP_CURRENCIES = {
 
     // ── SUPABASE LOGOUT ─────────────────────────────────────────────────────────
     window.logout = async function supabaseLogout() {
+      // 1. Persist any unsaved work to localStorage first.
       if (typeof window.saveUserData === 'function') window.saveUserData();
-      try {
-        await signOut();
-      } catch (error) {
-        warn('Supabase logout failed. Falling back to local logout.', error);
-        if (typeof _origLogout === 'function') return _origLogout();
-      }
+
+      // 2. CRITICAL — Directly delete the Supabase SDK's own auth token from
+      //    localStorage. The SDK stores it under a well-known key. This is
+      //    synchronous and instant. Without this step, the SDK finds its own
+      //    token on the next page load and fires onAuthStateChange('INITIAL_SESSION'),
+      //    which re-boots the app even though the user logged out.
+      const _projectRef = SP_SUPABASE_URL.replace('https://', '').replace('.supabase.co', '');
+      localStorage.removeItem('sb-' + _projectRef + '-auth-token');
+      localStorage.removeItem('sb-' + _projectRef + '-auth-token-code-verifier');
+
+      // 3. Set a persistent "explicitly logged out" flag.
+      //    onAuthStateChange and checkAuth() both check this before bootstrapping.
+      localStorage.setItem('sp_logged_out', '1');
+
+      // 4. Clear all OUR session keys (starPaper_session, starPaperRemember, etc.)
       if (typeof window.clearAuthSessionState === 'function') {
         window.clearAuthSessionState();
       } else {
@@ -1374,9 +2301,22 @@ const SP_CURRENCIES = {
         window.currentManagerId = null;
         localStorage.removeItem('starPaper_session');
         localStorage.removeItem('starPaperSessionUser');
+        localStorage.removeItem('starPaperRemember');
+        localStorage.removeItem('starPaperCurrentUser');
       }
+
+      // 5. Reset runtime flag so a same-tab re-login works cleanly.
+      window.__spAppBooted = false;
+      _session = null;
+      _profile = null;
+
+      // 6. Show landing page immediately — user doesn't wait for any network call.
       if (typeof window.setActiveScreen === 'function') window.setActiveScreen('landingScreen');
       if (typeof window.toastInfo === 'function') window.toastInfo('Logged out');
+
+      // 7. Revoke the server-side token in the background (best-effort).
+      //    Even if this fails the user is fully logged out locally (steps 2–5 above).
+      signOut().catch(() => {});
     };
 
     // ── PATCH saveUserData TO CLOUD-FIRST SYNC ──────────────────────────────────
@@ -1387,14 +2327,18 @@ const SP_CURRENCIES = {
 
       // 2. Sync to Supabase cloud. saveData() also back-fills cloud UUIDs into
       //    the live arrays so future saves are idempotent (no more duplicates).
-      if (getOwnerId() && Array.isArray(window.bookings)) {
+      if (getOwnerId()) {
         try {
-          await saveData({
-            bookings:    window.bookings    || [],
-            expenses:    window.expenses    || [],
-            otherIncome: window.otherIncome || [],
-          });
-          await saveArtists(window.artists || []);
+          if (typeof window.SP_collectAllData === 'function') {
+            await saveAllData(window.SP_collectAllData());
+          } else if (Array.isArray(window.bookings)) {
+            await saveData({
+              bookings:    window.bookings    || [],
+              expenses:    window.expenses    || [],
+              otherIncome: window.otherIncome || [],
+            });
+            await saveArtists(window.artists || []);
+          }
         } catch (cloudErr) {
           warn('Cloud sync failed (data safe in localStorage):', cloudErr);
         }
@@ -1428,37 +2372,64 @@ const SP_CURRENCIES = {
     };
   }
 
-  // ── INIT ──────────────────────────────────────────────────────────────────────
+  // ── INIT ────────────────────────────────────────────────────────────────────────────
   function init() {
     setupSyncBridge();
     applyCurrency(_currency);
 
-    // Patch auth after app.js has loaded its own functions
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(patchAppAuth, 100);
-        setTimeout(injectSidebarButtons, 1500);
+    // handleAuthRedirect() and bootstrapFromStoredSession() must only run AFTER
+    // app.js has fully executed — otherwise showApp/loadUserData don’t exist yet
+    // and the OAuth callback lands on the landing page instead of the dashboard.
+    // We defer everything that calls bootstrapFromSupabaseSession to DOMContentLoaded.
+    const onAppReady = () => {
+      // Order matters: exchange the OAuth code FIRST, then check for a stored session.
+      // exchangeCodeForSession writes to Supabase internal storage;
+      // the subsequent getSession() call reads it back.
+      handleAuthRedirect().then(() => {
+        bootstrapFromStoredSession();
       });
+
+      setTimeout(patchAppAuth, 0);         // replace window.login/signup immediately
+      setTimeout(injectSidebarButtons, 1200);
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', onAppReady, { once: true });
     } else {
-      setTimeout(patchAppAuth, 100);
-      setTimeout(injectSidebarButtons, 1500);
+      // DOMContentLoaded already fired (synchronous script load after app.js)
+      setTimeout(onAppReady, 0);
     }
 
-    // Check for existing session on page load
-    window.addEventListener('load', async () => {
-      const session = await getSession();
-      if (session) {
-        const restored = await bootstrapFromSupabaseSession(session, {
-          remember: true,
-          showWelcome: false,
-          runMigration: true,
+    window.addEventListener('online', () => {
+      if (!getOwnerId()) return;
+      if (typeof window.SP_collectAllData === 'function') {
+        saveAllData(window.SP_collectAllData()).catch((err) => {
+          warn('Online sync failed:', err);
         });
-        if (restored) {
-          log('Session restored for:', _profile?.username || session.user?.email || 'user');
-        }
       }
     });
   }
+
+  // Separated from init() so it can be sequenced after handleAuthRedirect resolves.
+  async function bootstrapFromStoredSession() {
+    if (window.__spAppBooted || _bootstrapping) return;
+    const session = await getSession();
+    if (!session) return;
+    _bootstrapping = true;
+    try {
+      const restored = await bootstrapFromSupabaseSession(session, {
+        remember: true,
+        showWelcome: false,
+        runMigration: true,
+      });
+      if (restored) {
+        log('Session restored for:', _profile?.username || session.user?.email || 'user');
+      }
+    } finally {
+      _bootstrapping = false;
+    }
+  }
+
 
   // ── PUBLIC API ────────────────────────────────────────────────────────────────
   window.SP = {
@@ -1470,14 +2441,21 @@ const SP_CURRENCIES = {
     getProfile,
     updateProfile,
     signInWithGoogle,
+    bootstrap:       bootstrapFromSupabaseSession,
 
     // Data
     loadData,
+    loadAllData,
     saveData,
+    saveAllData,
     saveArtists,
+    loadTasks,
+    saveTasks,
     deleteBooking,
     deleteExpense,
     deleteOtherIncome,
+    deleteArtist,
+    deleteTask,
     reloadAppData,
 
     // Teams
@@ -1487,6 +2465,9 @@ const SP_CURRENCIES = {
     getTeamMembers,
     switchTeam,
     leaveTeam,
+    updateTeamMemberRole,
+    removeTeamMember,
+    migratePersonalDataToTeam,
     showTeamModal,
     showCreateTeamForm,
     showJoinTeamForm,
@@ -1505,17 +2486,31 @@ const SP_CURRENCIES = {
     currencies: SP_CURRENCIES,
     getCurrentCurrency: () => _currency,
 
-    // State
-    getSession: () => _session,
+    // State (cached values)
+    getSessionState: () => _session,
     getOwnerId,
     getActiveTeamId: () => _activeTeamId,
-    getProfile: () => _profile,
+    getActiveTeamRole,
+    getProfileState: () => _profile,
 
     // Raw client (for advanced use)
     client: db,
   };
 
   init();
+  window.__spSupabaseReady = true;
+  try {
+    const readyEvent = typeof CustomEvent === 'function'
+      ? new CustomEvent('sp-supabase-ready')
+      : (() => {
+          const evt = document.createEvent('Event');
+          evt.initEvent('sp-supabase-ready', true, true);
+          return evt;
+        })();
+    window.dispatchEvent(readyEvent);
+  } catch (err) {
+    // no-op: event dispatch is best-effort
+  }
   log('Supabase integration loaded ✓');
 
 })();
@@ -1624,4 +2619,3 @@ const SP_CURRENCIES = {
   `;
   document.head.appendChild(style);
 })();
-

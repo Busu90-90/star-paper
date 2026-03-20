@@ -71,7 +71,7 @@ function initializeBootSequence() {
 }
 
 function getSectionIconMarkup(iconKey) {
-        // All icons use Phosphor — <i class="ph ph-*"> for consistent rendering
+        // All icons use Phosphor â€” <i class="ph ph-*"> for consistent rendering
         const phClass = {
             money:      'ph-currency-circle-dollar',
             schedule:   'ph-calendar-blank',
@@ -348,6 +348,7 @@ function getSectionIconMarkup(iconKey) {
         if (!bbfData || typeof bbfData !== 'object' || Array.isArray(bbfData)) bbfData = {};
         let currentUser = null;
         let currentManagerId = null;
+        let currentTeamRole = null;
         let bookings = [];
         let expenses = [];
         let otherIncome = [];
@@ -828,7 +829,7 @@ function getSectionIconMarkup(iconKey) {
         }
 
         function getManagerData(managerId) {
-            const key = String(managerId || '');
+            const key = String(managerId || getActiveDataScopeKey() || '');
             if (!key) {
                 return { bookings: [], expenses: [], otherIncome: [] };
             }
@@ -842,7 +843,7 @@ function getSectionIconMarkup(iconKey) {
         }
 
         function saveManagerData(managerId, payload) {
-            const key = String(managerId || '');
+            const key = String(managerId || getActiveDataScopeKey() || '');
             if (!key) return;
             const normalized = {
                 bookings: Array.isArray(payload?.bookings) ? payload.bookings : [],
@@ -901,8 +902,92 @@ function getSectionIconMarkup(iconKey) {
             currentManagerId = manager?.id || null;
         }
 
-        function getCurrentRevenueGoalKey() {
+        function getActiveTeamId() {
+            return typeof window.SP?.getActiveTeamId === 'function' ? window.SP.getActiveTeamId() : null;
+        }
+
+        function getActiveTeamRole() {
+            return typeof window.SP?.getActiveTeamRole === 'function' ? window.SP.getActiveTeamRole() : null;
+        }
+
+        function getActiveDataScopeKey() {
+            const teamId = getActiveTeamId();
+            if (teamId) return `team:${teamId}`;
+            // CRITICAL FIX: Use the Supabase UUID as the primary scope key.
+            // currentManagerId is a LOCAL runtime ID ("mgr_xyz_abc") that is
+            // re-generated with a different random suffix on every fresh browser.
+            // If we used it as the localStorage scope key, Opera would create a
+            // DIFFERENT key from Chrome for the same account, making data invisible
+            // across devices. The Supabase UID is stable and identity-tied.
+            const supabaseUid = window.SP?.getOwnerId?.() || null;
+            if (supabaseUid) return supabaseUid;
+            // Offline fallback: no cloud session yet, use local ID.
             return String(currentManagerId || currentUser || '');
+        }
+
+        function isViewerRole() {
+            return currentTeamRole === 'viewer';
+        }
+
+        function ensureReadOnlyBanner() {
+            let banner = document.getElementById('spReadOnlyBanner');
+            if (banner) return banner;
+            const container = document.querySelector('.main-content') || document.body;
+            banner = document.createElement('div');
+            banner.id = 'spReadOnlyBanner';
+            banner.className = 'sp-readonly-banner';
+            banner.textContent = 'Read-only access: viewer role cannot add, edit, or delete records.';
+            container.insertBefore(banner, container.firstChild);
+            return banner;
+        }
+
+        function applyReadOnlyMode() {
+            const isViewer = isViewerRole();
+            document.body.classList.toggle('sp-readonly', isViewer);
+            const banner = ensureReadOnlyBanner();
+            banner.style.display = isViewer ? 'block' : 'none';
+            const appRoot = document.getElementById('appContainer') || document.body;
+            const submitButtons = appRoot.querySelectorAll('button[type="submit"], input[type="submit"]');
+            submitButtons.forEach((btn) => {
+                if (isViewer) {
+                    btn.dataset.readonlyDisabled = '1';
+                    btn.disabled = true;
+                } else if (btn.dataset.readonlyDisabled) {
+                    btn.disabled = false;
+                    btn.removeAttribute('data-readonly-disabled');
+                }
+            });
+            const taskControls = appRoot.querySelectorAll('.task-checkbox, .task-edit, .task-delete, .task-add-btn');
+            taskControls.forEach((control) => {
+                if (isViewer) {
+                    control.dataset.readonlyDisabled = '1';
+                    control.disabled = true;
+                } else if (control.dataset.readonlyDisabled) {
+                    control.disabled = false;
+                    control.removeAttribute('data-readonly-disabled');
+                }
+            });
+        }
+
+        function setTeamRole(role) {
+            currentTeamRole = role || null;
+            window.currentTeamRole = currentTeamRole;
+            applyReadOnlyMode();
+        }
+        window.setTeamRole = setTeamRole;
+
+        function guardReadOnly(actionLabel) {
+            if (!isViewerRole()) return false;
+            if (typeof toastWarn === 'function') {
+                toastWarn(`Read-only access: you cannot ${actionLabel}.`);
+            } else if (typeof toastInfo === 'function') {
+                toastInfo('Read-only access.');
+            }
+            return true;
+        }
+
+        function getCurrentRevenueGoalKey() {
+            return getActiveDataScopeKey();
         }
 
         function getCurrentMonthlyRevenueGoal() {
@@ -935,6 +1020,7 @@ function getSectionIconMarkup(iconKey) {
         }
 
         function saveRevenueGoalFromInput(inputId, editorId) {
+            if (guardReadOnly('update revenue goals')) return;
             const input = document.getElementById(inputId);
             if (!input) return;
             const value = Number(input.value);
@@ -946,6 +1032,7 @@ function getSectionIconMarkup(iconKey) {
             const editor = document.getElementById(editorId);
             if (editor) editor.style.display = 'none';
             updateDashboard();
+            syncCloudExtras();
         }
 
         function toggleMonthlyGoalEditor() {
@@ -964,10 +1051,10 @@ function getSectionIconMarkup(iconKey) {
             saveRevenueGoalFromInput('financialsMonthlyGoalInput', 'financialsMonthlyGoalEditor');
         }
 
-        // ── Balance Brought Forward (BBF) ─────────────────────────────────────
+        // â”€â”€ Balance Brought Forward (BBF) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function getBBFKey() {
             const now = new Date();
-            const managerId = String(currentManagerId || currentUser || '');
+            const managerId = getActiveDataScopeKey();
             const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
             return `${managerId}_${ym}`;
         }
@@ -997,6 +1084,7 @@ function getSectionIconMarkup(iconKey) {
         }
 
         function saveBBF() {
+            if (guardReadOnly('update the balance brought forward')) return;
             const input = document.getElementById('bbfInput');
             const editor = document.getElementById('bbfEditor');
             if (!input) return;
@@ -1008,13 +1096,15 @@ function getSectionIconMarkup(iconKey) {
             setCurrentBBF(value);
             if (editor) editor.style.display = 'none';
             updateDashboard();
+            syncCloudExtras();
         }
-        // ─────────────────────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
         function normalizeAllManagerBookingReferences() {
             Object.keys(managerData || {}).forEach((managerId) => {
                 const data = getManagerData(managerId);
-                const normalizedBookings = ensureBookingArtistRefs(data.bookings, managerId);
+                const managerHint = String(managerId || '').startsWith('team:') ? currentManagerId : managerId;
+                const normalizedBookings = ensureBookingArtistRefs(data.bookings, managerHint);
                 saveManagerData(managerId, {
                     bookings: normalizedBookings,
                     expenses: data.expenses,
@@ -1066,7 +1156,7 @@ function getSectionIconMarkup(iconKey) {
             if (window.__starPaperMainEventsBound) return;
             window.__starPaperMainEventsBound = true;
 
-            // ── In-app navigation history stack ──────────────────────────
+            // â”€â”€ In-app navigation history stack â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             window._spNavStack = [];   // array of section names
             window._spNavIndex = -1;  // current position in stack
             window._spNavSkip = false; // flag: popstate-driven navigation, don't push
@@ -1086,7 +1176,7 @@ function getSectionIconMarkup(iconKey) {
             document.getElementById('hamburgerBtn')?.addEventListener('click', () => toggleSidebar());
             document.getElementById('sidebarOverlay')?.addEventListener('click', () => closeSidebar());
 
-            // ── Back / Forward navigation buttons ────────────────────────
+            // â”€â”€ Back / Forward navigation buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             document.getElementById('navBackBtn')?.addEventListener('click', () => {
                 if (window._spNavIndex > 0) {
                     window._spNavIndex--;
@@ -1104,7 +1194,7 @@ function getSectionIconMarkup(iconKey) {
                 }
             });
 
-            // ── Scroll-to-top FAB ──────────────────────────────────────
+            // â”€â”€ Scroll-to-top FAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             const scrollFab = document.getElementById('scrollTopFab');
             const mainContent = document.querySelector('.main-content');
             const showFab = () => {
@@ -1118,7 +1208,7 @@ function getSectionIconMarkup(iconKey) {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             });
 
-            // ── Landing: sticky mini-nav on scroll ────────────────────
+            // â”€â”€ Landing: sticky mini-nav on scroll â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             const landingEl = document.getElementById('landingScreen');
             const miniNav   = document.getElementById('landingMiniNav');
             if (landingEl && miniNav) {
@@ -1211,7 +1301,7 @@ function getSectionIconMarkup(iconKey) {
             document.getElementById('signupPhone')?.addEventListener('keydown', (e) => handleEnterSubmit(e, runSignup));
             document.getElementById('profileAvatarUpload')?.addEventListener('change', handleProfileAvatarUpload);
             document.getElementById('profileAvatarPresets')?.addEventListener('click', selectProfileAvatarPreset);
-            applyTheme(Storage.loadSync('starPaperTheme', 'dark'));
+            applyTheme(Storage.loadSync('starPaperTheme', 'dark'), { syncRemote: false });
             document.addEventListener('input', cacheDrafts);
             window.addEventListener('beforeunload', cacheDrafts);
 
@@ -1270,7 +1360,7 @@ function getSectionIconMarkup(iconKey) {
             // Supabase v2 uses the Web Locks API internally to coordinate auth token
             // refresh across tabs. When a new tab steals the lock, every other tab
             // gets an AbortError: "Lock broken by another request with the 'steal' option".
-            // This is non-fatal — the auth state self-heals — but without this handler
+            // This is non-fatal â€” the auth state self-heals â€” but without this handler
             // it surfaces as a red toast. We silence it here and log quietly instead.
             window.addEventListener('unhandledrejection', (event) => {
                 const err = event.reason;
@@ -1905,6 +1995,7 @@ function getSectionIconMarkup(iconKey) {
             setInputError('loginPassword', false);
         }
 
+        let loginLoadingGuard = null;
         function setLoginLoading(isLoading) {
             const overlay = document.getElementById('loginLoading');
             const button = document.getElementById('loginButton');
@@ -1913,6 +2004,23 @@ function getSectionIconMarkup(iconKey) {
             }
             if (button) {
                 button.disabled = isLoading;
+            }
+            if (loginLoadingGuard) {
+                clearTimeout(loginLoadingGuard);
+                loginLoadingGuard = null;
+            }
+            if (isLoading) {
+                loginLoadingGuard = setTimeout(() => {
+                    if (overlay && overlay.classList.contains('active')) {
+                        overlay.classList.remove('active');
+                    }
+                    if (button) {
+                        button.disabled = false;
+                    }
+                    if (typeof window.toastWarn === 'function') {
+                        window.toastWarn('Login is taking longer than expected. Please try again.');
+                    }
+                }, 12000);
             }
         }
 
@@ -1979,21 +2087,23 @@ function getSectionIconMarkup(iconKey) {
                     quickAddPanel.classList.remove('active');
                 }
             }
-            const forms = [
-                {
-                    id: 'addBookingForm',
-                    cancel: cancelBooking,
-                    openSelectors: [
-                        '[data-action="showAddBooking"]',
-                        '[data-action="showAddEventToCalendar"]',
-                        '[onclick*="bookArtistFromAvailability"]',
-                        '.booking-edit-trigger'
-                    ]
-                },
-                { id: 'addExpenseForm', cancel: cancelExpense, openSelectors: ['[data-action="showAddExpense"]', '.expense-edit-trigger'] },
-                { id: 'addOtherIncomeForm', cancel: cancelOtherIncome, openSelectors: ['[data-action="showAddOtherIncome"]', '.other-income-edit-trigger'] },
-                { id: 'addArtistForm', cancel: cancelAddArtist, openSelectors: ['[data-action="showAddArtistForm"]', '.artist-card[data-artist-id]'] }
-            ];
+                const forms = [
+                    {
+                        id: 'addBookingForm',
+                        cancel: cancelBooking,
+                        openSelectors: [
+                            '[data-action="showAddBooking"]',
+                            '[data-action="showAddEventToCalendar"]',
+                            '[onclick*="showAddBooking"]',
+                            '[onclick*="showAddEventToCalendar"]',
+                            '[onclick*="bookArtistFromAvailability"]',
+                            '.booking-edit-trigger'
+                        ]
+                    },
+                    { id: 'addExpenseForm', cancel: cancelExpense, openSelectors: ['[data-action="showAddExpense"]', '[onclick*="showAddExpense"]', '.expense-edit-trigger'] },
+                    { id: 'addOtherIncomeForm', cancel: cancelOtherIncome, openSelectors: ['[data-action="showAddOtherIncome"]', '[onclick*="showAddOtherIncome"]', '.other-income-edit-trigger'] },
+                    { id: 'addArtistForm', cancel: cancelAddArtist, openSelectors: ['[data-action="showAddArtistForm"]', '[onclick*="showAddArtistForm"]', '.artist-card[data-artist-id]'] }
+                ];
 
             forms.forEach(form => {
                 const formEl = document.getElementById(form.id);
@@ -2425,14 +2535,22 @@ function getSectionIconMarkup(iconKey) {
             toggleSidebar(false);
         }
 
-        function applyTheme(theme) {
+        function applyTheme(theme, options = {}) {
+            const opts = options && typeof options === 'object' ? options : {};
             const isLight = theme === 'light';
+            const shouldPersist = opts.persist !== false;
+            const shouldSync = shouldPersist && opts.syncRemote !== false;
             document.body.classList.toggle('light-theme', isLight);
-            Storage.saveSync('starPaperTheme', isLight ? 'light' : 'dark');
+            if (shouldPersist) {
+                Storage.saveSync('starPaperTheme', isLight ? 'light' : 'dark');
+            }
             updateThemeIcons(isLight);
             syncSidebarThemeButtonState(isLight);
             if (currentUser) {
                 updateDashboard();
+            }
+            if (shouldSync) {
+                syncCloudExtras();
             }
         }
 
@@ -2456,7 +2574,9 @@ function getSectionIconMarkup(iconKey) {
         function updateThemeIcons(isLight) {
             const landingToggle = document.getElementById('landingThemeToggle');
             if (landingToggle) {
-                landingToggle.textContent = isLight ? '\u2600\uFE0F' : '\uD83C\uDF19';
+                landingToggle.innerHTML = isLight
+                    ? '<i class="ph ph-sun" aria-hidden="true"></i>'
+                    : '<i class="ph ph-moon" aria-hidden="true"></i>';
                 landingToggle.setAttribute('aria-label', isLight ? 'Switch to dark mode' : 'Switch to light mode');
             }
         }
@@ -2564,16 +2684,18 @@ function showLoginForm() {
             localStorage.removeItem('starPaperSessionUser');
             window.currentUser = null;
             window.currentManagerId = null;
+            // Reset boot flag so a same-tab re-login boots the full app cleanly.
+            window.__spAppBooted = false;
         }
 
         window.applyAuthSession = applyAuthSession;
         window.clearAuthSessionState = clearAuthSessionState;
 
-        // ── SAFE WINDOW EXPOSURE ─────────────────────────────────────────────────
+        // â”€â”€ SAFE WINDOW EXPOSURE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // All functions below are global declarations (depth-0) and are already
         // on window automatically in browsers. We use ||= so app.actions.js (which
         // loads first) always wins if it defines its own version. We never override
-        // what another module already set — this prevents regression on every deploy.
+        // what another module already set â€” this prevents regression on every deploy.
 
         // Form show/open
         window.showAddExpense         ||= showAddExpense;
@@ -2706,110 +2828,63 @@ function showLoginForm() {
         };
 
         // Login System
+        // NOTE: This is the LOCAL-ONLY fallback login function.
+        // When Supabase is configured, patchAppAuth() in supabase.js replaces
+        // window.login ~100ms after DOMContentLoaded. That patched version handles
+        // all cloud auth. This function is only invoked when Supabase is unavailable
+        // (offline, not configured, or network error). Do NOT add Supabase calls here.
         async function login() {
-            try {
-                clearLoginValidation();
-                const name = getInput('loginName');
-                const password = getInput('loginPassword');
+            clearLoginValidation();
+            const name = getInput('loginName');
+            const password = getInput('loginPassword');
 
-                let isValid = true;
-                if (!name) {
-                    setValidationMessage('loginNameError', 'Name is required');
-                    setInputError('loginName', true);
-                    isValid = false;
-                }
-                if (!password) {
-                    setValidationMessage('loginPasswordError', 'Password is required');
-                    setInputError('loginPassword', true);
-                    isValid = false;
-                }
-                if (!isValid) {
+            let isValid = true;
+            if (!name) {
+                setValidationMessage('loginNameError', 'Name or email is required');
+                setInputError('loginName', true);
+                isValid = false;
+            }
+            if (!password) {
+                setValidationMessage('loginPasswordError', 'Password is required');
+                setInputError('loginPassword', true);
+                isValid = false;
+            }
+            if (!isValid) return;
+
+            setLoginLoading(true);
+            try {
+                const remember = document.getElementById('rememberMe')?.checked;
+
+                // ── LOCAL FALLBACK (offline / Supabase not configured) ────────────────
+                const user = findUserByUsername(name) || findUserByUsernameInsensitive(name);
+                const credMatch = (user ? findCredentialByUsername(user.username) : null) || findCredentialByUsername(name);
+                const cred = credMatch?.record;
+                if (!user || !cred) {
+                    toastError('Invalid credentials. Please try again.');
                     return;
                 }
-
-                setLoginLoading(true);
-
-                let authenticatedUser = null;
+                let isPasswordValid = false;
                 try {
-                    const backendResult = await attemptBackendLogin(name, password);
-                    if (backendResult?.username) {
-                        authenticatedUser = backendResult.username;
-                        const existingBackendUser = findUserByUsername(authenticatedUser) || findUserByUsernameInsensitive(authenticatedUser);
-                        if (!existingBackendUser) {
-                            users.push({
-                                id: createRuntimeId('mgr', authenticatedUser),
-                                username: authenticatedUser,
-                                email: '',
-                                phone: '',
-                                bio: '',
-                                avatar: '',
-                                createdAt: new Date().toISOString()
-                            });
-                        } else {
-                            authenticatedUser = existingBackendUser.username;
-                        }
-                        if (!findCredentialByUsername(authenticatedUser)) {
-                            const createdAt = new Date().toISOString();
-                            if (hasSecureCredentialCrypto()) {
-                                credentials[authenticatedUser] = await createHashedCredentialRecord(password, { createdAt });
-                            } else {
-                                credentials[authenticatedUser] = {
-                                    externalAuth: true,
-                                    createdAt
-                                };
-                            }
-                        }
-                        saveIdentityStores();
-                    }
-                } catch (backendError) {
-                    console.warn('Backend login unavailable. Falling back to local auth.', backendError);
+                    isPasswordValid = await verifyCredentialPassword(cred, password);
+                } catch (verificationError) {
+                    console.error('Credential verification failed:', verificationError);
+                    toastError('Secure password verification failed on this device.');
+                    return;
                 }
-
-                if (!authenticatedUser) {
-                    const user = findUserByUsername(name) || findUserByUsernameInsensitive(name);
-                    const credMatch = (user ? findCredentialByUsername(user.username) : null) || findCredentialByUsername(name);
-                    const cred = credMatch?.record;
-                    if (!user || !cred) {
-                        setLoginLoading(false);
-                        toastError('Invalid credentials. Please try again.');
-                        return;
-                    }
-                    let isPasswordValid = false;
-                    try {
-                        isPasswordValid = await verifyCredentialPassword(cred, password);
-                    } catch (verificationError) {
-                        console.error('Credential verification failed:', verificationError);
-                        setLoginLoading(false);
-                        toastError('Secure password verification failed on this device.');
-                        return;
-                    }
-                    if (!isPasswordValid) {
-                        setLoginLoading(false);
-                        toastError('Invalid credentials. Please try again.');
-                        return;
-                    }
-                    if (credMatch?.key && typeof cred.password === 'string' && cred.password) {
-                        try {
-                            credentials[credMatch.key] = await createHashedCredentialRecord(password, cred);
-                            saveIdentityStores();
-                        } catch (rehashError) {
-                            console.warn('Legacy credential rehash skipped:', rehashError);
-                        }
-                    }
-                    authenticatedUser = user.username;
+                if (!isPasswordValid) {
+                    toastError('Invalid credentials. Please try again.');
+                    return;
                 }
-
-                const remember = document.getElementById('rememberMe')?.checked;
-                applyAuthSession(authenticatedUser, { remember: Boolean(remember) });
-
+                applyAuthSession(user.username, { remember: Boolean(remember) });
                 loadUserData();
                 showApp();
                 showWelcomeMessage();
-                setLoginLoading(false);
+
             } catch (err) {
                 console.error(err);
-                setLoginLoading(false);
                 toastError('Login failed. Please try again.');
+            } finally {
+                setLoginLoading(false);
             }
         }
 
@@ -2824,17 +2899,46 @@ function showLoginForm() {
                     toastError('Name and password are required.');
                     return;
                 }
+                if (!email) {
+                    toastError('Email is required to create an account.');
+                    return;
+                }
 
+                // ── SUPABASE PATH (primary) ───────────────────────────────────────────
+                if (window.SP?.signup) {
+                    try {
+                        const data = await window.SP.signup(name, email, password, phone);
+                        const needsConfirmation = data?.user && !data?.session;
+                        if (needsConfirmation) {
+                            toastSuccess('Account created! Check your email to confirm before logging in.');
+                        } else if (data?.session) {
+                            toastSuccess('Account created! Welcome to Star Paper.');
+                            // Session is live — bootstrap will fire via onAuthStateChange.
+                        } else {
+                            toastSuccess('Account created! You can now log in.');
+                        }
+                        showLoginForm();
+                        return;
+                    } catch (spErr) {
+                        const msg = spErr?.message || '';
+                        if (msg.toLowerCase().includes('already')) {
+                            toastError('An account with that email already exists.');
+                        } else {
+                            toastError(msg || 'Sign up failed. Please try again.');
+                        }
+                        return;
+                    }
+                }
+
+                // ── LOCAL FALLBACK (offline / no Supabase) ────────────────────────────
                 if (!hasSecureCredentialCrypto()) {
                     toastError('Secure password storage is not available in this browser.');
                     return;
                 }
-
                 if (findUserByUsername(name) || findUserByUsernameInsensitive(name)) {
                     toastError('That username is already taken.');
                     return;
                 }
-
                 const createdAt = new Date().toISOString();
                 users.push({
                     id: createRuntimeId('mgr', name),
@@ -2845,12 +2949,11 @@ function showLoginForm() {
                     avatar: '',
                     createdAt
                 });
-
                 credentials[name] = await createHashedCredentialRecord(password, { createdAt });
-
                 saveIdentityStores();
                 toastSuccess('Account created! You can now log in.');
                 showLoginForm();
+
             } catch (error) {
                 console.error('Signup failed:', error);
                 toastError('Sign up failed. Please try again.');
@@ -3089,6 +3192,9 @@ function showLoginForm() {
                 updateReportStatistics();
                 requestNotificationPermission();
                 scheduleReminderChecks();
+
+                window.__spAppBooted = true;
+                applyReadOnlyMode();
                 
                 console.log('=== SHOW APP COMPLETED ===');
             } catch (error) {
@@ -3108,30 +3214,70 @@ function showLoginForm() {
         function loadUserData() {
             updateCurrentManagerContext();
 
-            // ── SUPABASE: if cloud data was injected by supabase.js, use it ────────
+            // â”€â”€ SUPABASE: if cloud data was injected by supabase.js, use it â”€â”€â”€â”€â”€â”€â”€â”€
             const cloudData = window._SP_cloudData;
             if (cloudData) {
                 window._SP_cloudData = null; // consume it
                 bookings    = Array.isArray(cloudData.bookings)    ? cloudData.bookings    : [];
                 expenses    = Array.isArray(cloudData.expenses)    ? cloudData.expenses    : [];
                 otherIncome = Array.isArray(cloudData.otherIncome) ? cloudData.otherIncome : [];
-                if (Array.isArray(cloudData.artists) && cloudData.artists.length > 0) {
-                    // Merge cloud artists with any locally created ones
-                    const cloudIds = new Set(cloudData.artists.map(a => a.id));
-                    const localOnly = artists.filter(a => a.managerId === currentManagerId && !cloudIds.has(a.id));
-                    artists = [...cloudData.artists, ...localOnly];
+                if (Array.isArray(cloudData.artists)) {
+                    const teamId = getActiveTeamId();
+                    if (teamId) {
+                        artists = cloudData.artists;
+                    } else if (cloudData.artists.length > 0) {
+                        // Merge cloud artists with any locally created ones
+                        const cloudIds = new Set(cloudData.artists.map(a => a.id));
+                        const localOnly = artists.filter(a => a.managerId === currentManagerId && !cloudIds.has(a.id));
+                        artists = [...cloudData.artists, ...localOnly];
+                    }
                     Storage.saveSync('starPaperArtists', artists);
                 }
+                if (cloudData.revenueGoal && typeof cloudData.revenueGoal === 'object') {
+                    const goalKey = getCurrentRevenueGoalKey();
+                    const amount = Number(cloudData.revenueGoal.amount || 0);
+                    revenueGoals[goalKey] = Number.isFinite(amount) ? amount : 0;
+                    Storage.saveSync('starPaperRevenueGoals', revenueGoals);
+                }
+                if (Array.isArray(cloudData.bbfEntries)) {
+                    const scopeKey = getActiveDataScopeKey();
+                    Object.keys(bbfData).forEach((key) => {
+                        if (key.startsWith(`${scopeKey}_`)) delete bbfData[key];
+                    });
+                    cloudData.bbfEntries.forEach((entry) => {
+                        if (!entry?.period) return;
+                        const amount = Number(entry.amount) || 0;
+                        bbfData[`${scopeKey}_${entry.period}`] = amount;
+                    });
+                    Storage.saveSync('starPaperBBF', bbfData);
+                }
+                if (Array.isArray(cloudData.closingThoughts)) {
+                    const scopeKey = getActiveDataScopeKey() || 'default';
+                    const store = getClosingThoughtsStore();
+                    const nextStore = {};
+                    cloudData.closingThoughts.forEach((entry) => {
+                        if (!entry?.period || !entry?.content) return;
+                        nextStore[entry.period] = String(entry.content);
+                    });
+                    store[scopeKey] = nextStore;
+                    Storage.saveSync(CLOSING_THOUGHTS_STORAGE_KEY, store);
+                }
+                if (Array.isArray(cloudData.tasks) && typeof window.applyTaskSync === 'function') {
+                    window.applyTaskSync(cloudData.tasks, { source: 'cloud' });
+                }
+                if (cloudData.theme && typeof applyTheme === 'function') {
+                    applyTheme(cloudData.theme, { persist: false });
+                }
                 // Also persist to localStorage as offline cache
-                saveManagerData(currentManagerId, { bookings, expenses, otherIncome });
+                saveManagerData(getActiveDataScopeKey(), { bookings, expenses, otherIncome });
             } else {
-                // ── FALLBACK: local storage (offline or pre-migration) ────────────
-                const data = getManagerData(currentManagerId);
+                // â”€â”€ FALLBACK: local storage (offline or pre-migration) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                const data = getManagerData(getActiveDataScopeKey());
                 bookings    = ensureBookingArtistRefs(data.bookings, currentManagerId);
                 expenses    = Array.isArray(data.expenses)    ? data.expenses    : [];
                 otherIncome = Array.isArray(data.otherIncome) ? data.otherIncome : [];
                 purgeRetiredArtistsForCurrentManager();
-                saveManagerData(currentManagerId, { bookings, expenses, otherIncome });
+                saveManagerData(getActiveDataScopeKey(), { bookings, expenses, otherIncome });
             }
 
             markSearchIndexDirty();
@@ -3141,17 +3287,53 @@ function showLoginForm() {
             window.otherIncome  = otherIncome;
             window.artists      = artists;
             window.revenueGoals = revenueGoals;
+            window.bbfData      = bbfData;
             window.currentManagerId = currentManagerId;
             window.currentUser  = currentUser;
 
-            // ── Sync bridge: lets supabase.js inject fresh cloud data any time ────
+            // â”€â”€ Sync bridge: lets supabase.js inject fresh cloud data any time â”€â”€â”€â”€
             window._SP_syncFromCloud = function(data) {
                 window._SP_cloudData = null;
                 if (Array.isArray(data.bookings))    { bookings    = data.bookings;    window.bookings    = bookings; }
                 if (Array.isArray(data.expenses))    { expenses    = data.expenses;    window.expenses    = expenses; }
                 if (Array.isArray(data.otherIncome)) { otherIncome = data.otherIncome; window.otherIncome = otherIncome; }
                 if (Array.isArray(data.artists))     { artists     = data.artists;     window.artists     = artists; }
-                saveManagerData(currentManagerId, { bookings, expenses, otherIncome });
+                if (data.revenueGoal && typeof data.revenueGoal === 'object') {
+                    const goalKey = getCurrentRevenueGoalKey();
+                    const amount = Number(data.revenueGoal.amount || 0);
+                    revenueGoals[goalKey] = Number.isFinite(amount) ? amount : 0;
+                    Storage.saveSync('starPaperRevenueGoals', revenueGoals);
+                }
+                if (Array.isArray(data.bbfEntries)) {
+                    const scopeKey = getActiveDataScopeKey();
+                    Object.keys(bbfData).forEach((key) => {
+                        if (key.startsWith(`${scopeKey}_`)) delete bbfData[key];
+                    });
+                    data.bbfEntries.forEach((entry) => {
+                        if (!entry?.period) return;
+                        const amount = Number(entry.amount) || 0;
+                        bbfData[`${scopeKey}_${entry.period}`] = amount;
+                    });
+                    Storage.saveSync('starPaperBBF', bbfData);
+                }
+                if (Array.isArray(data.closingThoughts)) {
+                    const scopeKey = getActiveDataScopeKey() || 'default';
+                    const store = getClosingThoughtsStore();
+                    const nextStore = {};
+                    data.closingThoughts.forEach((entry) => {
+                        if (!entry?.period || !entry?.content) return;
+                        nextStore[entry.period] = String(entry.content);
+                    });
+                    store[scopeKey] = nextStore;
+                    Storage.saveSync(CLOSING_THOUGHTS_STORAGE_KEY, store);
+                }
+                if (Array.isArray(data.tasks) && typeof window.applyTaskSync === 'function') {
+                    window.applyTaskSync(data.tasks, { source: 'cloud' });
+                }
+                if (data.theme && typeof applyTheme === 'function') {
+                    applyTheme(data.theme, { persist: false });
+                }
+                saveManagerData(getActiveDataScopeKey(), { bookings, expenses, otherIncome });
                 markSearchIndexDirty();
             };
         }
@@ -3159,15 +3341,70 @@ function showLoginForm() {
         function saveUserData() {
             if (currentUser && currentManagerId) {
                 bookings = ensureBookingArtistRefs(bookings, currentManagerId);
-                saveManagerData(currentManagerId, { bookings, expenses, otherIncome });
+                saveManagerData(getActiveDataScopeKey(), { bookings, expenses, otherIncome });
                 markSearchIndexDirty();
                 // Update window references
                 window.bookings    = bookings;
                 window.expenses    = expenses;
                 window.otherIncome = otherIncome;
                 window.artists     = artists;
+                window.revenueGoals = revenueGoals;
+                window.bbfData      = bbfData;
                 // supabase.js patches this function further to also cloud-sync
             }
+        }
+
+        window.SP_collectAllData = function collectAllData() {
+            const scopeKey = getActiveDataScopeKey();
+            const tasks = typeof window.loadTasks === 'function' ? window.loadTasks() : [];
+            const theme = document.body.classList.contains('light-theme') ? 'light' : 'dark';
+            const revenueAmount = scopeKey ? Number(revenueGoals[scopeKey] || 0) : 0;
+            const revenueGoal = {
+                period: 'monthly',
+                amount: Number.isFinite(revenueAmount) ? revenueAmount : 0,
+            };
+
+            const bbfEntries = [];
+            if (scopeKey) {
+                Object.keys(bbfData).forEach((key) => {
+                    if (!key.startsWith(`${scopeKey}_`)) return;
+                    const period = key.slice(scopeKey.length + 1);
+                    if (!period) return;
+                    const amount = Number(bbfData[key]) || 0;
+                    bbfEntries.push({ period, amount });
+                });
+            }
+
+            const closingThoughts = [];
+            if (scopeKey) {
+                const store = getClosingThoughtsStore();
+                const scoped = store[scopeKey] || {};
+                Object.keys(scoped).forEach((period) => {
+                    const content = String(scoped[period] || '').trim();
+                    if (!period || !content) return;
+                    closingThoughts.push({ period, content });
+                });
+            }
+
+            return {
+                bookings: Array.isArray(bookings) ? bookings : [],
+                expenses: Array.isArray(expenses) ? expenses : [],
+                otherIncome: Array.isArray(otherIncome) ? otherIncome : [],
+                artists: Array.isArray(artists) ? artists : [],
+                tasks: Array.isArray(tasks) ? tasks : [],
+                revenueGoal,
+                bbfEntries,
+                closingThoughts,
+                theme,
+            };
+        };
+
+        function syncCloudExtras() {
+            if (typeof window.SP?.saveAllData !== 'function') return;
+            if (typeof window.SP_collectAllData !== 'function') return;
+            window.SP.saveAllData(window.SP_collectAllData()).catch((err) => {
+                console.warn('Cloud sync failed:', err);
+            });
         }
 
         function getNextNumericRecordId(records) {
@@ -3691,7 +3928,7 @@ function showLoginForm() {
             const target = el || null;
             target?.classList.add('active');
 
-            // ── Push to in-app navigation history stack ───────────────
+            // â”€â”€ Push to in-app navigation history stack â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if (!window._spNavSkip) {
                 if (window._spNavStack) {
                     window._spNavStack = window._spNavStack.slice(0, window._spNavIndex + 1);
@@ -3702,13 +3939,13 @@ function showLoginForm() {
             }
             window._spNavSkip = false;
 
-            // ── Sync bottom nav (map sub-sections to parent nav entry) ──
+            // â”€â”€ Sync bottom nav (map sub-sections to parent nav entry) â”€â”€
             const navKey = NAV_SECTION_MAP[section] || section;
             document.querySelectorAll('.bottom-nav-item').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.section === navKey);
             });
 
-            // ── Sync sidebar nav active state ──────────────────────────
+            // â”€â”€ Sync sidebar nav active state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             document.querySelectorAll('.nav-item[data-section]').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.section === navKey);
             });
@@ -3731,13 +3968,13 @@ function showLoginForm() {
             const titles = {
                 'dashboard':  'Dashboard',
                 'money':      'Money',
-                'financials': 'Money — Overview',
+                'financials': 'Money â€” Overview',
                 'artists':    'Artists',
                 'schedule':   'Schedule',
-                'bookings':   'Schedule — Bookings',
-                'expenses':   'Money — Expenses',
-                'otherIncome':'Money — Other Income',
-                'calendar':   'Schedule — Calendar',
+                'bookings':   'Schedule â€” Bookings',
+                'expenses':   'Money â€” Expenses',
+                'otherIncome':'Money â€” Other Income',
+                'calendar':   'Schedule â€” Calendar',
                 'reports':    'Reports',
                 'tasks':      'Tasks',
             };
@@ -3794,21 +4031,93 @@ function showLoginForm() {
         }
 
         function checkAuth() {
+            // Guard: if the user explicitly clicked logout, respect that choice.
+            // Even if localStorage still has remember=true or a session key, we
+            // must NOT auto-boot the app. The user will need to log in again.
+            // This flag is set by supabaseLogout() and cleared by bootstrapFromSupabaseSession()
+            // on the next successful login.
+            if (localStorage.getItem('sp_logged_out') === '1') {
+                // Still show landing — not the login form, not the app.
+                if (typeof setActiveScreen === 'function') setActiveScreen('landingScreen');
+                return;
+            }
+
             const sessionActive = Storage.loadSync('starPaper_session', null) === 'active';
             const sessionUser = Storage.loadSync('starPaperSessionUser', null);
             const remember = Storage.loadSync('starPaperRemember', false);
             const rememberedUser = Storage.loadSync('starPaperCurrentUser', null);
 
             const savedUser = sessionActive ? sessionUser : (remember ? rememberedUser : null);
-            const savedRecord = savedUser ? (findUserByUsername(savedUser) || findUserByUsernameInsensitive(savedUser)) : null;
+            let savedRecord = savedUser ? (findUserByUsername(savedUser) || findUserByUsernameInsensitive(savedUser)) : null;
+
+            if (savedUser && !savedRecord) {
+                const profileHint = window.SP?.getProfileState?.() || {};
+                savedRecord = ensureSessionUserExists(savedUser, profileHint) || null;
+            }
+
+            // â”€â”€ NO LOCAL SESSION: delegate entirely to Supabase â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // The old approach used a 12-retry setTimeout loop, which could miss
+            // the sp-supabase-ready event if it fired before the listener was
+            // registered. This replacement uses a Promise that can never be missed:
+            // - If SP is already ready, it resolves immediately.
+            // - If SP is not ready yet, it waits on the sp-supabase-ready event
+            //   (which is dispatched exactly once and cannot be "missed" via a
+            //   Promise resolver the way an event listener can).
+            // - A hard 10-second timeout prevents infinite waiting on network fail.
             if (!savedUser || !savedRecord) {
                 if (sessionActive) {
                     localStorage.removeItem('starPaper_session');
                     localStorage.removeItem('starPaperSessionUser');
                 }
+
+                // Fire-and-forget: don't block the synchronous call stack.
+                (async () => {
+                    if (window.__spAppBooted) return;
+
+                    // Step 1: Wait for window.SP to be fully initialised.
+                    // If the Supabase SDK was already in <head> (our fix), this
+                    // resolves synchronously on the very first microtask tick.
+                    if (!window.__spSupabaseReady) {
+                        await new Promise((resolve) => {
+                            // Already ready by the time we check?
+                            if (window.__spSupabaseReady) { resolve(); return; }
+                            const onReady = () => resolve();
+                            window.addEventListener('sp-supabase-ready', onReady, { once: true });
+                            // Hard cap: if Supabase never fires (CDN failure, etc.)
+                            // stop waiting after 10 s so the landing page isn't frozen.
+                            setTimeout(resolve, 10000);
+                        });
+                    }
+
+                    if (window.__spAppBooted) return;
+
+                    // Step 2: Ask Supabase for a live session. Because the SDK is
+                    // already loaded synchronously, getSession() always resolves â€”
+                    // even on the very first page load after an OAuth redirect.
+                    try {
+                        // Prefer the cached in-memory session (zero network round-trip).
+                        let session = window.SP?.getSessionState?.() || null;
+                        if (!session?.user && typeof window.SP?.getSession === 'function') {
+                            session = await window.SP.getSession();
+                        }
+
+                        if (session?.user && typeof window.SP?.bootstrap === 'function') {
+                            await window.SP.bootstrap(session, {
+                                remember: true,
+                                showWelcome: true,
+                                runMigration: true,
+                            });
+                        }
+                    } catch (err) {
+                        // Non-fatal: user stays on landing; they can log in manually.
+                        console.warn('[StarPaper] checkAuth Supabase fallback failed:', err);
+                    }
+                })();
+
                 return;
             }
 
+            // â”€â”€ VALID LOCAL SESSION: boot the app â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             currentUser = savedRecord.username;
             updateCurrentManagerContext();
             loadUserData();
@@ -3823,6 +4132,18 @@ function showLoginForm() {
 
         function restoreSession() {
             checkAuth();
+        }
+
+        // Keep the sp-supabase-ready listener as a secondary safety net for
+        // edge cases where checkAuth() ran before supabase.js finished (should
+        // not happen with the SDK pre-loaded in <head>, but belt-and-suspenders).
+        if (!window.__spSupabaseReadyListenerBound) {
+            window.__spSupabaseReadyListenerBound = true;
+            window.addEventListener('sp-supabase-ready', () => {
+                if (!window.__spAppBooted) {
+                    checkAuth();
+                }
+            });
         }
 
         function cacheDrafts() {
@@ -4291,6 +4612,7 @@ function showLoginForm() {
         }
 
         function showAddEventToCalendar() {
+            if (guardReadOnly('add bookings')) return;
             if (!selectedCalendarDate) {
                 toastError('Please select a date first.');
                 return;
@@ -4481,7 +4803,7 @@ function showLoginForm() {
             const { period: selectedPeriod } = getReportPeriodSelection();
             const periodKey = period || selectedPeriod;
             const store = getClosingThoughtsStore();
-            const managerKey = String(currentManagerId || currentUser || 'default');
+            const managerKey = getActiveDataScopeKey() || 'default';
             const managerStore = store[managerKey];
             if (!managerStore || typeof managerStore !== 'object' || Array.isArray(managerStore)) {
                 return '';
@@ -4547,12 +4869,16 @@ function showLoginForm() {
         }
 
         function saveClosingThoughts() {
+            if (guardReadOnly('update closing thoughts')) return;
+            if (saveClosingThoughts._busy) return;
+            saveClosingThoughts._busy = true;
+            setTimeout(() => { saveClosingThoughts._busy = false; }, 0);
             const input = document.getElementById('closingThoughtsInput');
             const statusEl = document.getElementById('closingThoughtsStatus');
             if (!input) return;
 
             const { period, periodLabel } = getReportPeriodSelection();
-            const managerKey = String(currentManagerId || currentUser || 'default');
+            const managerKey = getActiveDataScopeKey() || 'default';
             const normalizedValue = String(input.value || '').trim();
             const store = getClosingThoughtsStore();
             const managerStore = (store[managerKey] && typeof store[managerKey] === 'object' && !Array.isArray(store[managerKey]))
@@ -4579,14 +4905,19 @@ function showLoginForm() {
             }
             updateClosingThoughtsMeta();
             toastSuccess(normalizedValue ? 'Closing thoughts saved.' : 'Closing thoughts cleared.');
+            syncCloudExtras();
         }
 
         function clearClosingThoughts() {
+            if (guardReadOnly('clear closing thoughts')) return;
+            if (clearClosingThoughts._busy) return;
+            clearClosingThoughts._busy = true;
+            setTimeout(() => { clearClosingThoughts._busy = false; }, 0);
             const input = document.getElementById('closingThoughtsInput');
             if (!input) return;
 
             const { period } = getReportPeriodSelection();
-            const managerKey = String(currentManagerId || currentUser || 'default');
+            const managerKey = getActiveDataScopeKey() || 'default';
             const store = getClosingThoughtsStore();
             const managerStore = store[managerKey];
 
@@ -4604,6 +4935,7 @@ function showLoginForm() {
             input.dataset.savedValue = '';
             updateClosingThoughtsMeta();
             toastSuccess('Closing thoughts cleared.');
+            syncCloudExtras();
         }
 
         let reportLogoDataUrlCache = null;
@@ -4703,559 +5035,566 @@ function showLoginForm() {
 
         // Clean Report Generation (without +P)
         async function generateCleanReport() {
-            const { period } = getReportPeriodSelection();
-            const { jsPDF } = window.jspdf;
-            const isMobileReportLayout = window.matchMedia('(max-width: 900px), (pointer: coarse)').matches;
+            if (generateCleanReport._busy) return;
+            generateCleanReport._busy = true;
+            try {
+                const { period } = getReportPeriodSelection();
+                const { jsPDF } = window.jspdf;
+                const isMobileReportLayout = window.matchMedia('(max-width: 900px), (pointer: coarse)').matches;
 
-            const pdf = new jsPDF({
-                orientation: isMobileReportLayout ? 'portrait' : 'landscape',
-                unit: 'mm',
-                format: 'a4',
-                putOnlyUsedFonts: true,
-                floatPrecision: 16
-            });
-            const reportLogoDataUrl = await getReportLogoDataUrl();
-            const pageWidth = pdf.internal.pageSize.getWidth();
-            const pageHeight = pdf.internal.pageSize.getHeight();
-            const margin = isMobileReportLayout ? 10 : 12;
-            const contentWidth = pageWidth - (margin * 2);
-            const periodLabel = getPeriodString(period).replace(/-/g, ' ');
-            const generatedLabel = formatDisplayDate(new Date());
-            const closingThoughtsInput = document.getElementById('closingThoughtsInput');
-            const draftClosingThoughts = String(closingThoughtsInput?.value || '').trim();
-            const closingThoughts = draftClosingThoughts || getClosingThoughtsForPeriod(period).trim();
-            const formatMoney = (value) => `UGX ${Math.round(Number(value) || 0).toLocaleString()}`;
-            const palette = {
-                black: [20, 20, 20],
-                white: [255, 255, 255],
-                gold: [255, 179, 0],
-                goldDark: [198, 140, 0],
-                paper: [251, 247, 238],
-                line: [227, 217, 198],
-                text: [33, 33, 33],
-                muted: [105, 105, 105],
-                income: [46, 125, 50],
-                expense: [198, 40, 40],
-                neutral: [44, 62, 80]
-            };
-
-            const {
-                filteredBookings,
-                filteredExpenses,
-                filteredOtherIncome,
-                totalBookings,
-                totalIncome,
-                totalExpenses,
-                totalOtherIncome,
-                netProfit,
-                balancesDue
-            } = getReportPeriodData(period, { sortNewestFirst: true });
-
-            const drawHeader = (subtitle = 'Activity Report') => {
-                const headerHeight = isMobileReportLayout ? 26 : 24;
-                pdf.setFillColor(...palette.black);
-                pdf.rect(0, 0, pageWidth, headerHeight, 'F');
-
-                pdf.setFont('helvetica', 'bold');
-                pdf.setFontSize(isMobileReportLayout ? 15 : 16);
-                pdf.setTextColor(...palette.gold);
-                pdf.text('Star Paper', margin, 10);
-
-                pdf.setFont('helvetica', 'normal');
-                pdf.setFontSize(isMobileReportLayout ? 8.5 : 10);
-                pdf.setTextColor(...palette.white);
-                const subtitleWidth = contentWidth - 24;
-                const subtitleLines = pdf.splitTextToSize(`${subtitle}  |  Period: ${periodLabel}`, subtitleWidth);
-                const subtitleStartY = isMobileReportLayout ? 14.8 : 16;
-                subtitleLines.slice(0, 2).forEach((line, index) => {
-                    pdf.text(String(line), margin, subtitleStartY + (index * 3.7));
+                const pdf = new jsPDF({
+                    orientation: isMobileReportLayout ? 'portrait' : 'landscape',
+                    unit: 'mm',
+                    format: 'a4',
+                    putOnlyUsedFonts: true,
+                    floatPrecision: 16
                 });
-
-                pdf.setFontSize(isMobileReportLayout ? 7.4 : 8.5);
-                pdf.setTextColor(224, 224, 224);
-                pdf.text(`Generated: ${generatedLabel}   User: ${currentUser || 'Manager'}`, margin, isMobileReportLayout ? 24 : 21);
-            };
-
-            const drawLogoOnCurrentPage = () => {
-                if (!reportLogoDataUrl) return;
-                try {
-                    const logoSize = isMobileReportLayout ? 14 : 16;
-                    const logoX = pageWidth - margin - logoSize;
-                    const logoY = isMobileReportLayout ? 5 : 4;
-                    const frameX = logoX - 0.8;
-                    const frameY = logoY - 0.8;
-                    const frameSize = logoSize + 1.6;
-                    const imageFormat = /^data:image\/jpe?g/i.test(reportLogoDataUrl) ? 'JPEG' : 'PNG';
-                    pdf.setFillColor(245, 239, 226);
-                    pdf.setDrawColor(212, 170, 96);
-                    pdf.setLineWidth(0.35);
-                    pdf.roundedRect(frameX, frameY, frameSize, frameSize, 2, 2, 'FD');
-                    pdf.addImage(reportLogoDataUrl, imageFormat, logoX, logoY, logoSize, logoSize);
-                } catch (err) {
-                    console.warn('Report logo failed to render:', err);
-                }
-            };
-
-            const drawSectionTitle = (title, y) => {
-                pdf.setFont('helvetica', 'bold');
-                pdf.setFontSize(11);
-                pdf.setTextColor(...palette.goldDark);
-                pdf.text(title, margin, y);
-                pdf.setDrawColor(...palette.line);
-                pdf.setLineWidth(0.5);
-                pdf.line(margin, y + 2, pageWidth - margin, y + 2);
-            };
-
-            const drawPanelFrame = (title, x, y, width, height) => {
-                pdf.setFillColor(...palette.paper);
-                pdf.roundedRect(x, y, width, height, 2, 2, 'F');
-                pdf.setDrawColor(...palette.line);
-                pdf.setLineWidth(0.35);
-                pdf.roundedRect(x, y, width, height, 2, 2, 'S');
-                pdf.setFont('helvetica', 'bold');
-                pdf.setFontSize(9.5);
-                pdf.setTextColor(...palette.goldDark);
-                pdf.text(title, x + 3, y + 6);
-                return {
-                    x: x + 2.5,
-                    y: y + 8,
-                    width: width - 5,
-                    height: height - 10
+                const reportLogoDataUrl = await getReportLogoDataUrl();
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                const margin = isMobileReportLayout ? 10 : 12;
+                const contentWidth = pageWidth - (margin * 2);
+                const periodLabel = getPeriodString(period).replace(/-/g, ' ');
+                const generatedLabel = formatDisplayDate(new Date());
+                const closingThoughtsInput = document.getElementById('closingThoughtsInput');
+                const draftClosingThoughts = String(closingThoughtsInput?.value || '').trim();
+                const closingThoughts = draftClosingThoughts || getClosingThoughtsForPeriod(period).trim();
+                const formatMoney = (value) => `UGX ${Math.round(Number(value) || 0).toLocaleString()}`;
+                const palette = {
+                    black: [20, 20, 20],
+                    white: [255, 255, 255],
+                    gold: [255, 179, 0],
+                    goldDark: [198, 140, 0],
+                    paper: [251, 247, 238],
+                    line: [227, 217, 198],
+                    text: [33, 33, 33],
+                    muted: [105, 105, 105],
+                    income: [46, 125, 50],
+                    expense: [198, 40, 40],
+                    neutral: [44, 62, 80]
                 };
-            };
-
-            drawHeader('Activity Report');
-
-            const cards = [
-                { label: 'Total Bookings', value: `${totalBookings}`, color: palette.neutral },
-                { label: 'Show Income', value: formatMoney(totalIncome), color: palette.income },
-                { label: 'Other Income', value: formatMoney(totalOtherIncome), color: palette.income },
-                { label: 'Total Expenses', value: formatMoney(totalExpenses), color: palette.expense },
-                { label: 'Balance Brought Forward', value: formatMoney(getCurrentBBF()), color: palette.neutral },
-                { label: 'Net Profit', value: formatMoney(netProfit), color: netProfit >= 0 ? palette.income : palette.expense }
-            ];
-
-            const cardGap = 4;
-            const cardColumns = isMobileReportLayout ? 2 : 3;
-            const cardWidth = (contentWidth - (cardGap * (cardColumns - 1))) / cardColumns;
-            const cardHeight = isMobileReportLayout ? 22 : 20;
-            const cardRowGap = isMobileReportLayout ? 5 : 4;
-            const cardY = 30;
-
-            cards.forEach((card, index) => {
-                const col = index % cardColumns;
-                const row = Math.floor(index / cardColumns);
-                const x = margin + ((cardWidth + cardGap) * col);
-                const y = cardY + ((cardHeight + cardRowGap) * row);
-
-                pdf.setFillColor(...palette.paper);
-                pdf.roundedRect(x, y, cardWidth, cardHeight, 2, 2, 'F');
-                pdf.setDrawColor(...palette.line);
-                pdf.setLineWidth(0.35);
-                pdf.roundedRect(x, y, cardWidth, cardHeight, 2, 2, 'S');
-
-                pdf.setFont('helvetica', 'normal');
-                pdf.setFontSize(8);
-                pdf.setTextColor(...palette.muted);
-                pdf.text(card.label, x + 3, y + 6);
-
-                pdf.setFont('helvetica', 'bold');
-                pdf.setFontSize(11);
-                pdf.setTextColor(...card.color);
-                pdf.text(card.value, x + 3, y + 14);
-            });
-
-            const activityRows = [];
-            filteredBookings.forEach((entry) => {
-                activityRows.push({
-                    date: entry.date,
-                    type: 'Booking',
-                    detail: `${entry.event || 'Event'} (${entry.artist || 'Artist'})`,
-                    amount: Number(entry.fee) || 0,
-                    amountClass: 'income'
-                });
-            });
-            filteredExpenses.forEach((entry) => {
-                activityRows.push({
-                    date: entry.date,
-                    type: 'Expense',
-                    detail: `${entry.description || 'Expense'} (${entry.category || 'other'})`,
-                    amount: Number(entry.amount) || 0,
-                    amountClass: 'expense'
-                });
-            });
-            filteredOtherIncome.forEach((entry) => {
-                activityRows.push({
-                    date: entry.date,
-                    type: 'Other Income',
-                    detail: `${entry.source || 'Income'} (${entry.type || 'other'})`,
-                    amount: Number(entry.amount) || 0,
-                    amountClass: 'income'
-                });
-            });
-            activityRows.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-            const cardRows = Math.ceil(cards.length / cardColumns);
-            const cardsBottom = cardY + (cardRows * cardHeight) + ((cardRows - 1) * cardRowGap);
-            let tableY = cardsBottom + 13;
-            drawSectionTitle('Transaction Ledger', tableY);
-            tableY += 5;
-
-            const columnDate = margin + 2;
-            const columnType = margin + (isMobileReportLayout ? 24 : 32);
-            const columnDetail = margin + (isMobileReportLayout ? 47 : 63);
-            const columnAmountRight = pageWidth - margin - 2;
-            const detailWidth = isMobileReportLayout ? Math.max(45, contentWidth - 78) : 118;
-            const rowHeight = isMobileReportLayout ? 7 : 6;
-            const tableBottomLimit = pageHeight - margin - (isMobileReportLayout ? 10 : 8);
-
-            const drawLedgerHeader = (y) => {
-                pdf.setFillColor(245, 239, 226);
-                pdf.rect(margin, y - 4.2, contentWidth, rowHeight, 'F');
-                pdf.setFont('helvetica', 'bold');
-                pdf.setFontSize(isMobileReportLayout ? 8 : 8.5);
-                pdf.setTextColor(...palette.text);
-                pdf.text('Date', columnDate, y);
-                pdf.text(isMobileReportLayout ? 'Type' : 'Type', columnType, y);
-                pdf.text('Description', columnDetail, y);
-                const amountWidth = pdf.getTextWidth('Amount');
-                pdf.text('Amount', columnAmountRight - amountWidth, y);
-                pdf.setDrawColor(...palette.line);
-                pdf.setLineWidth(0.3);
-                pdf.line(margin, y + 1.5, pageWidth - margin, y + 1.5);
-            };
-
-            drawLedgerHeader(tableY);
-            tableY += 6;
-
-            if (activityRows.length === 0) {
-                pdf.setFont('helvetica', 'normal');
-                pdf.setFontSize(9);
-                pdf.setTextColor(...palette.muted);
-                pdf.text('No records for the selected period.', margin + 2, tableY + 2);
-            } else {
-                activityRows.forEach((row) => {
-                    if ((tableY + rowHeight) > tableBottomLimit) {
-                        pdf.addPage();
-                        drawHeader('Activity Report (Continued)');
-                        drawSectionTitle('Transaction Ledger (Continued)', 30);
-                        tableY = isMobileReportLayout ? 34 : 35;
-                        drawLedgerHeader(tableY);
-                        tableY += 6;
-                    }
-
-                    const safeDetail = String(row.detail || '-');
-                    const compactDetail = pdf.splitTextToSize(safeDetail, detailWidth)[0] || '-';
-                    const typeLabel = (isMobileReportLayout && row.type === 'Other Income') ? 'Other' : row.type;
-                    const amountText = `${row.amountClass === 'expense' ? '-' : '+'}${formatMoney(row.amount).replace('UGX ', '')}`;
-
-                    pdf.setFont('helvetica', 'normal');
-                    pdf.setFontSize(isMobileReportLayout ? 8 : 8.5);
-                    pdf.setTextColor(...palette.text);
-                    pdf.text(formatDisplayDate(row.date), columnDate, tableY);
-                    pdf.text(typeLabel, columnType, tableY);
-                    pdf.text(compactDetail, columnDetail, tableY);
-
+    
+                const {
+                    filteredBookings,
+                    filteredExpenses,
+                    filteredOtherIncome,
+                    totalBookings,
+                    totalIncome,
+                    totalExpenses,
+                    totalOtherIncome,
+                    netProfit,
+                    balancesDue
+                } = getReportPeriodData(period, { sortNewestFirst: true });
+    
+                const drawHeader = (subtitle = 'Activity Report') => {
+                    const headerHeight = isMobileReportLayout ? 26 : 24;
+                    pdf.setFillColor(...palette.black);
+                    pdf.rect(0, 0, pageWidth, headerHeight, 'F');
+    
                     pdf.setFont('helvetica', 'bold');
-                    if (row.amountClass === 'expense') {
-                        pdf.setTextColor(...palette.expense);
-                    } else {
-                        pdf.setTextColor(...palette.income);
-                    }
-                    const amountWidth = pdf.getTextWidth(amountText);
-                    pdf.text(amountText, columnAmountRight - amountWidth, tableY);
-
-                    pdf.setDrawColor(236, 230, 217);
-                    pdf.setLineWidth(0.2);
-                    pdf.line(margin, tableY + 1.5, pageWidth - margin, tableY + 1.5);
-                    tableY += rowHeight;
-                });
-            }
-
-            pdf.addPage();
-            drawHeader('Visual Insights');
-
-            const panelY = 30;
-            const panelGap = isMobileReportLayout ? 5 : 6;
-            const panelWidth = isMobileReportLayout ? contentWidth : (contentWidth - panelGap) / 2;
-            const panelHeight = isMobileReportLayout ? 64 : 76;
-
-            const chartPanel = drawPanelFrame('Financial Performance', margin, panelY, panelWidth, panelHeight);
-            const mapPanel = drawPanelFrame(
-                'Tour Map Coverage',
-                isMobileReportLayout ? margin : (margin + panelWidth + panelGap),
-                isMobileReportLayout ? (panelY + panelHeight + panelGap) : panelY,
-                panelWidth,
-                panelHeight
-            );
-
-            const monthTotals = new Map();
-            const addToMonth = (dateStr, amount, key) => {
-                if (!dateStr) return;
-                const date = new Date(dateStr);
-                if (Number.isNaN(date.getTime())) return;
-                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                if (!monthTotals.has(monthKey)) {
-                    monthTotals.set(monthKey, { income: 0, expenses: 0, other: 0 });
-                }
-                monthTotals.get(monthKey)[key] += amount;
-            };
-            filteredBookings.forEach((entry) => addToMonth(entry.date, Number(entry.fee) || 0, 'income'));
-            filteredExpenses.forEach((entry) => addToMonth(entry.date, Number(entry.amount) || 0, 'expenses'));
-            filteredOtherIncome.forEach((entry) => addToMonth(entry.date, Number(entry.amount) || 0, 'other'));
-
-            const chartKeys = Array.from(monthTotals.keys()).sort().slice(-6);
-            if (typeof Chart !== 'undefined' && chartKeys.length > 0) {
-                const canvas = document.createElement('canvas');
-                canvas.width = 900;
-                canvas.height = 420;
-                const ctx = canvas.getContext('2d');
-                const chart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: chartKeys,
-                        datasets: [
-                            {
-                                label: 'Show Income',
-                                data: chartKeys.map((key) => monthTotals.get(key).income),
-                                borderColor: '#ffb300',
-                                backgroundColor: 'rgba(255, 179, 0, 0.12)',
-                                tension: 0.3,
-                                fill: true,
-                                borderWidth: 2
-                            },
-                            {
-                                label: 'Other Income',
-                                data: chartKeys.map((key) => monthTotals.get(key).other),
-                                borderColor: '#2e7d32',
-                                backgroundColor: 'rgba(46, 125, 50, 0.10)',
-                                tension: 0.3,
-                                fill: true,
-                                borderWidth: 2
-                            },
-                            {
-                                label: 'Expenses',
-                                data: chartKeys.map((key) => monthTotals.get(key).expenses),
-                                borderColor: '#c62828',
-                                backgroundColor: 'rgba(198, 40, 40, 0.10)',
-                                tension: 0.3,
-                                fill: true,
-                                borderWidth: 2
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: false,
-                        maintainAspectRatio: false,
-                        animation: { duration: 0 },
-                        plugins: {
-                            legend: {
-                                labels: {
-                                    color: '#2b2b2b',
-                                    font: { size: 11 }
-                                }
-                            }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: { color: '#444' },
-                                grid: { color: 'rgba(0,0,0,0.08)' }
-                            },
-                            x: {
-                                ticks: { color: '#444' },
-                                grid: { color: 'rgba(0,0,0,0.05)' }
-                            }
-                        }
-                    }
-                });
-                chart.update();
-                await new Promise((resolve) => requestAnimationFrame(resolve));
-                const chartImg = canvas.toDataURL('image/png', 1.0);
-                pdf.addImage(chartImg, 'PNG', chartPanel.x, chartPanel.y, chartPanel.width, chartPanel.height);
-                chart.destroy();
-            } else {
-                pdf.setFont('helvetica', 'normal');
-                pdf.setFontSize(9);
-                pdf.setTextColor(...palette.muted);
-                pdf.text('No chart data available for this period.', chartPanel.x + 2, chartPanel.y + 18);
-            }
-
-            const mapContainer = document.getElementById('performanceMap');
-            if (mapContainer && window.html2canvas) {
-                const clone = mapContainer.cloneNode(true);
-                clone.style.width = '900px';
-                clone.style.height = '420px';
-                clone.style.position = 'fixed';
-                clone.style.left = '-9999px';
-                clone.style.top = '0';
-                document.body.appendChild(clone);
-
-                const originalMapHtml = mapContainer.innerHTML;
-                renderPerformanceMap(filteredBookings, { showLabels: false, showLocationList: true, showPinnedPanel: false });
-                clone.innerHTML = mapContainer.innerHTML;
-                mapContainer.innerHTML = originalMapHtml;
-
-                const mapCanvas = await html2canvas(clone, { backgroundColor: '#f6f0e2', scale: 2 });
-                const mapImg = mapCanvas.toDataURL('image/png', 0.95);
-                document.body.removeChild(clone);
-                pdf.addImage(mapImg, 'PNG', mapPanel.x, mapPanel.y, mapPanel.width, mapPanel.height);
-
-                // Restore the live map card to current dashboard state.
-                renderPerformanceMap();
-            } else {
-                pdf.setFont('helvetica', 'normal');
-                pdf.setFontSize(9);
-                pdf.setTextColor(...palette.muted);
-                pdf.text('Map preview unavailable.', mapPanel.x + 2, mapPanel.y + 18);
-            }
-
-            let artistsPanel;
-            let statusPanel;
-            if (isMobileReportLayout) {
-                pdf.addPage();
-                drawHeader('Visual Insights (Continued)');
-                artistsPanel = drawPanelFrame('Top Artists by Show Income', margin, 30, contentWidth, 78);
-                statusPanel = drawPanelFrame('Booking Status Mix', margin, 116, contentWidth, 74);
-            } else {
-                const bottomY = panelY + panelHeight + 10;
-                const lowerPanelHeight = 68;
-                artistsPanel = drawPanelFrame('Top Artists by Show Income', margin, bottomY, panelWidth, lowerPanelHeight);
-                statusPanel = drawPanelFrame('Booking Status Mix', margin + panelWidth + panelGap, bottomY, panelWidth, lowerPanelHeight);
-            }
-
-            const artistTotals = {};
-            filteredBookings.forEach((entry) => {
-                const name = String(entry.artist || 'Unknown Artist');
-                artistTotals[name] = (artistTotals[name] || 0) + (Number(entry.fee) || 0);
-            });
-            const topArtists = Object.entries(artistTotals)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 5);
-
-            if (topArtists.length === 0) {
-                pdf.setFont('helvetica', 'normal');
-                pdf.setFontSize(9);
-                pdf.setTextColor(...palette.muted);
-                pdf.text('No booking income records available.', artistsPanel.x + 2, artistsPanel.y + 12);
-            } else {
-                let lineY = artistsPanel.y + 8;
-                topArtists.forEach(([name, amount], index) => {
-                    const label = `${index + 1}. ${name}`;
-                    const labelWidthLimit = Math.max(35, artistsPanel.width - 46);
-                    const compactLabel = pdf.splitTextToSize(label, labelWidthLimit)[0] || label;
-                    const value = formatMoney(amount);
+                    pdf.setFontSize(isMobileReportLayout ? 15 : 16);
+                    pdf.setTextColor(...palette.gold);
+                    pdf.text('Star Paper', margin, 10);
+    
                     pdf.setFont('helvetica', 'normal');
-                    pdf.setFontSize(8.5);
-                    pdf.setTextColor(...palette.text);
-                    pdf.text(compactLabel, artistsPanel.x + 1, lineY);
+                    pdf.setFontSize(isMobileReportLayout ? 8.5 : 10);
+                    pdf.setTextColor(...palette.white);
+                    const subtitleWidth = contentWidth - 24;
+                    const subtitleLines = pdf.splitTextToSize(`${subtitle}  |  Period: ${periodLabel}`, subtitleWidth);
+                    const subtitleStartY = isMobileReportLayout ? 14.8 : 16;
+                    subtitleLines.slice(0, 2).forEach((line, index) => {
+                        pdf.text(String(line), margin, subtitleStartY + (index * 3.7));
+                    });
+    
+                    pdf.setFontSize(isMobileReportLayout ? 7.4 : 8.5);
+                    pdf.setTextColor(224, 224, 224);
+                    pdf.text(`Generated: ${generatedLabel}   User: ${currentUser || 'Manager'}`, margin, isMobileReportLayout ? 24 : 21);
+                };
+    
+                const drawLogoOnCurrentPage = () => {
+                    if (!reportLogoDataUrl) return;
+                    try {
+                        const logoSize = isMobileReportLayout ? 14 : 16;
+                        const logoX = pageWidth - margin - logoSize;
+                        const logoY = isMobileReportLayout ? 5 : 4;
+                        const frameX = logoX - 0.8;
+                        const frameY = logoY - 0.8;
+                        const frameSize = logoSize + 1.6;
+                        const imageFormat = /^data:image\/jpe?g/i.test(reportLogoDataUrl) ? 'JPEG' : 'PNG';
+                        pdf.setFillColor(245, 239, 226);
+                        pdf.setDrawColor(212, 170, 96);
+                        pdf.setLineWidth(0.35);
+                        pdf.roundedRect(frameX, frameY, frameSize, frameSize, 2, 2, 'FD');
+                        pdf.addImage(reportLogoDataUrl, imageFormat, logoX, logoY, logoSize, logoSize);
+                    } catch (err) {
+                        console.warn('Report logo failed to render:', err);
+                    }
+                };
+    
+                const drawSectionTitle = (title, y) => {
                     pdf.setFont('helvetica', 'bold');
-                    pdf.setTextColor(...palette.income);
-                    const valueWidth = pdf.getTextWidth(value);
-                    pdf.text(value, (artistsPanel.x + artistsPanel.width - 2) - valueWidth, lineY);
-                    lineY += 9;
-                });
-            }
-
-            const statusCounts = filteredBookings.reduce((acc, entry) => {
-                const key = String(entry.status || 'pending').toLowerCase();
-                acc[key] = (acc[key] || 0) + 1;
-                return acc;
-            }, {});
-            const statusRows = [
-                ['Confirmed', statusCounts.confirmed || 0, palette.income],
-                ['Pending', statusCounts.pending || 0, palette.goldDark],
-                ['Cancelled', statusCounts.cancelled || 0, palette.expense]
-            ];
-
-            let statusY = statusPanel.y + 8;
-            statusRows.forEach(([label, count, tone]) => {
-                pdf.setFont('helvetica', 'normal');
-                pdf.setFontSize(9);
-                pdf.setTextColor(...palette.text);
-                pdf.text(String(label), statusPanel.x + 1, statusY);
-                pdf.setFont('helvetica', 'bold');
-                pdf.setTextColor(...tone);
-                const valueText = String(count);
-                const valueWidth = pdf.getTextWidth(valueText);
-                pdf.text(valueText, (statusPanel.x + statusPanel.width - 2) - valueWidth, statusY);
-                statusY += 10;
-            });
-
-            pdf.setFont('helvetica', 'normal');
-            pdf.setFontSize(8.5);
-            pdf.setTextColor(...palette.muted);
-            pdf.text(`Balance brought forward: ${formatMoney(getCurrentBBF())}`, statusPanel.x + 1, statusY + 4);
-            pdf.text(`Net profit trend: ${netProfit >= 0 ? 'Positive' : 'Negative'} (${formatMoney(netProfit)})`, statusPanel.x + 1, statusY + 11);
-
-            if (closingThoughts) {
-                const frameTop = 34;
-                const frameHeight = pageHeight - frameTop - margin - 3;
-                const textX = margin + 4;
-                const textWidth = contentWidth - 8;
-                const lineHeight = 5;
-                const maxTextY = pageHeight - margin - 6;
-
-                const startClosingThoughtsPage = (continued = false) => {
-                    pdf.addPage();
-                    drawHeader(continued ? 'Closing Thoughts (Continued)' : 'Closing Thoughts');
-                    drawSectionTitle(continued ? 'Manager Closing Thoughts (Continued)' : 'Manager Closing Thoughts', 30);
+                    pdf.setFontSize(11);
+                    pdf.setTextColor(...palette.goldDark);
+                    pdf.text(title, margin, y);
+                    pdf.setDrawColor(...palette.line);
+                    pdf.setLineWidth(0.5);
+                    pdf.line(margin, y + 2, pageWidth - margin, y + 2);
+                };
+    
+                const drawPanelFrame = (title, x, y, width, height) => {
                     pdf.setFillColor(...palette.paper);
-                    pdf.roundedRect(margin, frameTop, contentWidth, frameHeight, 2, 2, 'F');
+                    pdf.roundedRect(x, y, width, height, 2, 2, 'F');
                     pdf.setDrawColor(...palette.line);
                     pdf.setLineWidth(0.35);
-                    pdf.roundedRect(margin, frameTop, contentWidth, frameHeight, 2, 2, 'S');
+                    pdf.roundedRect(x, y, width, height, 2, 2, 'S');
+                    pdf.setFont('helvetica', 'bold');
+                    pdf.setFontSize(9.5);
+                    pdf.setTextColor(...palette.goldDark);
+                    pdf.text(title, x + 3, y + 6);
+                    return {
+                        x: x + 2.5,
+                        y: y + 8,
+                        width: width - 5,
+                        height: height - 10
+                    };
+                };
+    
+                drawHeader('Activity Report');
+    
+                const cards = [
+                    { label: 'Total Bookings', value: `${totalBookings}`, color: palette.neutral },
+                    { label: 'Show Income', value: formatMoney(totalIncome), color: palette.income },
+                    { label: 'Other Income', value: formatMoney(totalOtherIncome), color: palette.income },
+                    { label: 'Total Expenses', value: formatMoney(totalExpenses), color: palette.expense },
+                    { label: 'Balance Brought Forward', value: formatMoney(getCurrentBBF()), color: palette.neutral },
+                    { label: 'Net Profit', value: formatMoney(netProfit), color: netProfit >= 0 ? palette.income : palette.expense }
+                ];
+    
+                const cardGap = 4;
+                const cardColumns = isMobileReportLayout ? 2 : 3;
+                const cardWidth = (contentWidth - (cardGap * (cardColumns - 1))) / cardColumns;
+                const cardHeight = isMobileReportLayout ? 22 : 20;
+                const cardRowGap = isMobileReportLayout ? 5 : 4;
+                const cardY = 30;
+    
+                cards.forEach((card, index) => {
+                    const col = index % cardColumns;
+                    const row = Math.floor(index / cardColumns);
+                    const x = margin + ((cardWidth + cardGap) * col);
+                    const y = cardY + ((cardHeight + cardRowGap) * row);
+    
+                    pdf.setFillColor(...palette.paper);
+                    pdf.roundedRect(x, y, cardWidth, cardHeight, 2, 2, 'F');
+                    pdf.setDrawColor(...palette.line);
+                    pdf.setLineWidth(0.35);
+                    pdf.roundedRect(x, y, cardWidth, cardHeight, 2, 2, 'S');
+    
+                    pdf.setFont('helvetica', 'normal');
+                    pdf.setFontSize(8);
+                    pdf.setTextColor(...palette.muted);
+                    pdf.text(card.label, x + 3, y + 6);
+    
+                    pdf.setFont('helvetica', 'bold');
+                    pdf.setFontSize(11);
+                    pdf.setTextColor(...card.color);
+                    pdf.text(card.value, x + 3, y + 14);
+                });
+    
+                const activityRows = [];
+                filteredBookings.forEach((entry) => {
+                    activityRows.push({
+                        date: entry.date,
+                        type: 'Booking',
+                        detail: `${entry.event || 'Event'} (${entry.artist || 'Artist'})`,
+                        amount: Number(entry.fee) || 0,
+                        amountClass: 'income'
+                    });
+                });
+                filteredExpenses.forEach((entry) => {
+                    activityRows.push({
+                        date: entry.date,
+                        type: 'Expense',
+                        detail: `${entry.description || 'Expense'} (${entry.category || 'other'})`,
+                        amount: Number(entry.amount) || 0,
+                        amountClass: 'expense'
+                    });
+                });
+                filteredOtherIncome.forEach((entry) => {
+                    activityRows.push({
+                        date: entry.date,
+                        type: 'Other Income',
+                        detail: `${entry.source || 'Income'} (${entry.type || 'other'})`,
+                        amount: Number(entry.amount) || 0,
+                        amountClass: 'income'
+                    });
+                });
+                activityRows.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+                const cardRows = Math.ceil(cards.length / cardColumns);
+                const cardsBottom = cardY + (cardRows * cardHeight) + ((cardRows - 1) * cardRowGap);
+                let tableY = cardsBottom + 13;
+                drawSectionTitle('Transaction Ledger', tableY);
+                tableY += 5;
+    
+                const columnDate = margin + 2;
+                const columnType = margin + (isMobileReportLayout ? 24 : 32);
+                const columnDetail = margin + (isMobileReportLayout ? 47 : 63);
+                const columnAmountRight = pageWidth - margin - 2;
+                const detailWidth = isMobileReportLayout ? Math.max(45, contentWidth - 78) : 118;
+                const rowHeight = isMobileReportLayout ? 7 : 6;
+                const tableBottomLimit = pageHeight - margin - (isMobileReportLayout ? 10 : 8);
+    
+                const drawLedgerHeader = (y) => {
+                    pdf.setFillColor(245, 239, 226);
+                    pdf.rect(margin, y - 4.2, contentWidth, rowHeight, 'F');
+                    pdf.setFont('helvetica', 'bold');
+                    pdf.setFontSize(isMobileReportLayout ? 8 : 8.5);
+                    pdf.setTextColor(...palette.text);
+                    pdf.text('Date', columnDate, y);
+                    pdf.text(isMobileReportLayout ? 'Type' : 'Type', columnType, y);
+                    pdf.text('Description', columnDetail, y);
+                    const amountWidth = pdf.getTextWidth('Amount');
+                    pdf.text('Amount', columnAmountRight - amountWidth, y);
+                    pdf.setDrawColor(...palette.line);
+                    pdf.setLineWidth(0.3);
+                    pdf.line(margin, y + 1.5, pageWidth - margin, y + 1.5);
+                };
+    
+                drawLedgerHeader(tableY);
+                tableY += 6;
+    
+                if (activityRows.length === 0) {
+                    pdf.setFont('helvetica', 'normal');
+                    pdf.setFontSize(9);
+                    pdf.setTextColor(...palette.muted);
+                    pdf.text('No records for the selected period.', margin + 2, tableY + 2);
+                } else {
+                    activityRows.forEach((row) => {
+                        if ((tableY + rowHeight) > tableBottomLimit) {
+                            pdf.addPage();
+                            drawHeader('Activity Report (Continued)');
+                            drawSectionTitle('Transaction Ledger (Continued)', 30);
+                            tableY = isMobileReportLayout ? 34 : 35;
+                            drawLedgerHeader(tableY);
+                            tableY += 6;
+                        }
+    
+                        const safeDetail = String(row.detail || '-');
+                        const compactDetail = pdf.splitTextToSize(safeDetail, detailWidth)[0] || '-';
+                        const typeLabel = (isMobileReportLayout && row.type === 'Other Income') ? 'Other' : row.type;
+                        const amountText = `${row.amountClass === 'expense' ? '-' : '+'}${formatMoney(row.amount).replace('UGX ', '')}`;
+    
+                        pdf.setFont('helvetica', 'normal');
+                        pdf.setFontSize(isMobileReportLayout ? 8 : 8.5);
+                        pdf.setTextColor(...palette.text);
+                        pdf.text(formatDisplayDate(row.date), columnDate, tableY);
+                        pdf.text(typeLabel, columnType, tableY);
+                        pdf.text(compactDetail, columnDetail, tableY);
+    
+                        pdf.setFont('helvetica', 'bold');
+                        if (row.amountClass === 'expense') {
+                            pdf.setTextColor(...palette.expense);
+                        } else {
+                            pdf.setTextColor(...palette.income);
+                        }
+                        const amountWidth = pdf.getTextWidth(amountText);
+                        pdf.text(amountText, columnAmountRight - amountWidth, tableY);
+    
+                        pdf.setDrawColor(236, 230, 217);
+                        pdf.setLineWidth(0.2);
+                        pdf.line(margin, tableY + 1.5, pageWidth - margin, tableY + 1.5);
+                        tableY += rowHeight;
+                    });
+                }
+    
+                pdf.addPage();
+                drawHeader('Visual Insights');
+    
+                const panelY = 30;
+                const panelGap = isMobileReportLayout ? 5 : 6;
+                const panelWidth = isMobileReportLayout ? contentWidth : (contentWidth - panelGap) / 2;
+                const panelHeight = isMobileReportLayout ? 64 : 76;
+    
+                const chartPanel = drawPanelFrame('Financial Performance', margin, panelY, panelWidth, panelHeight);
+                const mapPanel = drawPanelFrame(
+                    'Tour Map Coverage',
+                    isMobileReportLayout ? margin : (margin + panelWidth + panelGap),
+                    isMobileReportLayout ? (panelY + panelHeight + panelGap) : panelY,
+                    panelWidth,
+                    panelHeight
+                );
+    
+                const monthTotals = new Map();
+                const addToMonth = (dateStr, amount, key) => {
+                    if (!dateStr) return;
+                    const date = new Date(dateStr);
+                    if (Number.isNaN(date.getTime())) return;
+                    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    if (!monthTotals.has(monthKey)) {
+                        monthTotals.set(monthKey, { income: 0, expenses: 0, other: 0 });
+                    }
+                    monthTotals.get(monthKey)[key] += amount;
+                };
+                filteredBookings.forEach((entry) => addToMonth(entry.date, Number(entry.fee) || 0, 'income'));
+                filteredExpenses.forEach((entry) => addToMonth(entry.date, Number(entry.amount) || 0, 'expenses'));
+                filteredOtherIncome.forEach((entry) => addToMonth(entry.date, Number(entry.amount) || 0, 'other'));
+    
+                const chartKeys = Array.from(monthTotals.keys()).sort().slice(-6);
+                if (typeof Chart !== 'undefined' && chartKeys.length > 0) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 900;
+                    canvas.height = 420;
+                    const ctx = canvas.getContext('2d');
+                    const chart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: chartKeys,
+                            datasets: [
+                                {
+                                    label: 'Show Income',
+                                    data: chartKeys.map((key) => monthTotals.get(key).income),
+                                    borderColor: '#ffb300',
+                                    backgroundColor: 'rgba(255, 179, 0, 0.12)',
+                                    tension: 0.3,
+                                    fill: true,
+                                    borderWidth: 2
+                                },
+                                {
+                                    label: 'Other Income',
+                                    data: chartKeys.map((key) => monthTotals.get(key).other),
+                                    borderColor: '#2e7d32',
+                                    backgroundColor: 'rgba(46, 125, 50, 0.10)',
+                                    tension: 0.3,
+                                    fill: true,
+                                    borderWidth: 2
+                                },
+                                {
+                                    label: 'Expenses',
+                                    data: chartKeys.map((key) => monthTotals.get(key).expenses),
+                                    borderColor: '#c62828',
+                                    backgroundColor: 'rgba(198, 40, 40, 0.10)',
+                                    tension: 0.3,
+                                    fill: true,
+                                    borderWidth: 2
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: false,
+                            maintainAspectRatio: false,
+                            animation: { duration: 0 },
+                            plugins: {
+                                legend: {
+                                    labels: {
+                                        color: '#2b2b2b',
+                                        font: { size: 11 }
+                                    }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: { color: '#444' },
+                                    grid: { color: 'rgba(0,0,0,0.08)' }
+                                },
+                                x: {
+                                    ticks: { color: '#444' },
+                                    grid: { color: 'rgba(0,0,0,0.05)' }
+                                }
+                            }
+                        }
+                    });
+                    chart.update();
+                    await new Promise((resolve) => requestAnimationFrame(resolve));
+                    const chartImg = canvas.toDataURL('image/png', 1.0);
+                    pdf.addImage(chartImg, 'PNG', chartPanel.x, chartPanel.y, chartPanel.width, chartPanel.height);
+                    chart.destroy();
+                } else {
+                    pdf.setFont('helvetica', 'normal');
+                    pdf.setFontSize(9);
+                    pdf.setTextColor(...palette.muted);
+                    pdf.text('No chart data available for this period.', chartPanel.x + 2, chartPanel.y + 18);
+                }
+    
+                const mapContainer = document.getElementById('performanceMap');
+                if (mapContainer && window.html2canvas) {
+                    const clone = mapContainer.cloneNode(true);
+                    clone.style.width = '900px';
+                    clone.style.height = '420px';
+                    clone.style.position = 'fixed';
+                    clone.style.left = '-9999px';
+                    clone.style.top = '0';
+                    document.body.appendChild(clone);
+    
+                    const originalMapHtml = mapContainer.innerHTML;
+                    renderPerformanceMap(filteredBookings, { showLabels: false, showLocationList: true, showPinnedPanel: false });
+                    clone.innerHTML = mapContainer.innerHTML;
+                    mapContainer.innerHTML = originalMapHtml;
+    
+                    const mapCanvas = await html2canvas(clone, { backgroundColor: '#f6f0e2', scale: 2 });
+                    const mapImg = mapCanvas.toDataURL('image/png', 0.95);
+                    document.body.removeChild(clone);
+                    pdf.addImage(mapImg, 'PNG', mapPanel.x, mapPanel.y, mapPanel.width, mapPanel.height);
+    
+                    // Restore the live map card to current dashboard state.
+                    renderPerformanceMap();
+                } else {
+                    pdf.setFont('helvetica', 'normal');
+                    pdf.setFontSize(9);
+                    pdf.setTextColor(...palette.muted);
+                    pdf.text('Map preview unavailable.', mapPanel.x + 2, mapPanel.y + 18);
+                }
+    
+                let artistsPanel;
+                let statusPanel;
+                if (isMobileReportLayout) {
+                    pdf.addPage();
+                    drawHeader('Visual Insights (Continued)');
+                    artistsPanel = drawPanelFrame('Top Artists by Show Income', margin, 30, contentWidth, 78);
+                    statusPanel = drawPanelFrame('Booking Status Mix', margin, 116, contentWidth, 74);
+                } else {
+                    const bottomY = panelY + panelHeight + 10;
+                    const lowerPanelHeight = 68;
+                    artistsPanel = drawPanelFrame('Top Artists by Show Income', margin, bottomY, panelWidth, lowerPanelHeight);
+                    statusPanel = drawPanelFrame('Booking Status Mix', margin + panelWidth + panelGap, bottomY, panelWidth, lowerPanelHeight);
+                }
+    
+                const artistTotals = {};
+                filteredBookings.forEach((entry) => {
+                    const name = String(entry.artist || 'Unknown Artist');
+                    artistTotals[name] = (artistTotals[name] || 0) + (Number(entry.fee) || 0);
+                });
+                const topArtists = Object.entries(artistTotals)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 5);
+    
+                if (topArtists.length === 0) {
+                    pdf.setFont('helvetica', 'normal');
+                    pdf.setFontSize(9);
+                    pdf.setTextColor(...palette.muted);
+                    pdf.text('No booking income records available.', artistsPanel.x + 2, artistsPanel.y + 12);
+                } else {
+                    let lineY = artistsPanel.y + 8;
+                    topArtists.forEach(([name, amount], index) => {
+                        const label = `${index + 1}. ${name}`;
+                        const labelWidthLimit = Math.max(35, artistsPanel.width - 46);
+                        const compactLabel = pdf.splitTextToSize(label, labelWidthLimit)[0] || label;
+                        const value = formatMoney(amount);
+                        pdf.setFont('helvetica', 'normal');
+                        pdf.setFontSize(8.5);
+                        pdf.setTextColor(...palette.text);
+                        pdf.text(compactLabel, artistsPanel.x + 1, lineY);
+                        pdf.setFont('helvetica', 'bold');
+                        pdf.setTextColor(...palette.income);
+                        const valueWidth = pdf.getTextWidth(value);
+                        pdf.text(value, (artistsPanel.x + artistsPanel.width - 2) - valueWidth, lineY);
+                        lineY += 9;
+                    });
+                }
+    
+                const statusCounts = filteredBookings.reduce((acc, entry) => {
+                    const key = String(entry.status || 'pending').toLowerCase();
+                    acc[key] = (acc[key] || 0) + 1;
+                    return acc;
+                }, {});
+                const statusRows = [
+                    ['Confirmed', statusCounts.confirmed || 0, palette.income],
+                    ['Pending', statusCounts.pending || 0, palette.goldDark],
+                    ['Cancelled', statusCounts.cancelled || 0, palette.expense]
+                ];
+    
+                let statusY = statusPanel.y + 8;
+                statusRows.forEach(([label, count, tone]) => {
                     pdf.setFont('helvetica', 'normal');
                     pdf.setFontSize(9);
                     pdf.setTextColor(...palette.text);
-                    return frameTop + 8;
-                };
-
-                let thoughtsY = startClosingThoughtsPage(false);
-                const paragraphs = closingThoughts.split(/\r?\n/);
-                paragraphs.forEach((paragraph, paragraphIndex) => {
-                    const lines = paragraph.trim()
-                        ? pdf.splitTextToSize(paragraph.trim(), textWidth)
-                        : [''];
-
-                    lines.forEach((line) => {
-                        if (thoughtsY > maxTextY) {
-                            thoughtsY = startClosingThoughtsPage(true);
-                        }
-                        if (line) {
-                            pdf.text(String(line), textX, thoughtsY);
-                        }
-                        thoughtsY += lineHeight;
-                    });
-
-                    if (paragraphIndex < paragraphs.length - 1) {
-                        thoughtsY += 1.5;
-                    }
+                    pdf.text(String(label), statusPanel.x + 1, statusY);
+                    pdf.setFont('helvetica', 'bold');
+                    pdf.setTextColor(...tone);
+                    const valueText = String(count);
+                    const valueWidth = pdf.getTextWidth(valueText);
+                    pdf.text(valueText, (statusPanel.x + statusPanel.width - 2) - valueWidth, statusY);
+                    statusY += 10;
                 });
-            }
-
-            const totalPages = pdf.getNumberOfPages();
-            for (let page = 1; page <= totalPages; page += 1) {
-                pdf.setPage(page);
-                drawLogoOnCurrentPage();
-            }
-            for (let page = 1; page <= totalPages; page += 1) {
-                pdf.setPage(page);
-                pdf.setDrawColor(...palette.line);
-                pdf.setLineWidth(0.25);
-                pdf.line(margin, pageHeight - 7, pageWidth - margin, pageHeight - 7);
+    
                 pdf.setFont('helvetica', 'normal');
-                pdf.setFontSize(8);
+                pdf.setFontSize(8.5);
                 pdf.setTextColor(...palette.muted);
-                const pageLabel = `Page ${page} of ${totalPages}`;
-                const pageLabelWidth = pdf.getTextWidth(pageLabel);
-                pdf.text(pageLabel, pageWidth - margin - pageLabelWidth, pageHeight - 3.6);
+                pdf.text(`Balance brought forward: ${formatMoney(getCurrentBBF())}`, statusPanel.x + 1, statusY + 4);
+                pdf.text(`Net profit trend: ${netProfit >= 0 ? 'Positive' : 'Negative'} (${formatMoney(netProfit)})`, statusPanel.x + 1, statusY + 11);
+    
+                if (closingThoughts) {
+                    const frameTop = 34;
+                    const frameHeight = pageHeight - frameTop - margin - 3;
+                    const textX = margin + 4;
+                    const textWidth = contentWidth - 8;
+                    const lineHeight = 5;
+                    const maxTextY = pageHeight - margin - 6;
+    
+                    const startClosingThoughtsPage = (continued = false) => {
+                        pdf.addPage();
+                        drawHeader(continued ? 'Closing Thoughts (Continued)' : 'Closing Thoughts');
+                        drawSectionTitle(continued ? 'Manager Closing Thoughts (Continued)' : 'Manager Closing Thoughts', 30);
+                        pdf.setFillColor(...palette.paper);
+                        pdf.roundedRect(margin, frameTop, contentWidth, frameHeight, 2, 2, 'F');
+                        pdf.setDrawColor(...palette.line);
+                        pdf.setLineWidth(0.35);
+                        pdf.roundedRect(margin, frameTop, contentWidth, frameHeight, 2, 2, 'S');
+                        pdf.setFont('helvetica', 'normal');
+                        pdf.setFontSize(9);
+                        pdf.setTextColor(...palette.text);
+                        return frameTop + 8;
+                    };
+    
+                    let thoughtsY = startClosingThoughtsPage(false);
+                    const paragraphs = closingThoughts.split(/\r?\n/);
+                    paragraphs.forEach((paragraph, paragraphIndex) => {
+                        const lines = paragraph.trim()
+                            ? pdf.splitTextToSize(paragraph.trim(), textWidth)
+                            : [''];
+    
+                        lines.forEach((line) => {
+                            if (thoughtsY > maxTextY) {
+                                thoughtsY = startClosingThoughtsPage(true);
+                            }
+                            if (line) {
+                                pdf.text(String(line), textX, thoughtsY);
+                            }
+                            thoughtsY += lineHeight;
+                        });
+    
+                        if (paragraphIndex < paragraphs.length - 1) {
+                            thoughtsY += 1.5;
+                        }
+                    });
+                }
+    
+                const totalPages = pdf.getNumberOfPages();
+                for (let page = 1; page <= totalPages; page += 1) {
+                    pdf.setPage(page);
+                    drawLogoOnCurrentPage();
+                }
+                for (let page = 1; page <= totalPages; page += 1) {
+                    pdf.setPage(page);
+                    pdf.setDrawColor(...palette.line);
+                    pdf.setLineWidth(0.25);
+                    pdf.line(margin, pageHeight - 7, pageWidth - margin, pageHeight - 7);
+                    pdf.setFont('helvetica', 'normal');
+                    pdf.setFontSize(8);
+                    pdf.setTextColor(...palette.muted);
+                    const pageLabel = `Page ${page} of ${totalPages}`;
+                    const pageLabelWidth = pdf.getTextWidth(pageLabel);
+                    pdf.text(pageLabel, pageWidth - margin - pageLabelWidth, pageHeight - 3.6);
+                }
+    
+                pdf.save(`StarPaper-Report-${getPeriodString(period).replace(/\s+/g, '-')}.pdf`);
+            } finally {
+                generateCleanReport._busy = false;
             }
-
-            pdf.save(`StarPaper-Report-${getPeriodString(period).replace(/\s+/g, '-')}.pdf`);
         }
 
         function showAddExpense() {
+            if (guardReadOnly('add expenses')) return;
             // Ensure money section + expenses tab are active before showing form
             if (typeof showSection === 'function') showSection('expenses');
             if (typeof switchMoneyTab === 'function') switchMoneyTab('expenses');
@@ -5304,6 +5643,7 @@ function showLoginForm() {
         }
 
         function saveExpense() {
+            if (guardReadOnly('save expenses')) return;
 
             try {
                 const receiptSrc = document.getElementById('receiptPreview').src || null;
@@ -5360,7 +5700,7 @@ function showLoginForm() {
                 tbody.innerHTML = `<tr><td colspan="5">${emptyState({
                     icon: 'ph-receipt',
                     title: 'No expenses yet',
-                    sub: 'Track your costs — travel, equipment, studio time, and more.',
+                    sub: 'Track your costs â€” travel, equipment, studio time, and more.',
                     ctaLabel: '+ Log Expense',
                     ctaAction: "showAddExpense()"
                 })}</td></tr>`;
@@ -5368,7 +5708,7 @@ function showLoginForm() {
                 if (cards) cards.innerHTML = emptyState({
                     icon: 'ph-receipt',
                     title: 'No expenses yet',
-                    sub: 'Track your costs — travel, equipment, studio time, and more.',
+                    sub: 'Track your costs â€” travel, equipment, studio time, and more.',
                     ctaLabel: '+ Log Expense',
                     ctaAction: "showAddExpense()"
                 });
@@ -5383,7 +5723,7 @@ function showLoginForm() {
                     <td>${formatDisplayDate(expense.date)}</td>
                     <td>
                         ${expense.receipt ? 
-                            `<button class="action-btn icon-btn" onclick="event.stopPropagation(); viewReceipt('${expense.receipt}')" aria-label="View receipt" title="View receipt">&#128065;&#65039;</button>` : 
+                            `<button class="action-btn icon-btn" onclick="event.stopPropagation(); viewReceipt('${expense.receipt}')" aria-label="View receipt" title="View receipt"><i class="ph ph-eye" aria-hidden="true"></i></button>` : 
                             '-'}
                     </td>
                 </tr>
@@ -5404,8 +5744,8 @@ function showLoginForm() {
                             <div class="expense-field"><span>Receipt</span>${expense.receipt ? 'Attached' : 'None'}</div>
                         </div>
                         <div class="expense-actions">
-                            ${expense.receipt ? `<button class="action-btn icon-btn" onclick="event.stopPropagation(); viewReceipt('${expense.receipt}')" aria-label="View receipt" title="View receipt">&#128065;&#65039;</button>` : ''}
-                            <button class="action-btn icon-btn delete-btn" onclick="event.stopPropagation(); deleteExpense(${expense.id})" aria-label="Delete" title="Delete">&#128465;&#65039;</button>
+                            ${expense.receipt ? `<button class="action-btn icon-btn" onclick="event.stopPropagation(); viewReceipt('${expense.receipt}')" aria-label="View receipt" title="View receipt"><i class="ph ph-eye" aria-hidden="true"></i></button>` : ''}
+                            <button class="action-btn icon-btn delete-btn" onclick="event.stopPropagation(); deleteExpense(${expense.id})" aria-label="Delete" title="Delete"><i class="ph ph-trash" aria-hidden="true"></i></button>
                         </div>
                     </div>
                 `).join('');
@@ -5413,10 +5753,16 @@ function showLoginForm() {
         }
 
         function deleteExpense(id, silent = false) {
+            if (!silent && guardReadOnly('delete expenses')) return;
             if (!silent && !confirm('Are you sure you want to delete this expense?')) {
                 return;
             }
             expenses = expenses.filter(e => e.id !== id);
+            if (window.SP?.deleteExpense) {
+                window.SP.deleteExpense(id).catch((err) => {
+                    console.warn('Cloud delete expense failed:', err);
+                });
+            }
             saveUserData();
             renderExpenses();
             updateDashboard();
@@ -5424,6 +5770,7 @@ function showLoginForm() {
         }
 
         function editExpense(id) {
+            if (guardReadOnly('edit expenses')) return;
             const expense = expenses.find(e => e.id === id);
             if (!expense) return;
 
@@ -5458,6 +5805,7 @@ function showLoginForm() {
 
         // Other Income Functions
         function showAddOtherIncome() {
+            if (guardReadOnly('add other income')) return;
             // Ensure money section + otherIncome tab are active before showing form
             if (typeof showSection === 'function') showSection('otherIncome');
             if (typeof switchMoneyTab === 'function') switchMoneyTab('otherIncome');
@@ -5510,6 +5858,7 @@ function showLoginForm() {
         }
 
         function saveOtherIncome() {
+            if (guardReadOnly('save other income')) return;
 
             try {
                 const proofSrc = document.getElementById('otherIncomeProofPreview').src || null;
@@ -5599,7 +5948,7 @@ function showLoginForm() {
                         <td><span class="status-badge ${statusClass}">${item.status}</span></td>
                         <td>
                             ${item.proof ? 
-                                `<button class="action-btn icon-btn" onclick="event.stopPropagation(); viewReceipt('${item.proof}')" aria-label="View proof" title="View proof">&#128065;&#65039;</button>` : 
+                                `<button class="action-btn icon-btn" onclick="event.stopPropagation(); viewReceipt('${item.proof}')" aria-label="View proof" title="View proof"><i class="ph ph-eye" aria-hidden="true"></i></button>` : 
                                 '-'}
                         </td>
                     </tr>
@@ -5625,8 +5974,8 @@ function showLoginForm() {
                                 <div class="expense-field"><span>Notes</span>${item.notes || 'None'}</div>
                             </div>
                             <div class="expense-actions">
-                                ${item.proof ? `<button class="action-btn icon-btn" onclick="event.stopPropagation(); viewReceipt('${item.proof}')" aria-label="View proof" title="View proof">&#128065;&#65039;</button>` : ''}
-                                <button class="action-btn icon-btn delete-btn" onclick="event.stopPropagation(); deleteOtherIncome(${item.id})" aria-label="Delete" title="Delete">&#128465;&#65039;</button>
+                                ${item.proof ? `<button class="action-btn icon-btn" onclick="event.stopPropagation(); viewReceipt('${item.proof}')" aria-label="View proof" title="View proof"><i class="ph ph-eye" aria-hidden="true"></i></button>` : ''}
+                                <button class="action-btn icon-btn delete-btn" onclick="event.stopPropagation(); deleteOtherIncome(${item.id})" aria-label="Delete" title="Delete"><i class="ph ph-trash" aria-hidden="true"></i></button>
                             </div>
                         </div>
                     `;
@@ -5635,10 +5984,16 @@ function showLoginForm() {
         }
 
         function deleteOtherIncome(id, silent = false) {
+            if (!silent && guardReadOnly('delete other income')) return;
             if (!silent && !confirm('Are you sure you want to delete this entry?')) {
                 return;
             }
             otherIncome = otherIncome.filter(i => i.id !== id);
+            if (window.SP?.deleteOtherIncome) {
+                window.SP.deleteOtherIncome(id).catch((err) => {
+                    console.warn('Cloud delete other income failed:', err);
+                });
+            }
             saveUserData();
             renderOtherIncome();
             updateDashboard();
@@ -5646,6 +6001,7 @@ function showLoginForm() {
         }
 
         function editOtherIncome(id) {
+            if (guardReadOnly('edit other income')) return;
             const item = otherIncome.find(i => i.id === id);
             if (!item) return;
 
@@ -5673,6 +6029,7 @@ function showLoginForm() {
 
         // Artists Functions
         function showAddArtistForm() {
+            if (guardReadOnly('add artists')) return;
             // Ensure artists section is active before showing form
             if (typeof showSection === 'function') showSection('artists');
             editingArtistId = null;
@@ -5742,6 +6099,7 @@ function showLoginForm() {
         }
 
         function saveArtist() {
+            if (guardReadOnly('save artists')) return;
 
             try {
                 const artistName = sanitizeTextInput(document.getElementById('artistName').value);
@@ -5864,8 +6222,8 @@ function showLoginForm() {
                     <p class="artist-specialty">${artistSpecialty}</p>
                     <p class="artist-bio">${artistBio}</p>
                     <div class="artist-contact">
-                        ${artistEmail ? `<div>&#128231; ${artistEmail}</div>` : ''}
-                        ${artistPhone ? `<div>&#128241; ${artistPhone}</div>` : ''}
+                        ${artistEmail ? `<div><i class="ph ph-envelope-simple" aria-hidden="true"></i> ${artistEmail}</div>` : ''}
+                        ${artistPhone ? `<div><i class="ph ph-phone" aria-hidden="true"></i> ${artistPhone}</div>` : ''}
                     </div>
                     <button type="button" class="action-btn delete-btn" data-action="deleteArtistCard" data-artist-id="${artistId}" style="width: 100%; margin-top: 10px;">Remove Artist</button>
                 </div>`;
@@ -5873,6 +6231,7 @@ function showLoginForm() {
         }
 
         function deleteArtist(artistIdOrName) {
+            if (guardReadOnly('remove artists')) return;
             const targetArtist = artists.find((artist) =>
                 String(artist?.id || '') === String(artistIdOrName || '')
                 || String(artist?.name || '') === String(artistIdOrName || '')
@@ -5884,6 +6243,12 @@ function showLoginForm() {
             if (confirm(`Are you sure you want to remove ${targetArtist.name}?`)) {
                 artists = artists.filter((artist) => String(artist?.id || '') !== String(targetArtist.id || ''));
                 Storage.saveSync('starPaperArtists', artists);
+                if (window.SP?.deleteArtist) {
+                    window.SP.deleteArtist(targetArtist.id).catch((err) => {
+                        console.warn('Cloud delete artist failed:', err);
+                    });
+                }
+                saveUserData();
                 markSearchIndexDirty();
                 renderArtists();
                 populateArtistDropdown();
@@ -5913,6 +6278,7 @@ function showLoginForm() {
         }
 
         function showAddBooking() {
+            if (guardReadOnly('add bookings')) return;
             // Ensure schedule section + bookings tab are active before showing form
             if (typeof showSection === 'function') showSection('bookings');
             if (typeof activateScheduleTab === 'function') activateScheduleTab('bookings');
@@ -5952,6 +6318,7 @@ function showLoginForm() {
         }
 
         function saveBooking() {
+            if (guardReadOnly('save bookings')) return;
 
             try {
                 const locationType = document.getElementById('bookingLocationType').value;
@@ -6009,7 +6376,7 @@ function showLoginForm() {
                 cancelBooking();
                 showSection('schedule');
                 if (booking.status === 'confirmed') triggerGoldDust();
-                toastSuccess(isEdit ? 'Booking updated!' : '🎉 Booking saved!');
+                toastSuccess(isEdit ? 'Booking updated!' : 'ðŸŽ‰ Booking saved!');
                 // Persist and refresh remaining views
                 saveUserData();
                 updateDashboard();
@@ -6071,7 +6438,7 @@ function showLoginForm() {
                     <td data-label="Event" class="td-event">${booking.event}</td>
                     <td data-label="Artist">${booking.artist}</td>
                     <td data-label="Date" class="td-date">${formatDisplayDate(booking.date)}</td>
-                    <td data-label="Location">${booking.location || '-'} ${booking.locationType === 'abroad' ? '&#127757;' : 'UG'} <span class="show-weather-slot" id="bookingWeatherTable-${weatherKey}"></span></td>
+                    <td data-label="Location">${booking.location || '-'} ${booking.locationType === 'abroad' ? '<i class="ph ph-globe" aria-hidden="true"></i>' : 'UG'} <span class="show-weather-slot" id="bookingWeatherTable-${weatherKey}"></span></td>
                     <td data-label="Total Fee" class="income-green td-fee">UGX ${parseFloat(booking.fee).toLocaleString()}</td>
                     <td data-label="Deposit" class="deposit-blue td-deposit">UGX ${parseFloat(booking.deposit).toLocaleString()}</td>
                     <td data-label="Balance Due" class="${booking.balance > 0 ? 'expense-red' : 'income-green'} td-balance">
@@ -6100,7 +6467,7 @@ function showLoginForm() {
                         <div class="booking-meta">
                             <div class="booking-field"><span>Artist</span>${booking.artist}</div>
                             <div class="booking-field"><span>Date</span>${formatDisplayDate(booking.date)}</div>
-                            <div class="booking-field"><span>Location</span>${booking.location || '-'} ${booking.locationType === 'abroad' ? '&#127757;' : 'UG'} <span class="show-weather-slot" id="bookingWeatherCard-${weatherKey}"></span></div>
+                            <div class="booking-field"><span>Location</span>${booking.location || '-'} ${booking.locationType === 'abroad' ? '<i class="ph ph-globe" aria-hidden="true"></i>' : 'UG'} <span class="show-weather-slot" id="bookingWeatherCard-${weatherKey}"></span></div>
                             <div class="booking-field income-green"><span>Total Fee</span>UGX ${parseFloat(booking.fee).toLocaleString()}</div>
                             <div class="booking-field deposit-blue"><span>Deposit</span>UGX ${parseFloat(booking.deposit).toLocaleString()}</div>
                             <div class="booking-field ${booking.balance > 0 ? 'expense-red' : 'income-green'}"><span>Balance Due</span>UGX ${parseFloat(booking.balance).toLocaleString()}</div>
@@ -6108,7 +6475,7 @@ function showLoginForm() {
                             <div class="booking-field"><span>Notes</span>${booking.notes || '-'}</div>
                         </div>
                         <div class="booking-actions">
-                            <button class="action-btn icon-btn delete-btn" onclick="event.stopPropagation(); deleteBooking(${booking.id})" aria-label="Delete" title="Delete">&#128465;&#65039;</button>
+                            <button class="action-btn icon-btn delete-btn" onclick="event.stopPropagation(); deleteBooking(${booking.id})" aria-label="Delete" title="Delete"><i class="ph ph-trash" aria-hidden="true"></i></button>
                         </div>
                     </div>
                 `).join('');
@@ -6424,6 +6791,7 @@ function showLoginForm() {
         }
 
         function editBooking(id) {
+            if (guardReadOnly('edit bookings')) return;
             const booking = bookings.find(b => b.id === id);
             if (!booking) return;
 
@@ -6454,7 +6822,7 @@ function showLoginForm() {
             showAddBooking();
         }
 
-        // Custom delete confirmation — avoids browser confirm() dialog
+        // Custom delete confirmation â€” avoids browser confirm() dialog
         function confirmDeleteBooking(id) {
             const modal = document.getElementById('confirmDeleteModal');
             const body  = document.getElementById('confirmDeleteBody');
@@ -6473,9 +6841,15 @@ function showLoginForm() {
         }
 
         function deleteBooking(id, silent = false) {
+            if (guardReadOnly('delete bookings')) return;
             if (!silent && !confirm('Are you sure you want to delete this booking?')) return;
             
             bookings = bookings.filter(b => b.id !== id);
+            if (window.SP?.deleteBooking) {
+                window.SP.deleteBooking(id).catch((err) => {
+                    console.warn('Cloud delete booking failed:', err);
+                });
+            }
             saveUserData();
             renderBookings();
             updateDashboard();
@@ -6768,10 +7142,10 @@ function showLoginForm() {
         function renderWeatherIndicatorMarkup(weather, fallbackTooltip = 'Forecast unavailable for this date') {
             if (!weather) {
                 const tooltip = fallbackTooltip || 'Forecast unavailable for this date';
-                return `<span class="show-weather-indicator is-fallback" title="${escapeHtml(tooltip)}" aria-label="${escapeHtml(tooltip)}">&#9729;</span>`;
+                return `<span class="show-weather-indicator is-fallback" title="${escapeHtml(tooltip)}" aria-label="${escapeHtml(tooltip)}"><i class="ph ph-cloud" aria-hidden="true"></i></span>`;
             }
             const rain = Number.isFinite(weather.rainChance) ? weather.rainChance : null;
-            const icon = rain !== null && rain >= 45 ? '&#127783;' : '&#9729;';
+            const icon = rain !== null && rain >= 45 ? '<i class="ph ph-cloud-rain" aria-hidden="true"></i>' : '<i class="ph ph-cloud" aria-hidden="true"></i>';
             const tempText = Number.isFinite(weather.temperature) ? `${weather.temperature} C` : 'N/A';
             const rainText = rain !== null ? `${rain}%` : 'N/A';
             const tooltip = `Temp: ${tempText} | Rain chance: ${rainText}`;
@@ -7496,7 +7870,7 @@ function showLoginForm() {
             }
         });
 
-        // ── Premium Toast System ──────────────────────────────────────────────
+        // â”€â”€ Premium Toast System â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function showToast(message, type = 'info', opts = {}) {
             const stack = document.getElementById('spToastStack');
             if (!stack) return;
@@ -7514,7 +7888,7 @@ function showLoginForm() {
                     <div class="sp-toast__title">${opts.title || ''}</div>
                     <div class="sp-toast__msg">${message}</div>
                 </div>
-                <button class="sp-toast__close" aria-label="Dismiss">✕</button>
+                <button class="sp-toast__close" aria-label="Dismiss">âœ•</button>
                 <div class="sp-toast__bar" style="--sp-toast-dur:${durSec}"></div>
             `;
             // If no title set, promote message to title
@@ -7543,7 +7917,7 @@ function showLoginForm() {
         function toastInfo(msg, title)    { showToast(msg, 'info',    { title }); }
         function toastWarn(msg, title)    { showToast(msg, 'warning', { title }); }
 
-        // ── Relative timestamps ───────────────────────────────────────────────
+        // â”€â”€ Relative timestamps â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function timeAgo(dateInput) {
             if (!dateInput) return '';
             const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
@@ -7562,7 +7936,7 @@ function showLoginForm() {
             return `${Math.floor(secs / 2592000)} months ago`;
         }
 
-        // ── Empty state builder ───────────────────────────────────────────────
+        // â”€â”€ Empty state builder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function emptyState({ icon, title, sub, ctaLabel, ctaAction }) {
             // icon = Phosphor class name e.g. 'ph-receipt' OR legacy emoji (renders as text fallback)
             const isPhosphor = typeof icon === 'string' && icon.startsWith('ph-');
@@ -7577,7 +7951,7 @@ function showLoginForm() {
             </div>`;
         }
 
-        // ── Revenue Pulse — countUp animation ────────────────────────────────
+        // â”€â”€ Revenue Pulse â€” countUp animation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function countUp(el, targetValue, prefix = null, duration = 900) {
             if (!el) return;
             const formatValue = (value) => {
@@ -7607,7 +7981,7 @@ function showLoginForm() {
             requestAnimationFrame(step);
         }
 
-        // ── Tab switchers: Money ──────────────────────────────────────────────
+        // â”€â”€ Tab switchers: Money â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function activateMoneyTab(tabId) {
             document.querySelectorAll('#moneyTabs .sp-tab').forEach(btn => {
                 btn.classList.toggle('sp-tab--active', btn.dataset.tab === tabId);
@@ -7628,7 +8002,7 @@ function showLoginForm() {
         }
         window.switchMoneyTab = switchMoneyTab;
 
-        // ── Dedicated tab listener (bypasses all action dispatchers) ─────────
+        // â”€â”€ Dedicated tab listener (bypasses all action dispatchers) â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // Runs at capture phase so it fires before any dispatcher can swallow it
         document.addEventListener('click', function spTabListener(e) {
             const btn = e.target.closest('[data-action="switchMoneyTab"],[data-action="switchScheduleTab"]');
@@ -7641,7 +8015,7 @@ function showLoginForm() {
             else if (action === 'switchScheduleTab') switchScheduleTab(tab);
         }, true); // capture phase = runs first
 
-        // ── Tab switchers: Schedule ───────────────────────────────────────────
+        // â”€â”€ Tab switchers: Schedule â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function activateScheduleTab(tabId) {
             document.querySelectorAll('#scheduleTabs .sp-tab').forEach(btn => {
                 btn.classList.toggle('sp-tab--active', btn.dataset.tab === tabId);
@@ -7660,7 +8034,7 @@ function showLoginForm() {
         }
         window.switchScheduleTab = switchScheduleTab;
 
-        // ── About Modal ───────────────────────────────────────────────────────
+        // â”€â”€ About Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function showAboutModal() {
             const modal = document.getElementById('spAboutModal');
             if (!modal) return;
@@ -7674,7 +8048,7 @@ function showLoginForm() {
             document.getElementById('spAboutBackdrop')?.addEventListener('click', close, { once: true });
         }
 
-        // ── Admin Settings Modal ──────────────────────────────────────────────
+        // â”€â”€ Admin Settings Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function showAdminSettings() {
             const modal = document.getElementById('spAdminModal');
             if (!modal) return;
@@ -7698,8 +8072,8 @@ function showLoginForm() {
                             <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Actions</th></tr></thead>
                             <tbody>${allUsers.map(u => `
                                 <tr>
-                                    <td>${u.name || u.email || '—'}</td>
-                                    <td style="color:var(--text-muted)">${u.email || '—'}</td>
+                                    <td>${u.name || u.email || 'â€”'}</td>
+                                    <td style="color:var(--text-muted)">${u.email || 'â€”'}</td>
                                     <td><span class="sp-admin-pill sp-admin-pill--${u.status}">${u.status}</span></td>
                                     <td><div class="sp-admin-actions">
                                         ${u.status === 'pending' ? `<button class="sp-admin-btn sp-admin-btn--approve" onclick="adminApproveUser('${u.id || u.email}')">Approve</button>` : ''}
@@ -7742,7 +8116,7 @@ function showLoginForm() {
         window.adminApproveUser = adminApproveUser;
         window.adminDeleteUser = adminDeleteUser;
 
-        // ── Booking Velocity Gauge ────────────────────────────────────────────
+        // â”€â”€ Booking Velocity Gauge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function updateVelocityGauge() {
             const fillEl   = document.getElementById('velocityGaugeFill');
             const needleEl = document.getElementById('velocityGaugeNeedle');
@@ -7768,8 +8142,8 @@ function showLoginForm() {
                 return d.getMonth() === lm && d.getFullYear() === ly;
             }).length;
 
-            // Arc: 0–180 degrees mapped to 0–max shows
-            // Arc total length ≈ 251px (π * 80)
+            // Arc: 0â€“180 degrees mapped to 0â€“max shows
+            // Arc total length â‰ˆ 251px (Ï€ * 80)
             const ARC_LEN = 251;
             const maxShows = Math.max(thisCount, lastCount, 1);
             const ratio = Math.min(thisCount / maxShows, 1);
@@ -7786,19 +8160,19 @@ function showLoginForm() {
             if (deltaEl) {
                 const diff = thisCount - lastCount;
                 if (diff > 0) {
-                    deltaEl.textContent = `▲ ${diff} more`;
+                    deltaEl.textContent = `â–² ${diff} more`;
                     deltaEl.className = 'velocity-gauge__delta velocity-gauge__delta--up';
                 } else if (diff < 0) {
-                    deltaEl.textContent = `▼ ${Math.abs(diff)} fewer`;
+                    deltaEl.textContent = `â–¼ ${Math.abs(diff)} fewer`;
                     deltaEl.className = 'velocity-gauge__delta velocity-gauge__delta--down';
                 } else {
-                    deltaEl.textContent = '— same pace';
+                    deltaEl.textContent = 'â€” same pace';
                     deltaEl.className = 'velocity-gauge__delta velocity-gauge__delta--flat';
                 }
             }
         }
 
-        // ── Today Board + Nudge Engine ────────────────────────────────────────
+        // â”€â”€ Today Board + Nudge Engine â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         window.updateTodayBoard = function updateTodayBoard() {
             const now = new Date();
             const hour = now.getHours();
@@ -7819,7 +8193,7 @@ function showLoginForm() {
             const todayStr = now.toISOString().slice(0, 10);
             const nudges = [];
 
-            // ── Midnight Whisper (9 PM – 4 AM) ───────────────────────────────
+            // â”€â”€ Midnight Whisper (9 PM â€“ 4 AM) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if (hour >= 21 || hour < 4) {
                 const liveCount = allBookings.filter(b => b.status === 'confirmed' && b.date === todayStr).length;
                 nudges.push({
@@ -7830,7 +8204,7 @@ function showLoginForm() {
                 });
             }
 
-            // ── Collection Nudge ──────────────────────────────────────────────
+            // â”€â”€ Collection Nudge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             const unpaid = allBookings.filter(b => parseFloat(b.balance || 0) > 0);
             if (unpaid.length > 0) {
                 const total = unpaid.reduce((s, b) => s + parseFloat(b.balance || 0), 0);
@@ -7842,7 +8216,7 @@ function showLoginForm() {
                 });
             }
 
-            // ── Show Nudge — show in ≤5 days with balance due ─────────────────
+            // â”€â”€ Show Nudge â€” show in â‰¤5 days with balance due â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             allBookings.filter(b => {
                 if (!b.date || parseFloat(b.balance || 0) <= 0) return false;
                 const diff = (new Date(b.date) - now) / 86400000;
@@ -7857,7 +8231,7 @@ function showLoginForm() {
                 });
             });
 
-            // ── Momentum Nudge — 3+ confirmed bookings in 3 months ───────────
+            // â”€â”€ Momentum Nudge â€” 3+ confirmed bookings in 3 months â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             const cutoff = new Date(now); cutoff.setMonth(cutoff.getMonth() - 3);
             const recent = allBookings.filter(b => b.status === 'confirmed' && b.date && new Date(b.date) >= cutoff);
             if (recent.length >= 3) {
@@ -7870,7 +8244,7 @@ function showLoginForm() {
                 });
             }
 
-            // ── Render ────────────────────────────────────────────────────────
+            // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if (!alertsEl) return;
             const dismissed = JSON.parse(sessionStorage.getItem('sp_dismissed_nudges') || '[]');
             const visible = nudges.filter(n => !dismissed.includes(n.id));
@@ -7888,7 +8262,7 @@ function showLoginForm() {
             if (visible.length === 0) {
                 alertsEl.innerHTML = `<div class="nudge-item nudge-item--clear">
                     <span class="nudge-icon"><i class="ph ph-check-circle" aria-hidden="true"></i></span>
-                    <span class="nudge-text">All Clear — No urgent items require your attention today.</span>
+                    <span class="nudge-text">All Clear â€” No urgent items require your attention today.</span>
                 </div>`;
                 return;
             }
@@ -7911,7 +8285,7 @@ function showLoginForm() {
                         sessionStorage.setItem('sp_dismissed_nudges', JSON.stringify(d));
                         btn.closest('[data-nudge-id]').remove();
                         window.updateTodayBoard();
-                    })(this, event)" aria-label="Dismiss">&#10005;</button>
+                    })(this, event)" aria-label="Dismiss"><i class="ph ph-x" aria-hidden="true"></i></button>
                 </div>`;
             }).join('');
         };
@@ -7991,7 +8365,7 @@ function showLoginForm() {
             }
         });
 
-        // ── In-app navigation history button state ────────────────────────────
+        // â”€â”€ In-app navigation history button state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function updateNavHistButtons() {
             const back = document.getElementById('navBackBtn');
             const fwd  = document.getElementById('navFwdBtn');
@@ -8000,7 +8374,7 @@ function showLoginForm() {
             fwd.disabled  = !window._spNavStack || window._spNavIndex >= window._spNavStack.length - 1;
         }
 
-        // ── Falling Gold Coins canvas animation ───────────────────────────────
+        // â”€â”€ Falling Gold Coins canvas animation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         (function initCoinRain() {
             const canvas = document.getElementById('coinRainCanvas');
             if (!canvas) return;
@@ -8292,7 +8666,7 @@ function showLoginForm() {
             updateControls();
         })();
 
-        // ── Gold Dust burst — triggered on booking confirmed ──────────────────
+        // â”€â”€ Gold Dust burst â€” triggered on booking confirmed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function triggerGoldDust() {
             const canvas = document.getElementById('coinRainCanvas');
             if (!canvas) return;
@@ -8353,11 +8727,11 @@ function showLoginForm() {
             requestAnimationFrame(burstTick);
         }
 
-        // ══ COMMAND PALETTE & KEYBOARD SHORTCUTS ══════════════════════════════
+        // â•â• COMMAND PALETTE & KEYBOARD SHORTCUTS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
         (function initCommandPalette() {
 
-            // ── Section registry ──────────────────────────────────────────────
+            // â”€â”€ Section registry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             const SECTIONS = [
                 { id: 'dashboard',   label: 'Dashboard',    icon: '<i class="ph ph-squares-four"></i>',              sub: 'Overview & KPIs',                key: 'D' },
                 { id: 'money',       label: 'Money',        icon: '<i class="ph ph-currency-circle-dollar"></i>',   sub: 'Financials, Expenses & Reports', key: 'M' },
@@ -8371,10 +8745,10 @@ function showLoginForm() {
                 { label: 'Add Expense',    icon: '<i class="ph ph-receipt"></i>', sub: 'Log a cost or bill',   action: () => { showSection('expenses');    setTimeout(() => showAddExpense?.(), 80); } },
                 { label: 'Add Artist',     icon: '<i class="ph ph-microphone-stage"></i>', sub: 'Add to your roster',   action: () => { showSection('artists');     setTimeout(() => showAddArtistForm?.(), 80); } },
                 { label: 'Add Income',     icon: '<i class="ph ph-plus-circle"></i>', sub: 'Log other income',      action: () => { showSection('otherIncome'); } },
-                { label: 'Open Palette',   icon: '⌘', sub: 'Cmd/Ctrl+K',           action: () => openPalette() },
+                { label: 'Open Palette',   icon: '<i class="ph ph-command"></i>', sub: 'Cmd/Ctrl+K',           action: () => openPalette() },
             ];
 
-            // ── DOM refs ──────────────────────────────────────────────────────
+            // â”€â”€ DOM refs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             const palette   = document.getElementById('spPalette');
             const backdrop  = document.getElementById('spPaletteBackdrop');
             const input     = document.getElementById('spPaletteInput');
@@ -8386,7 +8760,7 @@ function showLoginForm() {
             let selectedIdx = -1;
             let currentResults = [];
 
-            // ── Open / close ──────────────────────────────────────────────────
+            // â”€â”€ Open / close â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             function isAppActive() {
                 const app = document.getElementById('appContainer');
                 return app && app.style.display !== 'none' && currentUser;
@@ -8415,7 +8789,7 @@ function showLoginForm() {
                 }, { once: true });
             }
 
-            // ── Search & render ───────────────────────────────────────────────
+            // â”€â”€ Search & render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             function highlight(text, query) {
                 if (!query) return text;
                 const idx = text.toLowerCase().indexOf(query.toLowerCase());
@@ -8479,7 +8853,7 @@ function showLoginForm() {
                     items.push({ type: 'group', label: 'Bookings' });
                     matchBookings.forEach(b => items.push({
                         type: 'booking', label: b.event, icon: 'ph-calendar-check',
-                        sub: `${b.artist} · ${b.date || ''}`, query: q,
+                        sub: `${b.artist} Â· ${b.date || ''}`, query: q,
                         action: () => { showSection('schedule'); }
                     }));
                 }
@@ -8509,7 +8883,7 @@ function showLoginForm() {
                     return `<li class="sp-palette__result" role="option"
                         aria-selected="${isSelected}"
                         data-result-idx="${resultIdx}">
-                        <div class="sp-palette__result-icon">${item.icon || '▸'}</div>
+                        <div class="sp-palette__result-icon">${item.icon || 'â–¸'}</div>
                         <div class="sp-palette__result-body">
                             <div class="sp-palette__result-title">${highlight(item.label, item.query)}</div>
                             <div class="sp-palette__result-sub">${item.sub || ''}</div>
@@ -8549,13 +8923,13 @@ function showLoginForm() {
                 }
             }
 
-            // ── Input handler ─────────────────────────────────────────────────
+            // â”€â”€ Input handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             input.addEventListener('input', () => {
                 selectedIdx = -1;
                 renderResults(input.value);
             });
 
-            // ── Keyboard navigation inside palette ────────────────────────────
+            // â”€â”€ Keyboard navigation inside palette â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             input.addEventListener('keydown', e => {
                 if (e.key === 'ArrowDown') {
                     e.preventDefault();
@@ -8576,7 +8950,7 @@ function showLoginForm() {
             // Close on backdrop click
             backdrop.addEventListener('click', closePalette);
 
-            // ── Global keyboard shortcuts ─────────────────────────────────────
+            // â”€â”€ Global keyboard shortcuts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             let gPressed = false;
             let gTimer = null;
 
@@ -8585,7 +8959,7 @@ function showLoginForm() {
                 const inInput = ['input','textarea','select'].includes(tag) ||
                     document.activeElement?.isContentEditable;
 
-                // Cmd/Ctrl+K — open palette
+                // Cmd/Ctrl+K â€” open palette
                 if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
                     e.preventDefault();
                     if (isOpen) closePalette(); else openPalette();
@@ -8618,13 +8992,13 @@ function showLoginForm() {
                         clearTimeout(gTimer);
                         const section = SECTIONS.find(s => s.id === target);
                         showSection(target);
-                        showKbdHint(`→ ${section?.label || target}`);
+                        showKbdHint(`â†’ ${section?.label || target}`);
                         return;
                     }
                 }
             });
 
-            // ── Keyboard hint display ─────────────────────────────────────────
+            // â”€â”€ Keyboard hint display â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             let hintTimer = null;
             function showKbdHint(text) {
                 if (!kbdHint) return;
@@ -8639,7 +9013,7 @@ function showLoginForm() {
 
         })();
 
-        // ══ PHASE 5: DENSITY TOGGLE ═══════════════════════════════════════════
+        // â•â• PHASE 5: DENSITY TOGGLE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
         (function initDensityToggle() {
             const STORAGE_KEY = 'sp_density';
@@ -8663,7 +9037,7 @@ function showLoginForm() {
             compactBtn.addEventListener('click',  () => applyDensity('compact'));
         })();
 
-        // ══ PHASE 5: GOAL PROGRESS PULSE ══════════════════════════════════════
+        // â•â• PHASE 5: GOAL PROGRESS PULSE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
         // Wrap goal progress bar updates to add pulse animation
         (function patchGoalProgressPulse() {
@@ -8681,7 +9055,7 @@ function showLoginForm() {
             });
         })();
 
-        // ══ PHASE 5: KEYBOARD CHEAT SHEET ════════════════════════════════════
+        // â•â• PHASE 5: KEYBOARD CHEAT SHEET â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
         (function initCheatSheet() {
             const sheet    = document.getElementById('spCheatsheet');
@@ -8712,7 +9086,7 @@ function showLoginForm() {
             closeBtn?.addEventListener('click', closeSheet);
             backdrop.addEventListener('click', closeSheet);
 
-            // ? key opens cheat sheet — only when not in input and app is active
+            // ? key opens cheat sheet â€” only when not in input and app is active
             document.addEventListener('keydown', e => {
                 const tag = document.activeElement?.tagName?.toLowerCase();
                 const inInput = ['input','textarea','select'].includes(tag) ||
@@ -8732,7 +9106,7 @@ function showLoginForm() {
             });
         })();
 
-        // ── Typewriter headline animation ─────────────────────────────────────
+        // â”€â”€ Typewriter headline animation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         (function normalizeNavOrder() {
             const sidebarNav = document.querySelector('.sidebar-nav');
             if (sidebarNav) {
@@ -8790,7 +9164,7 @@ function showLoginForm() {
                 return;
             }
 
-            // ── Cursor-safe structure: text lives in a <span>, cursor is a sibling <i>
+            // â”€â”€ Cursor-safe structure: text lives in a <span>, cursor is a sibling <i>
             // We NEVER overwrite subtitle.innerHTML so the cursor element persists.
             subtitle.classList.add('landing-hero-subtitle--typing');
             subtitle.innerHTML = '<span class="tw-text"></span><i class="ph ph-cursor-text tw-cursor" aria-hidden="true"></i>';
@@ -8841,11 +9215,11 @@ function showLoginForm() {
                 schedule(DELETE_SPEED);
             }
 
-            // charIndex starts at 0 — tick() will type from empty naturally
+            // charIndex starts at 0 â€” tick() will type from empty naturally
             tick();
         })();
 
-        // ── Collapsible sidebar (desktop ≥1025px) ────────────────────────────
+        // â”€â”€ Collapsible sidebar (desktop â‰¥1025px) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         (function initSidebarCollapse() {
             const STORAGE_KEY = 'sp_sidebar_collapsed';
             const btn = document.getElementById('sidebarCollapseBtn');
@@ -8876,7 +9250,7 @@ function showLoginForm() {
                 try { localStorage.setItem(STORAGE_KEY, val ? '1' : '0'); } catch(e) {}
             };
 
-            // Restore saved state — set position without transition
+            // Restore saved state â€” set position without transition
             if (isDesktop()) {
                 let saved = '0';
                 try { saved = localStorage.getItem(STORAGE_KEY) || '0'; } catch(e) {}
@@ -8906,7 +9280,7 @@ function showLoginForm() {
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=17').then((registration) => {
+                navigator.serviceWorker.register('sw.js?v=25').then((registration) => {
                     registration.update().catch(() => {});
                 }).catch((error) => {
                     console.warn('Service worker registration failed:', error);

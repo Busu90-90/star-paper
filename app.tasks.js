@@ -6,9 +6,48 @@
     let tasks = [];
     let currentStorageKey = null;
 
+    function getScopeKey() {
+        if (typeof window.getActiveDataScopeKey === "function") {
+            const key = window.getActiveDataScopeKey();
+            if (key) return key;
+        }
+        return String(window.currentManagerId || window.currentUser || "global");
+    }
+
     function getStorageKey() {
-        const owner = String(window.currentManagerId || window.currentUser || "global");
-        return `starPaperTasks:${owner}`;
+        return `starPaperTasks:${getScopeKey()}`;
+    }
+
+    function getActiveRole() {
+        if (typeof window.getActiveTeamRole === "function") return window.getActiveTeamRole();
+        if (window.SP?.getActiveTeamRole) return window.SP.getActiveTeamRole();
+        return window.currentTeamRole || null;
+    }
+
+    function isViewerRole() {
+        return String(getActiveRole() || "").toLowerCase() === "viewer";
+    }
+
+    function guardReadOnly(actionLabel) {
+        if (typeof window.guardReadOnly === "function") {
+            return window.guardReadOnly(actionLabel);
+        }
+        if (!isViewerRole()) return false;
+        if (typeof window.toastWarn === "function") {
+            window.toastWarn(`Read-only access: you cannot ${actionLabel}.`);
+        }
+        return true;
+    }
+
+    function syncTasksToCloud() {
+        if (!navigator.onLine) return;
+        if (window.SP?.saveTasks) {
+            window.SP.saveTasks(tasks).catch((err) => {
+                console.warn("Cloud task sync failed:", err);
+            });
+        } else if (typeof window.syncCloudExtras === "function") {
+            window.syncCloudExtras();
+        }
     }
 
     function ensureLoadedForCurrentUser() {
@@ -56,6 +95,14 @@
     function saveTasks() {
         if (!currentStorageKey) currentStorageKey = getStorageKey();
         localStorage.setItem(currentStorageKey, JSON.stringify(tasks));
+    }
+
+    function commitTasks(options = {}) {
+        saveTasks();
+        if (options.render !== false) {
+            renderTasks();
+        }
+        syncTasksToCloud();
     }
 
     function escapeHtml(value) {
@@ -139,6 +186,7 @@
         const container = document.getElementById("taskList");
         if (!container) return;
 
+        const readOnly = isViewerRole();
         updateBadges();
         const sorted = sortTasks(tasks);
 
@@ -157,20 +205,21 @@
 
             return `
                 <div class="task-item ${task.completed ? "task-completed" : ""} ${isOverdue ? "task-overdue" : ""}">
-                    <input type="checkbox" ${task.completed ? "checked" : ""}
+                    <input type="checkbox" ${task.completed ? "checked" : ""} ${readOnly ? "disabled" : ""}
                            onchange="window.toggleTask('${escapeHtml(task.id)}')" class="task-checkbox" />
                     <div class="task-content">
                         <div class="task-text">${escapeHtml(task.text)}</div>
                         ${task.dueDate ? `<div class="task-due">${escapeHtml(formatTaskDate(task.dueDate))}</div>` : ""}
                     </div>
-                    <button class="task-edit" onclick="window.startEditTask('${escapeHtml(task.id)}')" aria-label="Edit task">Edit</button>
-                    <button class="task-delete" onclick="window.deleteTask('${escapeHtml(task.id)}')" aria-label="Delete task">&times;</button>
+                    <button class="task-edit" ${readOnly ? "disabled" : ""} onclick="window.startEditTask('${escapeHtml(task.id)}')" aria-label="Edit task">Edit</button>
+                    <button class="task-delete" ${readOnly ? "disabled" : ""} onclick="window.deleteTask('${escapeHtml(task.id)}')" aria-label="Delete task">&times;</button>
                 </div>
             `;
         }).join("");
     }
 
     function addTask(text, dueDate = "") {
+        if (guardReadOnly("add tasks")) return null;
         ensureLoadedForCurrentUser();
         const cleanText = String(text || "").trim();
         if (!cleanText) return null;
@@ -184,28 +233,36 @@
         };
 
         tasks.push(task);
-        saveTasks();
-        renderTasks();
+        commitTasks();
         return task;
     }
 
     function toggleTask(id) {
+        if (guardReadOnly("update tasks")) {
+            renderTasks();
+            return;
+        }
         ensureLoadedForCurrentUser();
         const task = tasks.find((item) => item.id === id);
         if (!task) return;
         task.completed = !task.completed;
-        saveTasks();
-        renderTasks();
+        commitTasks();
     }
 
     function deleteTask(id) {
+        if (guardReadOnly("delete tasks")) return;
         ensureLoadedForCurrentUser();
         tasks = tasks.filter((task) => task.id !== id);
-        saveTasks();
-        renderTasks();
+        commitTasks();
+        if (window.SP?.deleteTask) {
+            window.SP.deleteTask(id).catch((err) => {
+                console.warn("Cloud delete task failed:", err);
+            });
+        }
     }
 
     function startEditTask(id) {
+        if (guardReadOnly("edit tasks")) return;
         ensureLoadedForCurrentUser();
         const task = tasks.find((item) => item.id === id);
         if (!task) return;
@@ -230,17 +287,34 @@
 
         task.text = trimmed;
         task.dueDate = dueValue;
-        saveTasks();
-        renderTasks();
+        commitTasks();
     }
 
     function clearCompletedTasks() {
+        if (guardReadOnly("clear completed tasks")) return;
         ensureLoadedForCurrentUser();
         const hasCompleted = tasks.some((task) => task.completed);
         if (!hasCompleted) return;
+        const removedIds = tasks.filter((task) => task.completed).map((task) => task.id);
         tasks = tasks.filter((task) => !task.completed);
+        commitTasks();
+        if (window.SP?.deleteTask && removedIds.length) {
+            removedIds.forEach((taskId) => {
+                window.SP.deleteTask(taskId).catch((err) => {
+                    console.warn("Cloud delete task failed:", err);
+                });
+            });
+        }
+    }
+
+    function applyTaskSync(nextTasks, options = {}) {
+        if (!Array.isArray(nextTasks)) return;
+        ensureLoadedForCurrentUser();
+        tasks = nextTasks.map(normalizeTask).filter((task) => task.text);
         saveTasks();
-        renderTasks();
+        if (options.render !== false) {
+            renderTasks();
+        }
     }
 
     function handleAddTask() {
@@ -248,6 +322,7 @@
         const dateInput = document.getElementById("taskDueDate");
         if (!input) return;
 
+        if (guardReadOnly("add tasks")) return;
         const text = input.value.trim();
         if (!text) return;
 
@@ -283,6 +358,7 @@
     window.deleteTask = deleteTask;
     window.startEditTask = startEditTask;
     window.clearCompletedTasks = clearCompletedTasks;
+    window.applyTaskSync = applyTaskSync;
     window.renderTasks = function () {
         bindTaskInputEnter();
         renderTasks();

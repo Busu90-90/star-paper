@@ -14,13 +14,20 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
-    
+
+    <!--
+      FIX: Load the Supabase JS SDK synchronously in <head> so window.supabase
+      is guaranteed to exist before supabase.js runs. Without this, supabase.js
+      hits `await new Promise(loadCDN)` which yields the thread â€” app.js then
+      calls checkAuth() while window.SP is still undefined, causing "stuck on
+      landing" for every user with a valid session.
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
     <link rel="stylesheet" href="styles.css">
-    <!-- Phosphor Icons — unified icon system -->
+    <!-- Phosphor Icons â€” unified icon system -->
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
-    <!-- Supabase integration — must load BEFORE app.js -->
-    <script src="supabase.js"></script>
 </head>
 <body>
     <div class="app-boot-loader" id="appBootLoader" aria-live="polite">
@@ -64,12 +71,12 @@
                     </p>
                     <div class="landing-buttons">
                         <button class="landing-btn" id="createAccountBtn" data-action="showSignupForm" onclick="showSignupForm()">Get Started</button>
-                        <button class="landing-btn landing-btn--ghost landing-btn--how" data-action="scrollToFeatures" onclick="document.getElementById('landing-features')?.scrollIntoView({behavior:'smooth',block:'center'})">How It Works ↓</button>
+                        <button class="landing-btn landing-btn--ghost landing-btn--how" data-action="scrollToFeatures" onclick="document.getElementById('landing-features')?.scrollIntoView({behavior:'smooth',block:'center'})">How It Works â†“</button>
                     </div>
                 </div>
                 <div class="landing-hero-right" aria-hidden="true">
                     <div class="landing-dashboard-preview">
-                        <!-- Animated Feature Reel — replaces static screenshot -->
+                        <!-- Animated Feature Reel â€” replaces static screenshot -->
                         <div class="feature-reel">
                             <div class="reel-chrome">
                                 <div class="reel-dots">
@@ -254,16 +261,16 @@
                 </label>
                 <button id="loginButton" class="btn-primary" type="button">Login</button>
                 <div class="auth-oauth-divider"><span>or</span></div>
-                <button class="btn-google" type="button" data-action="signInWithGoogle" onclick="signInWithGoogle()">
-                    <span class="btn-google-icon" aria-hidden="true">G</span>
+                <button class="btn-google" type="button" data-action="signInWithGoogle">
+                    <span class="btn-google-icon" aria-hidden="true"><i class="ph ph-google-logo" aria-hidden="true"></i></span>
                     Continue with Google
                 </button>
                 <button class="back-btn" data-action="showLanding" onclick="showLanding()">Back</button>
                 <button class="forgot-password-link" type="button" data-action="showForgotPassword" onclick="showForgotPassword()">Forgot password?</button>
                 <div class="auth-oauth-divider" style="margin-top:18px;"><span>dev</span></div>
                 <button type="button" onclick="window.enterLocalTestMode()" class="btn-local-test"
-                    title="Bypass all auth — for local testing only. No data is sent to the cloud.">
-                    🧪 Local Test Mode
+                    title="Bypass all auth â€” for local testing only. No data is sent to the cloud.">
+                    <i class="ph ph-flask" aria-hidden="true"></i> Local Test Mode
                 </button>
             </div>
             <div id="forgotPasswordForm" style="display: none;">
@@ -280,16 +287,16 @@
                 <input type="tel" id="signupPhone" placeholder="Phone (optional)" autocomplete="tel" />
                 <button class="btn-primary" data-action="signup" onclick="signup()">Create Account</button>
                 <div class="auth-oauth-divider"><span>or</span></div>
-                <button class="btn-google" type="button" data-action="signInWithGoogle" onclick="signInWithGoogle()">
-                    <span class="btn-google-icon" aria-hidden="true">G</span>
+                <button class="btn-google" type="button" data-action="signInWithGoogle">
+                    <span class="btn-google-icon" aria-hidden="true"><i class="ph ph-google-logo" aria-hidden="true"></i></span>
                     Continue with Google
                 </button>
                 <p class="auth-switch-text">Already have an account? <a href="#" class="auth-switch-link" data-action="showLoginForm">Login</a></p>
                 <button class="back-btn" data-action="showLanding" onclick="showLanding()">Back</button>
                 <div class="auth-oauth-divider" style="margin-top:18px;"><span>dev</span></div>
                 <button type="button" onclick="window.enterLocalTestMode()" class="btn-local-test"
-                    title="Bypass all auth — for local testing only. No data is sent to the cloud.">
-                    🧪 Local Test Mode
+                    title="Bypass all auth â€” for local testing only. No data is sent to the cloud.">
+                    <i class="ph ph-flask" aria-hidden="true"></i> Local Test Mode
                 </button>
             </div>
         </div>
@@ -313,13 +320,13 @@
     <!-- Receipt Modal -->
     <div class="receipt-modal" id="receiptModal">
         <div class="receipt-modal-content">
-            <button class="close-receipt" data-action="closeReceiptModal" onclick="closeReceiptModal()" aria-label="Close">&times;</button>
+            <button class="close-receipt" data-action="closeReceiptModal" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
             <img id="receiptModalImage" src="" alt="Receipt">
         </div>
     </div>
 
     <div class="app-container" id="appContainer">
-        <!-- Collapse toggle — lives outside sidebar to escape overflow clipping -->
+        <!-- Collapse toggle â€” lives outside sidebar to escape overflow clipping -->
         <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" aria-label="Toggle sidebar" type="button">
             <i class="scb-icon scb-icon--close ph ph-caret-left" aria-hidden="true" style="font-size:14px;"></i>
             <i class="scb-icon scb-icon--open ph ph-caret-right" aria-hidden="true" style="font-size:14px;"></i>
@@ -365,7 +372,7 @@
                 </div>
             </div>
 
-            <!-- Navigation List — Phosphor Icons -->
+            <!-- Navigation List â€” Phosphor Icons -->
             <nav class="sidebar-nav">
                 <button type="button" class="nav-item active" data-action="showSection" onclick="showSection('dashboard')" data-section="dashboard" data-tooltip="Dashboard">
                     <i class="ph ph-squares-four nav-icon-svg" aria-hidden="true" style="font-size:20px;"></i>
@@ -393,7 +400,7 @@
             <!-- Spacer -->
             <div class="sidebar-spacer"></div>
 
-            <!-- Bottom utility bar: About · Settings · Logout -->
+            <!-- Bottom utility bar: About Â· Settings Â· Logout -->
             <div class="sidebar-logout-section">
                 <div class="sidebar-util-row">
                     <button type="button" class="sidebar-util-btn" id="sidebarAboutBtn" data-action="showAboutModal" onclick="showAboutModal()" title="About Star Paper">
@@ -441,7 +448,7 @@
         <div class="main-content">
             <div class="header">
                 <div class="header-left">
-                    <button class="hamburger" id="hamburgerBtn" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+                    <button class="hamburger" id="hamburgerBtn" aria-label="Toggle navigation" aria-expanded="false"><i class="ph ph-list" aria-hidden="true"></i></button>
                     <!-- In-app back / forward navigation -->
                     <div class="nav-hist-wrap" id="navHistWrap">
                         <button class="nav-hist-btn" id="navBackBtn" aria-label="Go back" title="Go back" disabled>
@@ -498,7 +505,7 @@
                         <div class="nudge-banner__icon"><i class="ph ph-warning" aria-hidden="true"></i></div>
                         <div class="nudge-banner__text" id="nudgeBannerText"></div>
                     </div>
-                    <button class="nudge-banner__dismiss" data-action="dismissNudge" onclick="dismissNudge(this)" aria-label="Dismiss">&times;</button>
+                    <button class="nudge-banner__dismiss" data-action="dismissNudge" aria-label="Dismiss"><i class="ph ph-x" aria-hidden="true"></i></button>
                 </div>
 
                 <div class="dashboard-home-layout">
@@ -942,10 +949,10 @@
                             <option value="prevYear">Previous Year</option>
                             <option value="all">All Time</option>
                         </select>
-                        <button class="add-btn" data-action="generateCleanReport" onclick="generateCleanReport()" style="margin:0;"><i class="ph ph-download-simple" aria-hidden="true"></i> Generate &amp; Download PDF</button>
-                        <button class="action-btn" data-action="toggleClosingThoughts" onclick="toggleClosingThoughts()" style="margin: 0;">Closing Thoughts</button>
-                        <button class="action-btn" data-action="loadMockPortfolioData" onclick="loadMockPortfolioData()" style="margin: 0;">Load Mock Data</button>
-                        <button class="action-btn action-btn--danger" data-action="clearMockData" onclick="clearMockData()" style="margin: 0;">Clear Mock Data</button>
+                        <button class="add-btn" data-action="generateCleanReport" style="margin:0;"><i class="ph ph-download-simple" aria-hidden="true"></i> Generate &amp; Download PDF</button>
+                        <button class="action-btn" data-action="toggleClosingThoughts" style="margin: 0;">Closing Thoughts</button>
+                        <button class="action-btn" data-action="loadMockPortfolioData" style="margin: 0;">Load Mock Data</button>
+                        <button class="action-btn action-btn--danger" data-action="clearMockData" style="margin: 0;">Clear Mock Data</button>
                     </div>
                     <div class="closing-thoughts-panel" id="closingThoughtsPanel" style="display: none;">
                         <label for="closingThoughtsInput">Manager Closing Thoughts (Optional)</label>
@@ -955,8 +962,8 @@
                             <span id="closingThoughtsCount">0 / 600</span>
                         </div>
                         <div class="closing-thoughts-actions">
-                            <button class="action-btn" data-action="saveClosingThoughts" onclick="saveClosingThoughts()" style="margin: 0;">Save Thoughts</button>
-                            <button class="action-btn" data-action="clearClosingThoughts" onclick="clearClosingThoughts()" style="margin: 0;">Clear</button>
+                            <button class="action-btn" data-action="saveClosingThoughts" style="margin: 0;">Save Thoughts</button>
+                            <button class="action-btn" data-action="clearClosingThoughts" style="margin: 0;">Clear</button>
                         </div>
                     </div>
                 </div>
@@ -1192,7 +1199,7 @@
 
     <div class="receipt-modal" id="profileModal">
         <div class="receipt-modal-content profile-modal-content">
-            <button class="close-receipt" data-action="closeProfileModal" onclick="closeProfileModal()" aria-label="Close">&times;</button>
+            <button class="close-receipt" data-action="closeProfileModal" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
             <h3 class="section-title" data-icon="dashboard">Edit Profile</h3>
             <div class="profile-avatar-row">
                 <div class="sidebar-avatar profile-avatar-preview">
@@ -1238,7 +1245,7 @@
             </div>
             <div class="message-reply-actions">
                 <button type="button" class="btn-primary" data-action="saveProfileChanges">Save Changes</button>
-                <button type="button" class="back-btn" data-action="closeProfileModal" onclick="closeProfileModal()">Cancel</button>
+                <button type="button" class="back-btn" data-action="closeProfileModal">Cancel</button>
             </div>
         </div>
     </div>
@@ -1272,15 +1279,21 @@
             </div>
         </footer>
 
+        <!--
+          FIX: supabase.js moved here from <head>. The Supabase SDK is already
+          loaded (synchronously, above in <head>), so this file now runs
+          synchronously â€” window.SP is fully initialised before app.js executes.
+        -->
+        <script src="supabase.js?v=13"></script>
         <script src="app.migrations.js?v=9"></script>
         <script src="app.actions.js?v=8"></script>
         <script src="app.todayboard.js?v=1"></script>
-        <script src="app.tasks.js?v=1"></script>
-        <script src="app.js?v=17"></script>
+        <script src="app.tasks.js?v=2"></script>
+        <script src="app.js?v=26"></script>
         <script>
-        // ── FILE:// PROTOCOL GUARD ───────────────────────────────────────────────
+        // â”€â”€ FILE:// PROTOCOL GUARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // When the app is opened as a local file (double-clicked), window.location.origin
-        // is "null". OAuth (Google sign-in) cannot work on file:// — it requires http/https.
+        // is "null". OAuth (Google sign-in) cannot work on file:// â€” it requires http/https.
         // This block shows a clear warning and disables the Google button gracefully.
         (function fileProtocolGuard() {
             if (window.location.protocol !== 'file:') return;
@@ -1296,20 +1309,20 @@
                     'font-family:sans-serif'
                 ].join(';');
                 banner.innerHTML =
-                    '<strong>⚠ Local file detected.</strong> ' +
+                    '<strong>âš  Local file detected.</strong> ' +
                     'Google sign-in requires a local server. ' +
                     'Run <code style="background:rgba(0,0,0,.3);padding:1px 6px;border-radius:3px">npx serve .</code> ' +
                     'in this folder, then open <strong>http://localhost:3000</strong>. ' +
                     'Email/password login works as normal. ' +
                     '<button onclick="this.parentElement.remove()" ' +
                     'style="margin-left:12px;background:rgba(0,0,0,.3);border:none;' +
-                    'color:#fff;padding:2px 8px;border-radius:3px;cursor:pointer">✕</button>';
+                    'color:#fff;padding:2px 8px;border-radius:3px;cursor:pointer"><i class="ph ph-x" aria-hidden="true"></i></button>';
                 document.body.appendChild(banner);
 
                 // Disable & label Google sign-in buttons
                 document.querySelectorAll('.btn-google, [data-action="signInWithGoogle"]').forEach(function(btn) {
                     btn.disabled = true;
-                    btn.title = 'Google sign-in requires http://localhost — not file://';
+                    btn.title = 'Google sign-in requires http://localhost â€” not file://';
                     btn.style.opacity = '0.4';
                     btn.style.cursor = 'not-allowed';
                 });
@@ -1317,10 +1330,10 @@
         })();
         </script>
         <script>
-        // ── LOCAL TEST MODE ──────────────────────────────────────────────────────
+        // â”€â”€ LOCAL TEST MODE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // Bypasses ALL auth (Supabase + local) and logs straight into the app
         // with a "TestUser" session stored only in sessionStorage (cleared on tab close).
-        // Safe to ship — it does nothing on https:// and shows a visible DEV badge.
+        // Safe to ship â€” it does nothing on https:// and shows a visible DEV badge.
         window.enterLocalTestMode = function() {
             console.log('[StarPaper] Entering Local Test Mode...');
             try {
@@ -1355,7 +1368,7 @@
                         'padding:4px 10px','border-radius:20px','letter-spacing:.5px',
                         'pointer-events:none','opacity:.85'
                     ].join(';');
-                    badge.textContent = '🧪 LOCAL TEST MODE';
+                    badge.textContent = 'ðŸ§ª LOCAL TEST MODE';
                     document.body.appendChild(badge);
                 }
                 console.log('[StarPaper] Local Test Mode active. User: ' + testUser);
@@ -1371,6 +1384,7 @@
             style.textContent = [
                 '.btn-local-test {',
                 '  width:100%;padding:10px 16px;',
+                '  display:flex;align-items:center;justify-content:center;gap:6px;',
                 '  background:transparent;',
                 '  border:1px dashed rgba(124,58,237,.6);',
                 '  color:rgba(167,139,250,.9);',
@@ -1390,6 +1404,9 @@
         // every add/action button. Works regardless of app.actions.js, data-action
         // routing, or onclick attributes. Belt-AND-suspenders.
         (function wireCriticalButtons() {
+            if (window.__starPaperActionsBound || window.__starPaperFallbackActionsBound) {
+                return;
+            }
             var MAP = {
                 // FAB / header add buttons
                 'showAddBooking':         function() { if (typeof window.showAddBooking  === 'function') window.showAddBooking(); },
@@ -1417,7 +1434,7 @@
                 'closeReceiptModal':      function() { if (typeof window.closeReceiptModal === 'function') window.closeReceiptModal(); },
                 'closeProfileModal':      function() { if (typeof window.closeProfileModal === 'function') window.closeProfileModal(); },
                 'openProfileModal':       function() { if (typeof window.openProfileModal === 'function') window.openProfileModal(); },
-                // Save (profile / goals only — main form saves stay with app.actions.js)
+                // Save (profile / goals only â€” main form saves stay with app.actions.js)
                 'saveProfileChanges':     function() { if (typeof window.saveProfileChanges === 'function') window.saveProfileChanges(); },
                 'saveMonthlyRevenueGoal': function() { if (typeof window.saveMonthlyRevenueGoal === 'function') window.saveMonthlyRevenueGoal(); },
                 'saveFinancialsMonthlyRevenueGoal': function() { if (typeof window.saveFinancialsMonthlyRevenueGoal === 'function') window.saveFinancialsMonthlyRevenueGoal(); },
@@ -1499,7 +1516,7 @@
                         console.warn('[StarPaper] No handler for "' + action + '". window.' + action + '=', typeof window[action]);
                     }
                 }
-            }, true); // capture phase — fires before any other listener
+            }, true); // capture phase â€” fires before any other listener
         })();
         </script>
         <script>
@@ -1540,7 +1557,7 @@
     <div class="sp-about-modal" id="spAboutModal" style="display:none;" role="dialog" aria-modal="true" aria-label="About Star Paper">
         <div class="sp-modal-backdrop" id="spAboutBackdrop"></div>
         <div class="sp-modal-box">
-            <button class="sp-modal-close" id="spAboutClose" aria-label="Close">✕</button>
+            <button class="sp-modal-close" id="spAboutClose" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
             <div class="sp-modal-logo">
                 <div class="sp-modal-logo-icon"><i class="ph ph-star" aria-hidden="true" style="font-size:28px;color:#FFB300;"></i></div>
                 <div>
@@ -1549,11 +1566,11 @@
                 </div>
             </div>
             <div class="sp-modal-body">
-                <p>Star Paper is a premium management tool built for artist managers in Uganda and beyond. Track bookings, monitor finances, manage your roster, and generate professional reports — all in one place.</p>
+                <p>Star Paper is a premium management tool built for artist managers in Uganda and beyond. Track bookings, monitor finances, manage your roster, and generate professional reports â€” all in one place.</p>
                 <p>Designed for the realities of the African music industry: offline-capable, mobile-first, and built around the workflows that actually matter.</p>
                 <div class="sp-modal-divider"></div>
                 <p style="margin:0; font-size:13px; color:var(--text-muted);">Built with care for the creative economy.</p>
-                <span class="sp-modal-version">v2.0 · Phase 5</span>
+                <span class="sp-modal-version">v2.0 Â· Phase 5</span>
             </div>
         </div>
     </div>
@@ -1562,7 +1579,7 @@
     <div class="sp-admin-modal" id="spAdminModal" style="display:none;" role="dialog" aria-modal="true" aria-label="Admin Settings">
         <div class="sp-modal-backdrop" id="spAdminBackdrop"></div>
         <div class="sp-modal-box" style="max-width:560px;">
-            <button class="sp-modal-close" id="spAdminClose" aria-label="Close">✕</button>
+            <button class="sp-modal-close" id="spAdminClose" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
             <div class="sp-modal-logo">
                 <div class="sp-modal-logo-icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);"><i class="ph ph-gear" aria-hidden="true" style="font-size:28px;color:#fff;"></i></div>
                 <div>
@@ -1573,7 +1590,7 @@
             <div class="sp-modal-body">
                 <h4 style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">User Management</h4>
                 <div id="spAdminUserList">
-                    <div class="sp-admin-empty">Loading users…</div>
+                    <div class="sp-admin-empty">Loading usersâ€¦</div>
                 </div>
                 <div class="sp-modal-divider"></div>
                 <h4 style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">System</h4>
@@ -1589,16 +1606,16 @@
     <div class="sp-palette-backdrop" id="spPaletteBackdrop" aria-hidden="true"></div>
     <div class="sp-palette" id="spPalette" role="dialog" aria-modal="true" aria-label="Command palette" style="display:none">
         <div class="sp-palette__header">
-            <span class="sp-palette__icon">⌘</span>
+            <span class="sp-palette__icon"><i class="ph ph-command" aria-hidden="true"></i></span>
             <input class="sp-palette__input" id="spPaletteInput" type="text"
-                placeholder="Search sections, artists, bookings… or type a command"
+                placeholder="Search sections, artists, bookingsâ€¦ or type a command"
                 autocomplete="off" spellcheck="false" aria-autocomplete="list" aria-controls="spPaletteResults">
             <kbd class="sp-palette__esc">ESC</kbd>
         </div>
         <ul class="sp-palette__results" id="spPaletteResults" role="listbox"></ul>
         <div class="sp-palette__footer">
-            <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
-            <span><kbd>↵</kbd> select</span>
+            <span><kbd>â†‘</kbd><kbd>â†“</kbd> navigate</span>
+            <span><kbd>â†µ</kbd> select</span>
             <span><kbd>Esc</kbd> close</span>
             <span class="sp-palette__footer-hint">Try "add booking" or an artist name</span>
         </div>
@@ -1612,21 +1629,21 @@
     <div class="sp-cheatsheet" id="spCheatsheet" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" style="display:none">
         <div class="sp-cheatsheet__header">
             <span class="sp-cheatsheet__title"><i class="ph ph-keyboard" aria-hidden="true"></i> Keyboard Shortcuts</span>
-            <button class="sp-cheatsheet__close" id="spCheatsheetClose" aria-label="Close">✕</button>
+            <button class="sp-cheatsheet__close" id="spCheatsheetClose" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
         </div>
         <div class="sp-cheatsheet__body">
             <div class="sp-cheatsheet__group">
-                <div class="sp-cheatsheet__group-label">Navigation (press G then…)</div>
+                <div class="sp-cheatsheet__group-label">Navigation (press G thenâ€¦)</div>
                 <div class="sp-cheatsheet__rows">
                     <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>D</kbd><span>Dashboard</span></div>
                     <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>M</kbd><span>Money (Overview)</span></div>
-                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>F</kbd><span>Money → Financials</span></div>
-                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>E</kbd><span>Money → Expenses</span></div>
-                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>I</kbd><span>Money → Other Income</span></div>
-                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>R</kbd><span>Money → Reports</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>F</kbd><span>Money â†’ Financials</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>E</kbd><span>Money â†’ Expenses</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>I</kbd><span>Money â†’ Other Income</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>R</kbd><span>Money â†’ Reports</span></div>
                     <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>S</kbd><span>Schedule</span></div>
-                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>B</kbd><span>Schedule → Bookings</span></div>
-                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>C</kbd><span>Schedule → Calendar</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>B</kbd><span>Schedule â†’ Bookings</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>C</kbd><span>Schedule â†’ Calendar</span></div>
                     <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>A</kbd><span>Artists</span></div>
                     <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>T</kbd><span>Tasks</span></div>
                 </div>
@@ -1634,7 +1651,7 @@
             <div class="sp-cheatsheet__group">
                 <div class="sp-cheatsheet__group-label">Global</div>
                 <div class="sp-cheatsheet__rows">
-                    <div class="sp-cheatsheet__row"><kbd>⌘</kbd><kbd>K</kbd><span>Command Palette</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>âŒ˜</kbd><kbd>K</kbd><span>Command Palette</span></div>
                     <div class="sp-cheatsheet__row"><kbd>?</kbd><span>This cheat sheet</span></div>
                     <div class="sp-cheatsheet__row"><kbd>Esc</kbd><span>Close modal / palette</span></div>
                 </div>

@@ -1,15 +1,15 @@
-const CACHE_NAME = "star-paper-shell-v17";
+const CACHE_NAME = "star-paper-shell-v30";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
-  "./supabase.js",
+  "./supabase.js?v=13",
   "./app.migrations.js?v=9",
   "./app.actions.js?v=8",
   "./app.todayboard.js?v=1",
-  "./app.tasks.js?v=1",
-  "./app.js?v=17",
-  "./sw.js?v=17",
+  "./app.tasks.js?v=2",
+  "./app.js?v=26",
+  "./sw.js?v=30",
   "./manifest.json",
   "./manifest.json?v=14",
   "./logo.svg",
@@ -22,8 +22,7 @@ const APP_SHELL = [
   "./apple-touch-icon.png",
   "./apple-touch-icon.png?v=11",
   "./logo-report.png",
-  "./logo-report.png?v=11",
-  "./book.png"
+  "./logo-report.png?v=11"
 ];
 
 self.addEventListener("install", (event) => {

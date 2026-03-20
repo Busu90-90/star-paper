@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   bio          TEXT DEFAULT '',
   avatar       TEXT DEFAULT '',
   preferred_currency TEXT DEFAULT 'UGX',
+  preferred_theme TEXT DEFAULT 'dark',
   created_at   TIMESTAMPTZ DEFAULT NOW(),
   updated_at   TIMESTAMPTZ DEFAULT NOW()
 );
@@ -38,6 +39,9 @@ DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can insert their own profile"
   ON public.profiles FOR INSERT
   WITH CHECK (auth.uid() = id);
+
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS preferred_theme TEXT DEFAULT 'dark';
 
 -- Auto-create profile on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -245,15 +249,63 @@ CREATE TABLE IF NOT EXISTS public.artists (
 
 ALTER TABLE public.artists ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Users can access their own artists" ON public.artists;
-CREATE POLICY "Users can access their own artists"
-  ON public.artists FOR ALL
+DROP POLICY IF EXISTS "Users can read artists" ON public.artists;
+CREATE POLICY "Users can read artists"
+  ON public.artists FOR SELECT
   USING (
     owner_id = auth.uid() OR
     (team_id IS NOT NULL AND EXISTS (
       SELECT 1 FROM public.team_members
       WHERE team_members.team_id = artists.team_id
         AND team_members.user_id = auth.uid()
+    ))
+  );
+
+DROP POLICY IF EXISTS "Managers can insert artists" ON public.artists;
+CREATE POLICY "Managers can insert artists"
+  ON public.artists FOR INSERT
+  WITH CHECK (
+    owner_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = artists.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  );
+
+DROP POLICY IF EXISTS "Managers can update artists" ON public.artists;
+CREATE POLICY "Managers can update artists"
+  ON public.artists FOR UPDATE
+  USING (
+    owner_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = artists.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  )
+  WITH CHECK (
+    owner_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = artists.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  );
+
+DROP POLICY IF EXISTS "Managers can delete artists" ON public.artists;
+CREATE POLICY "Managers can delete artists"
+  ON public.artists FOR DELETE
+  USING (
+    owner_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = artists.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
     ))
   );
 
@@ -284,15 +336,63 @@ CREATE TABLE IF NOT EXISTS public.bookings (
 
 ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Users can access their own bookings" ON public.bookings;
-CREATE POLICY "Users can access their own bookings"
-  ON public.bookings FOR ALL
+DROP POLICY IF EXISTS "Users can read bookings" ON public.bookings;
+CREATE POLICY "Users can read bookings"
+  ON public.bookings FOR SELECT
   USING (
     owner_id = auth.uid() OR
     (team_id IS NOT NULL AND EXISTS (
       SELECT 1 FROM public.team_members
       WHERE team_members.team_id = bookings.team_id
         AND team_members.user_id = auth.uid()
+    ))
+  );
+
+DROP POLICY IF EXISTS "Managers can insert bookings" ON public.bookings;
+CREATE POLICY "Managers can insert bookings"
+  ON public.bookings FOR INSERT
+  WITH CHECK (
+    owner_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = bookings.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  );
+
+DROP POLICY IF EXISTS "Managers can update bookings" ON public.bookings;
+CREATE POLICY "Managers can update bookings"
+  ON public.bookings FOR UPDATE
+  USING (
+    owner_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = bookings.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  )
+  WITH CHECK (
+    owner_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = bookings.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  );
+
+DROP POLICY IF EXISTS "Managers can delete bookings" ON public.bookings;
+CREATE POLICY "Managers can delete bookings"
+  ON public.bookings FOR DELETE
+  USING (
+    owner_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = bookings.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
     ))
   );
 
@@ -316,15 +416,63 @@ CREATE TABLE IF NOT EXISTS public.expenses (
 
 ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Users can access their own expenses" ON public.expenses;
-CREATE POLICY "Users can access their own expenses"
-  ON public.expenses FOR ALL
+DROP POLICY IF EXISTS "Users can read expenses" ON public.expenses;
+CREATE POLICY "Users can read expenses"
+  ON public.expenses FOR SELECT
   USING (
     owner_id = auth.uid() OR
     (team_id IS NOT NULL AND EXISTS (
       SELECT 1 FROM public.team_members
       WHERE team_members.team_id = expenses.team_id
         AND team_members.user_id = auth.uid()
+    ))
+  );
+
+DROP POLICY IF EXISTS "Managers can insert expenses" ON public.expenses;
+CREATE POLICY "Managers can insert expenses"
+  ON public.expenses FOR INSERT
+  WITH CHECK (
+    owner_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = expenses.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  );
+
+DROP POLICY IF EXISTS "Managers can update expenses" ON public.expenses;
+CREATE POLICY "Managers can update expenses"
+  ON public.expenses FOR UPDATE
+  USING (
+    owner_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = expenses.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  )
+  WITH CHECK (
+    owner_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = expenses.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  );
+
+DROP POLICY IF EXISTS "Managers can delete expenses" ON public.expenses;
+CREATE POLICY "Managers can delete expenses"
+  ON public.expenses FOR DELETE
+  USING (
+    owner_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = expenses.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
     ))
   );
 
@@ -351,9 +499,9 @@ CREATE TABLE IF NOT EXISTS public.other_income (
 
 ALTER TABLE public.other_income ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Users can access their own other income" ON public.other_income;
-CREATE POLICY "Users can access their own other income"
-  ON public.other_income FOR ALL
+DROP POLICY IF EXISTS "Users can read other income" ON public.other_income;
+CREATE POLICY "Users can read other income"
+  ON public.other_income FOR SELECT
   USING (
     owner_id = auth.uid() OR
     (team_id IS NOT NULL AND EXISTS (
@@ -363,12 +511,60 @@ CREATE POLICY "Users can access their own other income"
     ))
   );
 
+DROP POLICY IF EXISTS "Managers can insert other income" ON public.other_income;
+CREATE POLICY "Managers can insert other income"
+  ON public.other_income FOR INSERT
+  WITH CHECK (
+    owner_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = other_income.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  );
+
+DROP POLICY IF EXISTS "Managers can update other income" ON public.other_income;
+CREATE POLICY "Managers can update other income"
+  ON public.other_income FOR UPDATE
+  USING (
+    owner_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = other_income.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  )
+  WITH CHECK (
+    owner_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = other_income.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  );
+
+DROP POLICY IF EXISTS "Managers can delete other income" ON public.other_income;
+CREATE POLICY "Managers can delete other income"
+  ON public.other_income FOR DELETE
+  USING (
+    owner_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = other_income.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  );
+
 -- ============================================================
 -- REVENUE GOALS
 -- ============================================================
 CREATE TABLE IF NOT EXISTS public.revenue_goals (
   id       UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id  UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id  UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   team_id  UUID REFERENCES public.teams(id) ON DELETE CASCADE,
   amount   NUMERIC DEFAULT 0,
   period   TEXT NOT NULL DEFAULT 'monthly',
@@ -378,17 +574,91 @@ CREATE TABLE IF NOT EXISTS public.revenue_goals (
 
 ALTER TABLE public.revenue_goals ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Users manage own revenue goals" ON public.revenue_goals;
-CREATE POLICY "Users manage own revenue goals"
-  ON public.revenue_goals FOR ALL
-  USING (user_id = auth.uid());
+ALTER TABLE public.revenue_goals
+  ADD COLUMN IF NOT EXISTS team_id UUID REFERENCES public.teams(id) ON DELETE CASCADE;
+
+ALTER TABLE public.revenue_goals
+  ALTER COLUMN user_id DROP NOT NULL;
+
+ALTER TABLE public.revenue_goals
+  DROP CONSTRAINT IF EXISTS revenue_goals_user_id_period_key;
+
+ALTER TABLE public.revenue_goals
+  ADD CONSTRAINT revenue_goals_user_id_period_key UNIQUE (user_id, period);
+
+ALTER TABLE public.revenue_goals
+  DROP CONSTRAINT IF EXISTS revenue_goals_team_id_period_key;
+
+ALTER TABLE public.revenue_goals
+  ADD CONSTRAINT revenue_goals_team_id_period_key UNIQUE (team_id, period);
+
+DROP POLICY IF EXISTS "Users can read revenue goals" ON public.revenue_goals;
+CREATE POLICY "Users can read revenue goals"
+  ON public.revenue_goals FOR SELECT
+  USING (
+    user_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = revenue_goals.team_id
+        AND team_members.user_id = auth.uid()
+    ))
+  );
+
+DROP POLICY IF EXISTS "Managers can insert revenue goals" ON public.revenue_goals;
+CREATE POLICY "Managers can insert revenue goals"
+  ON public.revenue_goals FOR INSERT
+  WITH CHECK (
+    user_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = revenue_goals.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  );
+
+DROP POLICY IF EXISTS "Managers can update revenue goals" ON public.revenue_goals;
+CREATE POLICY "Managers can update revenue goals"
+  ON public.revenue_goals FOR UPDATE
+  USING (
+    user_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = revenue_goals.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  )
+  WITH CHECK (
+    user_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = revenue_goals.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  );
+
+DROP POLICY IF EXISTS "Managers can delete revenue goals" ON public.revenue_goals;
+CREATE POLICY "Managers can delete revenue goals"
+  ON public.revenue_goals FOR DELETE
+  USING (
+    user_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = revenue_goals.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  );
 
 -- ============================================================
 -- BALANCE BROUGHT FORWARD
 -- ============================================================
 CREATE TABLE IF NOT EXISTS public.bbf_entries (
   id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id    UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  team_id    UUID REFERENCES public.teams(id) ON DELETE CASCADE,
   period     TEXT NOT NULL,  -- e.g. "2025-01"
   amount     NUMERIC DEFAULT 0,
   updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -397,10 +667,254 @@ CREATE TABLE IF NOT EXISTS public.bbf_entries (
 
 ALTER TABLE public.bbf_entries ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Users manage own BBF" ON public.bbf_entries;
-CREATE POLICY "Users manage own BBF"
-  ON public.bbf_entries FOR ALL
-  USING (user_id = auth.uid());
+ALTER TABLE public.bbf_entries
+  ADD COLUMN IF NOT EXISTS team_id UUID REFERENCES public.teams(id) ON DELETE CASCADE;
+
+ALTER TABLE public.bbf_entries
+  ALTER COLUMN user_id DROP NOT NULL;
+
+ALTER TABLE public.bbf_entries
+  DROP CONSTRAINT IF EXISTS bbf_entries_user_id_period_key;
+
+ALTER TABLE public.bbf_entries
+  ADD CONSTRAINT bbf_entries_user_id_period_key UNIQUE (user_id, period);
+
+ALTER TABLE public.bbf_entries
+  DROP CONSTRAINT IF EXISTS bbf_entries_team_id_period_key;
+
+ALTER TABLE public.bbf_entries
+  ADD CONSTRAINT bbf_entries_team_id_period_key UNIQUE (team_id, period);
+
+DROP POLICY IF EXISTS "Users can read BBF" ON public.bbf_entries;
+CREATE POLICY "Users can read BBF"
+  ON public.bbf_entries FOR SELECT
+  USING (
+    user_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = bbf_entries.team_id
+        AND team_members.user_id = auth.uid()
+    ))
+  );
+
+DROP POLICY IF EXISTS "Managers can insert BBF" ON public.bbf_entries;
+CREATE POLICY "Managers can insert BBF"
+  ON public.bbf_entries FOR INSERT
+  WITH CHECK (
+    user_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = bbf_entries.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  );
+
+DROP POLICY IF EXISTS "Managers can update BBF" ON public.bbf_entries;
+CREATE POLICY "Managers can update BBF"
+  ON public.bbf_entries FOR UPDATE
+  USING (
+    user_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = bbf_entries.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  )
+  WITH CHECK (
+    user_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = bbf_entries.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  );
+
+DROP POLICY IF EXISTS "Managers can delete BBF" ON public.bbf_entries;
+CREATE POLICY "Managers can delete BBF"
+  ON public.bbf_entries FOR DELETE
+  USING (
+    user_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = bbf_entries.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  );
+
+-- ============================================================
+-- TASKS (Team-shared when team_id is set)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.tasks (
+  id         TEXT PRIMARY KEY,
+  user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  team_id    UUID REFERENCES public.teams(id) ON DELETE CASCADE,
+  text       TEXT NOT NULL,
+  due_date   DATE,
+  completed  BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can read tasks" ON public.tasks;
+CREATE POLICY "Users can read tasks"
+  ON public.tasks FOR SELECT
+  USING (
+    user_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = tasks.team_id
+        AND team_members.user_id = auth.uid()
+    ))
+  );
+
+DROP POLICY IF EXISTS "Managers can insert tasks" ON public.tasks;
+CREATE POLICY "Managers can insert tasks"
+  ON public.tasks FOR INSERT
+  WITH CHECK (
+    user_id = auth.uid() AND (
+      team_id IS NULL OR EXISTS (
+        SELECT 1 FROM public.team_members
+        WHERE team_members.team_id = tasks.team_id
+          AND team_members.user_id = auth.uid()
+          AND team_members.role IN ('owner','manager')
+      )
+    )
+  );
+
+DROP POLICY IF EXISTS "Managers can update tasks" ON public.tasks;
+CREATE POLICY "Managers can update tasks"
+  ON public.tasks FOR UPDATE
+  USING (
+    user_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = tasks.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  )
+  WITH CHECK (
+    user_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = tasks.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  );
+
+DROP POLICY IF EXISTS "Managers can delete tasks" ON public.tasks;
+CREATE POLICY "Managers can delete tasks"
+  ON public.tasks FOR DELETE
+  USING (
+    user_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = tasks.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  );
+
+-- ============================================================
+-- CLOSING THOUGHTS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.closing_thoughts (
+  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  team_id    UUID REFERENCES public.teams(id) ON DELETE CASCADE,
+  period     TEXT NOT NULL,
+  content    TEXT NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (user_id, period)
+);
+
+ALTER TABLE public.closing_thoughts ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.closing_thoughts
+  ADD COLUMN IF NOT EXISTS team_id UUID REFERENCES public.teams(id) ON DELETE CASCADE;
+
+ALTER TABLE public.closing_thoughts
+  ALTER COLUMN user_id DROP NOT NULL;
+
+ALTER TABLE public.closing_thoughts
+  DROP CONSTRAINT IF EXISTS closing_thoughts_user_id_period_key;
+
+ALTER TABLE public.closing_thoughts
+  ADD CONSTRAINT closing_thoughts_user_id_period_key UNIQUE (user_id, period);
+
+ALTER TABLE public.closing_thoughts
+  DROP CONSTRAINT IF EXISTS closing_thoughts_team_id_period_key;
+
+ALTER TABLE public.closing_thoughts
+  ADD CONSTRAINT closing_thoughts_team_id_period_key UNIQUE (team_id, period);
+
+DROP POLICY IF EXISTS "Users can read closing thoughts" ON public.closing_thoughts;
+CREATE POLICY "Users can read closing thoughts"
+  ON public.closing_thoughts FOR SELECT
+  USING (
+    user_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = closing_thoughts.team_id
+        AND team_members.user_id = auth.uid()
+    ))
+  );
+
+DROP POLICY IF EXISTS "Managers can insert closing thoughts" ON public.closing_thoughts;
+CREATE POLICY "Managers can insert closing thoughts"
+  ON public.closing_thoughts FOR INSERT
+  WITH CHECK (
+    user_id = auth.uid() AND (
+      team_id IS NULL OR EXISTS (
+        SELECT 1 FROM public.team_members
+        WHERE team_members.team_id = closing_thoughts.team_id
+          AND team_members.user_id = auth.uid()
+          AND team_members.role IN ('owner','manager')
+      )
+    )
+  );
+
+DROP POLICY IF EXISTS "Managers can update closing thoughts" ON public.closing_thoughts;
+CREATE POLICY "Managers can update closing thoughts"
+  ON public.closing_thoughts FOR UPDATE
+  USING (
+    user_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = closing_thoughts.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  )
+  WITH CHECK (
+    user_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = closing_thoughts.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  );
+
+DROP POLICY IF EXISTS "Managers can delete closing thoughts" ON public.closing_thoughts;
+CREATE POLICY "Managers can delete closing thoughts"
+  ON public.closing_thoughts FOR DELETE
+  USING (
+    user_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = closing_thoughts.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  );
 
 -- ============================================================
 -- TEAM MESSAGES (Chatroom)
