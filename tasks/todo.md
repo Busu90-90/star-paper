@@ -21,6 +21,23 @@
 - [ ] Root-cause fixes only: no temporary or cosmetic patches.
 - [ ] Minimize blast radius: avoid unrelated edits and regressions.
 
+## Current Task: Supabase Team AbortError Queue (2026-03-26)
+
+### Plan
+- [ ] Identify the specific Supabase calls involved in team creation + migration flows and where parallel requests are fired.
+- [ ] Wire the existing serial DB queue (`dbSerial`) into team-related Supabase calls and the data load/save paths used during team migration.
+- [ ] Keep blast radius minimal: only wrap the calls used in the team creation/join + migration path.
+- [ ] Verify syntax and ensure no unwrapped team-flow calls remain.
+
+### Verification
+- [ ] `node --check supabase.js`
+- [ ] `rg -n "createTeam|joinTeamByCode|migratePersonalDataToTeam|loadAllData|saveAllData|dbSerial" supabase.js`
+
+### Review (to fill after implementation)
+- [ ] Behavior evidence captured
+- [ ] Verification commands run
+- [ ] Risks/notes documented
+
 ## Current Task: Dashboard Stream Style Consolidation (2026-02-27)
 
 ### Plan

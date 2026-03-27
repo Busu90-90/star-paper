@@ -22,6 +22,12 @@ const SP_SUPABASE_CONFIGURED =
   SP_SUPABASE_KEY.trim().length > 0 &&
   !SP_SUPABASE_URL.includes('YOUR_PROJECT_ID') &&
   !SP_SUPABASE_KEY.includes('YOUR_ANON_PUBLIC_KEY');
+// Cloud-only auth: when Supabase is configured, do NOT fall back to local auth.
+// If you need offline/local-only mode, set this to true.
+const SP_ALLOW_LOCAL_FALLBACK = false;
+// Expose config so app.js can enforce cloud-only mode.
+window.__spSupabaseConfigured = SP_SUPABASE_CONFIGURED;
+window.__spAllowLocalFallback = SP_ALLOW_LOCAL_FALLBACK;
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ── CURRENCY CONFIG ───────────────────────────────────────────────────────────
@@ -81,6 +87,8 @@ const SP_CURRENCIES = {
   let _currency = localStorage.getItem('sp_currency') || 'UGX';
   let _realtimeChannel = null;
   let _bootstrapping = false;
+  let _refreshInFlight = false;
+  let _lastRefreshAt = 0;
 
   // ── SERIAL DB QUEUE ──────────────────────────────────────────────────────────
   // Supabase JS v2 acquires a Web Lock for every auth-bearing request. Firing
@@ -102,6 +110,19 @@ const SP_CURRENCIES = {
   function toastSafe(type, msg) {
     const fn = window['toast' + type];
     if (typeof fn === 'function') fn(msg);
+  }
+
+  const TEAM_PROMPT_KEY = 'sp_team_select_prompted';
+  function promptTeamSelectionIfNeeded(teams) {
+    if (_activeTeamId) return;
+    if (!Array.isArray(teams) || teams.length === 0) return;
+    try {
+      if (sessionStorage.getItem(TEAM_PROMPT_KEY) === '1') return;
+      sessionStorage.setItem(TEAM_PROMPT_KEY, '1');
+    } catch (_err) {
+      // Non-fatal: if sessionStorage fails, still show the prompt once.
+    }
+    toastSafe('Info', 'You have a team workspace. Open Team to select it.');
   }
 
   function ensureAppBootReady() {
@@ -880,6 +901,45 @@ const SP_CURRENCIES = {
     }
   }
 
+  async function refreshCloudData(options = {}) {
+    if (!getOwnerId()) return null;
+    if (_refreshInFlight) return null;
+    const now = Date.now();
+    const minIntervalMs = typeof options.minIntervalMs === 'number' ? options.minIntervalMs : 15000;
+    if (!options.force && now - _lastRefreshAt < minIntervalMs) return null;
+
+    _refreshInFlight = true;
+    _lastRefreshAt = now;
+    const timeoutMs = typeof options.timeoutMs === 'number' ? options.timeoutMs : 8000;
+    try {
+      const fresh = await withTimeout(() => loadAllData(), timeoutMs, 'loadAllData[refresh]');
+      if (fresh && window._SP_syncFromCloud) {
+        window._SP_syncFromCloud(fresh);
+      }
+      if (typeof window.loadUserData === 'function') {
+        window.loadUserData();
+      }
+      if (window.__spAppBooted) {
+        if (typeof window.updateDashboard === 'function') window.updateDashboard();
+        if (typeof window.renderBookings === 'function') window.renderBookings();
+        if (typeof window.renderExpenses === 'function') window.renderExpenses();
+        if (typeof window.renderOtherIncome === 'function') window.renderOtherIncome();
+        if (typeof window.renderArtists === 'function') window.renderArtists();
+        if (typeof window.updateTodayBoard === 'function') window.updateTodayBoard();
+        if (typeof window.renderTasks === 'function') window.renderTasks();
+      }
+      return fresh;
+    } catch (err) {
+      warn('refreshCloudData failed:', err);
+      if (!options.silent) {
+        toastSafe('Warn', 'Cloud data refresh failed. Check your connection and try again.');
+      }
+      return null;
+    } finally {
+      _refreshInFlight = false;
+    }
+  }
+
   async function saveAllData(payload = {}) {
     const ownerId = getOwnerId();
     if (!ownerId) return;
@@ -987,6 +1047,7 @@ const SP_CURRENCIES = {
   // would fall back to the Supabase dashboard Site URL (the live Netlify URL),
   // redirecting the user away from their local file. This helper always returns
   // a usable URL: the current http/https origin, or the production URL as fallback.
+  // TODO: Replace with your live hosted URL when available.
   const SP_PRODUCTION_URL = 'https://star-paper.netlify.app';
   function getSafeRedirectUrl() {
     const origin = window.location.origin;
@@ -1074,6 +1135,38 @@ const SP_CURRENCIES = {
       });
       const cleanUrl = url.pathname + url.search;
       window.history.replaceState({}, document.title, cleanUrl);
+    }
+  }
+
+  async function isUsernameAvailable(username) {
+    const normalized = String(username || '').trim();
+    if (!normalized) return null;
+    try {
+      const { data, error } = await db.rpc('is_username_available', { p_username: normalized });
+      if (error) {
+        warn('Username availability check failed:', error);
+        return null;
+      }
+      return Boolean(data);
+    } catch (err) {
+      warn('Username availability check error:', err);
+      return null;
+    }
+  }
+
+  async function lookupEmailForUsername(username) {
+    const normalized = String(username || '').trim();
+    if (!normalized) return null;
+    try {
+      const { data, error } = await db.rpc('get_email_for_username', { p_username: normalized });
+      if (error) {
+        warn('Username lookup failed:', error);
+        return null;
+      }
+      return typeof data === 'string' && data.includes('@') ? data : null;
+    } catch (err) {
+      warn('Username lookup error:', err);
+      return null;
     }
   }
 
@@ -1311,9 +1404,12 @@ const SP_CURRENCIES = {
         log('bootstrap.data.done', { ok: Boolean(fresh) });
       } catch (dataError) {
         warn('Cloud data bootstrap failed or timed out:', dataError);
-        log('bootstrap.data.timeout');
+        log('bootstrap.data.timeout', { step: 'loadAllData', error: dataError?.message || 'unknown' });
         // Non-blocking toast — do NOT re-throw; we must always continue to loadUserData.
         toastSafe('Warn', 'Cloud data took too long. Showing local data now.');
+        setTimeout(() => {
+          refreshCloudData({ silent: true, force: true, minIntervalMs: 0 });
+        }, 2500);
       }
 
       // Always sync cloud data if we got it; otherwise loadUserData falls back
@@ -1342,6 +1438,15 @@ const SP_CURRENCIES = {
         if (typeof window.updateTodayBoard === 'function') window.updateTodayBoard();
       }
 
+      if (!_activeTeamId) {
+        try {
+          const teams = await withTimeout(() => getMyTeams(), 5000, 'getMyTeams[hint]');
+          promptTeamSelectionIfNeeded(teams);
+        } catch (err) {
+          warn('Team hint load failed:', err);
+        }
+      }
+
       if (options.runMigration !== false) {
         setTimeout(() => migrateLocalStorageData(), 2000);
       }
@@ -1362,6 +1467,8 @@ const SP_CURRENCIES = {
   }
 
   async function signInWithGoogle() {
+    // If user explicitly logged out before, allow a fresh OAuth login.
+    localStorage.removeItem('sp_logged_out');
     const { error } = await db.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: getSafeRedirectUrl() }
@@ -1418,13 +1525,19 @@ const SP_CURRENCIES = {
     // the Supabase SDK fires INITIAL_SESSION with a stale token (e.g. because
     // the server-side revocation hasn't propagated yet). Clean up and bail out.
     if (localStorage.getItem('sp_logged_out') === '1') {
-      _session = null;
-      if (session) {
-        // A stale token survived — revoke it silently.
-        db.auth.signOut().catch(() => {});
+      if (event === 'SIGNED_IN' && session?.user) {
+        // Fresh login should override the logout flag.
+        localStorage.removeItem('sp_logged_out');
+      } else {
+        _session = null;
+        if (session) {
+          // A stale token survived — revoke it silently.
+          db.auth.signOut().catch(() => {});
+        }
+        return;
       }
-      return;
     }
+ 
 
     _session = session;
 
@@ -1881,7 +1994,14 @@ const SP_CURRENCIES = {
   }
 
   async function showTeamModal() {
-    // Guard: must be logged in
+    // Guard: must be logged in (retry session fetch once)
+    if (!getOwnerId()) {
+      try {
+        await getSession();
+      } catch (_err) {
+        // ignore
+      }
+    }
     if (!getOwnerId()) {
       toastSafe('Info', 'Please log in to access Team features.');
       return;
@@ -2174,12 +2294,9 @@ const SP_CURRENCIES = {
         // If input looks like a username (no @), look up email from profile
         let email = nameOrEmail;
         if (!nameOrEmail.includes('@')) {
-          const { data: profile } = await db.from('profiles')
-            .select('email')
-            .ilike('username', nameOrEmail)
-            .maybeSingle();
-          if (profile?.email) {
-            email = profile.email;
+          const resolvedEmail = await lookupEmailForUsername(nameOrEmail);
+          if (resolvedEmail) {
+            email = resolvedEmail;
           }
           // No match — fall through with nameOrEmail; signIn will reject with a clear error.
         }
@@ -2206,11 +2323,17 @@ const SP_CURRENCIES = {
            errMsg.includes('invalid url') ||
            errMsg.includes('api key'));
         if (shouldFallback) {
+          if (!SP_ALLOW_LOCAL_FALLBACK) {
+            warn('Supabase login unavailable; local fallback disabled.', err);
+            if (typeof window.toastError === 'function') {
+              window.toastError('Cloud login unavailable. Please check your connection and try again.');
+            }
+            return;
+          }
           warn('Supabase login unavailable. Falling back to local auth.', err);
           if (typeof window.toastWarn === 'function') {
             window.toastWarn('Cloud login unavailable. Using local login on this device.');
           }
-          setLoading(false);
           return _origLogin();
         }
         let msg = 'Invalid credentials. Please try again.';
@@ -2236,6 +2359,13 @@ const SP_CURRENCIES = {
       }
 
       try {
+        const available = await isUsernameAvailable(name);
+        if (available === false) {
+          if (typeof window.toastError === 'function') {
+            window.toastError('That username is already taken. Please choose another.');
+          }
+          return;
+        }
         const result = await signUp(name, email, pw, phone);
         if (result?.session) {
           await bootstrapFromSupabaseSession(result.session, {
@@ -2262,15 +2392,25 @@ const SP_CURRENCIES = {
            errMsg.includes('invalid url') ||
            errMsg.includes('api key'));
         if (shouldFallback) {
+          if (!SP_ALLOW_LOCAL_FALLBACK) {
+            warn('Supabase signup unavailable; local fallback disabled.', err);
+            if (typeof window.toastError === 'function') {
+              window.toastError('Cloud signup unavailable. Please check your connection and try again.');
+            }
+            return;
+          }
           warn('Supabase signup unavailable. Falling back to local signup.', err);
           if (typeof window.toastWarn === 'function') {
             window.toastWarn('Cloud signup unavailable. Using local account mode.');
           }
           return _origSignup();
         }
-        const msg = err.message?.includes('already registered')
+        let msg = err.message?.includes('already registered')
           ? 'That email is already registered.'
           : err.message || 'Sign up failed. Please try again.';
+        if (errMsg.includes('database error saving new user') || errMsg.includes('profiles_username_key')) {
+          msg = 'That username is already taken. Please choose another.';
+        }
         if (typeof window.toastError === 'function') window.toastError(msg);
       }
     };
@@ -2408,6 +2548,20 @@ const SP_CURRENCIES = {
         });
       }
     });
+
+    const triggerCloudRefresh = (reason) => {
+      if (!getOwnerId()) return;
+      refreshCloudData({ silent: true, minIntervalMs: 5000, reason });
+    };
+    window.addEventListener('focus', () => triggerCloudRefresh('focus'));
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) triggerCloudRefresh('visibility');
+    });
+    if (!window.__spCloudRefreshInterval) {
+      window.__spCloudRefreshInterval = setInterval(() => {
+        triggerCloudRefresh('interval');
+      }, 45000);
+    }
   }
 
   // Separated from init() so it can be sequenced after handleAuthRedirect resolves.
@@ -2446,6 +2600,7 @@ const SP_CURRENCIES = {
     // Data
     loadData,
     loadAllData,
+    refreshCloudData,
     saveData,
     saveAllData,
     saveArtists,

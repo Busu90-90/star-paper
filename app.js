@@ -1221,7 +1221,15 @@ function getSectionIconMarkup(iconKey) {
             document.getElementById('landingThemeToggle')?.addEventListener('click', toggleTheme);
             document.getElementById('sidebarLightBtn')?.addEventListener('click', () => setTheme('light'));
             document.getElementById('sidebarDarkBtn')?.addEventListener('click', () => setTheme('dark'));
-            document.getElementById('sidebarLogoutBtn')?.addEventListener('click', logout);
+            document.getElementById('sidebarLogoutBtn')?.addEventListener('click', () => {
+                if (typeof window.logout === 'function') {
+                    window.logout();
+                    return;
+                }
+                if (typeof logout === 'function') {
+                    logout();
+                }
+            });
             document.getElementById('quickAddBtn')?.addEventListener('click', toggleQuickAdd);
             const quickAddPanel = document.getElementById('quickAddPanel');
             if (quickAddPanel && !window.__starPaperQuickAddPanelBound) {
@@ -2691,6 +2699,28 @@ function showLoginForm() {
         window.applyAuthSession = applyAuthSession;
         window.clearAuthSessionState = clearAuthSessionState;
 
+        window.addEventListener('storage', (event) => {
+            const key = event?.key || '';
+            if (!key) return;
+            const shouldSync =
+                key.startsWith('starPaper') ||
+                key.startsWith('sp_') ||
+                key.startsWith('sb-');
+            if (!shouldSync) return;
+            if (typeof loadUserData === 'function') {
+                loadUserData();
+            }
+            if (window.__spAppBooted) {
+                if (typeof updateDashboard === 'function') updateDashboard();
+                if (typeof renderBookings === 'function') renderBookings();
+                if (typeof renderExpenses === 'function') renderExpenses();
+                if (typeof renderOtherIncome === 'function') renderOtherIncome();
+                if (typeof renderArtists === 'function') renderArtists();
+                if (typeof updateTodayBoard === 'function') updateTodayBoard();
+                if (typeof window.renderTasks === 'function') window.renderTasks();
+            }
+        });
+
         // â”€â”€ SAFE WINDOW EXPOSURE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // All functions below are global declarations (depth-0) and are already
         // on window automatically in browsers. We use ||= so app.actions.js (which
@@ -4047,12 +4077,22 @@ function showLoginForm() {
             const remember = Storage.loadSync('starPaperRemember', false);
             const rememberedUser = Storage.loadSync('starPaperCurrentUser', null);
 
-            const savedUser = sessionActive ? sessionUser : (remember ? rememberedUser : null);
+            let savedUser = sessionActive ? sessionUser : (remember ? rememberedUser : null);
             let savedRecord = savedUser ? (findUserByUsername(savedUser) || findUserByUsernameInsensitive(savedUser)) : null;
 
             if (savedUser && !savedRecord) {
                 const profileHint = window.SP?.getProfileState?.() || {};
                 savedRecord = ensureSessionUserExists(savedUser, profileHint) || null;
+            }
+
+            const cloudMode = Boolean(window.__spSupabaseConfigured) && !window.__spAllowLocalFallback;
+            if (cloudMode) {
+                if (sessionActive) {
+                    localStorage.removeItem('starPaper_session');
+                    localStorage.removeItem('starPaperSessionUser');
+                }
+                savedUser = null;
+                savedRecord = null;
             }
 
             // â”€â”€ NO LOCAL SESSION: delegate entirely to Supabase â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -9287,4 +9327,3 @@ function showLoginForm() {
                 });
             });
         }
-
