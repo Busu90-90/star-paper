@@ -63,6 +63,40 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ============================================================
+-- USERNAME HELPERS (signup + login)
+-- ============================================================
+-- Check username availability without exposing full profiles.
+CREATE OR REPLACE FUNCTION public.is_username_available(p_username TEXT)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT NOT EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE lower(username) = lower(p_username)
+  );
+$$;
+
+-- Resolve an email by username to support username-based login.
+CREATE OR REPLACE FUNCTION public.get_email_for_username(p_username TEXT)
+RETURNS TEXT
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT email
+  FROM public.profiles
+  WHERE lower(username) = lower(p_username)
+  LIMIT 1;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.is_username_available(TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_email_for_username(TEXT) TO anon, authenticated;
+
+-- ============================================================
 -- TEAMS
 -- ============================================================
 CREATE TABLE IF NOT EXISTS public.teams (

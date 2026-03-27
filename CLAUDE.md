@@ -519,3 +519,142 @@ This is a single-developer production SaaS with real users and real financial da
 The codebase is intentionally monolithic in places — `app.js` is approximately 8,900 lines — because debuggability is prioritised over modularity at this stage of the project. When suggesting a refactor, present it as optional future work, never as a prerequisite to fixing the current task.
 
 The hardest part of this project is not the code. It is ensuring that fixed code actually reaches the browser. The service worker, Netlify's deployment model, and browser caching create a three-layer system where a "deployed" fix can be completely invisible to users. A fix that is not verified with the console commands in Section 19 is a fix that does not exist.
+---
+
+## Section 21 — Autonomous Agents
+
+These are trigger phrases you say to Claude at the start of a session or after a change.
+Claude runs multiple tool calls automatically and reports back — no hand-holding needed.
+
+---
+
+### 🔵 SESSION START AGENT
+**Say**: "Run the Star Paper session start check."
+
+Claude autonomously:
+1. Queries Supabase — verifies schema + counts rows in all 12 tables
+2. Checks Netlify — confirms last deploy was a GitHub auto-deploy (not manual drag)
+3. Checks Sentry — pulls any new errors from the last 24 hours
+4. Produces a one-page status report: what's broken, what's healthy, what to fix first
+
+Use this at the start of every dev session. Never start writing code before running this.
+
+---
+
+### 🟢 SCHEMA GUARD AGENT
+**Say**: "Run the Star Paper schema guard."
+
+Claude runs a full SQL audit against Supabase project fxcyocdwvjiyatqnaahg and checks:
+- All 3 RPC functions exist (get_my_team_ids, create_team_with_member, join_team_by_code)
+- handle_new_user trigger exists
+- All 4 legacy_id constraints exist (bookings, expenses, other_income, artists)
+- RLS is enabled on all 12 tables
+- search_path is hardened on all 4 SECURITY DEFINER functions
+- team_members has no FOR ALL policy (recursion trap)
+
+Use this before and after any schema changes.
+
+---
+
+### 🟡 DATA HEALTH AGENT
+**Say**: "Run the Star Paper data health check."
+
+Claude queries row counts in all financial tables.
+Signature of a broken deploy or URL bug: profiles > 0, but bookings/expenses/
+other_income/artists/tasks all = 0. If that pattern appears, stop and fix the
+deployment before doing anything else.
+
+Use this when users report data not saving or syncing.
+
+---
+
+### 🟠 DEPLOY HEALTH AGENT
+**Say**: "Check the Star Paper deploy health."
+
+Claude checks the latest Netlify deploy and reports:
+- Was it a GitHub auto-deploy (good) or manual drag (bad)?
+- How many files were deployed?
+- What is the commit SHA and URL?
+- Is the deploy state "ready"?
+
+A healthy deploy: commit_ref is set, manual_deploy is false, multiple files changed.
+A broken deploy: manual_deploy is true, "1 new file uploaded", commit_ref is null.
+
+Use this after every commit to confirm the deploy went through correctly.
+
+---
+
+### 🔴 SENTRY TRIAGE AGENT
+**Say**: "Run the Star Paper Sentry triage."
+
+Claude pulls the last 48 hours of errors from de.sentry.io (star-paper org), groups
+by type and frequency, and matches against known bug patterns. Reports new bugs,
+recurring errors, and any previously silent failures now visible since Sentry was added.
+
+Use this weekly, or any time a user reports unexpected behaviour in production.
+
+---
+
+### 🔒 SECURITY AUDIT AGENT
+**Say**: "Run the Star Paper security audit."
+
+Claude runs both security and performance advisors against Supabase project
+fxcyocdwvjiyatqnaahg, then checks:
+- search_path is set on all SECURITY DEFINER functions
+- RLS is enabled on every table
+- No tables have RLS enabled with zero policies (silent inaccessibility trap)
+- Reports findings with severity and exact fix SQL
+
+Use this monthly or after any schema migration.
+
+---
+
+### ✅ REGRESSION CHECK AGENT
+**Say**: "Run the Star Paper regression check." (after any fix)
+
+Claude verifies the fix didn't break anything:
+1. Schema guard — all functions/constraints/triggers still present
+2. Deploy health — last deploy was GitHub auto-deploy with multiple files
+3. Data health — financial tables not suddenly empty
+4. Sentry — no new error spike in the last 30 minutes
+5. Auth guard — sp_logged_out check still present in app.js checkAuth()
+
+Use this after every bug fix before closing the session.
+
+---
+
+## Quick Reference — Session Workflow
+
+```
+START OF SESSION:
+  → "Run the Star Paper session start check."
+  → Read the report. Fix anything flagged before writing new code.
+
+AFTER WRITING A FIX:
+  → Commit to GitHub (Netlify auto-deploys in ~30s)
+  → "Check the Star Paper deploy health."
+  → "Run the Star Paper regression check."
+
+WEEKLY:
+  → "Run the Star Paper Sentry triage."
+  → "Run the Star Paper security audit."
+
+WHEN USERS REPORT DATA PROBLEMS:
+  → "Run the Star Paper data health check."
+  → If financial tables = 0, check deploy health first.
+```
+
+---
+
+## Section 22 — Infrastructure Reference
+
+| Service       | Details                                                            |
+|---------------|--------------------------------------------------------------------|
+| Supabase      | Project ID: fxcyocdwvjiyatqnaahg                                   |
+| Supabase URL  | https://fxcyocdwvjiyatqnaahg.supabase.co (v at position 10)       |
+| Netlify       | Site ID: 6f4ce419-55ca-472c-a6f8-06c3fea81970                      |
+| Netlify URL   | https://star-paper.netlify.app                                     |
+| GitHub        | https://github.com/Busu90-90/star-paper (branch: main)             |
+| Sentry        | https://star-paper.sentry.io / region: https://de.sentry.io        |
+| Sentry DSN    | https://43eaad14b9ae20eec68d9249f139cbc2@o4511079351189504.ingest.de.sentry.io/4511081427894352 |
+| Deploy method | GitHub commit to main → Netlify auto-deploys (DO NOT use manual drag) |

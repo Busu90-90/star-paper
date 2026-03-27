@@ -11,6 +11,38 @@
     <link rel="icon" type="image/png" sizes="32x32" href="./logo-32.png?v=11">
     <link rel="shortcut icon" type="image/png" href="./logo-32.png?v=11">
     <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=11">
+    <!--
+      SENTRY ERROR MONITORING
+      Step 1: Go to de.sentry.io → Projects → New Project → Browser JavaScript
+      Step 2: Copy your DSN and replace REPLACE_WITH_YOUR_DSN below (both places)
+      Step 3: Commit this file — errors will instantly appear in your Sentry dashboard
+      DSN format: https://abc123@de.ingest.sentry.io/1234567
+    -->
+    <script src="https://browser.sentry-cdn.com/8.53.0/bundle.min.js" crossorigin="anonymous"></script>
+    <script>
+      if (typeof Sentry !== 'undefined') {
+        Sentry.init({
+          dsn: "https://43eaad14b9ae20eec68d9249f139cbc2@o4511079351189504.ingest.de.sentry.io/4511081427894352",
+          environment: window.location.hostname === 'star-paper.netlify.app' ? 'production' : 'development',
+          release: 'star-paper@1.0.0',
+          // Capture 10% of sessions for performance — safe for free tier
+          tracesSampleRate: 0.1,
+          // Filter out known non-fatal noise
+          ignoreErrors: [
+            'AbortError',
+            'Lock broken by steal',
+            'ResizeObserver loop limit exceeded',
+            'Non-Error promise rejection',
+          ],
+          beforeSend(event) {
+            // Never send events after an explicit logout (stale session noise)
+            if (localStorage.getItem('sp_logged_out') === '1') return null;
+            return event;
+          }
+        });
+      }
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
@@ -1284,7 +1316,7 @@
           loaded (synchronously, above in <head>), so this file now runs
           synchronously â€” window.SP is fully initialised before app.js executes.
         -->
-        <script src="supabase.js?v=13"></script>
+        <script src="supabase.js?v=14"></script>
         <script src="app.migrations.js?v=9"></script>
         <script src="app.actions.js?v=8"></script>
         <script src="app.todayboard.js?v=1"></script>
