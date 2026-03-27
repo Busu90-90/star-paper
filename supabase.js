@@ -15,6 +15,7 @@
 // ── CONFIG: Replace these with your Supabase project values ──────────────────
 const SP_SUPABASE_URL  = 'https://fxcyocdwvjiyatqnaahg.supabase.co';
 const SP_SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4Y3lvY2R3dmppeWF0cW5hYWhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5Nzg4NDEsImV4cCI6MjA4ODU1NDg0MX0.OTtDpyfA69rbVOTJkBh51pwj3wEkR1L04x4ouDkeWZ0';
+const SP_SUPABASE_STORAGE_KEY = 'sp-starpaper-auth-v1';
 const SP_SUPABASE_CONFIGURED =
   typeof SP_SUPABASE_URL === 'string' &&
   typeof SP_SUPABASE_KEY === 'string' &&
@@ -69,7 +70,7 @@ const SP_CURRENCIES = {
       autoRefreshToken:   true,
       detectSessionInUrl: true,
       // Stable storage key — all tabs share the same lock namespace.
-      storageKey: 'sp-starpaper-auth-v1',
+      storageKey: SP_SUPABASE_STORAGE_KEY,
       // Disable the Web Locks API for auth token refresh coordination.
       // The navigator.locks "steal" mechanism causes AbortError when multiple
       // Supabase requests fire in rapid succession (e.g. Create Team flow).
@@ -177,6 +178,44 @@ const SP_CURRENCIES = {
 
   function getOwnerId() {
     return _session?.user?.id || null;
+  }
+
+  async function ensureSupabaseSession(options = {}) {
+    const silent = Boolean(options.silent);
+    const clearIfMissing = options.clearIfMissing !== false;
+    if (getOwnerId()) return _session;
+
+    // Respect explicit logout until a fresh login occurs.
+    if (localStorage.getItem('sp_logged_out') === '1') {
+      return null;
+    }
+
+    let session = null;
+    try {
+      session = await getSession();
+    } catch (_err) {
+      session = null;
+    }
+
+    if (session?.user) return session;
+
+    const hasLocalSession =
+      localStorage.getItem('starPaper_session') === 'active' ||
+      Boolean(window.currentUser);
+
+    if (hasLocalSession && clearIfMissing) {
+      if (!silent) {
+        toastSafe('Warn', 'Your session expired. Please log in again.');
+      }
+      if (typeof window.clearAuthSessionState === 'function') {
+        window.clearAuthSessionState();
+      }
+      if (typeof window.setActiveScreen === 'function') {
+        window.setActiveScreen('landingScreen');
+      }
+    }
+
+    return null;
   }
 
   function getContext() {
@@ -902,6 +941,9 @@ const SP_CURRENCIES = {
   }
 
   async function refreshCloudData(options = {}) {
+    if (!getOwnerId()) {
+      await ensureSupabaseSession({ silent: true, clearIfMissing: true });
+    }
     if (!getOwnerId()) return null;
     if (_refreshInFlight) return null;
     const now = Date.now();
@@ -941,6 +983,9 @@ const SP_CURRENCIES = {
   }
 
   async function saveAllData(payload = {}) {
+    if (!getOwnerId()) {
+      await ensureSupabaseSession({ silent: true, clearIfMissing: false });
+    }
     const ownerId = getOwnerId();
     if (!ownerId) return;
     const {
@@ -1073,6 +1118,9 @@ const SP_CURRENCIES = {
 
     // No OAuth params present — nothing to do.
     if (!accessToken && !refreshToken && !code) return;
+
+    // Explicit OAuth callback always clears the "logged out" guard.
+    localStorage.removeItem('sp_logged_out');
 
     try {
       let session = null;
@@ -1614,6 +1662,7 @@ const SP_CURRENCIES = {
   }
 
   async function getMyTeams() {
+    if (!getOwnerId()) return [];
     const { data, error } = await db.from('team_members')
       .select('role, teams(id, name, invite_code, owner_id)')
       .eq('user_id', getOwnerId());
@@ -1996,11 +2045,7 @@ const SP_CURRENCIES = {
   async function showTeamModal() {
     // Guard: must be logged in (retry session fetch once)
     if (!getOwnerId()) {
-      try {
-        await getSession();
-      } catch (_err) {
-        // ignore
-      }
+      await ensureSupabaseSession({ silent: false, clearIfMissing: true });
     }
     if (!getOwnerId()) {
       toastSafe('Info', 'Please log in to access Team features.');
@@ -2428,6 +2473,7 @@ const SP_CURRENCIES = {
       const _projectRef = SP_SUPABASE_URL.replace('https://', '').replace('.supabase.co', '');
       localStorage.removeItem('sb-' + _projectRef + '-auth-token');
       localStorage.removeItem('sb-' + _projectRef + '-auth-token-code-verifier');
+      localStorage.removeItem(SP_SUPABASE_STORAGE_KEY);
 
       // 3. Set a persistent "explicitly logged out" flag.
       //    onAuthStateChange and checkAuth() both check this before bootstrapping.
@@ -2467,6 +2513,9 @@ const SP_CURRENCIES = {
 
       // 2. Sync to Supabase cloud. saveData() also back-fills cloud UUIDs into
       //    the live arrays so future saves are idempotent (no more duplicates).
+      if (!getOwnerId()) {
+        await ensureSupabaseSession({ silent: true, clearIfMissing: false });
+      }
       if (getOwnerId()) {
         try {
           if (typeof window.SP_collectAllData === 'function') {
@@ -2560,7 +2609,7 @@ const SP_CURRENCIES = {
     if (!window.__spCloudRefreshInterval) {
       window.__spCloudRefreshInterval = setInterval(() => {
         triggerCloudRefresh('interval');
-      }, 45000);
+      }, 20000);
     }
   }
 

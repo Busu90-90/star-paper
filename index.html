@@ -6,11 +6,11 @@
     <title>Star Paper</title>
     <link rel="manifest" href="manifest.json?v=14">
     <meta name="theme-color" content="#0B0B0B">
-    <link rel="icon" type="image/svg+xml" href="./logo.svg?v=11">
-    <link rel="icon" type="image/png" sizes="192x192" href="./logo-192.png?v=11">
-    <link rel="icon" type="image/png" sizes="32x32" href="./logo-32.png?v=11">
-    <link rel="shortcut icon" type="image/png" href="./logo-32.png?v=11">
-    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=11">
+    <link rel="icon" type="image/png" sizes="192x192" href="./logo-192.png?v=12">
+    <link rel="icon" type="image/png" sizes="32x32" href="./logo-32.png?v=12">
+    <link rel="icon" type="image/x-icon" href="./favicon.ico?v=12">
+    <link rel="shortcut icon" type="image/png" href="./logo-32.png?v=12">
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=12">
     <!--
       SENTRY ERROR MONITORING
       Step 1: Go to de.sentry.io → Projects → New Project → Browser JavaScript
@@ -64,7 +64,7 @@
 <body>
     <div class="app-boot-loader" id="appBootLoader" aria-live="polite">
         <div class="app-boot-loader__inner">
-            <img src="./logo.svg" alt="Star Paper" class="app-boot-loader__logo" />
+            <img src="./logo.png?v=12" alt="Star Paper" class="app-boot-loader__logo" />
             <div class="app-boot-loader__text">Loading Star Paper...</div>
         </div>
     </div>
@@ -76,7 +76,7 @@
 
         <!-- Sticky mini-nav (appears after scrolling past hero CTA on mobile) -->
         <div class="landing-mini-nav" id="landingMiniNav" aria-hidden="true">
-            <img src="./logo.svg" alt="Star Paper" class="mini-nav-logo">
+            <img src="./logo.png?v=12" alt="Star Paper" class="mini-nav-logo">
             <span class="mini-nav-brand">STAR PAPER</span>
             <button class="mini-nav-cta" data-action="showSignupForm" onclick="showSignupForm()">Get Started</button>
         </div>
@@ -91,7 +91,7 @@
                 <div class="landing-hero-left">
                     <div class="hero-brand-row">
                         <span class="logo-wrapper hero-logo-wrapper">
-                            <img src="./logo.svg" alt="Star Paper Logo" class="brand-logo brand-logo-landing" loading="eager">
+                            <img src="./logo.png?v=12" alt="Star Paper Logo" class="brand-logo brand-logo-landing" loading="eager">
                         </span>
                         <div class="hero-product-name">STAR PAPER</div>
                     </div>
@@ -278,7 +278,7 @@
                 <div>Logging in...</div>
             </div>
             <div class="logo">
-                <img src="./logo.svg" alt="Star Paper" class="login-box-logo" />
+                <img src="./logo.png?v=12" alt="Star Paper" class="login-box-logo" />
                 <p id="loginBoxHeading">Welcome back to Star Paper</p>
                 <small class="login-subtext" id="loginBoxSubtext">Sign in to continue to your dashboard.</small>
             </div>
@@ -1302,7 +1302,7 @@
                 <div class="footer-section footer-bottom">
                     <div class="footer-copyright-wrap">
                         <span class="logo-wrapper footer-logo-wrapper">
-                            <img src="./logo.svg" alt="Star Paper Footer Logo" class="brand-logo logo-footer" loading="lazy">
+                            <img src="./logo.png?v=12" alt="Star Paper Footer Logo" class="brand-logo logo-footer" loading="lazy">
                         </span>
                         <p class="footer-copyright">&copy; 2026 Star Paper. All rights reserved.</p>
                     </div>
@@ -1316,7 +1316,7 @@
           loaded (synchronously, above in <head>), so this file now runs
           synchronously â€” window.SP is fully initialised before app.js executes.
         -->
-        <script src="supabase.js?v=14"></script>
+        <script src="supabase.js?v=15"></script>
         <script src="app.migrations.js?v=9"></script>
         <script src="app.actions.js?v=8"></script>
         <script src="app.todayboard.js?v=1"></script>
@@ -1693,4 +1693,3 @@
     </div>
 </body>
 </html>
-
