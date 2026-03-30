@@ -1001,9 +1001,20 @@ CREATE INDEX IF NOT EXISTS idx_bookings_owner   ON public.bookings(owner_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_team    ON public.bookings(team_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_date    ON public.bookings(date);
 CREATE INDEX IF NOT EXISTS idx_expenses_owner   ON public.expenses(owner_id);
+CREATE INDEX IF NOT EXISTS idx_expenses_team    ON public.expenses(team_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_date    ON public.expenses(date);
 CREATE INDEX IF NOT EXISTS idx_other_income_owner ON public.other_income(owner_id);
+CREATE INDEX IF NOT EXISTS idx_other_income_team  ON public.other_income(team_id);
 CREATE INDEX IF NOT EXISTS idx_artists_owner    ON public.artists(owner_id);
+CREATE INDEX IF NOT EXISTS idx_artists_team     ON public.artists(team_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_user       ON public.tasks(user_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_team       ON public.tasks(team_id);
+CREATE INDEX IF NOT EXISTS idx_revenue_goals_user ON public.revenue_goals(user_id);
+CREATE INDEX IF NOT EXISTS idx_revenue_goals_team ON public.revenue_goals(team_id);
+CREATE INDEX IF NOT EXISTS idx_bbf_entries_user ON public.bbf_entries(user_id);
+CREATE INDEX IF NOT EXISTS idx_bbf_entries_team ON public.bbf_entries(team_id);
+CREATE INDEX IF NOT EXISTS idx_closing_thoughts_user ON public.closing_thoughts(user_id);
+CREATE INDEX IF NOT EXISTS idx_closing_thoughts_team ON public.closing_thoughts(team_id);
 CREATE INDEX IF NOT EXISTS idx_messages_team    ON public.messages(team_id);
 CREATE INDEX IF NOT EXISTS idx_messages_created ON public.messages(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_team_members_user ON public.team_members(user_id);
@@ -1078,6 +1089,60 @@ DO $$ BEGIN
     WHERE pubname = 'supabase_realtime' AND tablename = 'expenses'
   ) THEN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.expenses;
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'artists'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.artists;
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'other_income'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.other_income;
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'tasks'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.tasks;
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'revenue_goals'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.revenue_goals;
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'bbf_entries'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.bbf_entries;
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'closing_thoughts'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.closing_thoughts;
   END IF;
 END $$;
 

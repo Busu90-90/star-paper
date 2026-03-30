@@ -1,15 +1,15 @@
-const CACHE_NAME = "star-paper-shell-v30";
+const CACHE_NAME = "star-paper-shell-v32";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
-  "./supabase.js?v=13",
+  "./supabase.js?v=15",
   "./app.migrations.js?v=9",
   "./app.actions.js?v=8",
   "./app.todayboard.js?v=1",
   "./app.tasks.js?v=2",
-  "./app.js?v=26",
-  "./sw.js?v=30",
+  "./app.js?v=27",
+  "./sw.js?v=32",
   "./manifest.json",
   "./manifest.json?v=14",
   "./logo.svg",

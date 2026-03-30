@@ -26,9 +26,12 @@ const SP_SUPABASE_CONFIGURED =
 // Cloud-only auth: when Supabase is configured, do NOT fall back to local auth.
 // If you need offline/local-only mode, set this to true.
 const SP_ALLOW_LOCAL_FALLBACK = false;
+// Investor demo: enforce cloud-only records (no localStorage persistence for core data).
+const SP_CLOUD_ONLY_MODE = true;
 // Expose config so app.js can enforce cloud-only mode.
 window.__spSupabaseConfigured = SP_SUPABASE_CONFIGURED;
 window.__spAllowLocalFallback = SP_ALLOW_LOCAL_FALLBACK;
+window.__spCloudOnly = SP_CLOUD_ONLY_MODE;
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ── CURRENCY CONFIG ───────────────────────────────────────────────────────────
@@ -87,9 +90,13 @@ const SP_CURRENCIES = {
   let _activeTeamRole = null;
   let _currency = localStorage.getItem('sp_currency') || 'UGX';
   let _realtimeChannel = null;
+  let _coreRealtimeChannel = null;
+  let _coreRealtimeDebounce = null;
+  let _syncBroadcast = null;
   let _bootstrapping = false;
   let _refreshInFlight = false;
   let _lastRefreshAt = 0;
+  let _lastCloudSignature = null;
 
   // ── SERIAL DB QUEUE ──────────────────────────────────────────────────────────
   // Supabase JS v2 acquires a Web Lock for every auth-bearing request. Firing
@@ -111,6 +118,135 @@ const SP_CURRENCIES = {
   function toastSafe(type, msg) {
     const fn = window['toast' + type];
     if (typeof fn === 'function') fn(msg);
+  }
+
+  const CORE_REALTIME_TABLES = [
+    { table: 'bookings',        soloColumn: 'owner_id' },
+    { table: 'expenses',        soloColumn: 'owner_id' },
+    { table: 'other_income',    soloColumn: 'owner_id' },
+    { table: 'artists',         soloColumn: 'owner_id' },
+    { table: 'tasks',           soloColumn: 'user_id' },
+    { table: 'revenue_goals',   soloColumn: 'user_id' },
+    { table: 'bbf_entries',     soloColumn: 'user_id' },
+    { table: 'closing_thoughts', soloColumn: 'user_id' },
+  ];
+
+  const SYNC_BROADCAST_KEY = 'sp_sync_ping';
+  function nowMs() {
+    return (typeof performance !== 'undefined' && performance.now)
+      ? performance.now()
+      : Date.now();
+  }
+
+  function computeCloudSignature(data) {
+    if (!data || typeof data !== 'object') return '';
+    const stamp = (items, fields) => {
+      if (!Array.isArray(items) || items.length === 0) return '0:0';
+      let max = 0;
+      for (const item of items) {
+        if (!item) continue;
+        for (const field of fields) {
+          const value = item[field];
+          if (typeof value === 'number' && value > max) max = value;
+          if (typeof value === 'string') {
+            const parsed = Date.parse(value);
+            if (!Number.isNaN(parsed) && parsed > max) max = parsed;
+          }
+        }
+      }
+      return `${items.length}:${max}`;
+    };
+    const signature = {
+      bookings: stamp(data.bookings, ['updatedAt', 'createdAt']),
+      expenses: stamp(data.expenses, ['updatedAt', 'createdAt']),
+      otherIncome: stamp(data.otherIncome, ['updatedAt', 'createdAt']),
+      artists: stamp(data.artists, ['updatedAt', 'createdAt']),
+      tasks: stamp(data.tasks, ['updatedAt', 'createdAt']),
+      revenueGoal: data.revenueGoal
+        ? `${data.revenueGoal.period || ''}:${Number(data.revenueGoal.amount || 0)}`
+        : '0',
+      bbfEntries: stamp(data.bbfEntries, ['updatedAt']),
+      closingThoughts: stamp(data.closingThoughts, ['updatedAt']),
+      theme: data.theme || '',
+    };
+    try {
+      return JSON.stringify(signature);
+    } catch (_err) {
+      return String(Date.now());
+    }
+  }
+
+  function initLocalSyncBroadcast() {
+    if (_syncBroadcast) return;
+    if ('BroadcastChannel' in window) {
+      _syncBroadcast = new BroadcastChannel('sp-sync');
+      _syncBroadcast.onmessage = (event) => {
+        if (!event?.data || event.data.type !== 'sync') return;
+        if (!getOwnerId()) return;
+        refreshCloudData({ silent: true, force: true, minIntervalMs: 0, reason: `broadcast:${event.data.reason || 'sync'}` });
+      };
+      return;
+    }
+
+    window.addEventListener('storage', (event) => {
+      if (event.key !== SYNC_BROADCAST_KEY) return;
+      if (!getOwnerId()) return;
+      refreshCloudData({ silent: true, force: true, minIntervalMs: 0, reason: 'storage' });
+    });
+  }
+
+  function broadcastLocalSync(reason) {
+    if (!getOwnerId()) return;
+    if (_syncBroadcast && typeof _syncBroadcast.postMessage === 'function') {
+      _syncBroadcast.postMessage({ type: 'sync', reason: reason || 'save', ts: Date.now() });
+      return;
+    }
+    try {
+      localStorage.setItem(SYNC_BROADCAST_KEY, String(Date.now()));
+    } catch (_err) {
+      // no-op
+    }
+  }
+
+  function scheduleRealtimeRefresh(reason) {
+    if (_coreRealtimeDebounce) clearTimeout(_coreRealtimeDebounce);
+    _coreRealtimeDebounce = setTimeout(() => {
+      _coreRealtimeDebounce = null;
+      refreshCloudData({ silent: true, force: true, minIntervalMs: 0, reason: reason || 'realtime' });
+    }, 400);
+  }
+
+  function unsubscribeFromCoreRealtime() {
+    if (_coreRealtimeChannel) {
+      db.removeChannel(_coreRealtimeChannel);
+      _coreRealtimeChannel = null;
+    }
+  }
+
+  function subscribeToCoreRealtime() {
+    const ownerId = getOwnerId();
+    if (!ownerId) return;
+
+    const scopeKey = _activeTeamId ? `team-${_activeTeamId}` : `user-${ownerId}`;
+    const channelName = `sp-core-${scopeKey}`;
+    unsubscribeFromCoreRealtime();
+
+    const channel = db.channel(channelName);
+    CORE_REALTIME_TABLES.forEach((entry) => {
+      const filterColumn = _activeTeamId ? 'team_id' : entry.soloColumn;
+      const filterValue = _activeTeamId || ownerId;
+      if (!filterColumn || !filterValue) return;
+      channel.on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: entry.table, filter: `${filterColumn}=eq.${filterValue}` },
+        () => scheduleRealtimeRefresh(`realtime:${entry.table}`)
+      );
+    });
+
+    channel.subscribe((status) => {
+      log('coreRealtime', status);
+    });
+    _coreRealtimeChannel = channel;
   }
 
   const TEAM_PROMPT_KEY = 'sp_team_select_prompted';
@@ -658,24 +794,60 @@ const SP_CURRENCIES = {
     const filter = (q) => applyScopeFilter(q, 'owner_id');
 
     try {
-      const [bRes, eRes, iRes, aRes] = await Promise.all([
-        filter(db.from('bookings').select('*')).order('created_at', { ascending: false }),
-        filter(db.from('expenses').select('*')).order('date', { ascending: false }),
-        filter(db.from('other_income').select('*')).order('date', { ascending: false }),
-        filter(db.from('artists').select('*')).order('name'),
+      const timedQuery = async (label, query, timeoutMs) => {
+        const started = nowMs();
+        try {
+          const res = await withTimeout(query, timeoutMs, label);
+          log('loadData.timed', {
+            label,
+            ms: Math.round(nowMs() - started),
+            ok: !res?.error,
+            rows: Array.isArray(res?.data) ? res.data.length : 0,
+          });
+          if (res?.error) warn(`${label} load error:`, res.error);
+          return res?.error ? null : res?.data || [];
+        } catch (err) {
+          warn(`${label} load timed out:`, err);
+          log('loadData.timed', {
+            label,
+            ms: Math.round(nowMs() - started),
+            ok: false,
+            error: err?.message || 'unknown',
+          });
+          return null;
+        }
+      };
+
+      const [bookingsRows, expensesRows, incomeRows, artistsRows] = await Promise.all([
+        timedQuery(
+          'loadData.bookings',
+          filter(db.from('bookings').select('*')).order('created_at', { ascending: false }),
+          5000
+        ),
+        timedQuery(
+          'loadData.expenses',
+          filter(db.from('expenses').select('*')).order('date', { ascending: false }),
+          5000
+        ),
+        timedQuery(
+          'loadData.other_income',
+          filter(db.from('other_income').select('*')).order('date', { ascending: false }),
+          5000
+        ),
+        timedQuery(
+          'loadData.artists',
+          filter(db.from('artists').select('*')).order('name'),
+          5000
+        ),
       ]);
 
-      if (bRes.error) warn('Bookings load error:', bRes.error);
-      if (eRes.error) warn('Expenses load error:', eRes.error);
-      if (iRes.error) warn('Other income load error:', iRes.error);
-      if (aRes.error) warn('Artists load error:', aRes.error);
+      const payload = {};
+      if (Array.isArray(bookingsRows)) payload.bookings = bookingsRows.map(rowToBooking);
+      if (Array.isArray(expensesRows)) payload.expenses = expensesRows.map(rowToExpense);
+      if (Array.isArray(incomeRows)) payload.otherIncome = incomeRows.map(rowToOtherIncome);
+      if (Array.isArray(artistsRows)) payload.artists = artistsRows.map(rowToArtist);
 
-      return {
-        bookings:    (bRes.data || []).map(rowToBooking),
-        expenses:    (eRes.data || []).map(rowToExpense),
-        otherIncome: (iRes.data || []).map(rowToOtherIncome),
-        artists:     (aRes.data || []).map(rowToArtist),
-      };
+      return Object.keys(payload).length ? payload : null;
     } catch (err) {
       warn('loadData failed:', err);
       return null;
@@ -781,17 +953,17 @@ const SP_CURRENCIES = {
 
   async function loadTasks() {
     const ownerId = getOwnerId();
-    if (!ownerId) return [];
+    if (!ownerId) return null;
     try {
       const { data, error } = await applyUserScopeFilter(
         db.from('tasks').select('*').order('created_at', { ascending: true }),
         'user_id'
       );
-      if (error) { warn('Tasks load error:', error); return []; }
+      if (error) { warn('Tasks load error:', error); return null; }
       return (data || []).map(rowToTask);
     } catch (err) {
       warn('Tasks load failed:', err);
-      return [];
+      return null;
     }
   }
 
@@ -845,17 +1017,17 @@ const SP_CURRENCIES = {
 
   async function loadBBFEntries() {
     const ownerId = getOwnerId();
-    if (!ownerId) return [];
+    if (!ownerId) return null;
     try {
       const { data, error } = await applyUserScopeFilter(
         db.from('bbf_entries').select('*').order('period', { ascending: true }),
         'user_id'
       );
-      if (error) { warn('BBF load error:', error); return []; }
+      if (error) { warn('BBF load error:', error); return null; }
       return (data || []).map(rowToBBF);
     } catch (err) {
       warn('BBF load failed:', err);
-      return [];
+      return null;
     }
   }
 
@@ -880,17 +1052,17 @@ const SP_CURRENCIES = {
 
   async function loadClosingThoughts() {
     const ownerId = getOwnerId();
-    if (!ownerId) return [];
+    if (!ownerId) return null;
     try {
       const { data, error } = await applyUserScopeFilter(
         db.from('closing_thoughts').select('*').order('updated_at', { ascending: true }),
         'user_id'
       );
-      if (error) { warn('Closing thoughts load error:', error); return []; }
+      if (error) { warn('Closing thoughts load error:', error); return null; }
       return (data || []).map(rowToClosingThought);
     } catch (err) {
       warn('Closing thoughts load failed:', err);
-      return [];
+      return null;
     }
   }
 
@@ -918,22 +1090,54 @@ const SP_CURRENCIES = {
     if (!ownerId) return null;
     const profile = _profile || await getProfile();
     try {
-      const [core, tasks, revenueGoal, bbfEntries, closingThoughts] = await Promise.all([
-        loadData(),
-        loadTasks(),
-        loadRevenueGoal(),
-        loadBBFEntries(),
-        loadClosingThoughts(),
-      ]);
-      if (!core) return null;
-      return {
-        ...core,
-        tasks,
-        revenueGoal,
-        bbfEntries,
-        closingThoughts,
-        theme: profile?.preferred_theme || null,
+      const timedLoad = async (label, fn, timeoutMs) => {
+        const started = nowMs();
+        try {
+          const value = await withTimeout(fn, timeoutMs, label);
+          log('loadAllData.timed', {
+            label,
+            ms: Math.round(nowMs() - started),
+            ok: Boolean(value),
+          });
+          return { value, timedOut: false };
+        } catch (err) {
+          const timedOut = err?.name === 'TimeoutError';
+          warn('loadAllData timed out:', label, err);
+          log('loadAllData.timed', {
+            label,
+            ms: Math.round(nowMs() - started),
+            ok: false,
+            timedOut,
+            error: err?.message || 'unknown',
+          });
+          return { value: null, timedOut };
+        }
       };
+
+      const [core, tasks, revenueGoal, bbfEntries, closingThoughts] = await Promise.all([
+        timedLoad('loadData', () => loadData(), 7000),
+        timedLoad('loadTasks', () => loadTasks(), 5000),
+        timedLoad('loadRevenueGoal', () => loadRevenueGoal(), 4000),
+        timedLoad('loadBBFEntries', () => loadBBFEntries(), 5000),
+        timedLoad('loadClosingThoughts', () => loadClosingThoughts(), 5000),
+      ]);
+
+      const payload = {};
+      if (core.value && typeof core.value === 'object') Object.assign(payload, core.value);
+      if (tasks.value) payload.tasks = tasks.value;
+      if (revenueGoal.value) payload.revenueGoal = revenueGoal.value;
+      if (bbfEntries.value) payload.bbfEntries = bbfEntries.value;
+      if (closingThoughts.value) payload.closingThoughts = closingThoughts.value;
+      if (profile?.preferred_theme) payload.theme = profile.preferred_theme;
+
+      const allCriticalTimedOut = [core, tasks, revenueGoal, bbfEntries, closingThoughts].every(r => r.timedOut);
+      const hasData = Object.keys(payload).length > 0;
+      if (!hasData) {
+        return allCriticalTimedOut ? { __meta: { allCriticalTimedOut: true } } : null;
+      }
+
+      payload.__meta = { allCriticalTimedOut };
+      return payload;
     } catch (err) {
       warn('loadAllData failed:', err);
       return null;
@@ -947,7 +1151,7 @@ const SP_CURRENCIES = {
     if (!getOwnerId()) return null;
     if (_refreshInFlight) return null;
     const now = Date.now();
-    const minIntervalMs = typeof options.minIntervalMs === 'number' ? options.minIntervalMs : 15000;
+    const minIntervalMs = typeof options.minIntervalMs === 'number' ? options.minIntervalMs : 5000;
     if (!options.force && now - _lastRefreshAt < minIntervalMs) return null;
 
     _refreshInFlight = true;
@@ -955,13 +1159,26 @@ const SP_CURRENCIES = {
     const timeoutMs = typeof options.timeoutMs === 'number' ? options.timeoutMs : 8000;
     try {
       const fresh = await withTimeout(() => loadAllData(), timeoutMs, 'loadAllData[refresh]');
+      const meta = fresh?.__meta || null;
+      if (fresh && meta) delete fresh.__meta;
+      if (fresh) {
+        const signature = computeCloudSignature(fresh);
+        if (signature && signature === _lastCloudSignature) {
+          return fresh;
+        }
+        _lastCloudSignature = signature;
+      } else if (window.__spCloudOnly) {
+        return null;
+      }
+
       if (fresh && window._SP_syncFromCloud) {
         window._SP_syncFromCloud(fresh);
       }
-      if (typeof window.loadUserData === 'function') {
+      const shouldSync = Boolean(fresh) || !window.__spCloudOnly;
+      if (shouldSync && typeof window.loadUserData === 'function') {
         window.loadUserData();
       }
-      if (window.__spAppBooted) {
+      if (shouldSync && window.__spAppBooted) {
         if (typeof window.updateDashboard === 'function') window.updateDashboard();
         if (typeof window.renderBookings === 'function') window.renderBookings();
         if (typeof window.renderExpenses === 'function') window.renderExpenses();
@@ -988,6 +1205,7 @@ const SP_CURRENCIES = {
     }
     const ownerId = getOwnerId();
     if (!ownerId) return;
+    let didSave = false;
     const {
       bookings,
       expenses,
@@ -1006,24 +1224,34 @@ const SP_CURRENCIES = {
         expenses: Array.isArray(expenses) ? expenses : (window.expenses || []),
         otherIncome: Array.isArray(otherIncome) ? otherIncome : (window.otherIncome || []),
       });
+      didSave = true;
     }
     if (Array.isArray(artists)) {
       await saveArtists(artists);
+      didSave = true;
     }
     if (Array.isArray(tasks)) {
       await saveTasks(tasks);
+      didSave = true;
     }
     if (revenueGoal) {
       await saveRevenueGoal(revenueGoal);
+      didSave = true;
     }
     if (Array.isArray(bbfEntries)) {
       await saveBBFEntries(bbfEntries);
+      didSave = true;
     }
     if (Array.isArray(closingThoughts)) {
       await saveClosingThoughts(closingThoughts);
+      didSave = true;
     }
     if (theme) {
       await updateProfile({ preferred_theme: theme });
+      didSave = true;
+    }
+    if (didSave) {
+      broadcastLocalSync('saveAllData');
     }
   }
 
@@ -1397,6 +1625,7 @@ const SP_CURRENCIES = {
 
     _session = activeSession;
     log('bootstrap.session', { user: activeSession.user?.email || activeSession.user?.id });
+    subscribeToCoreRealtime();
 
     const remember = options.remember !== undefined ? Boolean(options.remember) : true;
     const usernameHint = options.usernameHint || '';
@@ -1454,16 +1683,28 @@ const SP_CURRENCIES = {
         warn('Cloud data bootstrap failed or timed out:', dataError);
         log('bootstrap.data.timeout', { step: 'loadAllData', error: dataError?.message || 'unknown' });
         // Non-blocking toast — do NOT re-throw; we must always continue to loadUserData.
-        toastSafe('Warn', 'Cloud data took too long. Showing local data now.');
-        setTimeout(() => {
-          refreshCloudData({ silent: true, force: true, minIntervalMs: 0 });
-        }, 2500);
+        if (dataError?.name === 'TimeoutError') {
+          toastSafe('Warn', 'Cloud data took too long. Showing local data now.');
+          setTimeout(() => {
+            refreshCloudData({ silent: true, force: true, minIntervalMs: 0 });
+          }, 2500);
+        }
       }
 
       // Always sync cloud data if we got it; otherwise loadUserData falls back
       // to localStorage automatically — this is the Single Source of Truth path.
-      if (fresh && window._SP_syncFromCloud) {
-        window._SP_syncFromCloud(fresh);
+      if (fresh) {
+        const meta = fresh.__meta || null;
+        if (meta?.allCriticalTimedOut) {
+          toastSafe('Warn', 'Cloud data took too long. Showing local data now.');
+          setTimeout(() => {
+            refreshCloudData({ silent: true, force: true, minIntervalMs: 0 });
+          }, 2500);
+        }
+        if (meta) delete fresh.__meta;
+        if (window._SP_syncFromCloud) {
+          window._SP_syncFromCloud(fresh);
+        }
       }
 
       // CRITICAL: loadUserData MUST always be called — cloud or local —
@@ -1484,15 +1725,6 @@ const SP_CURRENCIES = {
         if (typeof window.renderOtherIncome === 'function') window.renderOtherIncome();
         if (typeof window.renderArtists === 'function') window.renderArtists();
         if (typeof window.updateTodayBoard === 'function') window.updateTodayBoard();
-      }
-
-      if (!_activeTeamId) {
-        try {
-          const teams = await withTimeout(() => getMyTeams(), 5000, 'getMyTeams[hint]');
-          promptTeamSelectionIfNeeded(teams);
-        } catch (err) {
-          warn('Team hint load failed:', err);
-        }
       }
 
       if (options.runMigration !== false) {
@@ -1542,6 +1774,7 @@ const SP_CURRENCIES = {
     _activeTeamId = null;
     localStorage.removeItem('sp_active_team');
     setActiveTeamRole(null);
+    unsubscribeFromCoreRealtime();
   }
 
   async function getSession() {
@@ -1588,6 +1821,11 @@ const SP_CURRENCIES = {
  
 
     _session = session;
+    if (session?.user) {
+      subscribeToCoreRealtime();
+    } else {
+      unsubscribeFromCoreRealtime();
+    }
 
     // Always keep _profile warm on any session event.
     if (session && !_profile) {
@@ -1628,6 +1866,8 @@ const SP_CURRENCIES = {
     if (event === 'SIGNED_IN' && session && window.__spAppBooted && !_bootstrapping) {
       try {
         const fresh = await withTimeout(() => loadAllData(), 8000, 'loadAllData[reSync]');
+        const meta = fresh?.__meta || null;
+        if (fresh && meta) delete fresh.__meta;
         if (fresh && window._SP_syncFromCloud) {
           window._SP_syncFromCloud(fresh);
         }
@@ -1713,6 +1953,7 @@ const SP_CURRENCIES = {
     } else {
       setActiveTeamRole(null);
     }
+    subscribeToCoreRealtime();
     // Reload data in the app
     if (typeof window.loadUserData === 'function') {
       await reloadAppData();
@@ -1871,15 +2112,17 @@ const SP_CURRENCIES = {
   async function reloadAppData() {
     const fresh = await loadAllData();
     if (!fresh) return;
+    const meta = fresh.__meta || null;
+    if (meta) delete fresh.__meta;
 
     // Inject data into app's global scope
-    if (typeof window.bookings !== 'undefined') {
+    if (Array.isArray(fresh.bookings) && typeof window.bookings !== 'undefined') {
       window.bookings = fresh.bookings;
     }
-    if (typeof window.expenses !== 'undefined') {
+    if (Array.isArray(fresh.expenses) && typeof window.expenses !== 'undefined') {
       window.expenses = fresh.expenses;
     }
-    if (typeof window.otherIncome !== 'undefined') {
+    if (Array.isArray(fresh.otherIncome) && typeof window.otherIncome !== 'undefined') {
       window.otherIncome = fresh.otherIncome;
     }
 
@@ -2495,6 +2738,7 @@ const SP_CURRENCIES = {
       window.__spAppBooted = false;
       _session = null;
       _profile = null;
+      unsubscribeFromCoreRealtime();
 
       // 6. Show landing page immediately — user doesn't wait for any network call.
       if (typeof window.setActiveScreen === 'function') window.setActiveScreen('landingScreen');
@@ -2565,6 +2809,7 @@ const SP_CURRENCIES = {
   function init() {
     setupSyncBridge();
     applyCurrency(_currency);
+    initLocalSyncBroadcast();
 
     // handleAuthRedirect() and bootstrapFromStoredSession() must only run AFTER
     // app.js has fully executed — otherwise showApp/loadUserData don’t exist yet
@@ -2609,7 +2854,7 @@ const SP_CURRENCIES = {
     if (!window.__spCloudRefreshInterval) {
       window.__spCloudRefreshInterval = setInterval(() => {
         triggerCloudRefresh('interval');
-      }, 20000);
+      }, 10000);
     }
   }
 

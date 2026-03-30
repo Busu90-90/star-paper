@@ -96,18 +96,41 @@ function getSectionIconMarkup(iconKey) {
 
 
         // Storage Helper
+        const isCloudOnlyMode = () => Boolean(window.__spCloudOnly);
+        const CLOUD_ONLY_STORAGE_KEYS = new Set([
+            'starPaperManagerData',
+            'starPaperBookings',
+            'starPaperExpenses',
+            'starPaperOtherIncome',
+            'starPaperArtists',
+            'starPaperRevenueGoals',
+            'starPaperBBF',
+            'starPaperClosingThoughtsByPeriod',
+            'sp_tasks',
+            'starPaperTasks'
+        ]);
+        const closingThoughtsMemoryStore = {};
+        function isCloudOnlyStorageKey(key) {
+            return isCloudOnlyMode() && CLOUD_ONLY_STORAGE_KEYS.has(key);
+        }
+
         const Storage = {
             saveSync(key, value) {
                 try {
+                    if (isCloudOnlyStorageKey(key)) return true;
                     localStorage.setItem(key, JSON.stringify(value));
                     return true;
                 } catch (err) {
                     console.error('Storage Error:', err);
+                    if (err.name === 'QuotaExceededError' && typeof window.toastWarn === 'function') {
+                        window.toastWarn('Device storage is almost full. Some data may not save locally.');
+                    }
                     return false;
                 }
             },
             loadSync(key, fallback = null) {
                 try {
+                    if (isCloudOnlyStorageKey(key)) return fallback;
                     return JSON.parse(localStorage.getItem(key)) ?? fallback;
                 } catch {
                     return fallback;
@@ -306,7 +329,7 @@ function getSectionIconMarkup(iconKey) {
 
         function sanitizeTextInput(value) {
             return String(value ?? '')
-                .replace(/[<>"'`]/g, '')
+                .replace(/[<>`]/g, '')
                 .trim();
         }
 
@@ -985,6 +1008,21 @@ function getSectionIconMarkup(iconKey) {
             }
             return true;
         }
+
+        function guardCloudOnly(actionLabel) {
+            if (!isCloudOnlyMode()) return false;
+            const hasSession = typeof window.SP?.getOwnerId === 'function' ? Boolean(window.SP.getOwnerId()) : false;
+            if (!navigator.onLine || !hasSession) {
+                if (typeof toastWarn === 'function') {
+                    toastWarn('Cloud unavailable; try again.');
+                } else if (typeof toastInfo === 'function') {
+                    toastInfo('Cloud unavailable; try again.');
+                }
+                return true;
+            }
+            return false;
+        }
+        window.guardCloudOnly = guardCloudOnly;
 
         function getCurrentRevenueGoalKey() {
             return getActiveDataScopeKey();
@@ -2371,7 +2409,7 @@ function getSectionIconMarkup(iconKey) {
                     type: 'Expense',
                     section: 'expenses',
                     label: expense.description,
-                    sub: `${formatDisplayDate(expense.date)}  -  ${expense.category}  -  UGX ${parseFloat(expense.amount).toLocaleString()}`,
+                    sub: `${formatDisplayDate(expense.date)}  -  ${expense.category}  -  UGX ${(Math.round(Number(expense.amount) || 0)).toLocaleString()}`,
                     searchText: `${expense.description} ${expense.category}`.toLowerCase()
                 });
             });
@@ -2382,7 +2420,7 @@ function getSectionIconMarkup(iconKey) {
                     type: 'Other Income',
                     section: 'otherIncome',
                     label: item.source,
-                    sub: `${formatDisplayDate(item.date)}  -  ${item.type}  -  UGX ${parseFloat(item.amount).toLocaleString()}`,
+                    sub: `${formatDisplayDate(item.date)}  -  ${item.type}  -  UGX ${(Math.round(Number(item.amount) || 0)).toLocaleString()}`,
                     searchText: `${item.source} ${item.type} ${item.payer}`.toLowerCase()
                 });
             });
@@ -2758,6 +2796,7 @@ function showLoginForm() {
 
         // Receipt/modal
         window.closeReceiptModal ||= closeReceiptModal;
+        window.viewReceiptById   ||= viewReceiptById;
 
         // Auth screens
         window.showLoginForm  ||= showLoginForm;
@@ -3248,9 +3287,28 @@ function showLoginForm() {
             const cloudData = window._SP_cloudData;
             if (cloudData) {
                 window._SP_cloudData = null; // consume it
-                bookings    = Array.isArray(cloudData.bookings)    ? cloudData.bookings    : [];
-                expenses    = Array.isArray(cloudData.expenses)    ? cloudData.expenses    : [];
-                otherIncome = Array.isArray(cloudData.otherIncome) ? cloudData.otherIncome : [];
+                const activeScopeKey = getActiveDataScopeKey();
+                const localFallback = getManagerData(activeScopeKey);
+                const fallbackBookings = ensureBookingArtistRefs(localFallback.bookings || [], currentManagerId);
+                const fallbackExpenses = Array.isArray(localFallback.expenses) ? localFallback.expenses : expenses;
+                const fallbackOtherIncome = Array.isArray(localFallback.otherIncome) ? localFallback.otherIncome : otherIncome;
+                const now = Date.now();
+                const hasRecentLocal = (items) => Array.isArray(items) && items.some((item) => {
+                    if (!item) return false;
+                    if (typeof item.id === 'number') {
+                        const created = Number(item.createdAt || item.id);
+                        return Number.isFinite(created) && (now - created) < 120000;
+                    }
+                    return false;
+                });
+
+                const useLocalBookings = Array.isArray(cloudData.bookings) && cloudData.bookings.length === 0 && hasRecentLocal(fallbackBookings);
+                const useLocalExpenses = Array.isArray(cloudData.expenses) && cloudData.expenses.length === 0 && hasRecentLocal(fallbackExpenses);
+                const useLocalIncome = Array.isArray(cloudData.otherIncome) && cloudData.otherIncome.length === 0 && hasRecentLocal(fallbackOtherIncome);
+
+                bookings    = Array.isArray(cloudData.bookings)    && !useLocalBookings ? cloudData.bookings    : fallbackBookings;
+                expenses    = Array.isArray(cloudData.expenses)    && !useLocalExpenses ? cloudData.expenses    : fallbackExpenses;
+                otherIncome = Array.isArray(cloudData.otherIncome) && !useLocalIncome   ? cloudData.otherIncome : fallbackOtherIncome;
                 if (Array.isArray(cloudData.artists)) {
                     const teamId = getActiveTeamId();
                     if (teamId) {
@@ -3270,7 +3328,7 @@ function showLoginForm() {
                     Storage.saveSync('starPaperRevenueGoals', revenueGoals);
                 }
                 if (Array.isArray(cloudData.bbfEntries)) {
-                    const scopeKey = getActiveDataScopeKey();
+                    const scopeKey = activeScopeKey;
                     Object.keys(bbfData).forEach((key) => {
                         if (key.startsWith(`${scopeKey}_`)) delete bbfData[key];
                     });
@@ -3282,7 +3340,7 @@ function showLoginForm() {
                     Storage.saveSync('starPaperBBF', bbfData);
                 }
                 if (Array.isArray(cloudData.closingThoughts)) {
-                    const scopeKey = getActiveDataScopeKey() || 'default';
+                    const scopeKey = activeScopeKey || 'default';
                     const store = getClosingThoughtsStore();
                     const nextStore = {};
                     cloudData.closingThoughts.forEach((entry) => {
@@ -3299,7 +3357,7 @@ function showLoginForm() {
                     applyTheme(cloudData.theme, { persist: false });
                 }
                 // Also persist to localStorage as offline cache
-                saveManagerData(getActiveDataScopeKey(), { bookings, expenses, otherIncome });
+                saveManagerData(activeScopeKey, { bookings, expenses, otherIncome });
             } else {
                 // â”€â”€ FALLBACK: local storage (offline or pre-migration) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 const data = getManagerData(getActiveDataScopeKey());
@@ -4693,11 +4751,11 @@ function showLoginForm() {
             const filteredOtherIncome = maybeSort(filterByPeriod(otherIncome, period));
 
             const totalBookings = filteredBookings.length;
-            const totalIncome = filteredBookings.reduce((sum, b) => sum + parseFloat(b.fee || 0), 0);
-            const totalExpenses = filteredExpenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
-            const totalOtherIncome = filteredOtherIncome.reduce((sum, i) => sum + parseFloat(i.amount || 0), 0);
+            const totalIncome = filteredBookings.reduce((sum, b) => sum + (Math.round(Number(b.fee) || 0)), 0);
+            const totalExpenses = filteredExpenses.reduce((sum, e) => sum + (Math.round(Number(e.amount) || 0)), 0);
+            const totalOtherIncome = filteredOtherIncome.reduce((sum, i) => sum + (Math.round(Number(i.amount) || 0)), 0);
             const netProfit = (totalIncome + totalOtherIncome) - totalExpenses;
-            const balancesDue = filteredBookings.reduce((sum, b) => sum + (parseFloat(b.balance) || 0), 0);
+            const balancesDue = filteredBookings.reduce((sum, b) => sum + (Math.round(Number(b.balance) || 0)), 0);
 
             return {
                 filteredBookings,
@@ -5691,7 +5749,7 @@ function showLoginForm() {
                 const expense = {
                     id: editingExpenseId || Date.now(),
                     description: sanitizeTextInput(document.getElementById('expenseDesc').value),
-                    amount: parseFloat(document.getElementById('expenseAmount').value) || 0,
+                    amount: Math.round(Number(document.getElementById('expenseAmount').value) || 0),
                     date: document.getElementById('expenseDate').value,
                     category: sanitizeTextInput(document.getElementById('expenseCategory').value),
                     receipt: receiptSrc,
@@ -5759,11 +5817,11 @@ function showLoginForm() {
                 <tr class="expense-edit-trigger" data-expense-id="${expense.id}" onclick="editExpense(${expense.id})">
                     <td>${expense.description}</td>
                     <td>${expense.category.charAt(0).toUpperCase() + expense.category.slice(1)}</td>
-                    <td class="expense-red">UGX ${parseFloat(expense.amount).toLocaleString()}</td>
+                    <td class="expense-red">UGX ${(Math.round(Number(expense.amount) || 0)).toLocaleString()}</td>
                     <td>${formatDisplayDate(expense.date)}</td>
                     <td>
-                        ${expense.receipt ? 
-                            `<button class="action-btn icon-btn" onclick="event.stopPropagation(); viewReceipt('${expense.receipt}')" aria-label="View receipt" title="View receipt"><i class="ph ph-eye" aria-hidden="true"></i></button>` : 
+                        ${expense.receipt ?
+                            `<button class="action-btn icon-btn" data-receipt="${expense.id}" onclick="event.stopPropagation(); viewReceiptById(this.dataset.receipt, 'expense')" aria-label="View receipt" title="View receipt"><i class="ph ph-eye" aria-hidden="true"></i></button>` :
                             '-'}
                     </td>
                 </tr>
@@ -5779,7 +5837,7 @@ function showLoginForm() {
                         </div>
                         <div class="expense-meta">
                             <div class="expense-field"><span>Category</span>${expense.category.charAt(0).toUpperCase() + expense.category.slice(1)}</div>
-                            <div class="expense-field expense-red"><span>Amount</span>UGX ${parseFloat(expense.amount).toLocaleString()}</div>
+                            <div class="expense-field expense-red"><span>Amount</span>UGX ${(Math.round(Number(expense.amount) || 0)).toLocaleString()}</div>
                             <div class="expense-field"><span>Date</span>${formatDisplayDate(expense.date)}</div>
                             <div class="expense-field"><span>Receipt</span>${expense.receipt ? 'Attached' : 'None'}</div>
                         </div>
@@ -5837,6 +5895,18 @@ function showLoginForm() {
             const img = document.getElementById('receiptModalImage');
             img.src = receiptData;
             modal.style.display = 'flex';
+        }
+
+        function viewReceiptById(id, type) {
+            let data;
+            if (type === 'expense') {
+                const item = expenses.find(e => String(e.id) === String(id));
+                data = item?.receipt;
+            } else if (type === 'otherIncome') {
+                const item = otherIncome.find(i => String(i.id) === String(id));
+                data = item?.proof;
+            }
+            if (data) viewReceipt(data);
         }
 
         function closeReceiptModal() {
@@ -5906,7 +5976,7 @@ function showLoginForm() {
                 const incomeItem = {
                     id: editingOtherIncomeId || Date.now(),
                     source: sanitizeTextInput(document.getElementById('otherIncomeSource').value),
-                    amount: parseFloat(document.getElementById('otherIncomeAmount').value) || 0,
+                    amount: Math.round(Number(document.getElementById('otherIncomeAmount').value) || 0),
                     date: document.getElementById('otherIncomeDate').value,
                     type: sanitizeTextInput(document.getElementById('otherIncomeType').value),
                     payer: sanitizeTextInput(document.getElementById('otherIncomePayer').value),
@@ -5981,14 +6051,14 @@ function showLoginForm() {
                     <tr class="other-income-edit-trigger" data-other-income-id="${item.id}" onclick="editOtherIncome(${item.id})">
                         <td>${item.source}</td>
                         <td>${item.type.charAt(0).toUpperCase() + item.type.slice(1)}</td>
-                        <td class="income-green">UGX ${parseFloat(item.amount).toLocaleString()}</td>
+                        <td class="income-green">UGX ${(Math.round(Number(item.amount) || 0)).toLocaleString()}</td>
                         <td>${formatDisplayDate(item.date)}</td>
                         <td>${item.payer || '-'}</td>
                         <td>${item.method ? item.method.toUpperCase() : '-'}</td>
                         <td><span class="status-badge ${statusClass}">${item.status}</span></td>
                         <td>
-                            ${item.proof ? 
-                                `<button class="action-btn icon-btn" onclick="event.stopPropagation(); viewReceipt('${item.proof}')" aria-label="View proof" title="View proof"><i class="ph ph-eye" aria-hidden="true"></i></button>` : 
+                            ${item.proof ?
+                                `<button class="action-btn icon-btn" data-receipt="${item.id}" onclick="event.stopPropagation(); viewReceiptById(this.dataset.receipt, 'otherIncome')" aria-label="View proof" title="View proof"><i class="ph ph-eye" aria-hidden="true"></i></button>` :
                                 '-'}
                         </td>
                     </tr>
@@ -6007,7 +6077,7 @@ function showLoginForm() {
                             </div>
                             <div class="expense-meta">
                                 <div class="expense-field"><span>Type</span>${item.type.charAt(0).toUpperCase() + item.type.slice(1)}</div>
-                                <div class="expense-field income-green"><span>Amount</span>UGX ${parseFloat(item.amount).toLocaleString()}</div>
+                                <div class="expense-field income-green"><span>Amount</span>UGX ${(Math.round(Number(item.amount) || 0)).toLocaleString()}</div>
                                 <div class="expense-field"><span>Date</span>${formatDisplayDate(item.date)}</div>
                                 <div class="expense-field"><span>Payer/Brand</span>${item.payer || '-'}</div>
                                 <div class="expense-field"><span>Method</span>${item.method ? item.method.toUpperCase() : '-'}</div>
@@ -6311,8 +6381,8 @@ function showLoginForm() {
 
         // Bookings Functions
         function calculateBalance() {
-            const fee = parseFloat(document.getElementById('bookingFee').value) || 0;
-            const deposit = parseFloat(document.getElementById('bookingDeposit').value) || 0;
+            const fee = Math.round(Number(document.getElementById('bookingFee').value) || 0);
+            const deposit = Math.round(Number(document.getElementById('bookingDeposit').value) || 0);
             const balance = fee - deposit;
             document.getElementById('bookingBalance').value = balance;
         }
@@ -6365,8 +6435,8 @@ function showLoginForm() {
                 const location = locationType === 'uganda' 
                     ? document.getElementById('bookingUgandaLocation').value
                     : document.getElementById('bookingAbroadLocation').value;
-                const feeValue = parseFloat(document.getElementById('bookingFee').value) || 0;
-                const depositValue = parseFloat(document.getElementById('bookingDeposit').value) || 0;
+                const feeValue = Math.round(Number(document.getElementById('bookingFee').value) || 0);
+                const depositValue = Math.round(Number(document.getElementById('bookingDeposit').value) || 0);
                 const balanceValue = feeValue - depositValue;
                 const existingBooking = editingBookingId ? bookings.find(b => b.id === editingBookingId) : null;
 
@@ -6479,10 +6549,10 @@ function showLoginForm() {
                     <td data-label="Artist">${booking.artist}</td>
                     <td data-label="Date" class="td-date">${formatDisplayDate(booking.date)}</td>
                     <td data-label="Location">${booking.location || '-'} ${booking.locationType === 'abroad' ? '<i class="ph ph-globe" aria-hidden="true"></i>' : 'UG'} <span class="show-weather-slot" id="bookingWeatherTable-${weatherKey}"></span></td>
-                    <td data-label="Total Fee" class="income-green td-fee">UGX ${parseFloat(booking.fee).toLocaleString()}</td>
-                    <td data-label="Deposit" class="deposit-blue td-deposit">UGX ${parseFloat(booking.deposit).toLocaleString()}</td>
+                    <td data-label="Total Fee" class="income-green td-fee">UGX ${(Math.round(Number(booking.fee) || 0)).toLocaleString()}</td>
+                    <td data-label="Deposit" class="deposit-blue td-deposit">UGX ${(Math.round(Number(booking.deposit) || 0)).toLocaleString()}</td>
                     <td data-label="Balance Due" class="${booking.balance > 0 ? 'expense-red' : 'income-green'} td-balance">
-                        UGX ${parseFloat(booking.balance).toLocaleString()}
+                        UGX ${(Math.round(Number(booking.balance) || 0)).toLocaleString()}
                     </td>
                     <td data-label="Contact" class="td-contact">${booking.contact || '-'}</td>
                     <td data-label="Status" class="td-status">
@@ -6508,9 +6578,9 @@ function showLoginForm() {
                             <div class="booking-field"><span>Artist</span>${booking.artist}</div>
                             <div class="booking-field"><span>Date</span>${formatDisplayDate(booking.date)}</div>
                             <div class="booking-field"><span>Location</span>${booking.location || '-'} ${booking.locationType === 'abroad' ? '<i class="ph ph-globe" aria-hidden="true"></i>' : 'UG'} <span class="show-weather-slot" id="bookingWeatherCard-${weatherKey}"></span></div>
-                            <div class="booking-field income-green"><span>Total Fee</span>UGX ${parseFloat(booking.fee).toLocaleString()}</div>
-                            <div class="booking-field deposit-blue"><span>Deposit</span>UGX ${parseFloat(booking.deposit).toLocaleString()}</div>
-                            <div class="booking-field ${booking.balance > 0 ? 'expense-red' : 'income-green'}"><span>Balance Due</span>UGX ${parseFloat(booking.balance).toLocaleString()}</div>
+                            <div class="booking-field income-green"><span>Total Fee</span>UGX ${(Math.round(Number(booking.fee) || 0)).toLocaleString()}</div>
+                            <div class="booking-field deposit-blue"><span>Deposit</span>UGX ${(Math.round(Number(booking.deposit) || 0)).toLocaleString()}</div>
+                            <div class="booking-field ${booking.balance > 0 ? 'expense-red' : 'income-green'}"><span>Balance Due</span>UGX ${(Math.round(Number(booking.balance) || 0)).toLocaleString()}</div>
                             <div class="booking-field"><span>Contact</span>${booking.contact || '-'}</div>
                             <div class="booking-field"><span>Notes</span>${booking.notes || '-'}</div>
                         </div>
@@ -6592,7 +6662,7 @@ function showLoginForm() {
                 const date = new Date(booking.date);
                 const monthsDiff = (today.getFullYear() - date.getFullYear()) * 12 + (today.getMonth() - date.getMonth());
                 if (monthsDiff >= 0 && monthsDiff < 12) {
-                    monthlyIncome[11 - monthsDiff] += parseFloat(booking.fee) || 0;
+                    monthlyIncome[11 - monthsDiff] += Math.round(Number(booking.fee) || 0);
                 }
             });
 
@@ -6600,7 +6670,7 @@ function showLoginForm() {
                 const date = new Date(expense.date);
                 const monthsDiff = (today.getFullYear() - date.getFullYear()) * 12 + (today.getMonth() - date.getMonth());
                 if (monthsDiff >= 0 && monthsDiff < 12) {
-                    monthlyExpenses[11 - monthsDiff] += parseFloat(expense.amount) || 0;
+                    monthlyExpenses[11 - monthsDiff] += Math.round(Number(expense.amount) || 0);
                 }
             });
 
@@ -6608,7 +6678,7 @@ function showLoginForm() {
                 const date = new Date(item.date);
                 const monthsDiff = (today.getFullYear() - date.getFullYear()) * 12 + (today.getMonth() - date.getMonth());
                 if (monthsDiff >= 0 && monthsDiff < 12) {
-                    monthlyOtherIncome[11 - monthsDiff] += parseFloat(item.amount) || 0;
+                    monthlyOtherIncome[11 - monthsDiff] += Math.round(Number(item.amount) || 0);
                 }
             });
             
@@ -6915,8 +6985,8 @@ function showLoginForm() {
             };
 
             const asAmount = (value) => {
-                const parsed = parseFloat(value);
-                return Number.isFinite(parsed) ? parsed : 0;
+                const parsed = Number(value);
+                return Number.isFinite(parsed) ? Math.round(parsed) : 0;
             };
 
             const isConfirmedBooking = (booking) => String(booking?.status || '').toLowerCase() === 'confirmed';
@@ -6977,8 +7047,8 @@ function showLoginForm() {
             const start = startDate instanceof Date ? startDate : new Date(startDate);
             const end = endDateExclusive instanceof Date ? endDateExclusive : new Date(endDateExclusive);
             const asAmount = (value) => {
-                const parsed = parseFloat(value);
-                return Number.isFinite(parsed) ? parsed : 0;
+                const parsed = Number(value);
+                return Number.isFinite(parsed) ? Math.round(parsed) : 0;
             };
             const inRange = (value) => {
                 if (!value) return false;
@@ -7020,8 +7090,8 @@ function showLoginForm() {
             const nowTs = now.getTime();
             const sevenDaysAhead = new Date(nowTs + (7 * 24 * 60 * 60 * 1000));
             const asAmount = (value) => {
-                const parsed = parseFloat(value);
-                return Number.isFinite(parsed) ? parsed : 0;
+                const parsed = Number(value);
+                return Number.isFinite(parsed) ? Math.round(parsed) : 0;
             };
             const isConfirmedBooking = (booking) => String(booking?.status || '').toLowerCase() === 'confirmed';
             const withPositiveBalance = (booking) => {
@@ -7252,7 +7322,7 @@ function showLoginForm() {
                     </div>
                     <div class="timeline-amount">
                         <span class="booking-status-pill ${statusClass}">${status.toUpperCase()}</span>
-                        <span class="timeline-fee income-green">UGX ${(parseFloat(booking.fee) || 0).toLocaleString()}</span>
+                        <span class="timeline-fee income-green">UGX ${(Math.round(Number(booking.fee) || 0)).toLocaleString()}</span>
                     </div>
                 </div>
                 `;
@@ -7277,13 +7347,13 @@ function showLoginForm() {
                     type: 'booking',
                     badge: (booking.status || 'pending').toUpperCase(),
                     badgeClass: statusClass,
-                    amountLabel: `UGX ${(parseFloat(booking.fee) || 0).toLocaleString()}`,
+                    amountLabel: `UGX ${(Math.round(Number(booking.fee) || 0)).toLocaleString()}`,
                     amountClass: 'income-green'
                 });
             });
 
             bookings
-                .filter((booking) => (parseFloat(booking.deposit) || 0) > 0)
+                .filter((booking) => (Math.round(Number(booking.deposit) || 0)) > 0)
                 .slice()
                 .sort((a, b) => new Date(b.date) - new Date(a.date))
                 .slice(0, limit)
@@ -7295,7 +7365,7 @@ function showLoginForm() {
                         type: 'payment',
                         badge: 'DEPOSIT',
                         badgeClass: 'status-confirmed',
-                        amountLabel: `UGX ${(parseFloat(booking.deposit) || 0).toLocaleString()}`,
+                        amountLabel: `UGX ${(Math.round(Number(booking.deposit) || 0)).toLocaleString()}`,
                         amountClass: 'deposit-blue'
                     });
                 });
@@ -7495,10 +7565,10 @@ function showLoginForm() {
                     }
                 }
 
-                const feeValue = parseFloat(booking.fee) || 0;
-                const depositValue = parseFloat(booking.deposit) || 0;
-                const balanceValue = Number.isFinite(parseFloat(booking.balance))
-                    ? parseFloat(booking.balance)
+                const feeValue = Math.round(Number(booking.fee) || 0);
+                const depositValue = Math.round(Number(booking.deposit) || 0);
+                const balanceValue = Number.isFinite(Number(booking.balance))
+                    ? Math.round(Number(booking.balance))
                     : (feeValue - depositValue);
 
                 if (balanceValue > 0) {
@@ -7523,7 +7593,7 @@ function showLoginForm() {
                     date: booking.date,
                     title: `${booking.event} (${booking.artist})`,
                     sub: booking.location ? `Show income  -  ${booking.location}` : 'Show income',
-                    amount: parseFloat(booking.fee) || 0,
+                    amount: Math.round(Number(booking.fee) || 0),
                     type: 'income'
                 });
             });
@@ -7533,7 +7603,7 @@ function showLoginForm() {
                     date: item.date,
                     title: item.source,
                     sub: `Other income  -  ${item.type}`,
-                    amount: parseFloat(item.amount) || 0,
+                    amount: Math.round(Number(item.amount) || 0),
                     type: 'income'
                 });
             });
@@ -7543,7 +7613,7 @@ function showLoginForm() {
                     date: expense.date,
                     title: expense.description,
                     sub: `Expense  -  ${expense.category}`,
-                    amount: parseFloat(expense.amount) || 0,
+                    amount: Math.round(Number(expense.amount) || 0),
                     type: 'expense'
                 });
             });
@@ -7588,7 +7658,7 @@ function showLoginForm() {
                         date: booking.date,
                         title: booking.event,
                         sub: `Booking  -  ${booking.artist}`,
-                        amount: parseFloat(booking.fee) || 0,
+                        amount: Math.round(Number(booking.fee) || 0),
                         type: 'income'
                     });
                 }
@@ -7602,7 +7672,7 @@ function showLoginForm() {
                         date: item.date,
                         title: item.source,
                         sub: `Other income  -  ${item.type}`,
-                        amount: parseFloat(item.amount) || 0,
+                        amount: Math.round(Number(item.amount) || 0),
                         type: 'income'
                     });
                 }
@@ -7616,7 +7686,7 @@ function showLoginForm() {
                         date: expense.date,
                         title: expense.description,
                         sub: `Expense  -  ${expense.category}`,
-                        amount: parseFloat(expense.amount) || 0,
+                        amount: Math.round(Number(expense.amount) || 0),
                         type: 'expense'
                     });
                 }
@@ -8003,7 +8073,7 @@ function showLoginForm() {
             // Clear any shimmer skeleton first
             const skel = el.querySelector('.sp-skeleton');
             if (skel) skel.remove();
-            const prev = parseFloat(el.dataset.countTarget || '0');
+            const prev = Number(el.dataset.countTarget || '0');
             // Skip if same value
             if (prev === targetValue) { el.textContent = formatValue(targetValue); return; }
             el.dataset.countTarget = targetValue;
@@ -8245,9 +8315,9 @@ function showLoginForm() {
             }
 
             // â”€â”€ Collection Nudge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            const unpaid = allBookings.filter(b => parseFloat(b.balance || 0) > 0);
+            const unpaid = allBookings.filter(b => (Math.round(Number(b.balance) || 0)) > 0);
             if (unpaid.length > 0) {
-                const total = unpaid.reduce((s, b) => s + parseFloat(b.balance || 0), 0);
+                const total = unpaid.reduce((s, b) => s + (Math.round(Number(b.balance) || 0)), 0);
                 nudges.push({
                     type: 'warning', icon: 'ph-money', id: 'nudge-collection',
                     text: `${unpaid.length} booking${unpaid.length > 1 ? 's have' : ' has'} unpaid balances (UGX ${Math.round(total).toLocaleString()}). Follow up?`,
@@ -8258,14 +8328,14 @@ function showLoginForm() {
 
             // â”€â”€ Show Nudge â€” show in â‰¤5 days with balance due â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             allBookings.filter(b => {
-                if (!b.date || parseFloat(b.balance || 0) <= 0) return false;
+                if (!b.date || (Math.round(Number(b.balance) || 0)) <= 0) return false;
                 const diff = (new Date(b.date) - now) / 86400000;
                 return diff >= 0 && diff <= 5;
             }).forEach(b => {
                 const diff = Math.max(0, Math.ceil((new Date(b.date) - now) / 86400000));
                 nudges.push({
                     type: 'alert', icon: 'ph-microphone-stage', id: `nudge-show-${b.id}`,
-                    text: `"${b.event}" is in ${diff} day${diff !== 1 ? 's' : ''}. Balance still due: UGX ${parseFloat(b.balance).toLocaleString()}.`,
+                    text: `"${b.event}" is in ${diff} day${diff !== 1 ? 's' : ''}. Balance still due: UGX ${(Math.round(Number(b.balance) || 0)).toLocaleString()}.`,
                     action: 'openBooking',
                     actionId: String(b.id ?? '')
                 });
@@ -8363,7 +8433,7 @@ function showLoginForm() {
             let bookingId = resolveBookingId(actionId);
             if (bookingId === null) {
                 const allBookings = typeof bookings !== 'undefined' ? bookings : [];
-                const firstUnpaid = allBookings.find((booking) => parseFloat(booking.balance || 0) > 0);
+                const firstUnpaid = allBookings.find((booking) => (Math.round(Number(booking.balance) || 0)) > 0);
                 bookingId = firstUnpaid ? firstUnpaid.id : null;
             }
             openBookingFromNudge(bookingId);

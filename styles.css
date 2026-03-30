@@ -6617,3 +6617,31 @@ body.light-theme .sp-muted { color: rgba(0,0,0,0.4); }
     color: var(--text-muted);
     font-size: 13px;
 }
+
+/* ============================================================================
+   FIREFOX FALLBACK: backdrop-filter is not fully supported in Firefox.
+   Provide opaque backgrounds when glassmorphism is unavailable.
+   ============================================================================ */
+@supports not (backdrop-filter: blur(1px)) {
+    .card,
+    .sidebar,
+    .modal-content,
+    .sp-toast,
+    .booking-card,
+    .expense-card,
+    .nav-item,
+    .dropdown-menu,
+    .sp-about-modal-content {
+        background: rgba(20, 20, 20, 0.95);
+    }
+    .light-theme .card,
+    .light-theme .sidebar,
+    .light-theme .modal-content,
+    .light-theme .sp-toast,
+    .light-theme .booking-card,
+    .light-theme .expense-card,
+    .light-theme .nav-item,
+    .light-theme .dropdown-menu {
+        background: rgba(255, 255, 255, 0.97);
+    }
+}

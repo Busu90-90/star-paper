@@ -1321,7 +1321,7 @@
         <script src="app.actions.js?v=8"></script>
         <script src="app.todayboard.js?v=1"></script>
         <script src="app.tasks.js?v=2"></script>
-        <script src="app.js?v=26"></script>
+        <script src="app.js?v=27"></script>
         <script>
         // â”€â”€ FILE:// PROTOCOL GUARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // When the app is opened as a local file (double-clicked), window.location.origin
@@ -1569,15 +1569,51 @@
                     var username = (document.getElementById('forgotUsername').value || '').trim();
                     var result = document.getElementById('forgotPasswordResult');
                     if (!username) { result.textContent = 'Please enter your username.'; result.className = 'forgot-password-hint forgot-password-hint--error'; return; }
-                    // Check if username exists in stored credentials
-                    var stored = JSON.parse(localStorage.getItem('starPaperCredentials') || '{}');
-                    if (stored[username]) {
-                        result.textContent = 'Account found. Passwords are securely stored and cannot be displayed.';
-                        result.className = 'forgot-password-hint forgot-password-hint--success';
-                    } else {
-                        result.textContent = 'No account found with that username.';
-                        result.className = 'forgot-password-hint forgot-password-hint--error';
-                    }
+                    result.textContent = 'Looking up account...';
+                    result.className = 'forgot-password-hint';
+                    (async function() {
+                        try {
+                            // Try Supabase password reset first
+                            if (window.SP && typeof window.SP.client !== 'undefined') {
+                                var email = null;
+                                // If input looks like email, use directly
+                                if (username.includes('@')) {
+                                    email = username;
+                                } else {
+                                    // Lookup email by username via RPC
+                                    var rpcResult = await window.SP.client.rpc('get_email_for_username', { p_username: username });
+                                    if (rpcResult.data && typeof rpcResult.data === 'string' && rpcResult.data.includes('@')) {
+                                        email = rpcResult.data;
+                                    }
+                                }
+                                if (email) {
+                                    var resetResult = await window.SP.client.auth.resetPasswordForEmail(email, {
+                                        redirectTo: window.location.origin
+                                    });
+                                    if (resetResult.error) {
+                                        result.textContent = 'Could not send reset email. Please try again later.';
+                                        result.className = 'forgot-password-hint forgot-password-hint--error';
+                                    } else {
+                                        result.textContent = 'Password reset email sent! Check your inbox.';
+                                        result.className = 'forgot-password-hint forgot-password-hint--success';
+                                    }
+                                    return;
+                                }
+                            }
+                            // Fallback: check local credentials
+                            var stored = JSON.parse(localStorage.getItem('starPaperCredentials') || '{}');
+                            if (stored[username]) {
+                                result.textContent = 'Account found locally but password reset requires cloud mode. Please contact support.';
+                                result.className = 'forgot-password-hint forgot-password-hint--error';
+                            } else {
+                                result.textContent = 'No account found with that username.';
+                                result.className = 'forgot-password-hint forgot-password-hint--error';
+                            }
+                        } catch (err) {
+                            result.textContent = 'Something went wrong. Please try again.';
+                            result.className = 'forgot-password-hint forgot-password-hint--error';
+                        }
+                    })();
                 }
             });
         </script>
