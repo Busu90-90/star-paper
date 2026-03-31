@@ -79,7 +79,9 @@ const SP_CURRENCIES = {
       // Supabase requests fire in rapid succession (e.g. Create Team flow).
       // With this disabled, GoTrue falls back to a simple in-memory mutex
       // which is sufficient for a single-page app with one auth client.
-      lock: (name, acquireTimeout, fn) => fn(),
+      // CRITICAL: must RETURN the promise from fn() — the SDK's internal
+      // initializePromise depends on it. Discarding it deadlocks the SDK.
+      lock: (name, acquireTimeout, fn) => Promise.resolve().then(fn),
     }
   });
 
@@ -818,28 +820,29 @@ const SP_CURRENCIES = {
         }
       };
 
-      const [bookingsRows, expensesRows, incomeRows, artistsRows] = await Promise.all([
-        timedQuery(
-          'loadData.bookings',
-          filter(db.from('bookings').select('*')).order('created_at', { ascending: false }),
-          5000
-        ),
-        timedQuery(
-          'loadData.expenses',
-          filter(db.from('expenses').select('*')).order('date', { ascending: false }),
-          5000
-        ),
-        timedQuery(
-          'loadData.other_income',
-          filter(db.from('other_income').select('*')).order('date', { ascending: false }),
-          5000
-        ),
-        timedQuery(
-          'loadData.artists',
-          filter(db.from('artists').select('*')).order('name'),
-          5000
-        ),
-      ]);
+      // Sequential queries wrapped in lambdas — Supabase SDK Web Locks deadlock
+      // on concurrent auth-bearing requests (see CLAUDE.md §12). Lambdas prevent
+      // eager evaluation from starting all queries simultaneously.
+      const bookingsRows = await timedQuery(
+        'loadData.bookings',
+        () => filter(db.from('bookings').select('*')).order('created_at', { ascending: false }),
+        5000
+      );
+      const expensesRows = await timedQuery(
+        'loadData.expenses',
+        () => filter(db.from('expenses').select('*')).order('date', { ascending: false }),
+        5000
+      );
+      const incomeRows = await timedQuery(
+        'loadData.other_income',
+        () => filter(db.from('other_income').select('*')).order('date', { ascending: false }),
+        5000
+      );
+      const artistsRows = await timedQuery(
+        'loadData.artists',
+        () => filter(db.from('artists').select('*')).order('name'),
+        5000
+      );
 
       const payload = {};
       if (Array.isArray(bookingsRows)) payload.bookings = bookingsRows.map(rowToBooking);
@@ -886,11 +889,11 @@ const SP_CURRENCIES = {
     }
 
     try {
-      const [bRows, eRows, iRows] = await Promise.all([
-        smartUpsert('bookings',     bookings,    bookingToRow),
-        smartUpsert('expenses',     expenses,    expenseToRow),
-        smartUpsert('other_income', otherIncome, otherIncomeToRow),
-      ]);
+      // Sequential upserts — Supabase SDK Web Locks cause AbortError when
+      // multiple auth-bearing requests run concurrently (see CLAUDE.md §12).
+      const bRows = await smartUpsert('bookings',     bookings,    bookingToRow);
+      const eRows = await smartUpsert('expenses',     expenses,    expenseToRow);
+      const iRows = await smartUpsert('other_income', otherIncome, otherIncomeToRow);
 
       // CRITICAL: Back-fill Supabase-generated UUIDs into the live app arrays so
       // future saves hit the existing row (not create new duplicates).
@@ -1114,13 +1117,13 @@ const SP_CURRENCIES = {
         }
       };
 
-      const [core, tasks, revenueGoal, bbfEntries, closingThoughts] = await Promise.all([
-        timedLoad('loadData', () => loadData(), 7000),
-        timedLoad('loadTasks', () => loadTasks(), 5000),
-        timedLoad('loadRevenueGoal', () => loadRevenueGoal(), 4000),
-        timedLoad('loadBBFEntries', () => loadBBFEntries(), 5000),
-        timedLoad('loadClosingThoughts', () => loadClosingThoughts(), 5000),
-      ]);
+      // Sequential loads — Supabase SDK Web Locks deadlock on concurrent
+      // auth-bearing requests (see CLAUDE.md §12).
+      const core             = await timedLoad('loadData',            () => loadData(),            7000);
+      const tasks            = await timedLoad('loadTasks',           () => loadTasks(),           5000);
+      const revenueGoal      = await timedLoad('loadRevenueGoal',     () => loadRevenueGoal(),     4000);
+      const bbfEntries       = await timedLoad('loadBBFEntries',      () => loadBBFEntries(),      5000);
+      const closingThoughts  = await timedLoad('loadClosingThoughts', () => loadClosingThoughts(), 5000);
 
       const payload = {};
       if (core.value && typeof core.value === 'object') Object.assign(payload, core.value);
@@ -1156,7 +1159,7 @@ const SP_CURRENCIES = {
 
     _refreshInFlight = true;
     _lastRefreshAt = now;
-    const timeoutMs = typeof options.timeoutMs === 'number' ? options.timeoutMs : 8000;
+    const timeoutMs = typeof options.timeoutMs === 'number' ? options.timeoutMs : 30000;
     try {
       const fresh = await withTimeout(() => loadAllData(), timeoutMs, 'loadAllData[refresh]');
       const meta = fresh?.__meta || null;
@@ -1655,6 +1658,9 @@ const SP_CURRENCIES = {
 
     // Background work: profile + data load should never block UI.
     (async () => {
+      // Lock out refreshCloudData while bootstrap loads data — concurrent
+      // Supabase requests deadlock on the SDK's Web Lock (see CLAUDE.md §12).
+      _refreshInFlight = true;
       let profile = null;
       try {
         profile = await withTimeout(
@@ -1677,7 +1683,7 @@ const SP_CURRENCIES = {
 
       let fresh = null;
       try {
-        fresh = await withTimeout(() => loadAllData(), 8000, 'loadAllData');
+        fresh = await withTimeout(() => loadAllData(), 30000, 'loadAllData');
         log('bootstrap.data.done', { ok: Boolean(fresh) });
       } catch (dataError) {
         warn('Cloud data bootstrap failed or timed out:', dataError);
@@ -1690,6 +1696,9 @@ const SP_CURRENCIES = {
           }, 2500);
         }
       }
+
+      // Bootstrap data load complete — unlock refreshCloudData for interval/focus.
+      _refreshInFlight = false;
 
       // Always sync cloud data if we got it; otherwise loadUserData falls back
       // to localStorage automatically — this is the Single Source of Truth path.
