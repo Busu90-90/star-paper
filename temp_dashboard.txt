@@ -3,7 +3,7 @@
                 <div class="dashboard-home-layout">
                     <div class="card dashboard-section-card dashboard-at-glance-card">
                         <div class="mainstage-strip__head">
-                            <h3 class="section-title" data-icon="dashboard">At a Glance (This Month)</h3>
+                            <h3 class="section-title" data-icon="dashboard">At a Glance (<span id="glancePeriodLabel">Month Year</span>)</h3>
                             <div class="mainstage-strip__updated" id="mainstageLiveDate">Updated now</div>
                         </div>
                         <div class="monthly-goal-track">
@@ -36,7 +36,7 @@
                         </div>
                         <div class="dashboard-glance-grid">
                             <div class="mainstage-kpi">
-                                <div class="mainstage-kpi__label">This Month's Revenue</div>
+                                <div class="mainstage-kpi__label" id="dashboardRevenueLabel">Month Year Revenue</div>
                                 <div class="mainstage-kpi__value income-green" id="totalIncome">UGX 0</div>
                             </div>
                             <div class="mainstage-kpi">
@@ -44,7 +44,7 @@
                                 <div class="mainstage-kpi__value deposit-blue" id="dashboardDepositsReceived">UGX 0</div>
                             </div>
                             <div class="mainstage-kpi">
-                                <div class="mainstage-kpi__label">Expenses (This Month)</div>
+                                <div class="mainstage-kpi__label" id="dashboardExpensesLabel">Expenses (Month Year)</div>
                                 <div class="mainstage-kpi__value expense-red" id="dashboardExpenses">UGX 0</div>
                             </div>
                             <div class="mainstage-kpi">

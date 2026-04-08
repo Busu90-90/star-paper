@@ -106,6 +106,7 @@ function getSectionIconMarkup(iconKey) {
             'starPaperRevenueGoals',
             'starPaperBBF',
             'starPaperClosingThoughtsByPeriod',
+            'starPaperAudienceMetrics',
             'sp_tasks',
             'starPaperTasks'
         ]);
@@ -369,6 +370,11 @@ function getSectionIconMarkup(iconKey) {
         if (!revenueGoals || typeof revenueGoals !== 'object' || Array.isArray(revenueGoals)) revenueGoals = {};
         let bbfData = Storage.loadSync('starPaperBBF', {});
         if (!bbfData || typeof bbfData !== 'object' || Array.isArray(bbfData)) bbfData = {};
+        let bbfViewState = Storage.loadSync('starPaperBBFViewState', {});
+        if (!bbfViewState || typeof bbfViewState !== 'object' || Array.isArray(bbfViewState)) bbfViewState = {};
+        let audienceMetricsStore = Storage.loadSync('starPaperAudienceMetrics', {});
+        if (!audienceMetricsStore || typeof audienceMetricsStore !== 'object' || Array.isArray(audienceMetricsStore)) audienceMetricsStore = {};
+        let audienceMetrics = [];
         let currentUser = null;
         let currentManagerId = null;
         let currentTeamRole = null;
@@ -386,6 +392,7 @@ function getSectionIconMarkup(iconKey) {
         let searchIndexDirty = true;
         let searchInputDebounceTimer = null;
         let pendingProfileAvatarValue = '';
+        let pendingArtistAvatarValue = '';
         const MOCK_PORTFOLIO_VERSION = 'portfolio-seed-v1';
         const CLOSING_THOUGHTS_STORAGE_KEY = 'starPaperClosingThoughtsByPeriod';
         const EMBEDDED_REPORT_LOGO_DATA_URL = 'data:image/png;base64,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';
@@ -412,6 +419,10 @@ function getSectionIconMarkup(iconKey) {
             revenueGoals = loadedRevenueGoals && typeof loadedRevenueGoals === 'object' && !Array.isArray(loadedRevenueGoals) ? loadedRevenueGoals : {};
             const loadedBBF = Storage.loadSync('starPaperBBF', {});
             bbfData = loadedBBF && typeof loadedBBF === 'object' && !Array.isArray(loadedBBF) ? loadedBBF : {};
+            const loadedAudienceMetrics = Storage.loadSync('starPaperAudienceMetrics', {});
+            audienceMetricsStore = loadedAudienceMetrics && typeof loadedAudienceMetrics === 'object' && !Array.isArray(loadedAudienceMetrics)
+                ? loadedAudienceMetrics
+                : {};
         }
 
         function saveIdentityStores() {
@@ -617,6 +628,41 @@ function getSectionIconMarkup(iconKey) {
                 return raw;
             }
             return avatarDataUriFromSymbol(raw);
+        }
+
+        function resolveDisplayArtistAvatar(artist) {
+            const raw = String(artist?.avatar || '').trim();
+            if (raw) {
+                if (raw.startsWith('data:image/') || raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('./') || raw.startsWith('/')) {
+                    return raw;
+                }
+                return avatarDataUriFromSymbol(raw);
+            }
+            const initial = String(artist?.name || '?').trim().charAt(0).toUpperCase() || '?';
+            return avatarDataUriFromSymbol(initial);
+        }
+
+        function updateArtistAvatarPreview(src) {
+            const preview = document.getElementById('artistAvatarPreview');
+            if (!preview) return;
+            preview.src = src || '';
+        }
+
+        function handleArtistAvatarUpload(event) {
+            const file = event?.target?.files?.[0];
+            if (!file) return;
+            if (!file.type || !file.type.startsWith('image/')) {
+                toastError('Please upload a valid image file.');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => {
+                const result = typeof reader.result === 'string' ? reader.result : '';
+                if (!result) return;
+                pendingArtistAvatarValue = result;
+                updateArtistAvatarPreview(result);
+            };
+            reader.readAsDataURL(file);
         }
 
         function updateHeaderGreeting() {
@@ -877,6 +923,24 @@ function getSectionIconMarkup(iconKey) {
             Storage.saveSync('starPaperManagerData', managerData);
         }
 
+        function getAudienceMetricsForScope(scopeKey) {
+            if (!scopeKey) return [];
+            if (!audienceMetricsStore || typeof audienceMetricsStore !== 'object' || Array.isArray(audienceMetricsStore)) {
+                audienceMetricsStore = {};
+            }
+            const scoped = audienceMetricsStore[scopeKey];
+            return Array.isArray(scoped) ? scoped : [];
+        }
+
+        function saveAudienceMetricsForScope(scopeKey, entries) {
+            if (!scopeKey) return;
+            if (!audienceMetricsStore || typeof audienceMetricsStore !== 'object' || Array.isArray(audienceMetricsStore)) {
+                audienceMetricsStore = {};
+            }
+            audienceMetricsStore[scopeKey] = Array.isArray(entries) ? entries : [];
+            Storage.saveSync('starPaperAudienceMetrics', audienceMetricsStore);
+        }
+
         function ensureArtistForBookingName(name, managerIdHint = currentManagerId) {
             const artistName = sanitizeTextInput(name);
             if (!artistName) return null;
@@ -894,7 +958,9 @@ function getSectionIconMarkup(iconKey) {
                 email: '',
                 phone: '',
                 specialty: '',
-                bio: ''
+                bio: '',
+                strategicGoal: '',
+                avatar: ''
             };
             artists.push(artist);
             Storage.saveSync('starPaperArtists', artists);
@@ -1071,6 +1137,7 @@ function getSectionIconMarkup(iconKey) {
             if (editor) editor.style.display = 'none';
             updateDashboard();
             syncCloudExtras();
+            toastSuccess(`Monthly revenue goal saved: UGX ${Math.round(value || 0).toLocaleString()}.`);
         }
 
         function toggleMonthlyGoalEditor() {
@@ -1090,51 +1157,347 @@ function getSectionIconMarkup(iconKey) {
         }
 
         // â”€â”€ Balance Brought Forward (BBF) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        function getBBFKey() {
-            const now = new Date();
-            const managerId = getActiveDataScopeKey();
-            const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-            return `${managerId}_${ym}`;
+        const BBF_ARTIST_MARKER = '::artist::';
+
+        function formatBBFMonthKey(date) {
+            const safeDate = date instanceof Date ? date : new Date();
+            return `${safeDate.getFullYear()}-${String(safeDate.getMonth() + 1).padStart(2, '0')}`;
         }
 
-        function getCurrentBBF() {
-            const raw = Number(bbfData[getBBFKey()] || 0);
-            return Number.isFinite(raw) ? raw : 0;
+        function shiftBBFPeriod(period, deltaMonths = 0) {
+            const normalized = String(period || '').trim();
+            const match = normalized.match(/^(\d{4})-(\d{2})$/);
+            if (!match) return normalized || formatBBFMonthKey(new Date());
+            const year = Number(match[1]);
+            const monthIndex = Number(match[2]) - 1;
+            const shifted = new Date(year, monthIndex + Number(deltaMonths || 0), 1);
+            return formatBBFMonthKey(shifted);
         }
 
-        function setCurrentBBF(amount) {
+        function getBBFPeriodFromSelection(period = '', options = {}) {
+            const explicitDateStart = String(options.dateStart || '').trim();
+            if (/^\d{4}-\d{2}-\d{2}$/.test(explicitDateStart)) {
+                return explicitDateStart.slice(0, 7);
+            }
+
+            const today = new Date();
+            switch (String(period || '').trim()) {
+                case 'prevMonth':
+                    return formatBBFMonthKey(new Date(today.getFullYear(), today.getMonth() - 1, 1));
+                case 'quarter': {
+                    const quarterStartMonth = Math.floor(today.getMonth() / 3) * 3;
+                    return formatBBFMonthKey(new Date(today.getFullYear(), quarterStartMonth, 1));
+                }
+                case 'year':
+                    return `${today.getFullYear()}-01`;
+                case 'prevYear':
+                    return `${today.getFullYear() - 1}-01`;
+                case 'all': {
+                    const allDates = [
+                        ...(Array.isArray(bookings) ? bookings : []).map((entry) => entry?.date),
+                        ...(Array.isArray(expenses) ? expenses : []).map((entry) => entry?.date),
+                        ...(Array.isArray(otherIncome) ? otherIncome : []).map((entry) => entry?.date),
+                    ]
+                        .filter((value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '').trim()))
+                        .sort();
+                    return allDates.length > 0 ? allDates[0].slice(0, 7) : formatBBFMonthKey(today);
+                }
+                case 'month':
+                default:
+                    return formatBBFMonthKey(today);
+            }
+        }
+
+        function getDefaultBBFPeriod() {
+            const pdfDateStart = String(document.getElementById('spPdfDateStart')?.value || '').trim();
+            if (/^\d{4}-\d{2}-\d{2}$/.test(pdfDateStart)) {
+                return pdfDateStart.slice(0, 7);
+            }
+            const reportSelection = typeof getReportPeriodSelection === 'function'
+                ? getReportPeriodSelection()
+                : { period: 'month' };
+            return getBBFPeriodFromSelection(reportSelection?.period, { dateStart: pdfDateStart });
+        }
+
+        function normalizeBBFPeriod(period) {
+            const raw = String(period || '').trim();
+            return /^\d{4}-\d{2}$/.test(raw) ? raw : getDefaultBBFPeriod();
+        }
+
+        function slugifyBBFArtistKey(value) {
+            return String(value || '')
+                .trim()
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '');
+        }
+
+        function getBBFArtistKey(options = {}) {
+            const artistId = String(options.artistId || '').trim();
+            if (artistId) return artistId;
+            const artistName = String(options.artistName || options.artist || '').trim();
+            return artistName ? `name-${slugifyBBFArtistKey(artistName)}` : '';
+        }
+
+        function serializeBBFPeriod(period, artistKey = '') {
+            const normalized = normalizeBBFPeriod(period);
+            const scopedArtistKey = String(artistKey || '').trim();
+            return scopedArtistKey ? `${normalized}${BBF_ARTIST_MARKER}${scopedArtistKey}` : normalized;
+        }
+
+        function parseBBFPeriodKey(periodKey) {
+            const raw = String(periodKey || '').trim();
+            if (!raw) {
+                return { period: getDefaultBBFPeriod(), artistKey: '' };
+            }
+            const markerIndex = raw.indexOf(BBF_ARTIST_MARKER);
+            if (markerIndex === -1) {
+                return { period: normalizeBBFPeriod(raw), artistKey: '' };
+            }
+            return {
+                period: normalizeBBFPeriod(raw.slice(0, markerIndex)),
+                artistKey: raw.slice(markerIndex + BBF_ARTIST_MARKER.length).trim()
+            };
+        }
+
+        function getBBFKey(options = {}) {
+            const scopeKey = getActiveDataScopeKey();
+            const periodKey = serializeBBFPeriod(options.period, getBBFArtistKey(options));
+            return `${scopeKey}_${periodKey}`;
+        }
+
+        function getBBFViewStateKey() {
+            return getActiveDataScopeKey() || 'default';
+        }
+
+        function getPersistedBBFContext() {
+            const raw = bbfViewState[getBBFViewStateKey()];
+            if (!raw || typeof raw !== 'object') return null;
+            return {
+                period: normalizeBBFPeriod(raw.period),
+                artistId: String(raw.artistId || '').trim(),
+                artistName: String(raw.artistName || '').trim()
+            };
+        }
+
+        function setPersistedBBFContext(options = {}) {
+            const scopeKey = getBBFViewStateKey();
+            bbfViewState[scopeKey] = {
+                period: normalizeBBFPeriod(options.period),
+                artistId: String(options.artistId || '').trim(),
+                artistName: String(options.artistName || options.artist || '').trim()
+            };
+            Storage.saveSync('starPaperBBFViewState', bbfViewState);
+        }
+
+        function resolveBBFEntry(options = {}) {
+            const scopeKey = getActiveDataScopeKey();
+            const requestedPeriod = normalizeBBFPeriod(options.period);
+            const artistKey = getBBFArtistKey(options);
+            const allowGlobalFallback = options.fallbackToGlobal !== false;
+            const previousPeriod = shiftBBFPeriod(requestedPeriod, -1);
+            const candidates = [
+                { period: requestedPeriod, artistKey, usedPreviousPeriod: false },
+                ...(allowGlobalFallback && artistKey ? [{ period: requestedPeriod, artistKey: '', usedPreviousPeriod: false }] : []),
+                { period: previousPeriod, artistKey, usedPreviousPeriod: true },
+                ...(allowGlobalFallback && artistKey ? [{ period: previousPeriod, artistKey: '', usedPreviousPeriod: true }] : []),
+            ];
+
+            for (const candidate of candidates) {
+                const scopedKey = `${scopeKey}_${serializeBBFPeriod(candidate.period, candidate.artistKey)}`;
+                const raw = bbfData[scopedKey];
+                if (raw === undefined || raw === null || raw === '') continue;
+                const amount = Number(raw);
+                if (!Number.isFinite(amount)) continue;
+                return {
+                    amount,
+                    requestedPeriod,
+                    matchedPeriod: candidate.period,
+                    usedPreviousPeriod: candidate.usedPreviousPeriod,
+                    matchedArtistKey: candidate.artistKey
+                };
+            }
+
+            return {
+                amount: 0,
+                requestedPeriod,
+                matchedPeriod: requestedPeriod,
+                usedPreviousPeriod: false,
+                matchedArtistKey: artistKey
+            };
+        }
+
+        function getCurrentBBF(options = {}) {
+            return Number(resolveBBFEntry(options).amount) || 0;
+        }
+
+        function setCurrentBBF(amount, options = {}) {
             const val = Number(amount);
-            bbfData[getBBFKey()] = Number.isFinite(val) && val >= 0 ? val : 0;
+            bbfData[getBBFKey(options)] = Number.isFinite(val) && val >= 0 ? val : 0;
             Storage.saveSync('starPaperBBF', bbfData);
+            setPersistedBBFContext(options);
+        }
+
+        function formatBBFPeriodLabel(period) {
+            const normalized = normalizeBBFPeriod(period);
+            const [yearStr, monthStr] = normalized.split('-');
+            const year = Number(yearStr);
+            const monthIndex = Number(monthStr) - 1;
+            if (!Number.isFinite(year) || !Number.isFinite(monthIndex)) return normalized;
+            return new Date(year, monthIndex, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        }
+
+        function populateBBFArtistOptions(selectedArtistId = '') {
+            const select = document.getElementById('spBbfArtistSelect');
+            if (!select) return;
+            const artistsList = getArtists();
+            select.innerHTML = '<option value="">Roster / All Artists</option>' + artistsList.map((artist) => {
+                const id = escapeHtml(artist?.id || '');
+                const name = escapeHtml(artist?.name || 'Artist');
+                return `<option value="${id}">${name}</option>`;
+            }).join('');
+            if (selectedArtistId) {
+                select.value = selectedArtistId;
+            }
+        }
+
+        function getDefaultBBFArtist() {
+            const reportArtistName = String(document.getElementById('spRptArtistFilter')?.value || '').trim();
+            if (reportArtistName) {
+                const reportArtist = findArtistByName(reportArtistName);
+                if (reportArtist?.id) return reportArtist;
+            }
+            const pdfArtistName = String(document.getElementById('spPdfArtistSelect')?.value || '').trim();
+            if (pdfArtistName) {
+                const pdfArtist = findArtistByName(pdfArtistName);
+                if (pdfArtist?.id) return pdfArtist;
+            }
+            return null;
+        }
+
+        function getActiveBBFContext(options = {}) {
+            const persisted = (!options.period && !options.artist && !options.artistId && !options.artistName)
+                ? getPersistedBBFContext()
+                : null;
+            const artist = options.artist
+                || (persisted?.artistId ? findArtistById(persisted.artistId) : null)
+                || (persisted?.artistName ? findArtistByName(persisted.artistName) : null)
+                || getDefaultBBFArtist();
+            const period = normalizeBBFPeriod(options.period || persisted?.period || getDefaultBBFPeriod());
+            const resolved = resolveBBFEntry({
+                period,
+                artistId: options.artistId || artist?.id,
+                artistName: options.artistName || artist?.name,
+                fallbackToGlobal: options.fallbackToGlobal !== false
+            });
+            const sourcePeriod = resolved.usedPreviousPeriod ? resolved.matchedPeriod : shiftBBFPeriod(period, -1);
+            return {
+                period,
+                periodLabel: formatBBFPeriodLabel(period),
+                matchedPeriod: resolved.matchedPeriod,
+                matchedPeriodLabel: formatBBFPeriodLabel(resolved.matchedPeriod),
+                sourcePeriod,
+                sourcePeriodLabel: formatBBFPeriodLabel(sourcePeriod),
+                artist,
+                amount: Number(resolved.amount) || 0
+            };
+        }
+
+        function updateBBFModalPreview() {
+            const select = document.getElementById('spBbfArtistSelect');
+            const periodInput = document.getElementById('spBbfPeriodInput');
+            const amountInput = document.getElementById('spBbfAmountInput');
+            const contextEl = document.getElementById('spBbfContext');
+            if (!periodInput || !amountInput) return;
+
+            const period = normalizeBBFPeriod(periodInput.value);
+            const artist = select?.value ? findArtistById(select.value) : null;
+            const existingAmount = getCurrentBBF({
+                period,
+                artistId: artist?.id,
+                artistName: artist?.name,
+                fallbackToGlobal: true
+            });
+
+            amountInput.value = existingAmount > 0 ? String(Math.round(existingAmount)) : '';
+
+            if (contextEl) {
+                const scopeLabel = artist?.name ? `${artist.name} only` : 'the full roster';
+                const periodLabel = formatBBFPeriodLabel(period);
+                const amountLabel = `UGX ${Math.round(existingAmount || 0).toLocaleString()}`;
+                contextEl.textContent = `Saving BBF for ${scopeLabel} in ${periodLabel}. Current stored value: ${amountLabel}.`;
+            }
+        }
+
+        function bindBBFModal() {
+            const modal = document.getElementById('spBbfModal');
+            const artistSelect = document.getElementById('spBbfArtistSelect');
+            const periodInput = document.getElementById('spBbfPeriodInput');
+            if (!modal || modal.dataset.bound === '1') return;
+            modal.dataset.bound = '1';
+            modal.addEventListener('click', (event) => {
+                if (event.target === modal) closeBBFModal();
+            });
+            artistSelect?.addEventListener('change', updateBBFModalPreview);
+            periodInput?.addEventListener('change', updateBBFModalPreview);
+        }
+
+        function openBBFModal() {
+            const modal = document.getElementById('spBbfModal');
+            const periodInput = document.getElementById('spBbfPeriodInput');
+            const amountInput = document.getElementById('spBbfAmountInput');
+            if (!modal || !periodInput) return;
+
+            bindBBFModal();
+            const activeContext = getActiveBBFContext();
+            populateBBFArtistOptions(activeContext.artist?.id || '');
+            periodInput.value = activeContext.period;
+            updateBBFModalPreview();
+            modal.style.display = 'flex';
+
+            setTimeout(() => {
+                amountInput?.focus();
+                amountInput?.select?.();
+            }, 0);
+        }
+
+        function closeBBFModal() {
+            const modal = document.getElementById('spBbfModal');
+            if (modal) modal.style.display = 'none';
         }
 
         function toggleBBFEditor() {
-            const editor = document.getElementById('bbfEditor');
-            const input = document.getElementById('bbfInput');
-            if (!editor) return;
-            const isOpen = editor.style.display && editor.style.display !== 'none';
-            editor.style.display = isOpen ? 'none' : 'flex';
-            if (!isOpen && input) {
-                const current = getCurrentBBF();
-                input.value = current > 0 ? String(Math.round(current)) : '';
-                setTimeout(() => input.focus(), 0);
-            }
+            openBBFModal();
         }
 
         function saveBBF() {
             if (guardReadOnly('update the balance brought forward')) return;
-            const input = document.getElementById('bbfInput');
-            const editor = document.getElementById('bbfEditor');
-            if (!input) return;
-            const value = Number(input.value);
+            const select = document.getElementById('spBbfArtistSelect');
+            const periodInput = document.getElementById('spBbfPeriodInput');
+            const amountInput = document.getElementById('spBbfAmountInput');
+            if (!periodInput || !amountInput) return;
+
+            const value = Number(amountInput.value);
             if (!Number.isFinite(value) || value < 0) {
                 toastError('Please enter a valid amount.');
                 return;
             }
-            setCurrentBBF(value);
-            if (editor) editor.style.display = 'none';
+
+            const artist = select?.value ? findArtistById(select.value) : null;
+            const period = normalizeBBFPeriod(periodInput.value);
+            setCurrentBBF(value, {
+                period,
+                artistId: artist?.id,
+                artistName: artist?.name
+            });
+
+            closeBBFModal();
             updateDashboard();
+            if (typeof window.renderMomentumDashboard === 'function') {
+                window.renderMomentumDashboard();
+            }
             syncCloudExtras();
+            toastSuccess(`BBF saved for ${artist?.name || 'Roster'} (${formatBBFPeriodLabel(period)}).`);
         }
         // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -1338,7 +1701,8 @@ function getSectionIconMarkup(iconKey) {
             bindDashboardSearchResultInteractions();
             document.getElementById('monthlyGoalInput')?.addEventListener('keydown', (e) => handleEnterSubmit(e, saveMonthlyRevenueGoal));
             document.getElementById('financialsMonthlyGoalInput')?.addEventListener('keydown', (e) => handleEnterSubmit(e, saveFinancialsMonthlyRevenueGoal));
-            document.getElementById('bbfInput')?.addEventListener('keydown', (e) => handleEnterSubmit(e, saveBBF));
+            bindBBFModal();
+            document.getElementById('spBbfAmountInput')?.addEventListener('keydown', (e) => handleEnterSubmit(e, saveBBF));
             document.getElementById('loginName')?.addEventListener('keydown', (e) => handleEnterSubmit(e, runLogin));
             document.getElementById('loginPassword')?.addEventListener('keydown', (e) => handleEnterSubmit(e, runLogin));
             document.getElementById('signupName')?.addEventListener('keydown', (e) => handleEnterSubmit(e, runSignup));
@@ -1347,6 +1711,7 @@ function getSectionIconMarkup(iconKey) {
             document.getElementById('signupPhone')?.addEventListener('keydown', (e) => handleEnterSubmit(e, runSignup));
             document.getElementById('profileAvatarUpload')?.addEventListener('change', handleProfileAvatarUpload);
             document.getElementById('profileAvatarPresets')?.addEventListener('click', selectProfileAvatarPreset);
+            document.getElementById('artistAvatarUpload')?.addEventListener('change', handleArtistAvatarUpload);
             applyTheme(Storage.loadSync('starPaperTheme', 'dark'), { syncRemote: false });
             document.addEventListener('input', cacheDrafts);
             window.addEventListener('beforeunload', cacheDrafts);
@@ -2712,10 +3077,16 @@ function showLoginForm() {
             currentUser = normalized;
             updateCurrentManagerContext();
             const remember = Boolean(options.remember);
+            const cloudMode = Boolean(window.__spSupabaseConfigured) && !window.__spAllowLocalFallback;
             Storage.saveSync('starPaperRemember', remember);
             Storage.saveSync('starPaperCurrentUser', remember ? currentUser : null);
-            Storage.saveSync('starPaper_session', 'active');
-            Storage.saveSync('starPaperSessionUser', currentUser);
+            if (cloudMode) {
+                localStorage.removeItem('starPaper_session');
+                localStorage.removeItem('starPaperSessionUser');
+            } else {
+                Storage.saveSync('starPaper_session', 'active');
+                Storage.saveSync('starPaperSessionUser', currentUser);
+            }
             window.currentUser = currentUser;
             window.currentManagerId = currentManagerId;
             return true;
@@ -2745,6 +3116,17 @@ function showLoginForm() {
                 key.startsWith('sp_') ||
                 key.startsWith('sb-');
             if (!shouldSync) return;
+            const authKeyChanged =
+                key.startsWith('sb-') ||
+                key === 'sp_logged_out' ||
+                key === 'starPaper_session' ||
+                key === 'starPaperSessionUser' ||
+                key === 'starPaperRemember' ||
+                key === 'starPaperCurrentUser';
+            if (authKeyChanged && typeof checkAuth === 'function') {
+                checkAuth();
+                if (!window.__spAppBooted) return;
+            }
             if (typeof loadUserData === 'function') {
                 loadUserData();
             }
@@ -2754,6 +3136,7 @@ function showLoginForm() {
                 if (typeof renderExpenses === 'function') renderExpenses();
                 if (typeof renderOtherIncome === 'function') renderOtherIncome();
                 if (typeof renderArtists === 'function') renderArtists();
+                if (typeof renderAudienceMetrics === 'function') renderAudienceMetrics();
                 if (typeof updateTodayBoard === 'function') updateTodayBoard();
                 if (typeof window.renderTasks === 'function') window.renderTasks();
             }
@@ -2815,6 +3198,9 @@ function showLoginForm() {
         window.saveMonthlyRevenueGoal            ||= saveMonthlyRevenueGoal;
         window.toggleFinancialsMonthlyGoalEditor ||= toggleFinancialsMonthlyGoalEditor;
         window.saveFinancialsMonthlyRevenueGoal  ||= saveFinancialsMonthlyRevenueGoal;
+        window.getCurrentMonthlyRevenueGoal      ||= getCurrentMonthlyRevenueGoal;
+        window.openBBFModal         ||= openBBFModal;
+        window.closeBBFModal        ||= closeBBFModal;
         window.toggleBBFEditor       ||= toggleBBFEditor;
         window.saveBBF               ||= saveBBF;
         window.toggleClosingThoughts ||= toggleClosingThoughts;
@@ -2827,6 +3213,21 @@ function showLoginForm() {
 
         // Reports
         window.generateCleanReport ||= generateCleanReport;
+        window.exportCSV ||= exportCSV;
+        window.getReportPeriodSelection ||= getReportPeriodSelection;
+        window.getReportPeriodData ||= getReportPeriodData;
+        window.getReportLogoDataUrl ||= getReportLogoDataUrl;
+        window.getCurrentBBF ||= getCurrentBBF;
+        window.getActiveBBFContext ||= getActiveBBFContext;
+        window.shiftBBFPeriod ||= shiftBBFPeriod;
+        window.getPeriodString ||= getPeriodString;
+        window.formatDisplayDate ||= formatDisplayDate;
+        window.getClosingThoughtsForPeriod ||= getClosingThoughtsForPeriod;
+        window.resolveDisplayAvatar ||= resolveDisplayAvatar;
+        window.renderPerformanceMap ||= renderPerformanceMap;
+        window.saveAudienceMetricEntry ||= saveAudienceMetricEntry;
+        window.renderAudienceMetrics ||= renderAudienceMetrics;
+        window.populateAudienceArtistDropdown ||= populateAudienceArtistDropdown;
 
         // Data management
         window.loadMockPortfolioData ||= loadMockPortfolioData;
@@ -3216,6 +3617,7 @@ function showLoginForm() {
                 
                 console.log('Calling updateDashboard...');
                 updateDashboard();
+                updateMonthContextLabels();
                 
                 // Update Today Board
                 if (typeof window.updateTodayBoard === 'function') {
@@ -3242,7 +3644,11 @@ function showLoginForm() {
                 
                 console.log('Calling populateArtistDropdown...');
                 populateArtistDropdown();
-                
+                populateAudienceArtistDropdown();
+                renderAudienceMetrics();
+                bindAudienceArtistSelect();
+                handleAudienceArtistChange();
+
                 console.log('Calling loadPushSettings...');
                 loadPushSettings();
                 toggleAdminOnlyUI();
@@ -3353,6 +3759,12 @@ function showLoginForm() {
                 if (Array.isArray(cloudData.tasks) && typeof window.applyTaskSync === 'function') {
                     window.applyTaskSync(cloudData.tasks, { source: 'cloud' });
                 }
+                if (Array.isArray(cloudData.audienceMetrics)) {
+                    audienceMetrics = cloudData.audienceMetrics;
+                    saveAudienceMetricsForScope(activeScopeKey, audienceMetrics);
+                } else {
+                    audienceMetrics = getAudienceMetricsForScope(activeScopeKey);
+                }
                 if (cloudData.theme && typeof applyTheme === 'function') {
                     applyTheme(cloudData.theme, { persist: false });
                 }
@@ -3364,6 +3776,7 @@ function showLoginForm() {
                 bookings    = ensureBookingArtistRefs(data.bookings, currentManagerId);
                 expenses    = Array.isArray(data.expenses)    ? data.expenses    : [];
                 otherIncome = Array.isArray(data.otherIncome) ? data.otherIncome : [];
+                audienceMetrics = getAudienceMetricsForScope(getActiveDataScopeKey());
                 purgeRetiredArtistsForCurrentManager();
                 saveManagerData(getActiveDataScopeKey(), { bookings, expenses, otherIncome });
             }
@@ -3374,6 +3787,7 @@ function showLoginForm() {
             window.expenses     = expenses;
             window.otherIncome  = otherIncome;
             window.artists      = artists;
+            window.audienceMetrics = audienceMetrics;
             window.revenueGoals = revenueGoals;
             window.bbfData      = bbfData;
             window.currentManagerId = currentManagerId;
@@ -3418,6 +3832,11 @@ function showLoginForm() {
                 if (Array.isArray(data.tasks) && typeof window.applyTaskSync === 'function') {
                     window.applyTaskSync(data.tasks, { source: 'cloud' });
                 }
+                if (Array.isArray(data.audienceMetrics)) {
+                    audienceMetrics = data.audienceMetrics;
+                    window.audienceMetrics = audienceMetrics;
+                    saveAudienceMetricsForScope(getActiveDataScopeKey(), audienceMetrics);
+                }
                 if (data.theme && typeof applyTheme === 'function') {
                     applyTheme(data.theme, { persist: false });
                 }
@@ -3436,9 +3855,12 @@ function showLoginForm() {
                 window.expenses    = expenses;
                 window.otherIncome = otherIncome;
                 window.artists     = artists;
+                window.audienceMetrics = audienceMetrics;
                 window.revenueGoals = revenueGoals;
                 window.bbfData      = bbfData;
-                // supabase.js patches this function further to also cloud-sync
+                // Cloud sync: push all data (bookings, expenses, income, artists,
+                // tasks, goals, BBF, closing thoughts) to Supabase in the background.
+                syncCloudExtras();
             }
         }
 
@@ -3479,6 +3901,7 @@ function showLoginForm() {
                 expenses: Array.isArray(expenses) ? expenses : [],
                 otherIncome: Array.isArray(otherIncome) ? otherIncome : [],
                 artists: Array.isArray(artists) ? artists : [],
+                audienceMetrics: Array.isArray(audienceMetrics) ? audienceMetrics : [],
                 tasks: Array.isArray(tasks) ? tasks : [],
                 revenueGoal,
                 bbfEntries,
@@ -3488,10 +3911,16 @@ function showLoginForm() {
         };
 
         function syncCloudExtras() {
-            if (typeof window.SP?.saveAllData !== 'function') return;
+            if (typeof window.SP?.queueCloudSync !== 'function' && typeof window.SP?.saveAllData !== 'function') return;
             if (typeof window.SP_collectAllData !== 'function') return;
-            window.SP.saveAllData(window.SP_collectAllData()).catch((err) => {
+            const payload = window.SP_collectAllData();
+            const saveFn = window.SP.queueCloudSync || window.SP.saveAllData;
+            window.__spLastCloudSyncPromise = Promise.resolve(saveFn(payload)).catch((err) => {
                 console.warn('Cloud sync failed:', err);
+                if (typeof window.SP?.enqueueSave === 'function') {
+                    window.SP.enqueueSave(payload);
+                }
+                return null;
             });
         }
 
@@ -3525,29 +3954,55 @@ function showLoginForm() {
                     email: 'cindy@starpaperdemo.com',
                     phone: '+256 770 112233',
                     specialty: 'Dancehall / Pop',
-                    bio: 'Ugandan singer-songwriter and actress, widely known as \"The King Herself,\" a former Blu*3 member and an established solo dancehall-pop performer.'
+                    bio: 'Ugandan singer-songwriter and actress, widely known as \"The King Herself,\" a former Blu*3 member and an established solo dancehall-pop performer.',
+                    strategicGoal: 'Secure 3 regional festival slots and two brand partnerships this quarter.',
+                    avatar: avatarDataUriFromSymbol('C')
                 },
                 {
                     name: 'Kvan',
                     email: 'kvan@starpaperdemo.com',
                     phone: '+256 772 904411',
                     specialty: 'Dancehall / Afro-Fusion',
-                    bio: 'Dancehall artist from Jinja (Bugisu origin), known as KVAN, a songwriter-performer active since age 8 with studio releases and regional collaborations.'
+                    bio: 'Dancehall artist from Jinja (Bugisu origin), known as KVAN, a songwriter-performer active since age 8 with studio releases and regional collaborations.',
+                    strategicGoal: 'Expand regional tour pipeline and secure 4 cross-border shows.',
+                    avatar: avatarDataUriFromSymbol('K')
                 },
                 {
                     name: 'Spice Diana',
                     email: 'spice@starpaperdemo.com',
                     phone: '+256 774 563210',
                     specialty: 'Dancehall / Pop',
-                    bio: 'Consistent chart performer with strong regional demand and repeat bookings for club and corporate circuits.'
+                    bio: 'Consistent chart performer with strong regional demand and repeat bookings for club and corporate circuits.',
+                    strategicGoal: 'Strengthen corporate circuit bookings and grow streaming audience by 10%.',
+                    avatar: avatarDataUriFromSymbol('S')
                 },
                 {
                     name: 'Cieska Lites',
                     email: 'cieska@starpaperdemo.com',
                     phone: '+256 780 553714',
                     specialty: 'Reggae / Ragga Dancehall',
-                    bio: 'Ugandan reggae-ragga dancehall artist active since 2014, known for high-energy stage delivery, writing his own music, and recent releases in regional riddim projects.'
+                    bio: 'Ugandan reggae-ragga dancehall artist active since 2014, known for high-energy stage delivery, writing his own music, and recent releases in regional riddim projects.',
+                    strategicGoal: 'Launch a new single run and lock two brand activations.',
+                    avatar: avatarDataUriFromSymbol('C')
                 }
+            ];
+
+            const monthOffset = (offsetMonths) => {
+                const d = new Date();
+                d.setDate(1);
+                d.setMonth(d.getMonth() + offsetMonths);
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            };
+
+            const mockAudienceMetrics = [
+                { artist: 'Cindy Sanyu', period: monthOffset(-2), socialFollowers: 1180000, spotifyListeners: 520000, youtubeListeners: 205000 },
+                { artist: 'Cindy Sanyu', period: monthOffset(-1), socialFollowers: 1215000, spotifyListeners: 548000, youtubeListeners: 214000 },
+                { artist: 'Kvan', period: monthOffset(-2), socialFollowers: 640000, spotifyListeners: 310000, youtubeListeners: 120000 },
+                { artist: 'Kvan', period: monthOffset(-1), socialFollowers: 685000, spotifyListeners: 335000, youtubeListeners: 128000 },
+                { artist: 'Spice Diana', period: monthOffset(-2), socialFollowers: 1920000, spotifyListeners: 610000, youtubeListeners: 285000 },
+                { artist: 'Spice Diana', period: monthOffset(-1), socialFollowers: 1995000, spotifyListeners: 645000, youtubeListeners: 301000 },
+                { artist: 'Cieska Lites', period: monthOffset(-2), socialFollowers: 420000, spotifyListeners: 145000, youtubeListeners: 68000 },
+                { artist: 'Cieska Lites', period: monthOffset(-1), socialFollowers: 452000, spotifyListeners: 159000, youtubeListeners: 74200 }
             ];
 
             const mockBookings = [
@@ -3558,6 +4013,7 @@ function showLoginForm() {
                     dateOffset: -19,
                     fee: 17600000,
                     deposit: 9000000,
+                    capacity: 3500,
                     contact: 'Crown Grounds Team: 0701 118244',
                     status: 'confirmed',
                     notes: 'Headline dancehall set with full band and media pullout.',
@@ -3571,6 +4027,7 @@ function showLoginForm() {
                     dateOffset: -7,
                     fee: 13200000,
                     deposit: 5400000,
+                    capacity: 2200,
                     contact: 'Victoria Nights Desk: 0754 209611',
                     status: 'pending',
                     notes: 'Prime-time performance pending sponsor remittance.',
@@ -3584,6 +4041,7 @@ function showLoginForm() {
                     dateOffset: -21,
                     fee: 16000000,
                     deposit: 8000000,
+                    capacity: 2800,
                     contact: 'Rwanda Touring: +250 788 220100',
                     status: 'confirmed',
                     notes: 'Regional showcase appearance with media syndication.',
@@ -3597,6 +4055,7 @@ function showLoginForm() {
                     dateOffset: -6,
                     fee: 9600000,
                     deposit: 3200000,
+                    capacity: 1500,
                     contact: 'Nexus Promoter: 0788 450021',
                     status: 'pending',
                     notes: 'Soft ticket hold pending final sponsor confirmation.',
@@ -3610,6 +4069,7 @@ function showLoginForm() {
                     dateOffset: -12,
                     fee: 14000000,
                     deposit: 7000000,
+                    capacity: 4000,
                     contact: 'City Fest Team: 0774 932201',
                     status: 'confirmed',
                     notes: 'Prime-time set with choreography team and pyros.',
@@ -3623,6 +4083,7 @@ function showLoginForm() {
                     dateOffset: -4,
                     fee: 7200000,
                     deposit: 2600000,
+                    capacity: 2500,
                     contact: 'Northern Stage Admin: 0762 600178',
                     status: 'pending',
                     notes: 'Outdoor youth concert with radio partner promotions.',
@@ -3636,6 +4097,7 @@ function showLoginForm() {
                     dateOffset: -16,
                     fee: 11200000,
                     deposit: 5200000,
+                    capacity: 1800,
                     contact: 'Ragga Heights Team: 0776 301144',
                     status: 'confirmed',
                     notes: 'Prime dancehall set with live MC and full sound package.',
@@ -3649,6 +4111,7 @@ function showLoginForm() {
                     dateOffset: -2,
                     fee: 9800000,
                     deposit: 4000000,
+                    capacity: 2000,
                     contact: 'Lake Vibes Coordinator: 0709 640880',
                     status: 'pending',
                     notes: 'Late-month headliner with dancehall showcase lineup.',
@@ -3760,7 +4223,7 @@ function showLoginForm() {
                 }
             ];
 
-            const added = { artists: 0, bookings: 0, expenses: 0, otherIncome: 0 };
+            const added = { artists: 0, bookings: 0, expenses: 0, otherIncome: 0, audienceMetrics: 0 };
             let artistsMutated = false;
             const replacementSeedProfile = mockArtists.find((profile) => profile.name === 'Kvan');
             if (replacementSeedProfile) {
@@ -3828,7 +4291,7 @@ function showLoginForm() {
             mockArtists.forEach((profile) => {
                 const existingArtist = findArtistByName(profile.name);
                 if (existingArtist) {
-                    const fields = ['email', 'phone', 'specialty', 'bio'];
+                    const fields = ['email', 'phone', 'specialty', 'bio', 'strategicGoal', 'avatar'];
                     fields.forEach((field) => {
                         if (!existingArtist[field] && profile[field]) {
                             existingArtist[field] = profile[field];
@@ -3847,11 +4310,43 @@ function showLoginForm() {
                     phone: profile.phone,
                     specialty: profile.specialty,
                     bio: profile.bio,
+                    strategicGoal: profile.strategicGoal || '',
+                    avatar: profile.avatar || '',
                     mockSeedVersion: MOCK_PORTFOLIO_VERSION
                 });
                 added.artists += 1;
                 artistsMutated = true;
             });
+
+            const scopeKey = getActiveDataScopeKey();
+            let scopedMetrics = getAudienceMetricsForScope(scopeKey);
+            if (!Array.isArray(scopedMetrics)) scopedMetrics = [];
+            const metricKeys = new Set(scopedMetrics.map((entry) => `${entry?.artistId || entry?.artist || ''}|${entry?.period || ''}`));
+            mockAudienceMetrics.forEach((template) => {
+                const artist = findArtistByName(template.artist);
+                if (!artist || !template.period) return;
+                const key = `${artist.id}|${template.period}`;
+                if (metricKeys.has(key)) return;
+                scopedMetrics.push({
+                    id: createRuntimeId('aud', `${artist.id}-${template.period}`),
+                    artistId: artist.id,
+                    artist: artist.name,
+                    period: template.period,
+                    socialFollowers: Math.round(Number(template.socialFollowers) || 0),
+                    spotifyListeners: Math.round(Number(template.spotifyListeners) || 0),
+                    youtubeListeners: Math.round(Number(template.youtubeListeners) || 0),
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    mockSeedVersion: MOCK_PORTFOLIO_VERSION
+                });
+                metricKeys.add(key);
+                added.audienceMetrics += 1;
+            });
+            if (added.audienceMetrics > 0) {
+                audienceMetrics = scopedMetrics;
+                saveAudienceMetricsForScope(scopeKey, audienceMetrics);
+                window.audienceMetrics = audienceMetrics;
+            }
 
             const bookingKeys = new Set(bookings.map((entry) => entry?.mockKey).filter(Boolean));
             let nextBookingId = getNextNumericRecordId(bookings);
@@ -3871,6 +4366,7 @@ function showLoginForm() {
                     fee,
                     deposit,
                     balance: Math.max(0, fee - deposit),
+                    capacity: Math.round(Number(template.capacity) || 0),
                     contact: template.contact,
                     status: template.status,
                     notes: template.notes,
@@ -3939,14 +4435,33 @@ function showLoginForm() {
             renderPerformanceMap();
             updateDashboard();
             updateReportStatistics();
+            renderAudienceMetrics();
+            if (typeof window.renderMomentumDashboard === 'function') {
+                window.renderMomentumDashboard();
+            }
 
-            const totalAdded = added.artists + added.bookings + added.expenses + added.otherIncome;
+            const periodEl = document.getElementById('reportPeriod');
+            if (periodEl && typeof getReportPeriodData === 'function') {
+                const currentPeriod = periodEl.value || 'month';
+                const periodData = getReportPeriodData(currentPeriod, { sortNewestFirst: false });
+                const hasPeriodData = (periodData.totalBookings || 0) + (periodData.totalExpenses || 0) + (periodData.totalOtherIncome || 0) > 0;
+                const hasAnyData = bookings.length + expenses.length + otherIncome.length > 0;
+                if (!hasPeriodData && hasAnyData) {
+                    periodEl.value = 'all';
+                    updateReportStatistics();
+                    if (typeof window.renderMomentumDashboard === 'function') {
+                        window.renderMomentumDashboard();
+                    }
+                }
+            }
+
+            const totalAdded = added.artists + added.bookings + added.expenses + added.otherIncome + added.audienceMetrics;
             if (totalAdded === 0) {
                 toastInfo('Mock portfolio data is already loaded for this account.');
                 return;
             }
 
-            toastSuccess(`Mock data loaded: ${added.artists} artists, ${added.bookings} bookings, ${added.expenses} expenses, ${added.otherIncome} income entries.`);
+            toastSuccess(`Mock data loaded: ${added.artists} artists, ${added.bookings} bookings, ${added.expenses} expenses, ${added.otherIncome} income entries, ${added.audienceMetrics} audience metrics.`);
         }
 
         function clearMockData() {
@@ -3958,20 +4473,24 @@ function showLoginForm() {
                 artists: artists.filter(a => a.mockSeedVersion === MOCK_PORTFOLIO_VERSION && a.managerId === currentManagerId).length,
                 bookings: bookings.filter(b => b.mockSeedVersion === MOCK_PORTFOLIO_VERSION).length,
                 expenses: expenses.filter(e => e.mockSeedVersion === MOCK_PORTFOLIO_VERSION).length,
-                otherIncome: otherIncome.filter(o => o.mockSeedVersion === MOCK_PORTFOLIO_VERSION).length
+                otherIncome: otherIncome.filter(o => o.mockSeedVersion === MOCK_PORTFOLIO_VERSION).length,
+                audienceMetrics: audienceMetrics.filter(m => m.mockSeedVersion === MOCK_PORTFOLIO_VERSION).length
             };
-            const total = before.artists + before.bookings + before.expenses + before.otherIncome;
+            const total = before.artists + before.bookings + before.expenses + before.otherIncome + before.audienceMetrics;
             if (total === 0) {
                 toastInfo('No mock data found to clear.');
                 return;
             }
-            if (!confirm(`Remove ${total} mock item(s): ${before.artists} artist(s), ${before.bookings} booking(s), ${before.expenses} expense(s), ${before.otherIncome} income entry/entries. Continue?`)) return;
+            if (!confirm(`Remove ${total} mock item(s): ${before.artists} artist(s), ${before.bookings} booking(s), ${before.expenses} expense(s), ${before.otherIncome} income entry/entries, ${before.audienceMetrics} audience metric(s). Continue?`)) return;
 
             artists = artists.filter(a => !(a.mockSeedVersion === MOCK_PORTFOLIO_VERSION && a.managerId === currentManagerId));
             Storage.saveSync('starPaperArtists', artists);
             bookings = bookings.filter(b => b.mockSeedVersion !== MOCK_PORTFOLIO_VERSION);
             expenses = expenses.filter(e => e.mockSeedVersion !== MOCK_PORTFOLIO_VERSION);
             otherIncome = otherIncome.filter(o => o.mockSeedVersion !== MOCK_PORTFOLIO_VERSION);
+            audienceMetrics = audienceMetrics.filter(m => m.mockSeedVersion !== MOCK_PORTFOLIO_VERSION);
+            saveAudienceMetricsForScope(getActiveDataScopeKey(), audienceMetrics);
+            window.audienceMetrics = audienceMetrics;
             saveUserData();
 
             renderArtists();
@@ -3984,8 +4503,9 @@ function showLoginForm() {
             renderPerformanceMap();
             updateDashboard();
             updateReportStatistics();
+            renderAudienceMetrics();
 
-            toastSuccess(`Mock data cleared: ${before.artists} artist(s), ${before.bookings} booking(s), ${before.expenses} expense(s), ${before.otherIncome} income entry/entries removed.`);
+            toastSuccess(`Mock data cleared: ${before.artists} artist(s), ${before.bookings} booking(s), ${before.expenses} expense(s), ${before.otherIncome} income entry/entries, ${before.audienceMetrics} audience metric(s) removed.`);
         }
 
         // Navigation
@@ -4808,6 +5328,246 @@ function showLoginForm() {
             setValueTone(reportProfit, netProfit >= 0 ? 'income-green' : 'expense-red');
         }
 
+        function populateAudienceArtistDropdown() {
+            const select = document.getElementById('audienceArtistSelect');
+            if (!select) return;
+            const current = select.value;
+            const artistList = getArtists();
+            select.innerHTML = '<option value="">Select Artist</option>' +
+                artistList.map(artist => {
+                    const id = escapeHtml(artist?.id || '');
+                    const name = escapeHtml(artist?.name || '');
+                    return `<option value="${id}">${name}</option>`;
+                }).join('');
+            if (current) {
+                select.value = current;
+            }
+            const periodEl = document.getElementById('audienceMetricPeriod');
+            if (periodEl && !periodEl.value) {
+                periodEl.value = new Date().toISOString().slice(0, 7);
+            }
+        }
+
+        function getLatestAudienceMetricEntry(artistId) {
+            if (!artistId) return null;
+            const entries = Array.isArray(audienceMetrics)
+                ? audienceMetrics.filter(entry => String(entry?.artistId || '') === String(artistId))
+                : [];
+            if (!entries.length) return null;
+            return entries.slice().sort((a, b) => {
+                const aKey = String(a?.period || a?.updatedAt || a?.createdAt || '');
+                const bKey = String(b?.period || b?.updatedAt || b?.createdAt || '');
+                return aKey.localeCompare(bKey);
+            })[entries.length - 1] || null;
+        }
+
+        function isAudienceMetricEntryEmpty(entry) {
+            const social = Math.round(Number(entry?.socialFollowers) || 0);
+            const spotify = Math.round(Number(entry?.spotifyListeners) || 0);
+            const youtube = Math.round(Number(entry?.youtubeListeners) || 0);
+            return social <= 0 && spotify <= 0 && youtube <= 0;
+        }
+
+        function isAudienceMetricEntryStale(entry) {
+            if (!entry) return true;
+            const now = new Date();
+            const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            let periodDate = null;
+            if (entry.period) {
+                const [y, m] = String(entry.period).split('-');
+                const yearNum = Number(y);
+                const monthNum = Number(m);
+                if (Number.isFinite(yearNum) && Number.isFinite(monthNum)) {
+                    periodDate = new Date(yearNum, Math.max(0, monthNum - 1), 1);
+                }
+            }
+            const updatedAt = entry.updatedAt ? new Date(entry.updatedAt) : null;
+            const staleByPeriod = !periodDate || periodDate < currentMonthStart;
+            const staleByUpdated = updatedAt && Number.isFinite(updatedAt.getTime())
+                ? (now - updatedAt) > (1000 * 60 * 60 * 24 * 45)
+                : false;
+            return staleByPeriod || staleByUpdated;
+        }
+
+        async function fetchPublicAudienceMetrics(artist) {
+            if (!artist) return null;
+            if (typeof window.fetchPublicAudienceMetrics === 'function') {
+                try {
+                    return await window.fetchPublicAudienceMetrics(artist);
+                } catch (err) {
+                    console.warn('Public audience metrics provider failed:', err);
+                }
+            }
+            const endpoint = window.__spAudienceMetricsEndpoint;
+            if (endpoint && typeof endpoint === 'string') {
+                try {
+                    const url = `${endpoint}?artist=${encodeURIComponent(artist.name || artist.id || '')}`;
+                    const resp = await fetch(url, { cache: 'no-store' });
+                    if (!resp.ok) return null;
+                    const data = await resp.json();
+                    if (!data || typeof data !== 'object') return null;
+                    return {
+                        socialFollowers: Number(data.socialFollowers),
+                        spotifyListeners: Number(data.spotifyListeners),
+                        youtubeListeners: Number(data.youtubeListeners)
+                    };
+                } catch (err) {
+                    console.warn('Public audience metrics fetch failed:', err);
+                }
+            }
+            return null;
+        }
+
+        function applyAudienceMetricsToInputs(entry) {
+            const socialEl = document.getElementById('audienceSocialFollowers');
+            const spotifyEl = document.getElementById('audienceSpotifyListeners');
+            const youtubeEl = document.getElementById('audienceYouTubeListeners');
+            if (socialEl) socialEl.value = Math.round(Number(entry?.socialFollowers) || 0) || 0;
+            if (spotifyEl) spotifyEl.value = Math.round(Number(entry?.spotifyListeners) || 0) || 0;
+            if (youtubeEl) youtubeEl.value = Math.round(Number(entry?.youtubeListeners) || 0) || 0;
+        }
+
+        async function handleAudienceArtistChange() {
+            const artistSelect = document.getElementById('audienceArtistSelect');
+            const periodEl = document.getElementById('audienceMetricPeriod');
+            if (!artistSelect || !periodEl) return;
+
+            const artistId = String(artistSelect.value || '').trim();
+            if (!artistId) return;
+            const artist = findArtistById(artistId);
+
+            if (!periodEl.value) {
+                periodEl.value = new Date().toISOString().slice(0, 7);
+            }
+            const currentPeriod = String(periodEl.value || '').trim();
+
+            const exactEntry = audienceMetrics.find(entry =>
+                String(entry?.artistId || '') === artistId && String(entry?.period || '') === currentPeriod
+            ) || null;
+
+            let entry = exactEntry || getLatestAudienceMetricEntry(artistId);
+            const needsRefresh = !entry || isAudienceMetricEntryEmpty(entry) || isAudienceMetricEntryStale(entry);
+
+            if (needsRefresh && artist) {
+                const publicMetrics = await fetchPublicAudienceMetrics(artist);
+                if (publicMetrics && typeof publicMetrics === 'object') {
+                    entry = {
+                        ...(entry || {}),
+                        artistId,
+                        artist: artist?.name || entry?.artist || '',
+                        period: currentPeriod,
+                        socialFollowers: Number(publicMetrics.socialFollowers) || entry?.socialFollowers || 0,
+                        spotifyListeners: Number(publicMetrics.spotifyListeners) || entry?.spotifyListeners || 0,
+                        youtubeListeners: Number(publicMetrics.youtubeListeners) || entry?.youtubeListeners || 0,
+                    };
+                }
+            }
+
+            if (entry) {
+                applyAudienceMetricsToInputs(entry);
+            } else {
+                applyAudienceMetricsToInputs({ socialFollowers: 0, spotifyListeners: 0, youtubeListeners: 0 });
+            }
+        }
+
+        function bindAudienceArtistSelect() {
+            const select = document.getElementById('audienceArtistSelect');
+            if (!select || select.dataset.bound === '1') return;
+            select.dataset.bound = '1';
+            select.addEventListener('change', () => {
+                handleAudienceArtistChange();
+            });
+        }
+
+        function renderAudienceMetrics() {
+            const list = document.getElementById('audienceMetricList');
+            if (!list) return;
+            const items = Array.isArray(audienceMetrics) ? [...audienceMetrics] : [];
+            if (!items.length) {
+                list.innerHTML = '<p class="audience-metric-empty">No audience metrics yet.</p>';
+                return;
+            }
+            items.sort((a, b) => {
+                const periodCompare = String(b.period || '').localeCompare(String(a.period || ''));
+                if (periodCompare !== 0) return periodCompare;
+                return String(a.artist || '').localeCompare(String(b.artist || ''));
+            });
+            const rows = items.slice(0, 6).map((item) => {
+                const social = Math.round(Number(item.socialFollowers) || 0);
+                const spotify = Math.round(Number(item.spotifyListeners) || 0);
+                const youtube = Math.round(Number(item.youtubeListeners) || 0);
+                const artistLabel = escapeHtml(item.artist || 'Artist');
+                const periodLabel = escapeHtml(item.period || '');
+                return `
+                    <div class="audience-metric-row">
+                        <div class="audience-metric-row__meta">
+                            <strong class="audience-metric-row__artist">${artistLabel}</strong>
+                            <span class="audience-metric-row__period">${periodLabel}</span>
+                        </div>
+                        <div class="audience-metric-row__stats">
+                            <span class="audience-metric-row__stat"><span class="audience-metric-row__label">Social</span> <span class="audience-metric-row__value">${social.toLocaleString()}</span></span>
+                            <span class="audience-metric-row__stat"><span class="audience-metric-row__label">Spotify</span> <span class="audience-metric-row__value">${spotify.toLocaleString()}</span></span>
+                            <span class="audience-metric-row__stat"><span class="audience-metric-row__label">YouTube</span> <span class="audience-metric-row__value">${youtube.toLocaleString()}</span></span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            list.innerHTML = rows;
+        }
+
+        function saveAudienceMetricEntry() {
+            if (guardReadOnly('save audience metrics')) return;
+            const artistSelect = document.getElementById('audienceArtistSelect');
+            const periodEl = document.getElementById('audienceMetricPeriod');
+            if (!artistSelect || !periodEl) return;
+
+            const artistId = String(artistSelect.value || '').trim();
+            const artist = artistId ? findArtistById(artistId) : null;
+            const period = String(periodEl.value || '').trim();
+            const socialFollowers = Math.round(Number(document.getElementById('audienceSocialFollowers')?.value) || 0);
+            const spotifyListeners = Math.round(Number(document.getElementById('audienceSpotifyListeners')?.value) || 0);
+            const youtubeListeners = Math.round(Number(document.getElementById('audienceYouTubeListeners')?.value) || 0);
+
+            if (!artistId || !artist) {
+                toastError('Please select an artist.');
+                return;
+            }
+            if (!period) {
+                toastError('Please select a month.');
+                return;
+            }
+
+            const nowIso = new Date().toISOString();
+            const existingIndex = audienceMetrics.findIndex(entry =>
+                String(entry?.artistId || '') === artistId && String(entry?.period || '') === period
+            );
+            const baseEntry = existingIndex >= 0 ? audienceMetrics[existingIndex] : null;
+            const entry = {
+                id: baseEntry?.id || createRuntimeId('aud', `${artistId}-${period}`),
+                artistId,
+                artist: artist?.name || '',
+                period,
+                socialFollowers,
+                spotifyListeners,
+                youtubeListeners,
+                createdAt: baseEntry?.createdAt || nowIso,
+                updatedAt: nowIso,
+            };
+
+            if (existingIndex >= 0) {
+                audienceMetrics[existingIndex] = entry;
+            } else {
+                audienceMetrics.push(entry);
+            }
+
+            const scopeKey = getActiveDataScopeKey();
+            saveAudienceMetricsForScope(scopeKey, audienceMetrics);
+            window.audienceMetrics = audienceMetrics;
+            renderAudienceMetrics();
+            syncCloudExtras();
+            toastSuccess('Audience metrics saved.');
+        }
+
         // Update the filterByPeriod function to include "prevMonth"
         function filterByPeriod(items, period) {
             const today = new Date();
@@ -4887,6 +5647,39 @@ function showLoginForm() {
             const period = periodEl?.value || 'month';
             const periodLabel = periodEl?.selectedOptions?.[0]?.textContent || getPeriodString(period);
             return { periodEl, period, periodLabel };
+        }
+
+        function getMonthYearLabel(offsetMonths = 0) {
+            const base = new Date();
+            const target = new Date(base.getFullYear(), base.getMonth() + Number(offsetMonths || 0), 1);
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                                'July', 'August', 'September', 'October', 'November', 'December'];
+            return `${monthNames[target.getMonth()]} ${target.getFullYear()}`;
+        }
+
+        function updateMonthContextLabels() {
+            const currentLabel = getMonthYearLabel(0);
+            const prevLabel = getMonthYearLabel(-1);
+
+            const glanceLabel = document.getElementById('glancePeriodLabel');
+            if (glanceLabel) glanceLabel.textContent = currentLabel;
+
+            const revenueLabel = document.getElementById('dashboardRevenueLabel');
+            if (revenueLabel) revenueLabel.textContent = `${currentLabel} Revenue`;
+
+            const expensesLabel = document.getElementById('dashboardExpensesLabel');
+            if (expensesLabel) expensesLabel.textContent = `Expenses (${currentLabel})`;
+
+            const cashflowLabel = document.getElementById('cashflowPeriodLabel');
+            if (cashflowLabel) cashflowLabel.textContent = currentLabel;
+
+            const reportPeriod = document.getElementById('reportPeriod');
+            if (reportPeriod) {
+                const currentOpt = document.getElementById('reportPeriodCurrentOption');
+                if (currentOpt) currentOpt.textContent = currentLabel;
+                const prevOpt = document.getElementById('reportPeriodPrevOption');
+                if (prevOpt) prevOpt.textContent = prevLabel;
+            }
         }
 
         function getClosingThoughtsStore() {
@@ -5084,7 +5877,20 @@ function showLoginForm() {
 
             reportLogoDataUrlPromise = (async () => {
                 try {
+                    const origin = window.location.origin && window.location.origin !== 'null'
+                        ? window.location.origin
+                        : '';
+                    const withOrigin = (path) => origin ? `${origin}${path}` : path;
                     const logoCandidates = [
+                        withOrigin('/logo-report.png?v=11'),
+                        withOrigin('/logo.png?v=11'),
+                        withOrigin('/logo-192.png?v=11'),
+                        withOrigin('/logo-report.png'),
+                        withOrigin('/logo.png'),
+                        withOrigin('/logo-192.png'),
+                        withOrigin('/log.jpg')
+                    ];
+                    const relativeFallbacks = [
                         './logo-report.png?v=11',
                         './logo.png?v=11',
                         './logo-192.png?v=11',
@@ -5093,8 +5899,9 @@ function showLoginForm() {
                         './logo-192.png',
                         './log.jpg'
                     ];
+                    const candidateList = [...logoCandidates, ...relativeFallbacks];
                     const isFileProtocol = window.location.protocol === 'file:';
-                    for (const logoSrc of logoCandidates) {
+                    for (const logoSrc of candidateList) {
                         if (!isFileProtocol) {
                             try {
                                 const response = await fetch(logoSrc, { cache: 'force-cache' });
@@ -5131,11 +5938,88 @@ function showLoginForm() {
             return reportLogoDataUrlPromise;
         }
 
+        // ── CSV Export ──────────────────────────────────────────────────────
+        function escapeCSVField(field) {
+            const str = String(field ?? '');
+            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                return '"' + str.replace(/"/g, '""') + '"';
+            }
+            return str;
+        }
+
+        function arrayToCSV(rows, columns) {
+            const header = columns.map(c => escapeCSVField(c.label)).join(',');
+            const body = rows.map(row =>
+                columns.map(c => escapeCSVField(c.value(row))).join(',')
+            ).join('\n');
+            return header + '\n' + body;
+        }
+
+        function exportCSV() {
+            const { period } = getReportPeriodSelection();
+            const data = getReportPeriodData(period, { sortNewestFirst: true });
+            const fmtMoney = (v) => Math.round(Number(v) || 0);
+            const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '';
+
+            const bookingsCSV = arrayToCSV(data.filteredBookings, [
+                { label: 'Date',    value: b => fmtDate(b.date) },
+                { label: 'Event',   value: b => b.event || b.name || '' },
+                { label: 'Artist',  value: b => b.artist || '' },
+                { label: 'Capacity', value: b => Math.round(Number(b.capacity) || 0) },
+                { label: 'Venue',   value: b => b.venue || '' },
+                { label: 'Fee (UGX)',     value: b => fmtMoney(b.fee) },
+                { label: 'Deposit (UGX)', value: b => fmtMoney(b.deposit) },
+                { label: 'Balance (UGX)', value: b => fmtMoney(b.balance) },
+                { label: 'Status',  value: b => b.status || '' },
+            ]);
+
+            const expensesCSV = arrayToCSV(data.filteredExpenses, [
+                { label: 'Date',     value: e => fmtDate(e.date) },
+                { label: 'Category', value: e => e.category || '' },
+                { label: 'Description', value: e => e.description || e.name || '' },
+                { label: 'Amount (UGX)', value: e => fmtMoney(e.amount) },
+            ]);
+
+            const otherIncomeCSV = arrayToCSV(data.filteredOtherIncome, [
+                { label: 'Date',   value: i => fmtDate(i.date) },
+                { label: 'Source', value: i => i.source || i.name || '' },
+                { label: 'Description', value: i => i.description || '' },
+                { label: 'Amount (UGX)', value: i => fmtMoney(i.amount) },
+            ]);
+
+            const combined = '=== BOOKINGS ===\n' + bookingsCSV +
+                '\n\n=== EXPENSES ===\n' + expensesCSV +
+                '\n\n=== OTHER INCOME ===\n' + otherIncomeCSV +
+                '\n\n=== SUMMARY ===\n' +
+                'Total Income (UGX),' + fmtMoney(data.totalIncome) + '\n' +
+                'Total Expenses (UGX),' + fmtMoney(data.totalExpenses) + '\n' +
+                'Total Other Income (UGX),' + fmtMoney(data.totalOtherIncome) + '\n' +
+                'Net Profit (UGX),' + fmtMoney(data.netProfit) + '\n' +
+                'Balances Due (UGX),' + fmtMoney(data.balancesDue);
+
+            const blob = new Blob([combined], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `star-paper-report-${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            if (typeof window.toastSuccess === 'function') {
+                window.toastSuccess('CSV report downloaded');
+            }
+        }
+
         // Clean Report Generation (without +P)
         async function generateCleanReport() {
             if (generateCleanReport._busy) return;
             generateCleanReport._busy = true;
             try {
+                if (typeof window.generateMomentumPDF === 'function' && window.generateMomentumPDF !== generateCleanReport) {
+                    return await window.generateMomentumPDF();
+                }
                 const { period } = getReportPeriodSelection();
                 const { jsPDF } = window.jspdf;
                 const isMobileReportLayout = window.matchMedia('(max-width: 900px), (pointer: coarse)').matches;
@@ -6177,6 +7061,11 @@ function showLoginForm() {
             document.getElementById('artistPhone').value = artist.phone || '';
             document.getElementById('artistSpecialty').value = artist.specialty || '';
             document.getElementById('artistBio').value = artist.bio || '';
+            document.getElementById('artistStrategicGoal').value = artist.strategicGoal || '';
+            pendingArtistAvatarValue = '';
+            updateArtistAvatarPreview(resolveDisplayArtistAvatar(artist));
+            const avatarUpload = document.getElementById('artistAvatarUpload');
+            if (avatarUpload) avatarUpload.value = '';
 
             document.getElementById('addArtistForm').style.display = 'block';
             const listCard = document.getElementById('artistsListCard');
@@ -6206,6 +7095,11 @@ function showLoginForm() {
             document.getElementById('artistPhone').value = '';
             document.getElementById('artistSpecialty').value = '';
             document.getElementById('artistBio').value = '';
+            document.getElementById('artistStrategicGoal').value = '';
+            pendingArtistAvatarValue = '';
+            updateArtistAvatarPreview('');
+            const avatarUpload = document.getElementById('artistAvatarUpload');
+            if (avatarUpload) avatarUpload.value = '';
         }
 
         function saveArtist() {
@@ -6217,6 +7111,7 @@ function showLoginForm() {
                 const artistPhone = sanitizeTextInput(document.getElementById('artistPhone').value);
                 const artistSpecialty = sanitizeTextInput(document.getElementById('artistSpecialty').value);
                 const artistBio = sanitizeTextInput(document.getElementById('artistBio').value);
+                const artistStrategicGoal = sanitizeTextInput(document.getElementById('artistStrategicGoal').value);
 
                 if (!artistName) {
                     toastError('Please enter the artist name.');
@@ -6251,7 +7146,9 @@ function showLoginForm() {
                         email: artistEmail,
                         phone: artistPhone,
                         specialty: artistSpecialty,
-                        bio: artistBio
+                        bio: artistBio,
+                        strategicGoal: artistStrategicGoal,
+                        avatar: pendingArtistAvatarValue || existingArtist.avatar || ''
                     };
 
                     if (previousName !== artistName) {
@@ -6286,7 +7183,9 @@ function showLoginForm() {
                     email: artistEmail,
                     phone: artistPhone,
                     specialty: artistSpecialty,
-                    bio: artistBio
+                    bio: artistBio,
+                    strategicGoal: artistStrategicGoal,
+                    avatar: pendingArtistAvatarValue || ''
                 });
 
                 Storage.saveSync('starPaperArtists', artists);
@@ -6322,15 +7221,21 @@ function showLoginForm() {
                 const artistName = escapeHtml(artist.name || 'Unknown Artist');
                 const artistSpecialty = escapeHtml(artist.specialty || 'No specialty set');
                 const artistBio = escapeHtml(artist.bio || 'No bio available');
+                const artistGoal = escapeHtml(artist.strategicGoal || '');
                 const artistEmail = escapeHtml(artist.email || '');
                 const artistPhone = escapeHtml(artist.phone || '');
                 const artistInitial = escapeHtml(String(artist.name || '?').charAt(0).toUpperCase());
+                const artistAvatarSrc = artist.avatar ? escapeHtml(artist.avatar) : '';
+                const artistAvatarMarkup = artistAvatarSrc
+                    ? `<img class="artist-avatar-img" src="${artistAvatarSrc}" alt="${artistName} photo">`
+                    : artistInitial;
                 return `
                 <div class="artist-card artist-card--editable" data-artist-id="${artistId}" data-artist-name="${artistName}" tabindex="0" role="button" aria-label="Edit ${artistName}">
-                    <div class="artist-avatar">${artistInitial}</div>
+                    <div class="artist-avatar">${artistAvatarMarkup}</div>
                     <h4>${artistName}</h4>
                     <p class="artist-specialty">${artistSpecialty}</p>
                     <p class="artist-bio">${artistBio}</p>
+                    ${artistGoal ? `<p class="artist-bio" style="color:#c8a846;">Goal: ${artistGoal}</p>` : ''}
                     <div class="artist-contact">
                         ${artistEmail ? `<div><i class="ph ph-envelope-simple" aria-hidden="true"></i> ${artistEmail}</div>` : ''}
                         ${artistPhone ? `<div><i class="ph ph-phone" aria-hidden="true"></i> ${artistPhone}</div>` : ''}
@@ -6352,6 +7257,13 @@ function showLoginForm() {
             }
             if (confirm(`Are you sure you want to remove ${targetArtist.name}?`)) {
                 artists = artists.filter((artist) => String(artist?.id || '') !== String(targetArtist.id || ''));
+                audienceMetrics = audienceMetrics.filter((entry) => {
+                    const sameId = String(entry?.artistId || '') === String(targetArtist.id || '');
+                    const sameName = String(entry?.artist || '').trim().toLowerCase() === String(targetArtist.name || '').trim().toLowerCase();
+                    return !(sameId || sameName);
+                });
+                saveAudienceMetricsForScope(getActiveDataScopeKey(), audienceMetrics);
+                window.audienceMetrics = audienceMetrics;
                 Storage.saveSync('starPaperArtists', artists);
                 if (window.SP?.deleteArtist) {
                     window.SP.deleteArtist(targetArtist.id).catch((err) => {
@@ -6377,6 +7289,7 @@ function showLoginForm() {
             console.log('Populating artist dropdown with:', artistList.map((artist) => artist.name));
             select.innerHTML = '<option value="">Select Artist</option>' + 
                 artistList.map(artist => `<option value="${artist.name}">${artist.name}</option>`).join('');
+            populateAudienceArtistDropdown();
         }
 
         // Bookings Functions
@@ -6420,6 +7333,7 @@ function showLoginForm() {
             document.getElementById('bookingFee').value = '';
             document.getElementById('bookingDeposit').value = '';
             document.getElementById('bookingBalance').value = '';
+            document.getElementById('bookingCapacity').value = '';
             document.getElementById('bookingContact').value = '';
             document.getElementById('bookingStatus').value = 'confirmed';
             document.getElementById('bookingNotes').value = '';
@@ -6437,6 +7351,7 @@ function showLoginForm() {
                     : document.getElementById('bookingAbroadLocation').value;
                 const feeValue = Math.round(Number(document.getElementById('bookingFee').value) || 0);
                 const depositValue = Math.round(Number(document.getElementById('bookingDeposit').value) || 0);
+                const capacityValue = Math.round(Number(document.getElementById('bookingCapacity').value) || 0);
                 const balanceValue = feeValue - depositValue;
                 const existingBooking = editingBookingId ? bookings.find(b => b.id === editingBookingId) : null;
 
@@ -6446,6 +7361,7 @@ function showLoginForm() {
                     artist: sanitizeTextInput(document.getElementById('bookingArtist').value),
                     artistId: null,
                     date: document.getElementById('bookingDate').value,
+                    capacity: capacityValue,
                     fee: feeValue,
                     deposit: depositValue,
                     balance: balanceValue,
@@ -6521,7 +7437,7 @@ function showLoginForm() {
             const sortedBookings = sortNewestFirst(bookings);
 
             if (sortedBookings.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="10">${emptyState({
+                tbody.innerHTML = `<tr><td colspan="11">${emptyState({
                     icon: 'ph-calendar-check',
                     title: 'No bookings yet',
                     sub: 'Log your first show to start tracking fees, deposits, and balances.',
@@ -6548,6 +7464,7 @@ function showLoginForm() {
                     <td data-label="Event" class="td-event">${booking.event}</td>
                     <td data-label="Artist">${booking.artist}</td>
                     <td data-label="Date" class="td-date">${formatDisplayDate(booking.date)}</td>
+                    <td data-label="Capacity" class="td-capacity">${booking.capacity ? Number(booking.capacity).toLocaleString() : '-'}</td>
                     <td data-label="Location">${booking.location || '-'} ${booking.locationType === 'abroad' ? '<i class="ph ph-globe" aria-hidden="true"></i>' : 'UG'} <span class="show-weather-slot" id="bookingWeatherTable-${weatherKey}"></span></td>
                     <td data-label="Total Fee" class="income-green td-fee">UGX ${(Math.round(Number(booking.fee) || 0)).toLocaleString()}</td>
                     <td data-label="Deposit" class="deposit-blue td-deposit">UGX ${(Math.round(Number(booking.deposit) || 0)).toLocaleString()}</td>
@@ -6577,6 +7494,7 @@ function showLoginForm() {
                         <div class="booking-meta">
                             <div class="booking-field"><span>Artist</span>${booking.artist}</div>
                             <div class="booking-field"><span>Date</span>${formatDisplayDate(booking.date)}</div>
+                            <div class="booking-field"><span>Capacity</span>${booking.capacity ? Number(booking.capacity).toLocaleString() : '-'}</div>
                             <div class="booking-field"><span>Location</span>${booking.location || '-'} ${booking.locationType === 'abroad' ? '<i class="ph ph-globe" aria-hidden="true"></i>' : 'UG'} <span class="show-weather-slot" id="bookingWeatherCard-${weatherKey}"></span></div>
                             <div class="booking-field income-green"><span>Total Fee</span>UGX ${(Math.round(Number(booking.fee) || 0)).toLocaleString()}</div>
                             <div class="booking-field deposit-blue"><span>Deposit</span>UGX ${(Math.round(Number(booking.deposit) || 0)).toLocaleString()}</div>
@@ -6916,6 +7834,7 @@ function showLoginForm() {
             document.getElementById('bookingFee').value = booking.fee;
             document.getElementById('bookingDeposit').value = booking.deposit;
             document.getElementById('bookingBalance').value = booking.balance;
+            document.getElementById('bookingCapacity').value = booking.capacity || '';
             document.getElementById('bookingContact').value = booking.contact;
             document.getElementById('bookingStatus').value = booking.status;
             document.getElementById('bookingNotes').value = booking.notes;
@@ -7421,6 +8340,7 @@ function showLoginForm() {
             const activeArtistsCountEl = document.getElementById('activeArtistsCount');
             const dashboardBBFEl = document.getElementById('dashboardBBF');
             const bbfMonthLabelEl = document.getElementById('bbfMonthLabel');
+            const bbfContext = getActiveBBFContext();
 
             if (financialHeadingEl) financialHeadingEl.textContent = `${monthLabel} Financials`;
             if (totalIncomeEl) countUp(totalIncomeEl, monthData.totalIncome);
@@ -7435,11 +8355,13 @@ function showLoginForm() {
             if (financialsCashAtHandEl) countUp(financialsCashAtHandEl, monthData.netProfit);
             if (financialsBalancesDueEl) countUp(financialsBalancesDueEl, monthData.balancesDue);
             if (activeArtistsCountEl) { activeArtistsCountEl.querySelector?.('.sp-skeleton')?.remove(); activeArtistsCountEl.textContent = String(monthData.activeArtists); }
-            if (dashboardBBFEl) countUp(dashboardBBFEl, getCurrentBBF());
+            if (dashboardBBFEl) {
+                countUp(dashboardBBFEl, bbfContext.amount);
+                dashboardBBFEl.title = `Click to edit BBF for ${bbfContext.periodLabel}${bbfContext.artist?.name ? ` (${bbfContext.artist.name})` : ''}`;
+            }
             if (bbfMonthLabelEl) {
-                const prevDate = new Date();
-                prevDate.setMonth(prevDate.getMonth() - 1);
-                bbfMonthLabelEl.textContent = `(from ${prevDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })})`;
+                bbfMonthLabelEl.textContent = `(from ${bbfContext.sourcePeriodLabel})`;
+                bbfMonthLabelEl.title = `Applied to ${bbfContext.periodLabel}`;
             }
             setMetricTone(dashboardCashAtHandEl, monthData.netProfit >= 0);
             setMetricTone(financialsCashAtHandEl, monthData.netProfit >= 0);
@@ -9390,7 +10312,7 @@ function showLoginForm() {
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=25').then((registration) => {
+                navigator.serviceWorker.register('sw.js?v=38').then((registration) => {
                     registration.update().catch(() => {});
                 }).catch((error) => {
                     console.warn('Service worker registration failed:', error);

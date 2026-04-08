@@ -2,7 +2,11 @@
 
 **READ THIS ENTIRE FILE BEFORE TOUCHING ANY CODE.**
 
-This is the authoritative reference for the Star Paper codebase. It was written after multiple failed fix attempts across multiple sessions. The failures were not caused by wrong diagnoses — they were caused by fixes never reaching production due to a deployment method that silently produced broken mixed deployments. Every bug documented here is still present in the live codebase as of the writing of this file. The root causes are confirmed, the fixes are known, but the fixes have not yet survived a correct full-folder deploy.
+This is the authoritative reference for the Star Paper codebase — architecture, constraints, workflows, and AI-assisted development patterns. It incorporates principles from the everything-claude-code (ECC) framework, adapted for Star Paper's vanilla JS + Supabase stack.
+
+---
+
+# TIER 1: STOP-AND-READ
 
 ---
 
@@ -10,228 +14,123 @@ This is the authoritative reference for the Star Paper codebase. It was written 
 
 **Star Paper** is a PWA for music managers across East and West Africa — bookings, expenses, income, artist rosters, financial reporting, and team collaboration in one offline-capable, mobile-first interface.
 
-- **Live URL:** `https://star-paper.netlify.app`
-- **Hosting:** Netlify, manual drag-and-drop deploys only, no CI/CD
-- **Backend:** Supabase (PostgreSQL + GoTrue Auth + Realtime)
-- **Supabase Project Ref:** `fxcyocdwvjiyatqnaahg` — note the **v** at position 10
-- **Correct Supabase URL:** `https://fxcyocdwvjiyatqnaahg.supabase.co`
-- **Base Currency:** UGX integers. Never floats. Never `parseFloat` for arithmetic.
+| Key | Value |
+|-----|-------|
+| **Live URL** | `https://star-paper.netlify.app` |
+| **GitHub** | `https://github.com/Busu90-90/star-paper` (branch: `main`) |
+| **Supabase Project Ref** | `fxcyocdwvjiyatqnaahg` — note the **v** at position 10 |
+| **Supabase URL** | `https://fxcyocdwvjiyatqnaahg.supabase.co` |
+| **Netlify Site ID** | `6f4ce419-55ca-472c-a6f8-06c3fea81970` |
+| **Sentry** | `https://star-paper.sentry.io` / region: `https://de.sentry.io` |
+| **Sentry DSN** | `https://43eaad14b9ae20eec68d9249f139cbc2@o4511079351189504.ingest.de.sentry.io/4511081427894352` |
+| **Deploy Method** | GitHub commit to `main` → Netlify auto-deploys (**DO NOT** use manual drag) |
+| **Base Currency** | UGX integers. Never floats. Never `parseFloat` for arithmetic. |
 
 ---
 
-## 2. THE 4 ACTIVE UNFIXED BUGS
+## 2. Deployment Process
 
-This section is the most important part of this file. These bugs have been correctly diagnosed in previous sessions but the fixes never made it to production. Read the exact root cause and the exact fix for each one before writing a single line of code.
+### Primary: GitHub Auto-Deploy
 
----
+Commit to `main` → Netlify auto-deploys in ~30 seconds. This is the only sanctioned deployment method.
 
-### BUG 1 — Auto-Login After Logout
+### Emergency Fallback: Manual Drag-and-Drop
 
-**Symptom:** User clicks Logout. The app shows the landing page. User navigates away and comes back, or simply refreshes the tab. The app immediately boots back into the dashboard without the user logging in again.
+If auto-deploy fails, drag the **entire project folder** (not individual files) to `netlify.com/drop`. Individual file uploads create broken deployments where missing files (styles.css, manifest.json, logos) cause 404s masked by the Service Worker cache.
 
-**Root cause — two compounding failures working together:**
+### Post-Deploy Verification (Required After Every Deploy)
 
-The first failure is that `clearAuthSessionState()` in `app.js` only clears our own localStorage keys. Here is what it actually does:
-
-```javascript
-function clearAuthSessionState() {
-    currentUser = null;
-    currentManagerId = null;
-    Storage.saveSync('starPaperCurrentUser', null);
-    Storage.saveSync('starPaperRemember', false);
-    localStorage.removeItem('starPaper_session');
-    localStorage.removeItem('starPaperSessionUser');
-    window.currentUser = null;
-    window.currentManagerId = null;
-}
-```
-
-It does not touch the Supabase SDK's own token. The SDK stores its JWT under the key `sb-fxcyocdwvjiyatqnaahg-auth-token` in localStorage. After logout, that key still holds a valid access token. Our code forgets the user. The SDK does not.
-
-The second failure is that `window.__spAppBooted` is never reset to `false` anywhere in the logout sequence. It is set to `true` inside `showApp()` and never touched again during logout. However, this flag offers no real protection anyway because it lives in the JavaScript runtime — every page load destroys it and it starts as `undefined` (falsy) on a fresh load regardless.
-
-Think of it like this: our logout is equivalent to hiding the key under the mat and calling it done. The Supabase SDK still has the master key under the floorboard. When the user returns to the page, the SDK finds its own token, fires the `onAuthStateChange` event with type `INITIAL_SESSION`, and the `shouldBootstrap` check evaluates all four of its conditions as `true` because the session exists, `__spAppBooted` is falsy, `_bootstrapping` is false, and the event type is one of the allowed ones. The app reboots without permission.
-
-**The exact fix — four changes, all must be applied together:**
-
-In `supabase.js`, replace the `signOut()` function with this version that sets a persistent flag and clears the SDK's own token synchronously before the async server call:
+1. Open the live URL in an **incognito window** to bypass SW cache
+2. DevTools → Application → Service Workers → **Unregister** the old worker
+3. Hard-refresh with **Ctrl+Shift+R**
+4. Run this verification in the console:
 
 ```javascript
-async function signOut() {
-    // 1. Set persistent flag FIRST — before anything async, so it survives
-    //    a page reload even if the server call below fails
-    localStorage.setItem('sp_logged_out', '1');
-    // 2. Explicitly clear the Supabase SDK's own token
-    const sdkTokenKey = 'sb-fxcyocdwvjiyatqnaahg-auth-token';
-    localStorage.removeItem(sdkTokenKey);
-    localStorage.removeItem(sdkTokenKey + '-code-verifier');
-    // 3. Reset internal module state immediately — do not wait for server
-    _session  = null;
-    _profile  = null;
-    _activeTeamId = null;
-    localStorage.removeItem('sp_active_team');
-    setActiveTeamRole(null);
-    // 4. Tell the server to invalidate the token — best-effort, never blocking
-    db.auth.signOut().catch(() => {});
-}
-```
-
-In `supabase.js`, add this as the very first check inside `onAuthStateChange`:
-
-```javascript
-db.auth.onAuthStateChange(async (event, session) => {
-    // If user explicitly logged out, refuse to bootstrap on any stale token
-    if (localStorage.getItem('sp_logged_out') === '1') {
-        _session = null;
-        if (session) db.auth.signOut().catch(() => {});
-        return;
-    }
-    // ... rest of handler unchanged
-```
-
-In `supabase.js`, at the very start of `bootstrapFromSupabaseSession()`, clear the logout lock after confirming a real session exists:
-
-```javascript
-async function bootstrapFromSupabaseSession(session, options = {}) {
-    const activeSession = session || _session || await getSession();
-    if (!activeSession?.user) return false;
-    // A real new login — clear the logout lock so the app can boot
-    localStorage.removeItem('sp_logged_out');
-    // ... rest of function unchanged
-```
-
-In `app.js`, add this as the very first check inside `checkAuth()`:
-
-```javascript
-function checkAuth() {
-    // Respect an explicit logout — never auto-boot after the user logged out
-    if (localStorage.getItem('sp_logged_out') === '1') {
-        setActiveScreen('landingScreen');
-        return;
-    }
-    // ... rest of checkAuth unchanged
-```
-
----
-
-### BUG 2 — Cloud Data Never Loads (Timeout on All Browsers)
-
-**Symptom:** After login, a toast appears saying "Cloud data is taking too long to load. Showing the app now." The app loads but shows data from localStorage only. The console shows `[StarPaper Supabase] bootstrap.data.timeout`. No booking, expense, or artist data from the cloud ever appears.
-
-**Root cause — a proven URL typo:**
-
-The URL in `supabase.js` line 2 is:
-
-```javascript
-const SP_SUPABASE_URL = 'https://fxcyocdwjiyatqnaahg.supabase.co';
-//                                         ^^ no 'v' here — position 10-11
-```
-
-The JWT anon key in the same file was decoded and its payload contains the real project ref that the key was signed for:
-
-```json
-{ "iss": "supabase", "ref": "fxcyocdwvjiyatqnaahg", "role": "anon" }
-//                                         ^^ 'v' is here
-```
-
-The URL says `fxcyocdwjiyatqnaahg`. The JWT says `fxcyocdwvjiyatqnaahg`. The URL points to a Supabase project that does not exist. Every single database call fails instantly with a DNS resolution error. The 8-second `withTimeout()` guard fires, logs the timeout, and the app falls back to localStorage. This is why the app feels usable at all — it has been running entirely on local data since the project was deployed. The cloud backend is functionally unreachable.
-
-You can prove this right now by decoding the JWT in any browser console:
-
-```javascript
-// Decode the anon key to read the real project ref
-JSON.parse(atob('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4Y3lvY2R3dmppeWF0cW5hYWhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5Nzg4NDEsImV4cCI6MjA4ODU1NDg0MX0.OTtDpyfA69rbVOTJkBh51pwj3wEkR1L04x4ouDkeWZ0'.split('.')[1]))
-// Returns: { ref: "fxcyocdwvjiyatqnaahg", ... } — the 'v' is there
-```
-
-**The exact fix — one character in `supabase.js` line 2:**
-
-```javascript
-// WRONG (current state):
-const SP_SUPABASE_URL = 'https://fxcyocdwjiyatqnaahg.supabase.co';
-
-// CORRECT:
-const SP_SUPABASE_URL = 'https://fxcyocdwvjiyatqnaahg.supabase.co';
-```
-
-This single change will unblock Bugs 3 and 4 simultaneously, because both of them are downstream consequences of the database being unreachable.
-
----
-
-### BUG 3 — Team Panel Times Out After 8 Seconds
-
-**Symptom:** User clicks the Team button. The panel opens with "Loading…". After exactly 8 seconds it shows "Team data took too long to load. Check your connection and try again."
-
-**Root cause — primarily Bug 2, with a secondary RLS recursion issue:**
-
-The primary cause is the wrong Supabase URL from Bug 2. `getMyTeams()` makes a database call. With the wrong URL the call fails immediately and the 8-second timeout fires. Fix Bug 2 and this symptom largely disappears.
-
-However, there is a secondary issue that will manifest after the URL is corrected. The `team_members` table has RLS policies written as `FOR ALL`, which applies the `USING` clause to SELECT operations too. If `get_my_team_ids()` does not exist in the database, the fallback policy contains a subquery against `team_members` inside the policy on `team_members` — a recursive evaluation that PostgreSQL terminates with an error, which the app-side timeout then catches.
-
-**The exact fix:** After correcting the URL, re-run `schema.sql` in the Supabase SQL Editor. The schema creates `get_my_team_ids()` as a `SECURITY DEFINER` function that breaks the recursion, and it separates the `FOR ALL` policies into distinct `FOR SELECT`, `FOR UPDATE`, and `FOR DELETE` policies. You can verify the function exists by running `SELECT proname FROM pg_proc WHERE proname = 'get_my_team_ids';` in the SQL Editor — if it returns no rows, the schema was never fully applied.
-
----
-
-### BUG 4 — Cross-Browser and Cross-Device Data Sync Failure
-
-**Symptom:** Data saved in Chrome is invisible in Opera, Firefox, or on another device. Each browser has its own completely separate copy of the data.
-
-**Root cause — same as Bug 2:**
-
-This is not a separate bug. It is the direct, unavoidable consequence of the wrong Supabase URL. All writes go to localStorage only. localStorage is sandboxed per browser per device by design — Chrome's localStorage and Opera's localStorage are physically separate storage locations that can never see each other's data. Since no data ever reaches the cloud, there is no shared layer. Each browser is effectively an isolated offline-only app.
-
-**The exact fix:** Fix Bug 2. Once the URL is corrected and deployed, writes will flow to Supabase. The built-in `migrateLocalStorageData()` function in `supabase.js` will run automatically on the first successful login after the fix, pushing all existing localStorage data to the cloud.
-
----
-
-## 3. WHY PREVIOUS FIXES FAILED — THE DEPLOYMENT TRAP
-
-Every diagnosis in previous sessions was correct. The fixes were written correctly. They failed to have any effect because **the fixes were never actually deployed to production.**
-
-Here is what was happening: Netlify deploys work by replacing the entire site with the contents of an uploaded folder. The correct method is to take the complete project folder, replace the modified files inside it, and drag the entire folder to Netlify. What was actually happening was that individual output files (just `supabase.js`, just `app.js`) were being dragged to Netlify instead of the full folder. When you drag individual files, Netlify creates a new deployment containing only those files — every other file (styles.css, index.html, manifest.json, all the logo files, all the satellite JS modules) simply disappears from the deployment. The site appears broken but the user never sees the broken state because the old service worker is still active in their browser, serving the complete old cached version from before the deployment.
-
-In other words: the browser was serving the old, unfixed code from the SW cache. The new deployment files existed on Netlify's CDN but the SW never let the browser fetch them. The fixes were invisible.
-
-This was confirmed by the persistent `manifest.json?v=14 404 (Not Found)` errors visible in the console across every session. `manifest.json` is a tiny file that requires zero effort to include. The fact that it was always 404 on the live site proved that deployments only ever contained a subset of the project files — the complete folder was never uploaded.
-
-**The only correct deployment process is:**
-
-First, locate the complete Star Paper project folder on your local machine — the folder that contains `index.html`, `styles.css`, `supabase.js`, `app.js`, `sw.js`, all the logo PNG and SVG files, and all the satellite JS modules.
-
-Second, replace the specific files you edited inside that folder with the updated versions.
-
-Third, drag the **entire folder** — not individual files, not a selection, the entire folder — to the Netlify dashboard deploy zone at netlify.com/drop.
-
-Fourth, after the deploy completes (about 30 seconds), open the live URL in an incognito window to bypass your local SW cache.
-
-Fifth, open DevTools → Application → Service Workers, find the Star Paper worker, and click Unregister. This forces the browser to discard the old cache and fetch fresh files from the new deployment.
-
-Sixth, hard-refresh with Ctrl+Shift+R.
-
-Seventh, run this verification command in the console to confirm the correct `supabase.js` is now being served:
-
-```javascript
+// Confirm correct supabase.js is loaded — must show 'fxcyocdwvjiyatqnaahg' with the 'v'
 fetch('/supabase.js').then(r => r.text()).then(t => console.log(t.substring(150, 350)))
+
+// Confirm the correct project ref from the JWT (ground truth)
+JSON.parse(atob('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4Y3lvY2R3dmppeWF0cW5hYWhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5Nzg4NDEsImV4cCI6MjA4ODU1NDg0MX0.OTtDpyfA69rbVOTJkBh51pwj3wEkR1L04x4ouDkeWZ0'.split('.')[1]))
+
+// Test cloud DB connectivity
+window.SP?.client?.from('profiles').select('id').limit(1).then(r => console.log(r))
+
+// Confirm app.js version
+document.querySelector('script[src*="app.js"]')?.src
 ```
 
-The output must contain `fxcyocdwvjiyatqnaahg` with the `v`. If it shows `fxcyocdwjiyatqnaahg` without the `v`, the old file is still being served and the deployment failed — repeat from step three.
+### Version Bumping Protocol
+
+When editing JS files:
+1. Increment `?v=N` query strings on edited scripts in `index.html`
+2. Bump `CACHE_NAME` in `sw.js` (e.g., `star-paper-shell-v28`)
+3. CSS-only changes do not require a SW cache bump (Stale-While-Revalidate handles it)
+
+### Historical Note: Resolved Bugs
+
+Four critical bugs were diagnosed and fixed in previous sessions: (1) auto-login after logout — resolved with `sp_logged_out` persistent flag and explicit SDK token clearing; (2) cloud data timeout — resolved by correcting a single-character URL typo in `supabase.js`; (3) team panel timeout — resolved by URL fix + `get_my_team_ids()` SECURITY DEFINER function; (4) cross-browser sync — resolved as downstream of bug 2. All fixes are verified present in the current codebase.
+
+---
+
+## 3. Immutable Architectural Constraints
+
+### Script Load Order
+
+Scripts must load in this exact sequence. Changing the order causes silent, hard-to-diagnose failures.
+
+```html
+<!-- In <head>, synchronous — NO defer, NO async: -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<!-- At bottom of <body>, in order: -->
+<script src="supabase.js?vN"></script>
+<script src="app.migrations.js?vN"></script>
+<script src="app.actions.js?vN"></script>
+<script src="app.todayboard.js?vN"></script>
+<script src="app.tasks.js?vN"></script>
+<script src="app.js?vN"></script>
+```
+
+**Why this order:**
+- **Supabase SDK** in `<head>` without `defer` — guarantees `window.supabase` exists before any app scripts run. Deferred loading would cause `supabase.js` to execute before the SDK is available.
+- **supabase.js first** — patches `window.login`, `window.signup`, `window.logout`, `window.saveUserData`. `app.js` uses `||=` assignment so whichever script sets these first wins. `supabase.js` must win.
+- **app.migrations.js second** — ensures localStorage schema is current before any code reads from it.
+- **app.actions.js third** — sets `window.__starPaperActionsBound = true`. `app.js` checks this flag before registering its fallback dispatcher.
+- **app.js last** — consumes all globals set by prior scripts.
+
+**Never add `defer` or `async` to any custom scripts.**
+
+### Other Immutable Rules
+
+- **`window.SP` is the only cloud interface.** All Supabase interaction goes through the `SP.*` API exposed by `supabase.js`. Never call `db.from()` directly outside `supabase.js`.
+- **localStorage is cache, Supabase is source of truth.** Writes go to localStorage first (synchronous, cannot fail), then cloud (async, best-effort). Cloud failure never causes data loss.
+- **Atomic RPCs — do not decompose.** `create_team_with_member()` and `join_team_by_code()` are single Supabase RPC calls. Splitting them into two sequential queries causes `AbortError: Lock broken by steal` from the Supabase SDK's Web Lock mechanism.
+- **Hash-based routing.** Navigation uses `#bookings`, `#expenses`, etc. All routing goes through `showSection()`.
+- **UGX integers only.** All money values are `Math.round(Number(value) || 0)`. Balance is always re-derived as `fee - deposit`. Currency conversion is display-only via `SP_formatCurrencyFull()`.
+
+---
+
+# TIER 2: ARCHITECTURE
 
 ---
 
 ## 4. Technology Stack
 
-Star Paper's entire frontend is written in **Vanilla JavaScript (ES6+)** with zero runtime frameworks. No React, no Vue, no bundler, no npm. This is a deliberate architectural choice that keeps the app deployable as a plain static folder, debuggable without a build step, and fast on low-end Android devices common in East Africa.
+| Layer | Technology | Notes |
+|-------|-----------|-------|
+| **Frontend** | Vanilla JS ES6+ | No React, No Vue, No bundler, No npm for frontend |
+| **HTML** | HTML5 | ~1,665 lines in `index.html`. Zero logic. |
+| **Styling** | Custom CSS3 | ~6,500 lines in `styles.css`. Single file. No preprocessor. Glassmorphism design. |
+| **Icons** | Phosphor Icons v2.1.1 | CDN-loaded, duotone + regular styles |
+| **Charts** | Chart.js | CDN with `defer` |
+| **PDF Reports** | jsPDF 2.5.1 + html2canvas 1.4.1 | CDN with `defer` |
+| **Auth & DB** | Supabase JS SDK v2 | PostgreSQL + GoTrue Auth + Realtime |
+| **Offline** | Service Worker | Stale-While-Revalidate caching, `star-paper-shell-vN` |
+| **PWA** | `manifest.json` | Standalone display, portrait-primary, installable |
+| **Backend** | Express 4.21.2 + TypeScript 5.7.2 | Minimal — health check + local auth endpoint |
+| **Error Tracking** | Sentry | Region: `de.sentry.io` |
 
-| Layer | Technology |
-|---|---|
-| Frontend | Vanilla JS ES6+, HTML5, CSS3 |
-| Styling | Custom glassmorphism CSS, 6,500+ lines in `styles.css` |
-| Icons | Phosphor Icons v2.1.1 via CDN |
-| Charts | Chart.js via CDN with `defer` |
-| PDF reports | jsPDF 2.5.1 + html2canvas 1.4.1 via CDN with `defer` |
-| Auth and DB | Supabase JS SDK v2 |
-| Offline | Service Worker with Stale-While-Revalidate caching |
-| PWA | `manifest.json`, standalone display mode |
+**Explicit negations:** No React, No Vue, No Angular, No bundler (Webpack/Vite/Rollup), No npm/node on frontend, No TypeScript on frontend, No CSS preprocessor, No build step for frontend.
 
 ---
 
@@ -253,92 +152,62 @@ manifest.json       — PWA manifest. Icons and shortcuts.
 schema.sql          — Supabase schema. Idempotent. Run in SQL Editor.
 ```
 
-The satellite modules (`app.migrations.js`, `app.actions.js`, `app.todayboard.js`, `app.tasks.js`) communicate with `app.js` exclusively through `window.*` globals. They must never import or require each other.
-
----
-
-## 6. CRITICAL: Script Load Order
-
-Scripts must load in this exact sequence. The reason for every position is documented below because changing the order causes silent, hard-to-diagnose failures.
-
-```html
-<!-- In <head>, synchronous — NO defer, NO async: -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-
-<!-- At bottom of <body>, in order: -->
-<script src="supabase.js?vN"></script>
-<script src="app.migrations.js?vN"></script>
-<script src="app.actions.js?vN"></script>
-<script src="app.todayboard.js?vN"></script>
-<script src="app.tasks.js?vN"></script>
-<script src="app.js?vN"></script>
+**Backend files:**
+```
+backend/src/server.ts  — Express app (port 3000). Health + auth endpoints.
+backend/src/auth.ts    — Local authentication logic.
+backend/src/types.ts   — TypeScript type definitions.
 ```
 
-The Supabase SDK is in `<head>` without `defer` because deferred loading is asynchronous. If deferred, `supabase.js` would execute before `window.supabase` exists, hit its CDN fallback loader, yield the JS thread while fetching, and `app.js` would then call `checkAuth()` while `window.SP` was still undefined. The synchronous `<head>` load guarantees `window.supabase` exists before any of our scripts run.
+**Documentation:**
+```
+CLAUDE.md              — This file. Authoritative project reference.
+SETUP.md               — Supabase setup walkthrough.
+STATE_SCHEMA.md        — localStorage & data structure definitions.
+SYSTEM_PROMPT.txt      — AI/LLM context codex.
+tasks/todo.md          — Redesign implementation plan.
+tasks/lessons.md       — Lessons learned from previous sessions.
+```
 
-`supabase.js` loads before `app.js` because it patches `window.login`, `window.signup`, `window.logout`, and `window.saveUserData`. The `app.js` window-exposure block uses `||=` assignment (set only if not already defined) so whichever script sets these functions first wins. `supabase.js` must win.
-
-`app.migrations.js` loads second so the localStorage schema is current before any code reads from it.
-
-`app.actions.js` loads third and sets `window.__starPaperActionsBound = true`. `app.js` checks this flag before registering its fallback dispatcher — whoever sets it first wins as the action router.
-
-Never add `defer` or `async` to any of our custom scripts.
-
----
-
-## 7. Current File Versions — Unfixed Production State
-
-These are the versions currently serving at the live URL. All predate the fixes.
-
-| File | Version | SW cached | Status |
-|---|---|---|---|
-| `supabase.js` | unversioned | YES | **BROKEN** — wrong URL missing 'v', no logout lock |
-| `app.js` | `?v=24` | YES | **BROKEN** — no sp_logged_out guard in checkAuth |
-| `app.migrations.js` | `?v=9` | YES | OK |
-| `app.actions.js` | `?v=8` | YES | OK |
-| `app.todayboard.js` | `?v=1` | YES | OK |
-| `app.tasks.js` | `?v=2` | YES | OK |
-| `sw.js` | — | — | `star-paper-shell-v27` |
-| `manifest.json` | `?v=14` | **404** | **MISSING from every deploy so far** |
-
-When applying all fixes, increment the version query strings in `index.html` for every edited file and bump `CACHE_NAME` in `sw.js`.
+Satellite modules (`app.migrations.js`, `app.actions.js`, `app.todayboard.js`, `app.tasks.js`) communicate with `app.js` exclusively through `window.*` globals. They must never import or require each other.
 
 ---
 
-## 8. Dual-Layer Authentication Architecture
+## 6. Dual-Layer Authentication
 
-Star Paper runs two parallel auth systems simultaneously. Both can independently trigger `showApp()`. Understanding both is essential before touching any auth-related code.
+Star Paper runs two parallel auth systems simultaneously. Both can independently trigger `showApp()`.
 
-**Layer 1 — Local Auth** runs in `app.js`. On every page load, `checkAuth()` reads `starPaper_session` and `starPaperSessionUser` from localStorage. If a valid local session exists, it calls `loadUserData()` then `showApp()` immediately, with no network required. This is what makes the app feel instant for returning users.
+**Layer 1 — Local Auth** (`app.js`): On every page load, `checkAuth()` reads `starPaper_session` and `starPaperSessionUser` from localStorage. If a valid local session exists, it calls `loadUserData()` then `showApp()` immediately, with no network required. This is what makes the app feel instant for returning users.
 
-**Layer 2 — Supabase Auth** runs in `supabase.js`. After the page loads, `getSession()` checks for a live Supabase JWT. If found, `bootstrapFromSupabaseSession()` fetches cloud data and updates the local session state. The `onAuthStateChange` listener also handles OAuth redirects and token refreshes.
+**Layer 2 — Supabase Auth** (`supabase.js`): After the page loads, `getSession()` checks for a live Supabase JWT. If found, `bootstrapFromSupabaseSession()` fetches cloud data and updates the local session state. The `onAuthStateChange` listener handles OAuth redirects and token refreshes.
 
-The guard `window.__spAppBooted` prevents double-rendering — once `true`, subsequent `showApp()` calls are no-ops. This flag is never reset on logout in the current code, but this is mostly moot because the flag is destroyed on every page unload. The real problem is the SDK's persistent token in localStorage surviving logout, which is what Bug 1 exploits.
-
-`window.__spSupabaseReady` is set to `true` at the very end of the `supabase.js` IIFE. The event `sp-supabase-ready` fires simultaneously. Code in `checkAuth()` waits for this event before attempting to use `window.SP`. Never call `window.SP.*` before this flag is set.
-
----
-
-## 9. Data Flow: Cloud and Offline Together
-
-On boot via the cloud path, the sequence is: `bootstrapFromSupabaseSession()` → `loadAllData()` → sets `window._SP_cloudData` → `loadUserData()` in `app.js` consumes `_SP_cloudData`, populates the in-memory arrays (`bookings`, `expenses`, `otherIncome`, `artists`), and writes them back to localStorage as an offline cache.
-
-On boot via the offline path, the sequence is: `checkAuth()` finds a valid local session → `loadUserData()` reads `getManagerData(getActiveDataScopeKey())` directly from localStorage → populates the same arrays. No network involved.
-
-On save, `saveUserData()` writes to localStorage first (synchronous, cannot fail), then calls `window.SP.saveAllData()` asynchronously. Cloud failure never causes data loss because localStorage already has the write.
-
-ID strategy is important to understand for avoiding duplicates. Local records use `Date.now()` as IDs. Cloud records use Supabase UUIDs. Every cloud table has a `legacy_id` column that stores the original local ID. The unique constraint is `(legacy_id, owner_id)`. After every upsert, `patchIds()` in `supabase.js` back-fills the Supabase UUID into the live in-memory array so future saves hit the existing row instead of creating a new one. If you skip this, every save cycle creates duplicate rows.
-
-`window._SP_syncFromCloud(data)` is the live re-injection bridge. `supabase.js` can call it at any time to push fresh cloud data into the running app, updating all arrays and re-rendering. Used after team switches and on delayed cloud responses.
+**Guards:**
+- `window.__spAppBooted` prevents double-rendering — once `true`, subsequent `showApp()` calls are no-ops. Reset to `false` during logout.
+- `window.__spSupabaseReady` is set at the end of the `supabase.js` IIFE. The `sp-supabase-ready` event fires simultaneously. Never call `window.SP.*` before this flag is set.
+- `sp_logged_out` localStorage flag prevents stale Supabase tokens from re-bootstrapping after explicit logout. Set synchronously in `signOut()`, cleared in `bootstrapFromSupabaseSession()` after confirming a real session.
 
 ---
 
-## 10. Key Global State Variables
+## 7. Data Flow: Cloud and Offline Together
+
+**Cloud boot path:** `bootstrapFromSupabaseSession()` → `loadAllData()` → sets `window._SP_cloudData` → `loadUserData()` in `app.js` consumes `_SP_cloudData`, populates in-memory arrays (`bookings`, `expenses`, `otherIncome`, `artists`), writes them to localStorage as offline cache.
+
+**Offline boot path:** `checkAuth()` finds valid local session → `loadUserData()` reads `getManagerData(getActiveDataScopeKey())` from localStorage → populates same arrays. No network involved.
+
+**Save flow:** `saveUserData()` writes to localStorage first (synchronous, cannot fail), then calls `window.SP.saveAllData()` asynchronously. Cloud failure never causes data loss.
+
+**ID strategy:** Local records use `Date.now()` as IDs. Cloud records use Supabase UUIDs. Every cloud table has a `legacy_id` column with a unique constraint `(legacy_id, owner_id)`. After every upsert, `patchIds()` in `supabase.js` back-fills the Supabase UUID into the live in-memory array so future saves update existing rows instead of creating duplicates. If you skip `patchIds()`, every save cycle creates duplicate rows.
+
+**Live re-injection:** `window._SP_syncFromCloud(data)` is the bridge. `supabase.js` can call it at any time to push fresh cloud data into the running app, updating all arrays and re-rendering. Used after team switches and delayed cloud responses.
+
+---
+
+## 8. Global State Variables
 
 These live inside the `DOMContentLoaded` closure in `app.js` and are also exposed on `window`.
 
 | Variable | Type | Description |
-|---|---|---|
+|----------|------|-------------|
 | `currentUser` | string or null | Display username of logged-in manager |
 | `currentManagerId` | string or null | Local ID with `mgr_` prefix. NOT the Supabase UUID |
 | `currentTeamRole` | string or null | `owner`, `manager`, `viewer`, or null |
@@ -349,53 +218,187 @@ These live inside the `DOMContentLoaded` closure in `app.js` and are also expose
 | `managerData` | Object | localStorage cache: `{ [scopeKey]: { bookings, expenses, otherIncome } }` |
 | `revenueGoals` | Object | `{ [scopeKey]: UGX integer }` |
 | `bbfData` | Object | `{ [scopeKey_YYYY-MM]: UGX integer }` |
-| `window.__spAppBooted` | boolean | True after `showApp()` executes. Guards double-render. Never reset on logout currently. |
-| `window.__spSupabaseReady` | boolean | True after `supabase.js` IIFE fully completes |
+| `window.__spAppBooted` | boolean | True after `showApp()`. Guards double-render. Reset on logout. |
+| `window.__spSupabaseReady` | boolean | True after `supabase.js` IIFE completes |
 
-`getActiveDataScopeKey()` is the function that determines which data partition to read and write. It returns `team:{teamId}` if a team is active, otherwise `currentManagerId`. Always use this function. Never hardcode a scope key anywhere.
-
----
-
-## 11. The `window.SP` Public API
-
-This is the only sanctioned way to interact with Supabase from outside `supabase.js`. The `supabase.js` IIFE maintains private state (`_session`, `_profile`, `_activeTeamId`, `_currency`, etc.) that is not directly accessible. Use the API.
-
-Auth methods include `SP.login(email, password)`, `SP.signup(username, email, password, phone)`, `SP.logout()`, `SP.getSession()`, `SP.getProfile()`, `SP.updateProfile(updates)`, `SP.signInWithGoogle()`, and `SP.bootstrap(session, options)`.
-
-Data methods include `SP.loadData()`, `SP.loadAllData()`, `SP.saveData(payload)`, `SP.saveAllData(payload)`, `SP.saveArtists(artists)`, `SP.loadTasks()`, `SP.saveTasks(tasks)`, and delete methods for each record type.
-
-Team methods include `SP.createTeam(name)`, `SP.getMyTeams()`, `SP.joinTeamByCode(code)`, `SP.getTeamMembers(teamId)`, `SP.switchTeam(teamId)`, `SP.leaveTeam(teamId)`, `SP.updateTeamMemberRole()`, `SP.removeTeamMember()`, and `SP.showTeamModal()`.
-
-State accessors: `SP.getOwnerId()` returns the Supabase UUID (not the local `mgr_` ID). `SP.getActiveTeamId()` returns the current team UUID or null. `SP.getActiveTeamRole()` returns the role string. `SP.getSessionState()` returns the raw session object. `SP.getProfileState()` returns the cached profile.
+`getActiveDataScopeKey()` determines which data partition to read and write. Returns `team:{teamId}` if a team is active, otherwise `currentManagerId`. Always use this function — never hardcode a scope key.
 
 ---
 
-## 12. Atomic RPCs — Do Not Revert These
+## 9. Database Schema and RLS
 
-Two critical team operations run as single Supabase RPC calls and must stay that way:
+`schema.sql` is fully idempotent and safe to re-run at any time in the Supabase SQL Editor.
 
-`create_team_with_member(p_name, p_owner_id)` creates a team and adds the owner as a member in one server-side transaction. `join_team_by_code(p_invite_code, p_user_id)` validates the invite code and inserts the member in one transaction.
+**Tables (12):** `profiles`, `teams`, `team_members`, `artists`, `bookings`, `expenses`, `other_income`, `revenue_goals`, `bbf_entries`, `tasks`, `closing_thoughts`, `messages`.
 
-The reason these exist as RPCs is that the Supabase SDK acquires a Web Lock for every auth-bearing request. Two rapid sequential `db.from()` calls cause `AbortError: Lock broken by steal`. The RPCs eliminate this by doing both operations in a single round-trip. If you ever see the impulse to "simplify" these into two sequential queries, resist it — the Web Lock error will return immediately.
+**RLS:** Enabled on every table. Policies ensure users only see rows where `owner_id = auth.uid()` (solo mode) or `team_id` matches a team they belong to (team mode). RLS is never disabled.
+
+**RPC Functions (3):**
+- `get_my_team_ids(uid)` — SECURITY DEFINER. Returns team IDs for a user. Breaks the RLS recursion trap on `team_members`.
+- `create_team_with_member(p_name, p_owner_id)` — Atomic team creation + member insertion.
+- `join_team_by_code(p_invite_code, p_user_id)` — Atomic code validation + member insertion.
+
+**Legacy ID Constraints (4):** `bookings_legacy_id_owner_id_key`, `expenses_legacy_id_owner_id_key`, `other_income_legacy_id_owner_id_key`, `artists_legacy_id_owner_id_key` — all on `(legacy_id, owner_id)`. If any are missing, every `saveUserData()` creates duplicate rows.
+
+**Trigger:** `handle_new_user()` auto-creates a profile row on auth signup.
+
+**Security:** All SECURITY DEFINER functions must have `search_path` hardened to `public`. The `team_members` table must never use `FOR ALL` policies (causes recursive evaluation).
 
 ---
 
-## 13. Database Schema
-
-`schema.sql` must be run in the Supabase SQL Editor to initialise or update the database. It is fully idempotent and safe to re-run at any time.
-
-Tables are `profiles`, `teams`, `team_members`, `artists`, `bookings`, `expenses`, `other_income`, `revenue_goals`, `bbf_entries`, `tasks`, `closing_thoughts`, and `messages`. RLS is enabled on every table. Policies ensure users only see rows where `owner_id = auth.uid()` (solo mode) or where `team_id` matches a team they belong to (team mode). RLS is never disabled.
-
-Legacy ID unique constraints are required for correct upsert behaviour. If any of these constraints are missing, every `saveUserData()` call will create duplicate rows rather than updating existing ones. The four constraints are `bookings_legacy_id_owner_id_key`, `expenses_legacy_id_owner_id_key`, `other_income_legacy_id_owner_id_key`, and `artists_legacy_id_owner_id_key`, all defined on `(legacy_id, owner_id)`.
+# TIER 3: RULES AND STANDARDS
 
 ---
 
-## 14. localStorage Key Registry
+## 10. Coding Style
 
-Every key used in the app is listed here. Never invent new keys without adding them to this table.
+Adapted from the everything-claude-code framework for vanilla JS.
+
+### File Size
+Existing monolithic files (`app.js` ~9,400 lines, `styles.css` ~6,500 lines) are intentional — debuggability is prioritised over modularity at this stage. **New modules should target 200-400 lines, max 800.** When suggesting a refactor of existing files, present it as optional future work, never as a prerequisite for the current task.
+
+### Immutability
+Create new objects — never mutate existing ones. Use spread operators for object updates. Use `.map()`, `.filter()`, `.reduce()` instead of in-place array mutation.
+
+### Functions
+- Keep functions under 50 lines. Extract helpers for longer logic.
+- No nesting deeper than 4 levels — use early returns.
+- Use JSDoc comments for public functions (not TypeScript annotations on frontend).
+- Expose functions with `window.fnName ||= fnName` in the window exposure block.
+
+### Buttons and Actions
+- Use `data-action="fnName"` plus inline `onclick="fnName()"` fallback on every critical button.
+- The triple-layer dispatch: `app.actions.js` (primary) → `app.js` fallback → inline `onclick` (safety net) → `wireCriticalButtons()` capture-phase listener (highest priority).
+- Never remove `onclick` attributes from existing buttons — they are the last line of defence.
+
+### Financial Arithmetic
+- UGX integers only: `Math.round(Number(value) || 0)`
+- Test with: `0`, `500000000` (500M), and negative values
+- Balance always re-derived as `fee - deposit` before save
+- Currency conversion is display-only — never stored
+
+### Error Handling
+- Handle errors explicitly at every level
+- Use Sentry `captureException` or `captureMessage` — no `console.log` in production
+- Never silently swallow errors
+
+---
+
+## 11. Git Workflow
+
+### Commit Message Format
+```
+<type>: <description>
+
+<optional body>
+```
+
+**Types:** `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`, `ci`
+
+### After Every Commit
+1. Wait ~30s for Netlify auto-deploy
+2. Run deploy health agent: "Check the Star Paper deploy health."
+3. Run verification commands from Section 2
+
+### Branch Strategy
+- `main` for production (auto-deploys)
+- Feature branches for development
+- Merge to `main` only after verification
+
+---
+
+## 12. Testing Strategy
+
+**Current state:** No automated tests. **Target:** 80% coverage.
+
+### Bootstrap Path
+Install Vitest (works with vanilla JS via happy-dom, no build step required):
+```bash
+npm init -y
+npm install -D vitest happy-dom
+```
+
+### Test File Convention
+`*.test.js` alongside source files, or a `__tests__/` directory.
+
+### Priority Test Targets (in order)
+1. **Financial calculations** — UGX arithmetic, fee/deposit/balance derivation, currency formatting
+2. **Auth flow** — login, logout, session persistence, `sp_logged_out` flag behaviour
+3. **Data sync** — localStorage write-first, cloud upsert, `patchIds()` deduplication
+4. **Scope filtering** — `getActiveDataScopeKey()`, `applyScopeFilter()`, team vs solo mode
+
+### TDD Workflow (Mandatory for New Features)
+1. **RED** — Write a failing test first
+2. **GREEN** — Write minimal implementation to pass
+3. **REFACTOR** — Clean up without changing behaviour
+4. Verify coverage meets 80%
+
+### E2E Testing
+Playwright for critical flows: login, add booking, switch team, generate report.
+
+### Completion Gate
+"Done" requires proof. No proof, no completion. (Lesson 9)
+
+---
+
+## 13. Security Checklist
+
+### Pre-Commit Checks
+- [ ] No hardcoded secrets (API keys, passwords, tokens)
+- [ ] All user inputs validated before processing
+- [ ] No `innerHTML` with user data (XSS prevention)
+- [ ] No string concatenation in Supabase queries (use `.eq()`, `.match()`, etc.)
+- [ ] Error messages do not leak sensitive data
+
+### Supabase-Specific
+- [ ] RLS enabled on ALL 12 tables
+- [ ] No `FOR ALL` policies on `team_members` (recursion trap)
+- [ ] All SECURITY DEFINER functions have `search_path` hardened to `public`
+- [ ] All 4 `legacy_id` unique constraints exist
+- [ ] Service role key **never** in frontend code, localStorage, or git
+- [ ] Supabase anon key is safe to expose (RLS protects data)
+
+### Financial Data Protection
+- [ ] UGX integers only — `NUMERIC` type in Postgres, always whole numbers
+- [ ] Balance re-derived as `fee - deposit` before save
+- [ ] Currency conversion is display-only, never stored
+
+### Auth Security
+- [ ] Supabase SDK token (`sb-*-auth-token`) explicitly cleared on logout
+- [ ] `sp_logged_out` flag set synchronously before any async logout operations
+- [ ] `onAuthStateChange` refuses to bootstrap when logout flag is set
+
+### Security Response Protocol
+If a security issue is found:
+1. **STOP** immediately
+2. Use **security-reviewer** agent
+3. Fix CRITICAL issues before continuing
+4. Rotate any exposed secrets
+5. Review codebase for similar issues
+
+---
+
+## 14. Performance Budget
+
+| Metric | Target |
+|--------|--------|
+| Dashboard load (3G) | < 500ms |
+| Time to interactive | < 1s on low-end Android |
+| SW pre-cache | All APP_SHELL files |
+
+- CDN libraries loaded with `defer` (Chart.js, jsPDF, html2canvas) **except** Supabase SDK (synchronous in `<head>`)
+- Supabase calls use `withTimeout()` guard (8 seconds) to prevent indefinite hangs
+- No lazy-loading of core modules — all scripts are < 10KB individually except `app.js`
+- Minimize DOM queries in hot paths — cache element references
+
+---
+
+## 15. localStorage Key Registry
+
+Every key used in the app. Never invent new keys without adding them to this table.
 
 | Key | Owner | Description |
-|---|---|---|
+|-----|-------|-------------|
 | `starPaper_session` | app.js | Active session marker. Value: `"active"` |
 | `starPaperSessionUser` | app.js | Username of the active session |
 | `starPaperCurrentUser` | app.js | Persisted username when Remember Me is checked |
@@ -407,128 +410,79 @@ Every key used in the app is listed here. Never invent new keys without adding t
 | `starPaperRevenueGoals` | app.js | `{ [scopeKey]: UGX integer }` |
 | `starPaperBBF` | app.js | `{ [scopeKey_YYYY-MM]: UGX integer }` |
 | `starPaperClosingThoughtsByPeriod` | app.js | `{ [scopeKey]: { [period]: text } }` |
+| `starPaperAudienceMetrics` | app.js | `{ [scopeKey]: Array of audience metric entries }` |
 | `starPaperTasks:{scopeKey}` | app.tasks.js | Array of task objects per user or team |
 | `starPaperSchemaVersion` | app.migrations.js | Integer, currently `2` |
 | `starPaperTheme` | app.js | `"dark"` or `"light"` |
 | `starPaperSeedDemo` | app.js | `"true"` enables demo data seeding (dev only) |
 | `sp_active_team` | supabase.js | Active team UUID or empty string |
 | `sp_currency` | supabase.js | Active currency code, e.g. `"UGX"` |
-| `sp_logged_out` | **TO BE ADDED** | Logout lock flag. Value `"1"`. **Does not exist yet — this is part of the Bug 1 fix.** |
+| `sp_logged_out` | supabase.js | Logout lock flag. Value `"1"`. Prevents stale token re-bootstrap. |
 | `sp_migrated_{userId}` | supabase.js | Per-user cloud migration completion flag |
 | `sp_density` | app.js | `"comfortable"` or `"compact"` |
 | `sp_sidebar_collapsed` | app.js | `"1"` if sidebar is collapsed on desktop |
-| `sb-fxcyocdwvjiyatqnaahg-auth-token` | Supabase SDK | **THE KEY THAT CAUSES BUG 1.** The SDK's own JWT storage. Our logout code currently never clears this. It must be explicitly deleted inside `signOut()`. |
+| `sb-fxcyocdwvjiyatqnaahg-auth-token` | Supabase SDK | SDK's own JWT storage. Explicitly cleared on logout. |
+| `sp_last_save_toast` | supabase.js | Throttle timestamp for "Saved to cloud" toast (10s cooldown) |
+| `sp_retry_queue` | supabase.js | JSON array of pending cloud saves that survived browser close. Cleared on successful sync or logout. |
 
 ---
 
-## 15. Financial Data Rules
+## 16. Adding New Features Checklist
 
-All money values are stored as **UGX integers** in both localStorage and the database. The `fee`, `deposit`, `balance`, and `amount` columns in Postgres are `NUMERIC` type but must always contain whole numbers. When reading from the DB, always wrap values in `Number(row.fee) || 0` and then `Math.round()` to strip any floating-point artifacts introduced by JSON transport. The `balance` field on a booking is always re-derived as `fee - deposit` before saving — never trust a stale stored balance.
+Every new feature must satisfy this checklist before it is complete:
 
-Currency conversion is a display-only operation. `SP_formatCurrencyFull(ugxAmount)` in `supabase.js` converts for rendering. The stored value never changes. Switching currencies changes how numbers look, not what numbers are stored.
-
----
-
-## 16. Action Dispatch System
-
-Buttons use `data-action="functionName"` attributes. `app.actions.js` registers a document-level click listener that reads this attribute and calls `window[functionName]()`. There is intentional triple-layer redundancy to prevent silent failures:
-
-The primary dispatcher is `app.actions.js`, registered first, setting `window.__starPaperActionsBound = true`. The fallback is `app.js`'s `bindDeclarativeActionFallback()`, which only runs if that flag is false. The third layer is inline `onclick="functionName()"` attributes on every critical button. A fourth capture-phase listener in `wireCriticalButtons()` at the bottom of `index.html` covers the highest-priority operations.
-
-Never remove the `onclick` attributes from existing buttons. They are the last line of defence, not decoration.
+- [ ] **Data storage?** Write to localStorage first (synchronous), then cloud (async, best-effort).
+- [ ] **Money involved?** UGX integers only, `Math.round(Number(value) || 0)`, test with 0, 500M, and negative.
+- [ ] **UI change?** Test at 375px viewport width in both dark and light themes.
+- [ ] **New button?** Use `data-action="fnName"` plus inline `onclick="fnName()"` and `window.fnName ||= fnName`.
+- [ ] **Supabase query?** Must go through `applyScopeFilter()` or `applyUserScopeFilter()` — never without scope.
+- [ ] **New table?** Add to `schema.sql` with `CREATE TABLE IF NOT EXISTS` and RLS enabled. Re-run schema.
+- [ ] **New localStorage key?** Add it to the key registry in Section 15.
+- [ ] **Test?** Write at minimum a unit test for the core logic.
+- [ ] **Plan written?** Non-trivial tasks require a plan in `tasks/todo.md` before implementation. (Lesson 8)
 
 ---
 
-## 17. CSS Architecture
-
-All styles live in `styles.css`, a single file with 39 numbered sections. The core palette uses `--gold-amber: #FFB300` as the primary accent, `--onyx-deep: #0B0B0B` as the background, and `--text-primary: #FFFFFF` as body text. Light theme is applied via `body.light-theme`. Compact density via `body.sp-density--compact`. The layout is mobile-first with breakpoints at 360px, 480px, 768px, and 1025px. Never use `!important` outside the designated density override sections.
+# TIER 4: AGENTS, SKILLS, AND COMMANDS
 
 ---
 
-## 18. Service Worker and Cache Versioning
+## 17. Agent Delegation Table
 
-`sw.js` has a `CACHE_NAME` constant currently at `star-paper-shell-v27`. The `APP_SHELL` array lists every pre-cached file. You must bump `CACHE_NAME` when any JS file, `index.html`, or `manifest.json` changes. You do not need to bump it for CSS-only changes, because the Stale-While-Revalidate strategy serves fresh CSS automatically. The version number in `sw.js` and the `?v=N` query strings on script tags in `index.html` do not have to be identical but must be incremented consistently on every deploy.
+Agents mapped to Star Paper use cases. Use these proactively — no user prompt needed.
 
----
+| Agent | Star Paper Use Case | When to Trigger |
+|-------|-------------------|-----------------|
+| **planner** | New feature design (Phase 3-6 of redesign) | Complex features, multi-file changes |
+| **architect** | Data flow changes, new Supabase tables, module extraction | Architectural decisions |
+| **tdd-guide** | Writing first tests, adding test coverage | New features, bug fixes |
+| **code-reviewer** | After modifying any `.js` file | After writing code, before commit |
+| **security-reviewer** | Auth changes, RLS policy changes, financial code | Mandatory for auth/money/RLS |
+| **database-reviewer** | `schema.sql` changes, RPC functions, RLS policies | Schema modifications |
+| **build-error-resolver** | Backend TypeScript compilation issues | When `tsc` fails |
+| **doc-updater** | CLAUDE.md, README.md, STATE_SCHEMA.md updates | After architecture changes |
+| **refactor-cleaner** | Extracting modules from `app.js` | Code maintenance |
+| **performance-optimizer** | Dashboard render time, Supabase query optimization | Performance regression |
 
-## 19. Verification Commands
+**Agents NOT applicable** (vanilla JS project, no need for): rust-reviewer, go-reviewer, python-reviewer, kotlin-reviewer, java-reviewer, cpp-reviewer, flutter-reviewer, healthcare-reviewer, and all language-specific build resolvers except TypeScript (backend only).
 
-Run these in the browser console to confirm the state of the code actually running in the browser. Never trust visual appearance alone — always verify.
+### Multi-Perspective Analysis
 
-```javascript
-// MOST IMPORTANT — confirm which supabase.js is loaded
-// Must show 'fxcyocdwvjiyatqnaahg' with the 'v'
-fetch('/supabase.js').then(r => r.text()).then(t => console.log(t.substring(150, 350)))
-
-// Confirm the correct project ref from the JWT (this is ground truth)
-JSON.parse(atob('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4Y3lvY2R3dmppeWF0cW5hYWhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5Nzg4NDEsImV4cCI6MjA4ODU1NDg0MX0.OTtDpyfA69rbVOTJkBh51pwj3wEkR1L04x4ouDkeWZ0'.split('.')[1]))
-// Returns: { ref: "fxcyocdwvjiyatqnaahg" ... }
-
-// Confirm the SDK token still exists AFTER logout (proves Bug 1 is still active)
-// Run AFTER clicking logout — if this returns anything other than null, Bug 1 is unfixed
-localStorage.getItem('sb-fxcyocdwvjiyatqnaahg-auth-token')
-
-// Confirm sp_logged_out does not exist yet (pre-fix state)
-localStorage.getItem('sp_logged_out')
-// Should return null currently
-
-// Test cloud DB connectivity — only works after URL is fixed
-window.SP?.client?.from('profiles').select('id').limit(1).then(r => console.log(r))
-// Pre-fix: returns { data: null, error: { message: "DNS..." } }
-// Post-fix: returns { data: [{ id: '...' }], error: null }
-
-// Confirm app.js version currently running
-document.querySelector('script[src*="app.js"]')?.src
-// Currently returns ?v=24
-```
+For complex problems, launch parallel sub-agents:
+- Factual reviewer (correctness)
+- Security expert (vulnerabilities)
+- Senior engineer (architecture)
+- Consistency reviewer (patterns)
 
 ---
 
-## 20. All Four Fixes — Consolidated Action List
+## 18. Autonomous Agent Triggers
 
-When a future session applies all fixes, these are the exact changes needed:
-
-**In `supabase.js`:** Change line 2 from `fxcyocdwjiyatqnaahg` to `fxcyocdwvjiyatqnaahg` (add the missing 'v'). Replace `signOut()` with the version that sets `sp_logged_out`, clears `sb-fxcyocdwvjiyatqnaahg-auth-token`, resets `_session` and `_profile` synchronously, then calls `db.auth.signOut()` as background best-effort. Add the `sp_logged_out` check as the first action in `onAuthStateChange`. Add `localStorage.removeItem('sp_logged_out')` as the first action in `bootstrapFromSupabaseSession()` after confirming the session is real.
-
-**In `app.js`:** Add the `sp_logged_out` check as the very first line of `checkAuth()` — if the flag is `'1'`, call `setActiveScreen('landingScreen')` and return.
-
-**In Supabase SQL Editor (not a file change):** Re-run the full `schema.sql` to ensure `get_my_team_ids()` exists, RLS policies are correctly split, and all `legacy_id` unique constraints exist.
-
-**After editing files:** Increment version strings in `index.html` for every edited JS file. Bump `CACHE_NAME` in `sw.js`. Deploy the **complete project folder** to Netlify (not individual files). Unregister the service worker in the browser. Hard-refresh. Run the verification commands above to confirm the correct code is running.
+Trigger phrases for Claude at the start of a session or after a change. Claude runs multiple tool calls automatically.
 
 ---
 
-## 21. Adding New Features
-
-Every new feature must satisfy this checklist before it is complete. Does it store data? Write to localStorage first (synchronous, guaranteed), then cloud (async, best-effort). Does it involve money? UGX integers only, `Math.round(Number(value) || 0)`, test with zero, with UGX 500,000,000, and with negative balances. Does it touch the UI? Test at 375px viewport width in both dark and light themes. Does it add a button? Use `data-action="fnName"` plus inline `onclick="fnName()"` fallback and add `window.fnName ||= fnName` to the window exposure block in `app.js`. Does it use Supabase? Every query must go through `applyScopeFilter()` or `applyUserScopeFilter()` — never query without a scope filter. Does it add a new table? Add it to `schema.sql` with `CREATE TABLE IF NOT EXISTS` and RLS enabled, then re-run the schema.
-
----
-
-## 22. Local Development
-
-Google OAuth requires http or https and does not work on `file://` protocol. For local OAuth testing use a local server with `npx serve .` which serves on `http://localhost:3000`. Add that URL to the Supabase Redirect URLs list under Authentication → URL Configuration.
-
-For quick offline testing with no server, click the `🧪 Local Test Mode` button on the login screen. It creates a `TestUser` session in localStorage and boots the full app with no cloud dependency. A visible `DEV MODE` badge appears. This is safe to ship — the button has no effect on https deployments.
-
----
-
-## 23. Project Context and Engineering Philosophy
-
-This is a single-developer production SaaS with real users and real financial data. There is no staging environment. Test in incognito before communicating any fix to users.
-
-The codebase is intentionally monolithic in places — `app.js` is approximately 8,900 lines — because debuggability is prioritised over modularity at this stage of the project. When suggesting a refactor, present it as optional future work, never as a prerequisite to fixing the current task.
-
-The hardest part of this project is not the code. It is ensuring that fixed code actually reaches the browser. The service worker, Netlify's deployment model, and browser caching create a three-layer system where a "deployed" fix can be completely invisible to users. A fix that is not verified with the console commands in Section 19 is a fix that does not exist.
----
-
-## Section 21 — Autonomous Agents
-
-These are trigger phrases you say to Claude at the start of a session or after a change.
-Claude runs multiple tool calls automatically and reports back — no hand-holding needed.
-
----
-
-### 🔵 SESSION START AGENT
+### Session Start Agent
 **Say**: "Run the Star Paper session start check."
 
 Claude autonomously:
@@ -541,34 +495,31 @@ Use this at the start of every dev session. Never start writing code before runn
 
 ---
 
-### 🟢 SCHEMA GUARD AGENT
+### Schema Guard Agent
 **Say**: "Run the Star Paper schema guard."
 
-Claude runs a full SQL audit against Supabase project fxcyocdwvjiyatqnaahg and checks:
-- All 3 RPC functions exist (get_my_team_ids, create_team_with_member, join_team_by_code)
-- handle_new_user trigger exists
-- All 4 legacy_id constraints exist (bookings, expenses, other_income, artists)
+Claude runs a full SQL audit against Supabase project `fxcyocdwvjiyatqnaahg` and checks:
+- All 3 RPC functions exist (`get_my_team_ids`, `create_team_with_member`, `join_team_by_code`)
+- `handle_new_user` trigger exists
+- All 4 `legacy_id` constraints exist (bookings, expenses, other_income, artists)
 - RLS is enabled on all 12 tables
-- search_path is hardened on all 4 SECURITY DEFINER functions
-- team_members has no FOR ALL policy (recursion trap)
+- `search_path` is hardened on all SECURITY DEFINER functions
+- `team_members` has no `FOR ALL` policy (recursion trap)
 
-Use this before and after any schema changes.
+Use before and after any schema changes.
 
 ---
 
-### 🟡 DATA HEALTH AGENT
+### Data Health Agent
 **Say**: "Run the Star Paper data health check."
 
-Claude queries row counts in all financial tables.
-Signature of a broken deploy or URL bug: profiles > 0, but bookings/expenses/
-other_income/artists/tasks all = 0. If that pattern appears, stop and fix the
-deployment before doing anything else.
+Claude queries row counts in all financial tables. Signature of a broken deploy or URL bug: profiles > 0, but bookings/expenses/other_income/artists/tasks all = 0. If that pattern appears, stop and fix the deployment before doing anything else.
 
-Use this when users report data not saving or syncing.
+Use when users report data not saving or syncing.
 
 ---
 
-### 🟠 DEPLOY HEALTH AGENT
+### Deploy Health Agent
 **Say**: "Check the Star Paper deploy health."
 
 Claude checks the latest Netlify deploy and reports:
@@ -577,39 +528,36 @@ Claude checks the latest Netlify deploy and reports:
 - What is the commit SHA and URL?
 - Is the deploy state "ready"?
 
-A healthy deploy: commit_ref is set, manual_deploy is false, multiple files changed.
-A broken deploy: manual_deploy is true, "1 new file uploaded", commit_ref is null.
+A healthy deploy: `commit_ref` is set, `manual_deploy` is false, multiple files changed.
+A broken deploy: `manual_deploy` is true, "1 new file uploaded", `commit_ref` is null.
 
-Use this after every commit to confirm the deploy went through correctly.
+Use after every commit to confirm the deploy went through correctly.
 
 ---
 
-### 🔴 SENTRY TRIAGE AGENT
+### Sentry Triage Agent
 **Say**: "Run the Star Paper Sentry triage."
 
-Claude pulls the last 48 hours of errors from de.sentry.io (star-paper org), groups
-by type and frequency, and matches against known bug patterns. Reports new bugs,
-recurring errors, and any previously silent failures now visible since Sentry was added.
+Claude pulls the last 48 hours of errors from `de.sentry.io` (star-paper org), groups by type and frequency, and matches against known patterns. Reports new bugs, recurring errors, and previously silent failures.
 
-Use this weekly, or any time a user reports unexpected behaviour in production.
+Use weekly, or when a user reports unexpected behaviour.
 
 ---
 
-### 🔒 SECURITY AUDIT AGENT
+### Security Audit Agent
 **Say**: "Run the Star Paper security audit."
 
-Claude runs both security and performance advisors against Supabase project
-fxcyocdwvjiyatqnaahg, then checks:
-- search_path is set on all SECURITY DEFINER functions
+Claude runs both security and performance advisors against Supabase project `fxcyocdwvjiyatqnaahg`, then checks:
+- `search_path` is set on all SECURITY DEFINER functions
 - RLS is enabled on every table
 - No tables have RLS enabled with zero policies (silent inaccessibility trap)
 - Reports findings with severity and exact fix SQL
 
-Use this monthly or after any schema migration.
+Use monthly or after any schema migration.
 
 ---
 
-### ✅ REGRESSION CHECK AGENT
+### Regression Check Agent
 **Say**: "Run the Star Paper regression check." (after any fix)
 
 Claude verifies the fix didn't break anything:
@@ -617,44 +565,181 @@ Claude verifies the fix didn't break anything:
 2. Deploy health — last deploy was GitHub auto-deploy with multiple files
 3. Data health — financial tables not suddenly empty
 4. Sentry — no new error spike in the last 30 minutes
-5. Auth guard — sp_logged_out check still present in app.js checkAuth()
+5. Auth guard — `sp_logged_out` check still present in `app.js` `checkAuth()`
 
-Use this after every bug fix before closing the session.
+Use after every bug fix before closing the session.
 
 ---
 
-## Quick Reference — Session Workflow
+### Quick Reference — Session Workflow
 
 ```
 START OF SESSION:
-  → "Run the Star Paper session start check."
-  → Read the report. Fix anything flagged before writing new code.
+  -> "Run the Star Paper session start check."
+  -> Read the report. Fix anything flagged before writing new code.
 
 AFTER WRITING A FIX:
-  → Commit to GitHub (Netlify auto-deploys in ~30s)
-  → "Check the Star Paper deploy health."
-  → "Run the Star Paper regression check."
+  -> Commit to GitHub (Netlify auto-deploys in ~30s)
+  -> "Check the Star Paper deploy health."
+  -> "Run the Star Paper regression check."
 
 WEEKLY:
-  → "Run the Star Paper Sentry triage."
-  → "Run the Star Paper security audit."
+  -> "Run the Star Paper Sentry triage."
+  -> "Run the Star Paper security audit."
 
 WHEN USERS REPORT DATA PROBLEMS:
-  → "Run the Star Paper data health check."
-  → If financial tables = 0, check deploy health first.
+  -> "Run the Star Paper data health check."
+  -> If financial tables = 0, check deploy health first.
 ```
 
 ---
 
-## Section 22 — Infrastructure Reference
+## 19. Skills Reference
 
-| Service       | Details                                                            |
-|---------------|--------------------------------------------------------------------|
-| Supabase      | Project ID: fxcyocdwvjiyatqnaahg                                   |
-| Supabase URL  | https://fxcyocdwvjiyatqnaahg.supabase.co (v at position 10)       |
-| Netlify       | Site ID: 6f4ce419-55ca-472c-a6f8-06c3fea81970                      |
-| Netlify URL   | https://star-paper.netlify.app                                     |
-| GitHub        | https://github.com/Busu90-90/star-paper (branch: main)             |
-| Sentry        | https://star-paper.sentry.io / region: https://de.sentry.io        |
-| Sentry DSN    | https://43eaad14b9ae20eec68d9249f139cbc2@o4511079351189504.ingest.de.sentry.io/4511081427894352 |
-| Deploy method | GitHub commit to main → Netlify auto-deploys (DO NOT use manual drag) |
+Skills relevant to Star Paper development.
+
+| Skill | Purpose | When to Use |
+|-------|---------|-------------|
+| `star-paper-dev` | Star Paper development specialist | Any star-paper work |
+| `tdd` / `tdd-workflow` | Test-driven development workflow | Writing tests |
+| `security-scan` / `security-review` | Security vulnerability scanning | Before deploy, after auth changes |
+| `verify` / `verification-loop` | Post-change verification loop | After any fix |
+| `plan` | Implementation planning | Multi-step features |
+| `code-review` | Code quality review | Before every commit |
+| `build-fix` | Resolve build errors | Backend TypeScript errors |
+| `docs` / `update-docs` | Documentation updates | After architecture changes |
+| `checkpoint` / `save-session` | Session state capture | End of session, long-running work |
+| `resume-session` | Resume from saved state | Start of follow-up session |
+| `deploy-checklist` | Pre-deploy verification | Before Netlify deploy |
+| `database-migrations` | Schema change management | Supabase schema updates |
+| `deep-research` | Comprehensive research | Before implementing unfamiliar patterns |
+| `frontend-patterns` | Frontend best practices | UI component design |
+
+---
+
+## 20. Commands Quick Reference
+
+| Command | Description |
+|---------|-------------|
+| `/plan` | Generate implementation plan for a feature |
+| `/tdd` | Enter TDD workflow (RED-GREEN-REFACTOR) |
+| `/verify` | Run verification loop post-change |
+| `/code-review` | Trigger code review on current changes |
+| `/security-scan` | Run security audit (OWASP Top 10) |
+| `/build-fix` | Diagnose and fix build errors |
+| `/docs` | Update documentation |
+| `/save-session` | Persist session state for later resume |
+| `/resume-session` | Resume from saved session state |
+| `/checkpoint` | Create a progress checkpoint |
+| `/refactor-clean` | Dead code cleanup and consolidation |
+| `/deep-research` | Research before implementing new patterns |
+
+---
+
+## 21. Hook Configuration
+
+Recommended hooks for Star Paper development.
+
+### PreToolUse Hooks
+- **block-no-verify**: Prevent skipping git hooks (`--no-verify`)
+- **commit-quality**: Validate commit messages follow conventional format (`feat:`, `fix:`, etc.)
+
+### PostToolUse Hooks
+- After editing `.js` files: run `node --check <file>` for syntax verification
+- After editing `.ts` files (backend): run `npx tsc --noEmit`
+- After editing `.css`: warn if `!important` is used outside density override sections
+
+### Stop Hooks
+- Check all modified files for `console.log` statements
+- Verify version strings were bumped if JS files were modified
+- Run verification commands from Section 2
+
+---
+
+# TIER 5: REFERENCE
+
+---
+
+## 22. CSS Architecture
+
+All styles in `styles.css`, a single file with 39 numbered sections.
+
+**Core Palette:**
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--gold-amber` | `#FFB300` | Primary accent |
+| `--onyx-deep` | `#0B0B0B` | Background |
+| `--text-primary` | `#FFFFFF` | Body text |
+
+**Themes:** Dark (default) / Light via `body.light-theme`
+**Density:** Comfortable (default) / Compact via `body.sp-density--compact`
+**Breakpoints:** 360px (baseline), 480px, 768px, 1025px
+**Design:** Glassmorphism — backdrop blur, low-alpha borders, layered transparency
+
+**Rule:** Never use `!important` outside designated density override sections.
+
+---
+
+## 23. Lessons Learned
+
+Full log in `tasks/lessons.md`. Top 5 for daily reference:
+
+**Lesson 8: Plan-first discipline.** No non-trivial implementation begins before a checkable plan is written in `tasks/todo.md`. All 3+ step or architectural tasks are plan-gated.
+
+**Lesson 9: Verification is a completion gate.** "Done" requires proof — tests, logs, or observable behaviour checks. No proof, no completion.
+
+**Lesson 10: Continuous self-correction.** Every user correction creates or updates at least one concrete preventive rule in `tasks/lessons.md`.
+
+**Lesson 12: PDF assets need non-fetch fallback.** For client-side PDF branding assets, never rely on a single network-style loader path. Always include an `Image` element decode fallback.
+
+**Lesson 13: Cache-bust on production hotfixes.** If a UI bug appears "fixed in code but unchanged in app", treat cache versioning (`?v=N` + SW `CACHE_NAME`) as part of the fix, not a follow-up.
+
+### Patterns to Apply
+1. Visual hierarchy — one dominant element, supporting below
+2. Usage-based navigation — frequent tasks get top-level access
+3. Task-based grouping — group by user goal, not data type
+4. Single source of truth — one entry point, multiple views
+5. Proactive intelligence — surface insights, don't make users hunt
+
+### Anti-Patterns to Avoid
+1. Equal-weight cards with no hierarchy
+2. Flat navigation treating all features equally
+3. Fragmenting related data across sections
+4. Separate sections for output formats
+5. Dual data entry points
+6. Purely reactive data display
+
+---
+
+## 24. Roadmap and Local Development
+
+### Current Redesign Status
+See `tasks/todo.md` for full implementation plan.
+- Phase 1 (Today Board): Complete
+- Phase 2 (Task List): Complete
+- Phase 3 (Smart Nudges): Pending
+- Phase 4 (Money Section Merge): Pending
+- Phase 5 (Calendar as Booking View): Pending
+- Phase 6 (Streaks Widget): Pending
+
+### Local Development
+
+**Frontend dev server:**
+```bash
+npx serve . -l 5000
+```
+
+**Backend dev server:**
+```bash
+cd backend && npm run dev
+```
+
+**Google OAuth** requires `http://` or `https://` — does not work on `file://`. Add `http://localhost:3000` to Supabase Redirect URLs under Authentication → URL Configuration.
+
+**Quick offline testing:** Click the "Local Test Mode" button on the login screen. Creates a `TestUser` session in localStorage and boots the full app with no cloud dependency. A visible `DEV MODE` badge appears. Safe to ship — the button has no effect on https deployments.
+
+### Engineering Philosophy
+
+This is a single-developer production SaaS with real users and real financial data. There is no staging environment. Test in incognito before communicating any fix to users.
+
+The hardest part of this project is not the code — it is ensuring that fixed code actually reaches the browser. The service worker, Netlify's deployment model, and browser caching create a three-layer system where a "deployed" fix can be completely invisible to users. A fix not verified with the console commands in Section 2 is a fix that does not exist.

@@ -46,16 +46,47 @@ ALTER TABLE public.profiles
 -- Auto-create profile on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_base_username TEXT;
+  v_username TEXT;
 BEGIN
+  v_base_username := lower(
+    regexp_replace(
+      COALESCE(
+        NULLIF(trim(NEW.raw_user_meta_data->>'username'), ''),
+        split_part(COALESCE(NEW.email, 'user'), '@', 1),
+        'user'
+      ),
+      '[^a-zA-Z0-9_]+',
+      '_',
+      'g'
+    )
+  );
+  v_base_username := trim(both '_' from v_base_username);
+  IF v_base_username = '' THEN
+    v_base_username := 'user';
+  END IF;
+
+  v_username := v_base_username;
+  IF EXISTS (
+    SELECT 1
+    FROM public.profiles
+    WHERE lower(username) = lower(v_username)
+  ) THEN
+    v_username := left(v_base_username, 40) || '_' || substr(replace(NEW.id::text, '-', ''), 1, 6);
+  END IF;
+
   INSERT INTO public.profiles (id, username, email)
   VALUES (
     NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'username', split_part(NEW.email, '@', 1)),
+    v_username,
     NEW.email
-  );
+  )
+  ON CONFLICT (id) DO UPDATE
+  SET email = EXCLUDED.email;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
@@ -132,12 +163,28 @@ RETURNS SETOF UUID
 LANGUAGE sql
 SECURITY DEFINER
 STABLE
+SET search_path = public
 AS $$
-  SELECT team_id FROM public.team_members WHERE user_id = uid;
+  SELECT team_id
+  FROM public.team_members
+  WHERE user_id = auth.uid()
+    AND uid = auth.uid();
 $$;
 
 -- Grant to authenticated users so the policy can call it
 GRANT EXECUTE ON FUNCTION public.get_my_team_ids(UUID) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.getmyteamids(uid UUID)
+RETURNS SETOF UUID
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT * FROM public.get_my_team_ids(uid);
+$$;
+
+GRANT EXECUTE ON FUNCTION public.getmyteamids(UUID) TO authenticated;
 
 -- ── ATOMIC TEAM CREATION ────────────────────────────────────────────────────────
 -- Creates a team AND adds the creator as owner in a single transaction.
@@ -150,18 +197,34 @@ CREATE OR REPLACE FUNCTION public.create_team_with_member(
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
+  v_actor UUID;
   v_team public.teams;
 BEGIN
+  v_actor := auth.uid();
+  IF v_actor IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+
+  IF p_owner_id IS NOT NULL AND p_owner_id <> v_actor THEN
+    RAISE EXCEPTION 'Cannot create a team for another user';
+  END IF;
+
+  IF NULLIF(trim(p_name), '') IS NULL THEN
+    RAISE EXCEPTION 'Team name is required';
+  END IF;
+
   -- Insert the team
   INSERT INTO public.teams (name, owner_id)
-  VALUES (p_name, p_owner_id)
+  VALUES (trim(p_name), v_actor)
   RETURNING * INTO v_team;
 
   -- Insert creator as owner member in the same transaction
   INSERT INTO public.team_members (team_id, user_id, role)
-  VALUES (v_team.id, p_owner_id, 'owner');
+  VALUES (v_team.id, v_actor, 'owner')
+  ON CONFLICT (team_id, user_id) DO UPDATE SET role = 'owner';
 
   RETURN row_to_json(v_team);
 END;
@@ -181,10 +244,21 @@ CREATE OR REPLACE FUNCTION public.join_team_by_code(
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
+  v_actor UUID;
   v_team public.teams;
 BEGIN
+  v_actor := auth.uid();
+  IF v_actor IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+
+  IF p_user_id IS NOT NULL AND p_user_id <> v_actor THEN
+    RAISE EXCEPTION 'Cannot join a team for another user';
+  END IF;
+
   -- Look up team by normalised invite code
   SELECT * INTO v_team
   FROM public.teams
@@ -196,7 +270,7 @@ BEGIN
 
   -- Insert member (ignore duplicate — already a member is fine)
   INSERT INTO public.team_members (team_id, user_id, role)
-  VALUES (v_team.id, p_user_id, 'manager')
+  VALUES (v_team.id, v_actor, 'manager')
   ON CONFLICT (team_id, user_id) DO NOTHING;
 
   RETURN row_to_json(v_team);
@@ -276,12 +350,18 @@ CREATE TABLE IF NOT EXISTS public.artists (
   phone        TEXT DEFAULT '',
   specialty    TEXT DEFAULT '',
   bio          TEXT DEFAULT '',
+  strategic_goal TEXT DEFAULT '',
   avatar       TEXT DEFAULT '',
   created_at   TIMESTAMPTZ DEFAULT NOW(),
   updated_at   TIMESTAMPTZ DEFAULT NOW()
 );
 
 ALTER TABLE public.artists ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.artists
+  ADD COLUMN IF NOT EXISTS strategic_goal TEXT DEFAULT '';
+ALTER TABLE public.artists
+  ADD COLUMN IF NOT EXISTS avatar TEXT DEFAULT '';
 
 DROP POLICY IF EXISTS "Users can read artists" ON public.artists;
 CREATE POLICY "Users can read artists"
@@ -355,6 +435,7 @@ CREATE TABLE IF NOT EXISTS public.bookings (
   artist_name    TEXT NOT NULL DEFAULT '',
   event          TEXT NOT NULL,
   date           DATE,
+  capacity       INTEGER DEFAULT 0,
   fee            NUMERIC DEFAULT 0,
   deposit        NUMERIC DEFAULT 0,
   balance        NUMERIC DEFAULT 0,
@@ -369,6 +450,9 @@ CREATE TABLE IF NOT EXISTS public.bookings (
 );
 
 ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.bookings
+  ADD COLUMN IF NOT EXISTS capacity INTEGER DEFAULT 0;
 
 DROP POLICY IF EXISTS "Users can read bookings" ON public.bookings;
 CREATE POLICY "Users can read bookings"
@@ -588,6 +672,86 @@ CREATE POLICY "Managers can delete other income"
     (team_id IS NOT NULL AND EXISTS (
       SELECT 1 FROM public.team_members
       WHERE team_members.team_id = other_income.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  );
+
+-- ============================================================
+-- AUDIENCE METRICS (per-artist monthly growth)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.audience_metrics (
+  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  legacy_id         TEXT,
+  owner_id          UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  team_id           UUID REFERENCES public.teams(id) ON DELETE CASCADE,
+  artist_id         UUID NOT NULL REFERENCES public.artists(id) ON DELETE CASCADE,
+  artist_name       TEXT NOT NULL DEFAULT '',
+  period            TEXT NOT NULL, -- e.g. "2026-04"
+  social_followers  NUMERIC DEFAULT 0,
+  spotify_listeners NUMERIC DEFAULT 0,
+  youtube_listeners NUMERIC DEFAULT 0,
+  created_at        TIMESTAMPTZ DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.audience_metrics ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can read audience metrics" ON public.audience_metrics;
+CREATE POLICY "Users can read audience metrics"
+  ON public.audience_metrics FOR SELECT
+  USING (
+    owner_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = audience_metrics.team_id
+        AND team_members.user_id = auth.uid()
+    ))
+  );
+
+DROP POLICY IF EXISTS "Managers can insert audience metrics" ON public.audience_metrics;
+CREATE POLICY "Managers can insert audience metrics"
+  ON public.audience_metrics FOR INSERT
+  WITH CHECK (
+    owner_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = audience_metrics.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  );
+
+DROP POLICY IF EXISTS "Managers can update audience metrics" ON public.audience_metrics;
+CREATE POLICY "Managers can update audience metrics"
+  ON public.audience_metrics FOR UPDATE
+  USING (
+    owner_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = audience_metrics.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  )
+  WITH CHECK (
+    owner_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = audience_metrics.team_id
+        AND team_members.user_id = auth.uid()
+        AND team_members.role IN ('owner','manager')
+    ))
+  );
+
+DROP POLICY IF EXISTS "Managers can delete audience metrics" ON public.audience_metrics;
+CREATE POLICY "Managers can delete audience metrics"
+  ON public.audience_metrics FOR DELETE
+  USING (
+    owner_id = auth.uid() OR
+    (team_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.team_members
+      WHERE team_members.team_id = audience_metrics.team_id
         AND team_members.user_id = auth.uid()
         AND team_members.role IN ('owner','manager')
     ))
@@ -1007,6 +1171,10 @@ CREATE INDEX IF NOT EXISTS idx_other_income_owner ON public.other_income(owner_i
 CREATE INDEX IF NOT EXISTS idx_other_income_team  ON public.other_income(team_id);
 CREATE INDEX IF NOT EXISTS idx_artists_owner    ON public.artists(owner_id);
 CREATE INDEX IF NOT EXISTS idx_artists_team     ON public.artists(team_id);
+CREATE INDEX IF NOT EXISTS idx_audience_metrics_owner  ON public.audience_metrics(owner_id);
+CREATE INDEX IF NOT EXISTS idx_audience_metrics_team   ON public.audience_metrics(team_id);
+CREATE INDEX IF NOT EXISTS idx_audience_metrics_artist ON public.audience_metrics(artist_id);
+CREATE INDEX IF NOT EXISTS idx_audience_metrics_period ON public.audience_metrics(period);
 CREATE INDEX IF NOT EXISTS idx_tasks_user       ON public.tasks(user_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_team       ON public.tasks(team_id);
 CREATE INDEX IF NOT EXISTS idx_revenue_goals_user ON public.revenue_goals(user_id);
@@ -1062,6 +1230,24 @@ DO $$ BEGIN
   END IF;
 END $$;
 
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'audience_metrics_artist_owner_period_key'
+  ) THEN
+    ALTER TABLE public.audience_metrics ADD CONSTRAINT audience_metrics_artist_owner_period_key
+      UNIQUE (artist_id, owner_id, period);
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'audience_metrics_artist_team_period_key'
+  ) THEN
+    ALTER TABLE public.audience_metrics ADD CONSTRAINT audience_metrics_artist_team_period_key
+      UNIQUE (artist_id, team_id, period);
+  END IF;
+END $$;
+
 -- ============================================================
 -- REALTIME: enable for live team features (idempotent)
 -- ============================================================
@@ -1071,6 +1257,15 @@ DO $$ BEGIN
     WHERE pubname = 'supabase_realtime' AND tablename = 'messages'
   ) THEN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'team_members'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.team_members;
   END IF;
 END $$;
 
@@ -1107,6 +1302,15 @@ DO $$ BEGIN
     WHERE pubname = 'supabase_realtime' AND tablename = 'other_income'
   ) THEN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.other_income;
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'audience_metrics'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.audience_metrics;
   END IF;
 END $$;
 

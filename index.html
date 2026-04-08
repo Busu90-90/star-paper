@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: blob: https:; font-src 'self' data: https://unpkg.com; connect-src 'self' https: wss:; manifest-src 'self'; worker-src 'self' blob:; frame-ancestors 'none';">
     <title>Star Paper</title>
     <link rel="manifest" href="manifest.json?v=14">
     <meta name="theme-color" content="#0B0B0B">
@@ -496,6 +497,9 @@
                 <div class="user-info">
                     <span id="userName" style="display:none;"></span>
                 </div>
+                <div class="sp-sync-indicator" id="spSyncIndicator" title="Cloud sync status" aria-live="polite" aria-label="Cloud idle">
+                    <i class="ph ph-cloud sp-sync-icon" id="spSyncIcon" aria-hidden="true"></i>
+                </div>
             </div>
             <!-- Welcome Message -->
             <div id="welcomeMessage" class="welcome-message" style="display: none;">
@@ -560,13 +564,13 @@
                     <!-- At a Glance - Secondary Supporting Data -->
                     <div class="card dashboard-section-card dashboard-at-glance-card">
                         <div class="mainstage-strip__head">
-                            <h3 class="section-title" data-icon="dashboard">At a Glance (This Month)</h3>
+                            <h3 class="section-title" data-icon="dashboard">At a Glance (<span id="glancePeriodLabel">Month Year</span>)</h3>
                             <div class="mainstage-strip__updated" id="mainstageLiveDate">Updated now</div>
                         </div>
                         <div class="monthly-goal-track">
                             <div class="monthly-goal-track__top">
                                 <div class="monthly-goal-track__title">Monthly Revenue Goal</div>
-                                <button class="action-btn" type="button" data-action="toggleMonthlyGoalEditor" onclick="toggleMonthlyGoalEditor()">Set Goal</button>
+                                <button class="action-btn" type="button" data-action="toggleMonthlyGoalEditor">Set Goal</button>
                             </div>
                             <div class="monthly-goal-track__metrics">
                                 <div class="monthly-goal-metric">
@@ -587,13 +591,13 @@
                             </div>
                             <div class="monthly-goal-editor" id="monthlyGoalEditor" style="display: none;">
                                 <input type="number" id="monthlyGoalInput" min="0" step="1000" placeholder="Enter monthly goal (UGX)" />
-                                <button class="action-btn" type="button" data-action="saveMonthlyRevenueGoal" onclick="saveMonthlyRevenueGoal()">Save Goal</button>
-                                <button class="back-btn" type="button" data-action="toggleMonthlyGoalEditor" onclick="toggleMonthlyGoalEditor()">Cancel</button>
+                                <button class="action-btn" type="button" data-action="saveMonthlyRevenueGoal">Save Goal</button>
+                                <button class="back-btn" type="button" data-action="toggleMonthlyGoalEditor">Cancel</button>
                             </div>
                         </div>
                         <div class="dashboard-glance-grid">
                             <div class="mainstage-kpi">
-                                <div class="mainstage-kpi__label">This Month's Revenue</div>
+                                <div class="mainstage-kpi__label" id="dashboardRevenueLabel">Month Year Revenue</div>
                                 <div class="mainstage-kpi__value income-green" id="totalIncome"><span class="sp-skeleton"></span></div>
                             </div>
                             <div class="mainstage-kpi">
@@ -601,7 +605,7 @@
                                 <div class="mainstage-kpi__value deposit-blue" id="dashboardDepositsReceived"><span class="sp-skeleton"></span></div>
                             </div>
                             <div class="mainstage-kpi">
-                                <div class="mainstage-kpi__label">Expenses (This Month)</div>
+                                <div class="mainstage-kpi__label" id="dashboardExpensesLabel">Expenses (Month Year)</div>
                                 <div class="mainstage-kpi__value expense-red" id="dashboardExpenses"><span class="sp-skeleton"></span></div>
                             </div>
                             <div class="mainstage-kpi">
@@ -612,16 +616,11 @@
                                 <div class="mainstage-kpi__label">Balances Due</div>
                                 <div class="mainstage-kpi__value expense-red" id="balancesOverdue"><span class="sp-skeleton"></span></div>
                             </div>
-                            <div class="mainstage-kpi mainstage-kpi--bbf">
+                            <div class="mainstage-kpi mainstage-kpi--bbf" role="button" tabindex="0" data-action="openBBFModal" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openBBFModal();}">
                                 <div class="mainstage-kpi__label">Balance Brought Forward <span class="bbf-month-label" id="bbfMonthLabel">(prev. month)</span></div>
                                 <div class="mainstage-kpi__value deposit-blue" id="dashboardBBF"><span class="sp-skeleton"></span></div>
                                 <div class="mainstage-kpi__sub">
-                                    <button class="bbf-edit-btn action-btn" type="button" data-action="toggleBBFEditor" onclick="toggleBBFEditor()">Set Balance</button>
-                                </div>
-                                <div class="bbf-editor" id="bbfEditor" style="display:none;">
-                                    <input type="number" id="bbfInput" min="0" step="1000" placeholder="Enter opening balance (UGX)" />
-                                    <button class="action-btn" type="button" data-action="saveBBF" onclick="saveBBF()">Save</button>
-                                    <button class="back-btn" type="button" data-action="toggleBBFEditor" onclick="toggleBBFEditor()">Cancel</button>
+                                    <button class="bbf-edit-btn action-btn" type="button" data-action="openBBFModal" onclick="openBBFModal()">Set BBF</button>
                                 </div>
                             </div>
                             <div class="mainstage-kpi">
@@ -765,7 +764,7 @@
                     <div class="monthly-goal-track monthly-goal-track--financials">
                         <div class="monthly-goal-track__top">
                             <div class="monthly-goal-track__title">Monthly Revenue Goal</div>
-                            <button class="action-btn" type="button" data-action="toggleFinancialsMonthlyGoalEditor" onclick="toggleFinancialsMonthlyGoalEditor()">Set Goal</button>
+                                <button class="action-btn" type="button" data-action="toggleFinancialsMonthlyGoalEditor">Set Goal</button>
                         </div>
                         <div class="monthly-goal-track__metrics">
                             <div class="monthly-goal-metric">
@@ -786,14 +785,14 @@
                         </div>
                         <div class="monthly-goal-editor" id="financialsMonthlyGoalEditor" style="display: none;">
                             <input type="number" id="financialsMonthlyGoalInput" min="0" step="1000" placeholder="Enter monthly goal (UGX)" />
-                            <button class="action-btn" type="button" data-action="saveFinancialsMonthlyRevenueGoal" onclick="saveFinancialsMonthlyRevenueGoal()">Save Goal</button>
-                            <button class="back-btn" type="button" data-action="toggleFinancialsMonthlyGoalEditor" onclick="toggleFinancialsMonthlyGoalEditor()">Cancel</button>
+                                <button class="action-btn" type="button" data-action="saveFinancialsMonthlyRevenueGoal">Save Goal</button>
+                                <button class="back-btn" type="button" data-action="toggleFinancialsMonthlyGoalEditor">Cancel</button>
                         </div>
                     </div>
                 </div>
 
                 <div class="card">
-                    <h3 class="section-title" data-icon="reports">Cashflow (This Month)</h3>
+                    <h3 class="section-title" data-icon="reports">Cashflow (<span id="cashflowPeriodLabel">Month Year</span>)</h3>
                     <div class="timeline-list" id="cashFlowTimeline"></div>
                 </div>
 
@@ -974,14 +973,15 @@
                     <h3 class="section-title" data-icon="reports">Generate Report</h3>
                     <div class="report-controls">
                         <select id="reportPeriod" style="flex: 1;" data-native="always" data-change-action="handleReportPeriodChange">
-                            <option value="month">This Month</option>
-                            <option value="prevMonth">Previous Month</option>
+                            <option value="month" id="reportPeriodCurrentOption">Month Year</option>
+                            <option value="prevMonth" id="reportPeriodPrevOption">Previous Month</option>
                             <option value="quarter">This Quarter</option>
                             <option value="year">This Year</option>
                             <option value="prevYear">Previous Year</option>
                             <option value="all">All Time</option>
                         </select>
-                        <button class="add-btn" data-action="generateCleanReport" style="margin:0;"><i class="ph ph-download-simple" aria-hidden="true"></i> Generate &amp; Download PDF</button>
+                        <button class="add-btn" data-action="openPdfExportModal" onclick="openPdfExportModal()" style="margin:0;"><i class="ph ph-download-simple" aria-hidden="true"></i> Generate &amp; Download PDF</button>
+                        <button class="add-btn" data-action="exportCSV" onclick="exportCSV()" style="margin:0; background: var(--glass-bg, rgba(255,255,255,0.08));"><i class="ph ph-file-csv" aria-hidden="true"></i> Export CSV</button>
                         <button class="action-btn" data-action="toggleClosingThoughts" style="margin: 0;">Closing Thoughts</button>
                         <button class="action-btn" data-action="loadMockPortfolioData" style="margin: 0;">Load Mock Data</button>
                         <button class="action-btn action-btn--danger" data-action="clearMockData" style="margin: 0;">Clear Mock Data</button>
@@ -1000,6 +1000,38 @@
                     </div>
                 </div>
 
+                <div class="card" id="audienceMetricsCard">
+                    <h3 class="section-title" data-icon="reports">Audience Growth Tracker</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Artist</label>
+                            <select id="audienceArtistSelect">
+                                <option value="">Select Artist</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Period (Month)</label>
+                            <input type="month" id="audienceMetricPeriod" />
+                        </div>
+                        <div class="form-group">
+                            <label>Social Followers (Total)</label>
+                            <input type="number" id="audienceSocialFollowers" min="0" />
+                        </div>
+                        <div class="form-group">
+                            <label>Spotify Monthly Listeners</label>
+                            <input type="number" id="audienceSpotifyListeners" min="0" />
+                        </div>
+                        <div class="form-group">
+                            <label>YouTube Monthly Listeners</label>
+                            <input type="number" id="audienceYouTubeListeners" min="0" />
+                        </div>
+                    </div>
+                    <div class="report-controls" style="margin-top: 10px;">
+                        <button class="add-btn" data-action="saveAudienceMetricEntry" onclick="saveAudienceMetricEntry()" style="margin:0;"><i class="ph ph-chart-line-up" aria-hidden="true"></i> Save Metrics</button>
+                    </div>
+                    <div id="audienceMetricList" style="margin-top: 12px;"></div>
+                </div>
+
                 <div class="card">
                     <h3 class="section-title" data-icon="reports">Summary Statistics</h3>
                     <div class="stats-grid">
@@ -1011,6 +1043,9 @@
                         <div class="stat-card"><div class="stat-label">Balances Due</div><div class="stat-value expense-red" id="reportBalancesDue">UGX 0</div></div>
                     </div>
                 </div>
+
+                <!-- Money Moves Dashboard (rendered by app.reports.js) -->
+                <div id="spMomentumDashboard" class="sp-rpt-dashboard"></div>
 
                 </div>
             </div>
@@ -1037,6 +1072,22 @@
                         <div class="form-group">
                             <label>Specialty/Genre</label>
                             <input type="text" id="artistSpecialty" placeholder="e.g., Hip Hop, Gospel, Afrobeat" />
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label>Strategic Goal</label>
+                        <textarea id="artistStrategicGoal" placeholder="e.g., Secure 3 festival slots this quarter"></textarea>
+                    </div>
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label>Artist Photo</label>
+                        <div class="artist-photo-row">
+                            <div class="artist-photo-preview">
+                                <img id="artistAvatarPreview" class="artist-avatar-img" alt="Artist photo preview" />
+                            </div>
+                            <div class="artist-photo-actions">
+                                <input type="file" id="artistAvatarUpload" accept="image/*" />
+                                <small style="color:#888;">PNG or JPG recommended</small>
+                            </div>
                         </div>
                     </div>
                     <div class="form-group" style="margin-top: 15px;">
@@ -1099,6 +1150,10 @@
                             <input type="number" id="bookingBalance" readonly />
                         </div>
                         <div class="form-group">
+                            <label>Estimated Capacity</label>
+                            <input type="number" id="bookingCapacity" min="0" />
+                        </div>
+                        <div class="form-group">
                             <label>Contact Person</label>
                             <input type="text" id="bookingContact" />
                         </div>
@@ -1146,6 +1201,7 @@
                                 <th>Event</th>
                                 <th>Artist</th>
                                 <th>Date</th>
+                                <th>Capacity</th>
                                 <th>Location</th>
                                 <th>Total Fee</th>
                                 <th>Deposit</th>
@@ -1311,17 +1367,80 @@
             </div>
         </footer>
 
+        <!-- BBF Modal -->
+        <div id="spBbfModal" class="sp-modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="spBbfModalTitle">
+          <div class="sp-modal-card" style="max-width:460px;">
+            <div class="sp-modal-header">
+              <h3 id="spBbfModalTitle"><i class="ph ph-wallet" aria-hidden="true"></i> Set Balance Brought Forward</h3>
+              <button class="sp-modal-close" onclick="closeBBFModal()" aria-label="Close">&times;</button>
+            </div>
+            <div class="sp-modal-body">
+              <div class="sp-form-group">
+                <label for="spBbfArtistSelect">Artist Scope</label>
+                <select id="spBbfArtistSelect">
+                  <option value="">Roster / All Artists</option>
+                </select>
+              </div>
+              <div class="sp-form-group">
+                <label for="spBbfPeriodInput">Period</label>
+                <input type="month" id="spBbfPeriodInput" />
+              </div>
+              <div class="sp-form-group">
+                <label for="spBbfAmountInput">Starting Balance (UGX)</label>
+                <input type="number" id="spBbfAmountInput" min="0" step="1000" placeholder="Enter opening balance" />
+              </div>
+              <p class="sp-form-note" id="spBbfContext">This balance will be saved to the current account scope and used in Money Moves closing balance calculations.</p>
+            </div>
+            <div class="sp-modal-footer">
+              <button class="action-btn" type="button" onclick="closeBBFModal()">Cancel</button>
+              <button class="add-btn" type="button" data-action="saveBBF" onclick="saveBBF()"><i class="ph ph-floppy-disk" aria-hidden="true"></i> Save BBF</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- PDF Export Modal -->
+        <div id="spPdfExportModal" class="sp-modal-overlay" style="display:none;">
+          <div class="sp-modal-card" style="max-width:420px;">
+            <div class="sp-modal-header">
+              <h3><i class="ph ph-file-pdf" aria-hidden="true"></i> Export PDF Report</h3>
+              <button class="sp-modal-close" onclick="closePdfExportModal()" aria-label="Close">&times;</button>
+            </div>
+            <div class="sp-modal-body">
+              <div class="sp-form-group">
+                <label for="spPdfArtistSelect">Artist</label>
+                <select id="spPdfArtistSelect">
+                  <option value="">All Artists</option>
+                </select>
+              </div>
+              <div class="sp-form-group">
+                <label for="spPdfDateStart">Date Range</label>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <input type="date" id="spPdfDateStart" style="flex:1;">
+                  <span style="color:#888;">to</span>
+                  <input type="date" id="spPdfDateEnd" style="flex:1;">
+                </div>
+              </div>
+              <p style="font-size:12px;color:#888;margin-top:8px;">Leave dates empty to use the current report period.</p>
+            </div>
+            <div class="sp-modal-footer">
+              <button class="action-btn" onclick="closePdfExportModal()">Cancel</button>
+              <button class="add-btn" id="spPdfGenerateBtn" onclick="generateMomentumPDF()"><i class="ph ph-download-simple" aria-hidden="true"></i> Generate PDF</button>
+            </div>
+          </div>
+        </div>
+
         <!--
           FIX: supabase.js moved here from <head>. The Supabase SDK is already
           loaded (synchronously, above in <head>), so this file now runs
           synchronously â€” window.SP is fully initialised before app.js executes.
         -->
-        <script src="supabase.js?v=16"></script>
+        <script src="supabase.js?v=19"></script>
         <script src="app.migrations.js?v=9"></script>
         <script src="app.actions.js?v=8"></script>
         <script src="app.todayboard.js?v=1"></script>
         <script src="app.tasks.js?v=2"></script>
-        <script src="app.js?v=27"></script>
+    <script src="app.reports.js?v=10"></script>
+    <script src="app.js?v=37"></script>
         <script>
         // â”€â”€ FILE:// PROTOCOL GUARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // When the app is opened as a local file (double-clicked), window.location.origin
@@ -1488,6 +1607,9 @@
                 'checkAvailability':      function() { if (typeof window.checkAvailability === 'function') window.checkAvailability(); },
                 // Reports / data
                 'generateCleanReport':    function() { if (typeof window.generateCleanReport === 'function') window.generateCleanReport(); },
+                'generateMomentumPDF':    function() { if (typeof window.generateMomentumPDF === 'function') window.generateMomentumPDF(); },
+                'openPdfExportModal':     function() { if (typeof window.openPdfExportModal === 'function') window.openPdfExportModal(); },
+                'exportCSV':              function() { if (typeof window.exportCSV === 'function') window.exportCSV(); },
                 'loadMockPortfolioData':  function() { if (typeof window.loadMockPortfolioData === 'function') window.loadMockPortfolioData(); },
                 'clearMockData':          function() { if (typeof window.clearMockData    === 'function') window.clearMockData(); },
                 'exportAllData':          function() { if (typeof window.exportAllData    === 'function') window.exportAllData(); },

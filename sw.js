@@ -1,29 +1,52 @@
-const CACHE_NAME = "star-paper-shell-v33";
+const CACHE_NAME = "star-paper-shell-v38";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
-  "./supabase.js?v=16",
+  "./supabase.js?v=19",
   "./app.migrations.js?v=9",
   "./app.actions.js?v=8",
   "./app.todayboard.js?v=1",
   "./app.tasks.js?v=2",
-  "./app.js?v=27",
-  "./sw.js?v=33",
+  "./app.reports.js?v=10",
+  "./app.js?v=37",
+  "./sw.js?v=38",
   "./manifest.json",
   "./manifest.json?v=14",
   "./logo.svg",
-  "./logo.svg?v=11",
+  "./logo.svg?v=12",
   "./logo.png",
   "./logo-192.png",
-  "./logo-192.png?v=11",
+  "./logo-192.png?v=12",
   "./logo-32.png",
-  "./logo-32.png?v=11",
+  "./logo-32.png?v=12",
   "./apple-touch-icon.png",
-  "./apple-touch-icon.png?v=11",
+  "./apple-touch-icon.png?v=12",
   "./logo-report.png",
-  "./logo-report.png?v=11"
+  "./logo-report.png?v=12",
+  "./favicon.ico?v=12",
 ];
+
+const APP_SHELL_URLS = new Set(
+  APP_SHELL.map((asset) => {
+    const url = new URL(asset, self.location.href);
+    return `${url.pathname}${url.search}`;
+  })
+);
+
+function isSameOrigin(requestUrl) {
+  return requestUrl.origin === self.location.origin;
+}
+
+function isCacheableAppShellRequest(request) {
+  const url = new URL(request.url);
+  if (!isSameOrigin(url)) return false;
+  if (request.headers.has("authorization")) return false;
+  if (url.searchParams.has("access_token") || url.searchParams.has("refresh_token") || url.searchParams.has("code")) {
+    return false;
+  }
+  return APP_SHELL_URLS.has(`${url.pathname}${url.search}`);
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -49,46 +72,45 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
   const request = event.request;
-  const isDocument = request.mode === "navigate";
+  const url = new URL(request.url);
 
-  if (isDocument) {
+  if (!isSameOrigin(url)) {
+    return;
+  }
+
+  if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
-        .then((networkResponse) => {
-          const clone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          return networkResponse;
+        .then((response) => {
+          if (response && response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put("./index.html", clone));
+          }
+          return response;
         })
         .catch(() =>
-          caches.match(request).then((cached) => cached || caches.match("./index.html"))
+          caches.match("./index.html").then((cached) => cached || Response.error())
         )
     );
     return;
   }
 
+  if (!isCacheableAppShellRequest(request)) {
+    return;
+  }
+
   event.respondWith(
     caches.match(request).then((cached) => {
-      if (cached) {
-        // Stale-while-revalidate: serve cache immediately, update in background
-        fetch(request)
-          .then((networkResponse) => {
-            if (!networkResponse || networkResponse.status !== 200) return;
-            const clone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          })
-          .catch(() => {});
-        return cached;
-      }
-
-      // Not in cache — fetch from network and cache for next time
-      return fetch(request)
-        .then((networkResponse) => {
-          if (!networkResponse || networkResponse.status !== 200) return networkResponse;
-          const clone = networkResponse.clone();
+      const networkFetch = fetch(request)
+        .then((response) => {
+          if (!response || response.status !== 200) return response;
+          const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          return networkResponse;
+          return response;
         })
-        .catch(() => caches.match(request));
+        .catch(() => cached);
+
+      return cached || networkFetch;
     })
   );
 });
