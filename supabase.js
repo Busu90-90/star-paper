@@ -16,6 +16,8 @@
 const SP_SUPABASE_URL  = 'https://fxcyocdwvjiyatqnaahg.supabase.co';
 const SP_SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4Y3lvY2R3dmppeWF0cW5hYWhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5Nzg4NDEsImV4cCI6MjA4ODU1NDg0MX0.OTtDpyfA69rbVOTJkBh51pwj3wEkR1L04x4ouDkeWZ0';
 const SP_SUPABASE_STORAGE_KEY = 'sp-starpaper-auth-v1';
+const SP_SUPABASE_PKCE_KEY = `${SP_SUPABASE_STORAGE_KEY}-code-verifier`;
+const SP_SUPABASE_PROJECT_REF = SP_SUPABASE_URL.replace('https://', '').replace('.supabase.co', '');
 const SP_SUPABASE_CONFIGURED =
   typeof SP_SUPABASE_URL === 'string' &&
   typeof SP_SUPABASE_KEY === 'string' &&
@@ -116,6 +118,8 @@ const SP_CURRENCIES = {
   let _lastSaveToastAt = 0;
   const MAX_RETRY_ATTEMPTS = 5;
   const SAVE_TOAST_THROTTLE_MS = 10000;
+  window.__spAuthRedirectInProgress = false;
+  window.__spSuppressStoredSessionBootstrap = false;
 
   function persistRetryQueue() {
     try {
@@ -597,10 +601,65 @@ const SP_CURRENCIES = {
     throw err;
   }
 
-  async function handleSignedOutSession(options = {}) {
-    const explicitLogout = localStorage.getItem('sp_logged_out') === '1';
-    _session = null;
-    _profile = null;
+  function detectAuthCallbackState(href = window.location.href) {
+    let url = null;
+    try {
+      url = new URL(href);
+    } catch (_err) {
+      return {
+        hasCallbackParams: false,
+        hasError: false,
+      };
+    }
+
+    const hashParams = new URLSearchParams((url.hash || '').replace(/^#/, ''));
+    const readParam = (key) => hashParams.get(key) || url.searchParams.get(key) || '';
+    const error = readParam('error');
+    const errorCode = readParam('error_code');
+    const errorDescription = readParam('error_description');
+    const hasCallbackParams = Boolean(
+      readParam('access_token') ||
+      readParam('refresh_token') ||
+      readParam('code') ||
+      error ||
+      errorCode ||
+      errorDescription
+    );
+
+    return {
+      hasCallbackParams,
+      hasError: Boolean(error || errorCode || errorDescription),
+    };
+  }
+
+  function clearSupabaseAuthArtifacts(options = {}) {
+    const clearAppSession = options.clearAppSession !== false;
+    try {
+      localStorage.removeItem(`sb-${SP_SUPABASE_PROJECT_REF}-auth-token`);
+      localStorage.removeItem(`sb-${SP_SUPABASE_PROJECT_REF}-auth-token-code-verifier`);
+      localStorage.removeItem(SP_SUPABASE_STORAGE_KEY);
+      localStorage.removeItem(SP_SUPABASE_PKCE_KEY);
+    } catch (_err) {
+      // Best-effort cleanup only.
+    }
+
+    if (!clearAppSession) return;
+
+    if (typeof window.clearAuthSessionState === 'function') {
+      window.clearAuthSessionState();
+      return;
+    }
+
+    localStorage.removeItem('starPaper_session');
+    localStorage.removeItem('starPaperSessionUser');
+    localStorage.removeItem('starPaperRemember');
+    localStorage.removeItem('starPaperCurrentUser');
+    window.currentUser = null;
+    window.currentManagerId = null;
+    window.__spAppBooted = false;
+  }
+
+  function resetWorkspaceState() {
     _activeTeamId = null;
     _workspaceResolved = false;
     _workspaceRequiresSelection = false;
@@ -614,19 +673,28 @@ const SP_CURRENCIES = {
     setActiveTeamRole(null);
     unsubscribeFromCoreRealtime();
     unsubscribeFromTeamNotifications();
-    updateSyncIndicator(navigator.onLine ? 'idle' : 'offline');
-
-    if (typeof window.clearAuthSessionState === 'function') {
-      window.clearAuthSessionState();
-    } else {
-      localStorage.removeItem('starPaper_session');
-      localStorage.removeItem('starPaperSessionUser');
-      localStorage.removeItem('starPaperRemember');
-      localStorage.removeItem('starPaperCurrentUser');
-      window.currentUser = null;
-      window.currentManagerId = null;
-      window.__spAppBooted = false;
+    const modal = document.getElementById('spTeamModal');
+    if (modal) {
+      modal.style.display = 'none';
+      document.body.style.overflow = '';
     }
+  }
+
+  const _initialAuthCallbackState = detectAuthCallbackState();
+  if (_initialAuthCallbackState.hasCallbackParams) {
+    window.__spAuthRedirectInProgress = true;
+    if (_initialAuthCallbackState.hasError) {
+      window.__spSuppressStoredSessionBootstrap = true;
+    }
+  }
+
+  async function handleSignedOutSession(options = {}) {
+    const explicitLogout = localStorage.getItem('sp_logged_out') === '1';
+    _session = null;
+    _profile = null;
+    clearSupabaseAuthArtifacts();
+    resetWorkspaceState();
+    updateSyncIndicator(navigator.onLine ? 'idle' : 'offline');
 
     if (typeof window.setActiveScreen === 'function') {
       window.setActiveScreen('landingScreen');
@@ -784,32 +852,9 @@ const SP_CURRENCIES = {
         source = 'personal';
         persistRemote = Boolean(rememberedTeamId);
       } else {
-        _activeTeamId = null;
-        _workspaceResolved = false;
-        _workspaceRequiresSelection = true;
-        window.__spWorkspaceSelectionRequired = true;
-        localStorage.removeItem('sp_active_team');
-        setActiveTeamRole(null);
-
-        if (rememberedTeamId) {
-          try {
-            await updateProfile({ last_active_team_id: null }, { throwOnError: true });
-          } catch (err) {
-            warn('Clearing stale remembered team failed:', err);
-          }
-        }
-
-        if (options.promptOnSelection !== false) {
-          promptTeamSelectionIfNeeded(teams);
-        }
-
-        return {
-          teamId: null,
-          teams,
-          profile,
-          needsSelection: true,
-          source: 'chooser',
-        };
+        selectedTeamId = null;
+        source = 'personal';
+        persistRemote = Boolean(rememberedTeamId);
       }
 
       const activeTeam = selectedTeamId ? teams.find((team) => team.id === selectedTeamId) : null;
@@ -2000,14 +2045,54 @@ const SP_CURRENCIES = {
     const accessToken = hashParams.get('access_token') || url.searchParams.get('access_token');
     const refreshToken = hashParams.get('refresh_token') || url.searchParams.get('refresh_token');
     const code = url.searchParams.get('code');
+    const oauthError = hashParams.get('error') || url.searchParams.get('error');
+    const oauthErrorCode = hashParams.get('error_code') || url.searchParams.get('error_code');
+    const oauthErrorDescription = hashParams.get('error_description') || url.searchParams.get('error_description');
+    const hadAuthCallback = Boolean(
+      accessToken ||
+      refreshToken ||
+      code ||
+      oauthError ||
+      oauthErrorCode ||
+      oauthErrorDescription
+    );
+    const finishWith = (status, overrides = {}) => ({
+      hadAuthCallback,
+      status,
+      shouldBootstrapStoredSession: overrides.shouldBootstrapStoredSession !== false,
+      ...overrides,
+    });
 
     // No OAuth params present — nothing to do.
-    if (!accessToken && !refreshToken && !code) return;
+    if (!hadAuthCallback) {
+      window.__spAuthRedirectInProgress = false;
+      return finishWith('none');
+    }
+
+    window.__spAuthRedirectInProgress = true;
 
     // Explicit OAuth callback always clears the "logged out" guard.
     localStorage.removeItem('sp_logged_out');
 
     try {
+      if (oauthError || oauthErrorCode || oauthErrorDescription) {
+        const errorMessage = oauthErrorDescription || oauthErrorCode || oauthError || 'Sign-in failed.';
+        clearSupabaseAuthArtifacts();
+        resetWorkspaceState();
+        _session = null;
+        _profile = null;
+        window.__spSuppressStoredSessionBootstrap = true;
+        if (typeof window.hideBootLoaderElement === 'function') window.hideBootLoaderElement();
+        if (typeof window.showLoginForm === 'function') window.showLoginForm();
+        if (typeof window.toastError === 'function') {
+          window.toastError(errorMessage);
+        }
+        return finishWith('error', {
+          error: errorMessage,
+          shouldBootstrapStoredSession: false,
+        });
+      }
+
       let session = null;
       let exchangeError = null;
 
@@ -2037,37 +2122,60 @@ const SP_CURRENCIES = {
       }
 
       if (session) {
+        window.__spSuppressStoredSessionBootstrap = false;
         await bootstrapFromSupabaseSession(session, {
           remember: true,
           showWelcome: true,
           runMigration: true,
         });
+        return finishWith('success', {
+          shouldBootstrapStoredSession: false,
+        });
       } else {
         // Exchange failed AND no stored session — clear the loader and show login
         // so the user isn't stranded on a blank page after a bad OAuth redirect.
         warn('Auth redirect: no valid session recovered — showing login.');
+        clearSupabaseAuthArtifacts();
+        resetWorkspaceState();
+        _session = null;
+        _profile = null;
+        window.__spSuppressStoredSessionBootstrap = true;
         if (typeof window.hideBootLoaderElement === 'function') window.hideBootLoaderElement();
         if (typeof window.showLoginForm === 'function') window.showLoginForm();
         if (typeof window.toastError === 'function') {
           window.toastError('Sign-in link expired or invalid. Please log in again.');
         }
+        return finishWith('error', {
+          error: exchangeError?.message || 'Sign-in link expired or invalid. Please log in again.',
+          shouldBootstrapStoredSession: false,
+        });
       }
 
     } catch (err) {
       warn('Auth redirect handling failed:', err);
+      clearSupabaseAuthArtifacts();
+      resetWorkspaceState();
+      _session = null;
+      _profile = null;
+      window.__spSuppressStoredSessionBootstrap = true;
       // Safety net: always clear the loader even on unexpected throws.
       if (typeof window.hideBootLoaderElement === 'function') window.hideBootLoaderElement();
       if (!window.__spAppBooted && typeof window.showLoginForm === 'function') {
         window.showLoginForm();
       }
+      return finishWith('error', {
+        error: err?.message || 'Sign-in failed. Please try again.',
+        shouldBootstrapStoredSession: false,
+      });
     } finally {
       // Always strip auth tokens from the URL regardless of outcome.
       url.hash = '';
-      ['access_token', 'refresh_token', 'type', 'token_type', 'expires_in', 'code'].forEach((key) => {
+      ['access_token', 'refresh_token', 'type', 'token_type', 'expires_in', 'code', 'error', 'error_code', 'error_description', 'state'].forEach((key) => {
         url.searchParams.delete(key);
       });
       const cleanUrl = url.pathname + url.search;
       window.history.replaceState({}, document.title, cleanUrl);
+      window.__spAuthRedirectInProgress = false;
     }
   }
 
@@ -2284,6 +2392,8 @@ const SP_CURRENCIES = {
     // this point forward. This is the only place we clear it, ensuring it always
     // takes effect on the very next successful login.
     localStorage.removeItem('sp_logged_out');
+    window.__spSuppressStoredSessionBootstrap = false;
+    window.__spAuthRedirectInProgress = false;
 
     _session = activeSession;
     await syncRealtimeAuthToken(activeSession);
@@ -2424,6 +2534,8 @@ const SP_CURRENCIES = {
   async function signInWithGoogle() {
     // If user explicitly logged out before, allow a fresh OAuth login.
     localStorage.removeItem('sp_logged_out');
+    window.__spSuppressStoredSessionBootstrap = false;
+    window.__spAuthRedirectInProgress = false;
     const redirectTo = getSafeRedirectUrl({
       requireHttpOrigin: true,
       fallbackToProduction: false,
@@ -2459,19 +2571,6 @@ const SP_CURRENCIES = {
     await db.auth.signOut();
     _session = null;
     _profile = null;
-    _activeTeamId = null;
-    _workspaceResolved = false;
-    _workspaceRequiresSelection = false;
-    _workspaceResolutionPromise = null;
-    window.__spCloudBootstrapPending = false;
-    window.__spWorkspaceSelectionRequired = false;
-    localStorage.removeItem('sp_active_team');
-    try {
-      sessionStorage.removeItem(TEAM_PROMPT_KEY);
-    } catch (_err) {}
-    setActiveTeamRole(null);
-    unsubscribeFromCoreRealtime();
-    unsubscribeFromTeamNotifications();
   }
 
   async function getSession() {
@@ -2512,6 +2611,11 @@ const SP_CURRENCIES = {
 
   // Auth state listener
   db.auth.onAuthStateChange(async (event, session) => {
+    if (window.__spAuthRedirectInProgress && !window.__spAppBooted) {
+      log('Deferring auth state event until redirect handling completes', { event });
+      return;
+    }
+
     // Guard: if the user explicitly logged out, do NOT re-bootstrap even if
     // the Supabase SDK fires INITIAL_SESSION with a stale token (e.g. because
     // the server-side revocation hasn't propagated yet). Clean up and bail out.
@@ -2559,6 +2663,7 @@ const SP_CURRENCIES = {
     // Full bootstrap path: app not yet booted, not already in progress.
     const shouldBootstrap =
       Boolean(session) &&
+      !window.__spSuppressStoredSessionBootstrap &&
       !window.__spAppBooted &&
       !_bootstrapping &&
       (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED');
@@ -2988,6 +3093,13 @@ const SP_CURRENCIES = {
   function buildTeamPanelHTML(teams, activeTeamId, members) {
     const activeTeam = teams.find(t => t.id === activeTeamId);
     const isOwner = activeTeam && activeTeam.owner_id === getOwnerId();
+    const personalWorkspaceHTML = `
+      <div class="sp-team-item ${!activeTeamId ? 'sp-team-item--active' : ''}"
+           onclick="window.SP.switchTeam('')">
+        <div class="sp-team-name">Personal Workspace</div>
+        <div class="sp-team-role">solo</div>
+      </div>
+    `;
 
     const membersHTML = members.length ? members.map(m => {
       const displayName = m.username || m.email || 'Member';
@@ -3033,6 +3145,7 @@ const SP_CURRENCIES = {
 
         <div class="sp-team-section">
           <h4>My Teams</h4>
+          ${personalWorkspaceHTML}
           ${teamsHTML || '<p class="sp-muted">No teams yet</p>'}
           <div class="sp-team-actions">
             <button class="action-btn" onclick="window.SP.showCreateTeamForm()">+ Create Team</button>
@@ -3361,6 +3474,7 @@ const SP_CURRENCIES = {
       setLoading(true);
 
       try {
+        window.__spSuppressStoredSessionBootstrap = false;
         // If input looks like a username (no @), look up email from profile
         let email = nameOrEmail;
         if (!nameOrEmail.includes('@')) {
@@ -3429,6 +3543,7 @@ const SP_CURRENCIES = {
       }
 
       try {
+        window.__spSuppressStoredSessionBootstrap = false;
         const available = await isUsernameAvailable(name);
         if (available === false) {
           if (typeof window.toastError === 'function') {
@@ -3495,10 +3610,7 @@ const SP_CURRENCIES = {
       //    synchronous and instant. Without this step, the SDK finds its own
       //    token on the next page load and fires onAuthStateChange('INITIAL_SESSION'),
       //    which re-boots the app even though the user logged out.
-      const _projectRef = SP_SUPABASE_URL.replace('https://', '').replace('.supabase.co', '');
-      localStorage.removeItem('sb-' + _projectRef + '-auth-token');
-      localStorage.removeItem('sb-' + _projectRef + '-auth-token-code-verifier');
-      localStorage.removeItem(SP_SUPABASE_STORAGE_KEY);
+      clearSupabaseAuthArtifacts({ clearAppSession: false });
 
       // 3. Set a persistent "explicitly logged out" flag.
       //    onAuthStateChange and checkAuth() both check this before bootstrapping.
@@ -3518,13 +3630,14 @@ const SP_CURRENCIES = {
 
       // 5. Reset runtime flag so a same-tab re-login works cleanly.
       window.__spAppBooted = false;
+      window.__spSuppressStoredSessionBootstrap = false;
+      window.__spAuthRedirectInProgress = false;
       _session = null;
       _profile = null;
       _retryQueue = [];
       persistRetryQueue();
       if (_retryTimer) { clearTimeout(_retryTimer); _retryTimer = null; }
-      unsubscribeFromCoreRealtime();
-      unsubscribeFromTeamNotifications();
+      resetWorkspaceState();
 
       // 6. Show landing page immediately — user doesn't wait for any network call.
       if (typeof window.setActiveScreen === 'function') window.setActiveScreen('landingScreen');
@@ -3633,7 +3746,10 @@ const SP_CURRENCIES = {
       // Order matters: exchange the OAuth code FIRST, then check for a stored session.
       // exchangeCodeForSession writes to Supabase internal storage;
       // the subsequent getSession() call reads it back.
-      handleAuthRedirect().then(() => {
+      handleAuthRedirect().then((result) => {
+        if (result?.shouldBootstrapStoredSession === false) {
+          return;
+        }
         bootstrapFromStoredSession();
       });
 
@@ -3652,7 +3768,12 @@ const SP_CURRENCIES = {
 
   // Separated from init() so it can be sequenced after handleAuthRedirect resolves.
   async function bootstrapFromStoredSession() {
-    if (window.__spAppBooted || _bootstrapping) return;
+    if (
+      window.__spAppBooted ||
+      _bootstrapping ||
+      window.__spAuthRedirectInProgress ||
+      window.__spSuppressStoredSessionBootstrap
+    ) return;
     const session = await getSession();
     if (!session) return;
     _bootstrapping = true;

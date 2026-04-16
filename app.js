@@ -4693,15 +4693,19 @@ function showLoginForm() {
             // - If SP is not ready yet, it waits on the sp-supabase-ready event
             //   (which is dispatched exactly once and cannot be "missed" via a
             //   Promise resolver the way an event listener can).
-            // - A hard 10-second timeout prevents infinite waiting on network fail.
-            if (!savedUser || !savedRecord) {
-                if (sessionActive) {
-                    localStorage.removeItem('starPaper_session');
-                    localStorage.removeItem('starPaperSessionUser');
-                }
+                // - A hard 10-second timeout prevents infinite waiting on network fail.
+                if (!savedUser || !savedRecord) {
+                    if (sessionActive) {
+                        localStorage.removeItem('starPaper_session');
+                        localStorage.removeItem('starPaperSessionUser');
+                    }
 
-                // Fire-and-forget: don't block the synchronous call stack.
-                window.__spSupabaseBootPromise = window.__spSupabaseBootPromise || (async () => {
+                    if (window.__spAuthRedirectInProgress || window.__spSuppressStoredSessionBootstrap) {
+                        return;
+                    }
+
+                    // Fire-and-forget: don't block the synchronous call stack.
+                    window.__spSupabaseBootPromise = window.__spSupabaseBootPromise || (async () => {
                     if (window.__spAppBooted) return;
 
                     // Step 1: Wait for window.SP to be fully initialised.

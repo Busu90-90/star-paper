@@ -1565,18 +1565,8 @@
                 'showAddOtherIncome':     function() { if (typeof window.showAddOtherIncome === 'function') window.showAddOtherIncome(); },
                 'showAddArtistForm':      function() { if (typeof window.showAddArtistForm === 'function') window.showAddArtistForm(); },
                 'showAddEventToCalendar': function() { if (typeof window.showAddEventToCalendar === 'function') window.showAddEventToCalendar(); },
-                // Auth
-                'showSignupForm':         function() { if (typeof window.showSignupForm  === 'function') window.showSignupForm(); },
-                'showLoginForm':          function() { if (typeof window.showLoginForm   === 'function') window.showLoginForm(); },
-                'showLanding':            function() { if (typeof window.showLanding     === 'function') window.showLanding(); },
-                'showForgotPassword':     function() {
-                    document.getElementById('loginForm') && (document.getElementById('loginForm').style.display = 'none');
-                    document.getElementById('signupForm') && (document.getElementById('signupForm').style.display = 'none');
-                    document.getElementById('forgotPasswordForm') && (document.getElementById('forgotPasswordForm').style.display = 'block');
-                },
-                'signup':                 function() { if (typeof window.signup          === 'function') window.signup(); },
-                'signInWithGoogle':       function() { if (typeof window.signInWithGoogle === 'function') window.signInWithGoogle(); },
-                'submitForgotPassword':   function() { if (typeof window.submitForgotPassword === 'function') window.submitForgotPassword(); },
+                // Auth actions intentionally excluded here to avoid duplicate dispatch
+                // with app.actions.js and inline onclick fallbacks.
                 // Cancel / close
                 'cancelExpense':          function() { if (typeof window.cancelExpense   === 'function') window.cancelExpense(); },
                 'cancelBooking':          function() { if (typeof window.cancelBooking   === 'function') window.cancelBooking(); },
@@ -1664,6 +1654,8 @@
                 } else {
                     // Only warn for actions that should be in MAP (not data-* routing ones)
                     if (action && !['showSection','openQuickAdd','switchMoneyTab','switchScheduleTab',
+                                    'showSignupForm','showLoginForm','showLanding','showForgotPassword',
+                                    'signup','signInWithGoogle','submitForgotPassword',
                                     'saveBooking','saveExpense','saveOtherIncome','saveArtist',
                                     'saveProfileChanges','switchScheduleTab','showDetailView',
                                     'landingFeaturePrev','landingFeatureNext'].includes(action)) {
