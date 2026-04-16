@@ -91,7 +91,7 @@ const SP_CURRENCIES = {
   // ── STATE ───────────────────────────────────────────────────────────────────
   let _session  = null;
   let _profile  = null;
-  let _activeTeamId = localStorage.getItem('sp_active_team') || null;
+  let _activeTeamId = null;
   let _activeTeamRole = null;
   let _currency = localStorage.getItem('sp_currency') || 'UGX';
   let _realtimeChannel = null;
@@ -643,6 +643,10 @@ const SP_CURRENCIES = {
       // Best-effort cleanup only.
     }
 
+    if (typeof window.clearLegacyCloudDataKeys === 'function') {
+      window.clearLegacyCloudDataKeys();
+    }
+
     if (!clearAppSession) return;
 
     if (typeof window.clearAuthSessionState === 'function') {
@@ -657,6 +661,34 @@ const SP_CURRENCIES = {
     window.currentUser = null;
     window.currentManagerId = null;
     window.__spAppBooted = false;
+  }
+
+  function setBootStateSafe(state, options = {}) {
+    if (typeof window.setBootState === 'function') {
+      window.setBootState(state, options);
+    }
+  }
+
+  function showLoginScreen(options = {}) {
+    setBootStateSafe('auth-required', { text: options.text, subtext: options.subtext });
+    if (typeof window.showLoginForm === 'function') {
+      window.showLoginForm();
+      return;
+    }
+    if (typeof window.setActiveScreen === 'function') {
+      window.setActiveScreen('loginScreen');
+    }
+    if (typeof window.hideBootLoaderElement === 'function') {
+      window.hideBootLoaderElement();
+    }
+  }
+
+  function showBootErrorState(message, detail) {
+    setBootStateSafe('boot-error', {
+      text: message || 'Cloud sync needs attention',
+      subtext: detail || 'We could not load your workspace. Retry or log out.',
+      showActions: true,
+    });
   }
 
   function captureSyncException(error, context = {}) {
@@ -777,10 +809,7 @@ const SP_CURRENCIES = {
     }
     resetWorkspaceState();
     updateSyncIndicator(navigator.onLine ? 'idle' : 'offline');
-
-    if (typeof window.setActiveScreen === 'function') {
-      window.setActiveScreen('landingScreen');
-    }
+    showLoginScreen();
 
     if (!explicitLogout) {
       captureSyncException(
@@ -844,9 +873,7 @@ const SP_CURRENCIES = {
       if (typeof window.clearAuthSessionState === 'function') {
         window.clearAuthSessionState();
       }
-      if (typeof window.setActiveScreen === 'function') {
-        window.setActiveScreen('landingScreen');
-      }
+      showLoginScreen();
     }
 
     return null;
@@ -877,7 +904,6 @@ const SP_CURRENCIES = {
 
   async function persistActiveTeam(teamId, options = {}) {
     const normalizedTeamId = normalizeTeamId(teamId);
-    const persistLocal = options.persistLocal !== false;
     const persistRemote = options.persistRemote !== false;
 
     _activeTeamId = normalizedTeamId;
@@ -887,14 +913,6 @@ const SP_CURRENCIES = {
     try {
       sessionStorage.removeItem(TEAM_PROMPT_KEY);
     } catch (_err) {}
-
-    if (persistLocal) {
-      if (normalizedTeamId) {
-        localStorage.setItem('sp_active_team', normalizedTeamId);
-      } else {
-        localStorage.removeItem('sp_active_team');
-      }
-    }
 
     if (options.role !== undefined) {
       setActiveTeamRole(options.role);
@@ -928,7 +946,7 @@ const SP_CURRENCIES = {
       const teams = Array.isArray(options.teams) ? options.teams : await getMyTeams();
       const validTeamIds = new Set((teams || []).map((team) => team.id));
       const rememberedTeamId = normalizeTeamId(profile?.last_active_team_id);
-      const localTeamId = normalizeTeamId(localStorage.getItem('sp_active_team'));
+      const runtimeTeamId = normalizeTeamId(_activeTeamId);
 
       let selectedTeamId = null;
       let source = 'personal';
@@ -937,10 +955,9 @@ const SP_CURRENCIES = {
       if (rememberedTeamId && validTeamIds.has(rememberedTeamId)) {
         selectedTeamId = rememberedTeamId;
         source = 'profile';
-      } else if (localTeamId && validTeamIds.has(localTeamId)) {
-        selectedTeamId = localTeamId;
-        source = 'local';
-        persistRemote = true;
+      } else if (runtimeTeamId && validTeamIds.has(runtimeTeamId)) {
+        selectedTeamId = runtimeTeamId;
+        source = 'runtime';
       } else if ((teams || []).length === 1) {
         selectedTeamId = teams[0].id;
         source = 'single-team';
@@ -1925,7 +1942,7 @@ const SP_CURRENCIES = {
       }
       const shouldSync = Boolean(fresh) || !window.__spCloudOnly;
       if (shouldSync && typeof window.loadUserData === 'function') {
-        window.loadUserData();
+        window.loadUserData({ snapshot: fresh || undefined });
       }
       if (shouldSync && window.__spAppBooted) {
         if (typeof window.updateDashboard === 'function') window.updateDashboard();
@@ -2187,6 +2204,7 @@ const SP_CURRENCIES = {
     }
 
     window.__spAuthRedirectInProgress = true;
+    setBootStateSafe('booting-auth');
 
     // Explicit OAuth callback always clears the "logged out" guard.
     localStorage.removeItem('sp_logged_out');
@@ -2199,8 +2217,7 @@ const SP_CURRENCIES = {
         _session = null;
         _profile = null;
         window.__spSuppressStoredSessionBootstrap = true;
-        if (typeof window.hideBootLoaderElement === 'function') window.hideBootLoaderElement();
-        if (typeof window.showLoginForm === 'function') window.showLoginForm();
+        showLoginScreen();
         if (typeof window.toastError === 'function') {
           window.toastError(errorMessage);
         }
@@ -2243,7 +2260,6 @@ const SP_CURRENCIES = {
         await bootstrapFromSupabaseSession(session, {
           remember: true,
           showWelcome: true,
-          runMigration: true,
         });
         return finishWith('success', {
           shouldBootstrapStoredSession: false,
@@ -2257,8 +2273,7 @@ const SP_CURRENCIES = {
         _session = null;
         _profile = null;
         window.__spSuppressStoredSessionBootstrap = true;
-        if (typeof window.hideBootLoaderElement === 'function') window.hideBootLoaderElement();
-        if (typeof window.showLoginForm === 'function') window.showLoginForm();
+        showLoginScreen();
         if (typeof window.toastError === 'function') {
           window.toastError('Sign-in link expired or invalid. Please log in again.');
         }
@@ -2275,11 +2290,7 @@ const SP_CURRENCIES = {
       _session = null;
       _profile = null;
       window.__spSuppressStoredSessionBootstrap = true;
-      // Safety net: always clear the loader even on unexpected throws.
-      if (typeof window.hideBootLoaderElement === 'function') window.hideBootLoaderElement();
-      if (!window.__spAppBooted && typeof window.showLoginForm === 'function') {
-        window.showLoginForm();
-      }
+      showLoginScreen();
       return finishWith('error', {
         error: err?.message || 'Sign-in failed. Please try again.',
         shouldBootstrapStoredSession: false,
@@ -2460,42 +2471,6 @@ const SP_CURRENCIES = {
       });
       return;
     }
-
-    // Ensure the local user registry exists for checkAuth() on fresh OAuth boots.
-    try {
-      const normalizeKey = (value) => String(value || '').trim().toLowerCase();
-      const storedUsers = JSON.parse(localStorage.getItem('starPaperUsers') || '[]');
-      const users = Array.isArray(storedUsers) ? storedUsers : [];
-      const existing = users.find((u) => normalizeKey(u?.username) === normalizeKey(normalized));
-      if (!existing) {
-        const userId = profileShape.id ? `mgr_${profileShape.id}` : `mgr_${normalizeKey(normalized)}`;
-        users.push({
-          id: userId,
-          username: normalized,
-          email: profileShape.email || '',
-          phone: profileShape.phone || '',
-          bio: '',
-          avatar: '',
-          createdAt: new Date().toISOString(),
-        });
-      } else {
-        existing.email = profileShape.email || existing.email || '';
-        existing.phone = profileShape.phone || existing.phone || '';
-      }
-      localStorage.setItem('starPaperUsers', JSON.stringify(users));
-    } catch (err) {
-      warn('Local user registry update failed:', err);
-    }
-
-    localStorage.setItem('starPaperRemember', JSON.stringify(Boolean(remember)));
-    localStorage.setItem('starPaperCurrentUser', JSON.stringify(Boolean(remember) ? normalized : null));
-    if (window.__spSupabaseConfigured && !window.__spAllowLocalFallback) {
-      localStorage.removeItem('starPaper_session');
-      localStorage.removeItem('starPaperSessionUser');
-    } else {
-      localStorage.setItem('starPaper_session', JSON.stringify('active'));
-      localStorage.setItem('starPaperSessionUser', JSON.stringify(normalized));
-    }
     window.currentUser = normalized;
   }
 
@@ -2503,6 +2478,7 @@ const SP_CURRENCIES = {
     log('bootstrap.start');
     const activeSession = session || _session || await getSession();
     if (!activeSession?.user) return false;
+    setBootStateSafe('booting-data');
 
     // Step C: A real authenticated user exists — clear the "explicitly logged out"
     // flag so that onAuthStateChange and checkAuth() can bootstrap normally from
@@ -2571,12 +2547,8 @@ const SP_CURRENCIES = {
       const workspace = await resolveActiveWorkspace({
         profile,
         teams,
-        promptOnSelection: true,
+        promptOnSelection: false,
       });
-
-      if (workspace?.needsSelection) {
-        return true;
-      }
 
       subscribeToCoreRealtime();
 
@@ -2608,10 +2580,15 @@ const SP_CURRENCIES = {
         }
       }
 
+      if (!fresh) {
+        showBootErrorState('Cloud data could not load', 'Retry to reconnect to Star Paper, or log out and sign in again.');
+        return false;
+      }
+
       if (typeof window.loadUserData === 'function') {
         try {
           window.loadUserData({
-            allowLocalFallback: !navigator.onLine,
+            snapshot: fresh,
           });
         } catch (err) {
           warn('loadUserData failed:', err);
@@ -2626,6 +2603,14 @@ const SP_CURRENCIES = {
         window.showWelcomeMessage();
       }
 
+      if (typeof window.clearLegacyCloudDataKeys === 'function') {
+        window.clearLegacyCloudDataKeys();
+      }
+      setBootStateSafe('ready');
+      if (typeof window.hideBootLoaderElement === 'function') {
+        window.hideBootLoaderElement();
+      }
+
       if (window.__spAppBooted) {
         if (typeof window.updateDashboard === 'function') window.updateDashboard();
         if (typeof window.renderBookings === 'function') window.renderBookings();
@@ -2635,10 +2620,6 @@ const SP_CURRENCIES = {
         if (typeof window.updateTodayBoard === 'function') window.updateTodayBoard();
         if (typeof window.renderTasks === 'function') window.renderTasks();
         if (typeof window.renderAudienceMetrics === 'function') window.renderAudienceMetrics();
-      }
-
-      if (options.runMigration !== false) {
-        setTimeout(() => migrateLocalStorageData(), 2000);
       }
     } finally {
       _refreshInFlight = false;
@@ -2799,7 +2780,6 @@ const SP_CURRENCIES = {
         await bootstrapFromSupabaseSession(session, {
           remember: true,
           showWelcome: event === 'SIGNED_IN',
-          runMigration: true,
         });
       } finally {
         _bootstrapping = false;
@@ -3097,13 +3077,18 @@ const SP_CURRENCIES = {
     const meta = fresh?.__meta || null;
     if (fresh && meta) delete fresh.__meta;
 
+    if (!fresh && !window.__spAppBooted) {
+      showBootErrorState('Workspace refresh failed', 'Retry to reconnect to the cloud and reload your latest data.');
+      return null;
+    }
+
     if (fresh && window._SP_syncFromCloud) {
       window._SP_syncFromCloud(fresh);
     }
 
     if (typeof window.loadUserData === 'function') {
       window.loadUserData({
-        allowLocalFallback: !navigator.onLine,
+        snapshot: fresh,
       });
     }
 
@@ -3125,10 +3110,6 @@ const SP_CURRENCIES = {
 
     if (options.showWelcome && typeof window.showWelcomeMessage === 'function') {
       window.showWelcomeMessage();
-    }
-
-    if (options.runMigration !== false) {
-      setTimeout(() => migrateLocalStorageData(), 2000);
     }
 
     return fresh;
@@ -3617,11 +3598,9 @@ const SP_CURRENCIES = {
           usernameHint: nameOrEmail,
           remember: Boolean(document.getElementById('rememberMe')?.checked),
           showWelcome: true,
-          runMigration: true,
         });
         if (!booted) {
-          // Session was valid but bootstrap couldn't show the app — surface an error.
-          throw new Error('Login failed: could not initialise session.');
+          return;
         }
       } catch (err) {
         const errMsg = String(err?.message || '').toLowerCase();
@@ -3648,6 +3627,9 @@ const SP_CURRENCIES = {
         let msg = 'Invalid credentials. Please try again.';
         if (errMsg.includes('email not confirmed')) msg = 'Please check your email to confirm your account first.';
         if (errMsg.includes('invalid login credentials')) msg = 'Incorrect email or password.';
+        if (errMsg.includes('could not initialise session')) {
+          msg = 'Sign-in succeeded, but your cloud data could not load. Use Retry or log out.';
+        }
         if (typeof window.toastError === 'function') window.toastError(msg);
       } finally {
         // Guaranteed: spinner always stops, button always re-enables.
@@ -3678,12 +3660,14 @@ const SP_CURRENCIES = {
         }
         const result = await signUp(name, email, pw, phone);
         if (result?.session) {
-          await bootstrapFromSupabaseSession(result.session, {
+          const booted = await bootstrapFromSupabaseSession(result.session, {
             usernameHint: name,
             remember: true,
             showWelcome: true,
-            runMigration: true,
           });
+          if (!booted) {
+            return;
+          }
           if (typeof window.toastSuccess === 'function') {
             window.toastSuccess('Account created and signed in.');
           }
@@ -3728,7 +3712,9 @@ const SP_CURRENCIES = {
     // ── SUPABASE LOGOUT ─────────────────────────────────────────────────────────
     window.logout = async function supabaseLogout() {
       // 1. Persist any unsaved work to localStorage first.
-      if (typeof window.saveUserData === 'function') window.saveUserData();
+      if (typeof window.saveUserData === 'function') {
+        try { await window.saveUserData(); } catch (_err) {}
+      }
 
       // 2. CRITICAL — Directly delete the Supabase SDK's own auth token from
       //    localStorage. The SDK stores it under a well-known key. This is
@@ -3765,7 +3751,10 @@ const SP_CURRENCIES = {
       resetWorkspaceState();
 
       // 6. Show landing page immediately — user doesn't wait for any network call.
-      if (typeof window.setActiveScreen === 'function') window.setActiveScreen('landingScreen');
+      if (typeof window.clearLegacyCloudDataKeys === 'function') {
+        window.clearLegacyCloudDataKeys();
+      }
+      showLoginScreen();
       if (typeof window.toastInfo === 'function') window.toastInfo('Logged out');
 
       // 7. Revoke the server-side token in the background (best-effort).
@@ -3859,6 +3848,35 @@ const SP_CURRENCIES = {
     }
   }
 
+  async function bootstrapInitialSession() {
+    if (_bootstrapping || window.__spAuthRedirectInProgress) return false;
+    setBootStateSafe('booting-auth');
+    const session = await getSession();
+    if (!session?.user) {
+      showLoginScreen();
+      return false;
+    }
+    _bootstrapping = true;
+    try {
+      return await bootstrapFromSupabaseSession(session, {
+        remember: true,
+        showWelcome: false,
+      });
+    } finally {
+      _bootstrapping = false;
+    }
+  }
+
+  window.retryInitialCloudBootstrap = async function retryInitialCloudBootstrap() {
+    try {
+      setBootStateSafe('booting-data');
+      await bootstrapInitialSession();
+    } catch (err) {
+      warn('Retry bootstrap failed:', err);
+      showBootErrorState('Retry failed', err?.message || 'Please check your connection and try again.');
+    }
+  };
+
   function init() {
     setupSyncBridge();
     applyCurrency(_currency);
@@ -3871,6 +3889,7 @@ const SP_CURRENCIES = {
     // and the OAuth callback lands on the landing page instead of the dashboard.
     // We defer everything that calls bootstrapFromSupabaseSession to DOMContentLoaded.
     const onAppReady = () => {
+      setBootStateSafe('booting-auth');
       // Order matters: exchange the OAuth code FIRST, then check for a stored session.
       // exchangeCodeForSession writes to Supabase internal storage;
       // the subsequent getSession() call reads it back.
@@ -3878,7 +3897,7 @@ const SP_CURRENCIES = {
         if (result?.shouldBootstrapStoredSession === false) {
           return;
         }
-        bootstrapFromStoredSession();
+        bootstrapInitialSession();
       });
 
       setTimeout(patchAppAuth, 0);         // replace window.login/signup immediately
@@ -3896,27 +3915,7 @@ const SP_CURRENCIES = {
 
   // Separated from init() so it can be sequenced after handleAuthRedirect resolves.
   async function bootstrapFromStoredSession() {
-    if (
-      window.__spAppBooted ||
-      _bootstrapping ||
-      window.__spAuthRedirectInProgress ||
-      window.__spSuppressStoredSessionBootstrap
-    ) return;
-    const session = await getSession();
-    if (!session) return;
-    _bootstrapping = true;
-    try {
-      const restored = await bootstrapFromSupabaseSession(session, {
-        remember: true,
-        showWelcome: false,
-        runMigration: true,
-      });
-      if (restored) {
-        log('Session restored for:', _profile?.username || session.user?.email || 'user');
-      }
-    } finally {
-      _bootstrapping = false;
-    }
+    return bootstrapInitialSession();
   }
 
 
@@ -3931,6 +3930,7 @@ const SP_CURRENCIES = {
     updateProfile,
     signInWithGoogle,
     bootstrap:       bootstrapFromSupabaseSession,
+    bootstrapInitialSession,
     refreshSessionIfNeeded,
     resolveActiveWorkspace,
     persistActiveTeam,

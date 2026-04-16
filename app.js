@@ -44,30 +44,66 @@ function hideBootLoaderElement() {
     }, 450);
 }
 
+function showBootLoaderElement() {
+    const loader = document.getElementById('appBootLoader');
+    if (!loader) return;
+    loader.classList.remove('hidden');
+}
+
+const BOOT_STATE_MESSAGES = {
+    'booting-auth': {
+        text: 'Checking your session...',
+        subtext: 'Loading Star Paper...'
+    },
+    'booting-data': {
+        text: 'Syncing your workspace...',
+        subtext: 'Fetching your latest cloud data.'
+    },
+    'auth-required': {
+        text: 'Sign in to continue',
+        subtext: 'Your session is not active right now.'
+    },
+    'boot-error': {
+        text: 'Cloud sync needs attention',
+        subtext: 'We could not load your workspace. Retry or log out.'
+    },
+    'ready': {
+        text: 'Ready',
+        subtext: ''
+    }
+};
+
+function setBootState(state, options = {}) {
+    const loader = document.getElementById('appBootLoader');
+    if (!loader) return;
+    const preset = BOOT_STATE_MESSAGES[state] || BOOT_STATE_MESSAGES['booting-auth'];
+    const nextText = options.text || preset.text;
+    const nextSubtext = options.subtext ?? preset.subtext;
+    const showActions = Boolean(options.showActions || state === 'boot-error');
+    loader.dataset.state = state;
+    showBootLoaderElement();
+
+    const textEl = document.getElementById('appBootLoaderText');
+    if (textEl) textEl.textContent = nextText;
+    const subtextEl = document.getElementById('appBootLoaderSubtext');
+    if (subtextEl) {
+        subtextEl.textContent = nextSubtext;
+        subtextEl.hidden = !nextSubtext;
+    }
+    const actionsEl = document.getElementById('appBootLoaderActions');
+    if (actionsEl) {
+        actionsEl.hidden = !showActions;
+    }
+}
+
 function markRootLayoutReady() {
     document.body.classList.add('loaded', 'layout-root-ready');
     // Do NOT add layout-ready to appContainer here - only when user logs in
 }
 
 function initializeBootSequence() {
-    let completed = false;
-    const finishBoot = () => {
-        if (completed) return;
-        completed = true;
-        markRootLayoutReady();
-        hideBootLoaderElement();
-    };
-
-    if (document.readyState === 'complete') {
-        setTimeout(finishBoot, 180);
-    } else {
-        window.addEventListener('load', () => {
-            setTimeout(finishBoot, 180);
-        }, { once: true });
-    }
-
-    // Fail-safe to avoid a blocked interface on slow or interrupted loads.
-    setTimeout(finishBoot, 2200);
+    markRootLayoutReady();
+    setBootState('booting-auth');
 }
 
 function getSectionIconMarkup(iconKey) {
@@ -108,8 +144,16 @@ function getSectionIconMarkup(iconKey) {
             'starPaperClosingThoughtsByPeriod',
             'starPaperAudienceMetrics',
             'sp_tasks',
-            'starPaperTasks'
+            'starPaperTasks',
+            'starPaperUsers',
+            'starPaperCredentials',
+            'starPaperCurrentUser',
+            'starPaperRemember',
+            'starPaper_session',
+            'starPaperSessionUser',
+            'starPaperSchemaVersion'
         ]);
+        const cloudOnlyStorageShadow = {};
         const closingThoughtsMemoryStore = {};
         function isCloudOnlyStorageKey(key) {
             return isCloudOnlyMode() && CLOUD_ONLY_STORAGE_KEYS.has(key);
@@ -118,7 +162,14 @@ function getSectionIconMarkup(iconKey) {
         const Storage = {
             saveSync(key, value) {
                 try {
-                    if (isCloudOnlyStorageKey(key)) return true;
+                    if (isCloudOnlyStorageKey(key)) {
+                        if (value === null || typeof value === 'undefined') {
+                            delete cloudOnlyStorageShadow[key];
+                        } else {
+                            cloudOnlyStorageShadow[key] = value;
+                        }
+                        return true;
+                    }
                     localStorage.setItem(key, JSON.stringify(value));
                     return true;
                 } catch (err) {
@@ -131,7 +182,11 @@ function getSectionIconMarkup(iconKey) {
             },
             loadSync(key, fallback = null) {
                 try {
-                    if (isCloudOnlyStorageKey(key)) return fallback;
+                    if (isCloudOnlyStorageKey(key)) {
+                        return Object.prototype.hasOwnProperty.call(cloudOnlyStorageShadow, key)
+                            ? cloudOnlyStorageShadow[key]
+                            : fallback;
+                    }
                     return JSON.parse(localStorage.getItem(key)) ?? fallback;
                 } catch {
                     return fallback;
@@ -145,9 +200,39 @@ function getSectionIconMarkup(iconKey) {
             }
         };
 
-        if (typeof window.runStarPaperMigrations === 'function') {
-            window.runStarPaperMigrations();
+        const LEGACY_CLOUD_RUNTIME_KEYS = [
+            'starPaperManagerData',
+            'starPaperBookings',
+            'starPaperExpenses',
+            'starPaperOtherIncome',
+            'starPaperArtists',
+            'starPaperRevenueGoals',
+            'starPaperBBF',
+            'starPaperClosingThoughtsByPeriod',
+            'starPaperAudienceMetrics',
+            'sp_tasks',
+            'starPaperTasks',
+            'starPaperUsers',
+            'starPaperCredentials',
+            'starPaperCurrentUser',
+            'starPaperRemember',
+            'starPaper_session',
+            'starPaperSessionUser',
+            'starPaperSchemaVersion',
+            'sp_active_team'
+        ];
+
+        function clearLegacyCloudDataKeys() {
+            LEGACY_CLOUD_RUNTIME_KEYS.forEach((key) => {
+                delete cloudOnlyStorageShadow[key];
+                localStorage.removeItem(key);
+            });
         }
+
+        window.clearLegacyCloudDataKeys = clearLegacyCloudDataKeys;
+        window.setBootState = setBootState;
+        window.showBootLoaderElement = showBootLoaderElement;
+        window.hideBootLoaderElement = hideBootLoaderElement;
 
         function bindDeclarativeActionFallback() {
             if (window.__starPaperActionsBound || window.__starPaperFallbackActionsBound) return;
@@ -599,7 +684,20 @@ function getSectionIconMarkup(iconKey) {
         }
 
         function getCurrentUserRecord() {
-            return findUserByUsername(currentUser);
+            const localRecord = findUserByUsername(currentUser);
+            const profile = typeof window.SP?.getProfileState === 'function'
+                ? (window.SP.getProfileState() || null)
+                : null;
+            if (!profile) return localRecord;
+            return {
+                ...localRecord,
+                id: profile.id || localRecord?.id || null,
+                username: profile.username || localRecord?.username || currentUser || '',
+                email: profile.email || localRecord?.email || '',
+                phone: profile.phone || localRecord?.phone || '',
+                bio: profile.bio || localRecord?.bio || '',
+                avatar: profile.avatar_url || profile.avatar || localRecord?.avatar || ''
+            };
         }
 
         function avatarDataUriFromSymbol(symbol) {
@@ -987,6 +1085,11 @@ function getSectionIconMarkup(iconKey) {
         }
 
         function updateCurrentManagerContext() {
+            const ownerId = typeof window.SP?.getOwnerId === 'function' ? window.SP.getOwnerId() : null;
+            if (ownerId) {
+                currentManagerId = ownerId;
+                return;
+            }
             const manager = findUserByUsername(currentUser);
             currentManagerId = manager?.id || null;
         }
@@ -2333,20 +2436,10 @@ function getSectionIconMarkup(iconKey) {
                 Storage.saveSync('starPaperUsers', users);
         }
 
-        initializeData();
-        const usersShape = Storage.loadSync('starPaperUsers', []);
-        if (!Array.isArray(usersShape)) {
-            localStorage.setItem('starPaperSchemaVersion', '1');
-            if (typeof window.runStarPaperMigrations === 'function') {
-                window.runStarPaperMigrations();
-            }
-        }
-        refreshDataStoresFromStorage();
-        hardenCredentialStore().catch((error) => {
-            console.warn('Credential hardening failed:', error);
-        });
-        normalizeAllManagerBookingReferences();
-        checkAuth();
+        window.__spAppBooted = false;
+        window.currentUser = null;
+        window.currentManagerId = null;
+        setBootState('booting-auth');
 
         // Populate location dropdowns on page load
         function populateLocationDropdowns() {
@@ -2993,6 +3086,8 @@ function getSectionIconMarkup(iconKey) {
         }
 
 function showLoginForm() {
+            setBootState('auth-required');
+            hideBootLoaderElement();
             setActiveScreen('loginScreen');
             document.getElementById('loginForm').style.display = 'block';
             document.getElementById('signupForm').style.display = 'none';
@@ -3003,13 +3098,15 @@ function showLoginForm() {
             if (s) s.textContent = 'Sign in to continue to your dashboard.';
             const rememberMe = document.getElementById('rememberMe');
             if (rememberMe) {
-                rememberMe.checked = Storage.loadSync('starPaperRemember', false);
+                rememberMe.checked = false;
             }
             clearLoginValidation();
             setLoginLoading(false);
         }
 
         function showSignupForm() {
+            setBootState('auth-required');
+            hideBootLoaderElement();
             setActiveScreen('loginScreen');
             document.getElementById('signupForm').style.display = 'block';
             document.getElementById('loginForm').style.display = 'none';
@@ -3023,6 +3120,7 @@ function showLoginForm() {
         }
 
         function showLanding() {
+            hideBootLoaderElement();
             setActiveScreen('landingScreen');
             clearForms();
         }
@@ -3057,7 +3155,7 @@ function showLoginForm() {
             if (existing) return existing;
 
             const user = {
-                id: createRuntimeId('mgr', normalized),
+                id: profile.id || profile.user_id || window.SP?.getOwnerId?.() || createRuntimeId('mgr', normalized),
                 username: normalized,
                 email: profile.email || '',
                 phone: profile.phone || '',
@@ -3076,17 +3174,8 @@ function showLoginForm() {
             ensureSessionUserExists(normalized, options.profile || {});
             currentUser = normalized;
             updateCurrentManagerContext();
-            const remember = Boolean(options.remember);
-            const cloudMode = Boolean(window.__spSupabaseConfigured) && !window.__spAllowLocalFallback;
-            Storage.saveSync('starPaperRemember', remember);
-            Storage.saveSync('starPaperCurrentUser', remember ? currentUser : null);
-            if (cloudMode) {
-                localStorage.removeItem('starPaper_session');
-                localStorage.removeItem('starPaperSessionUser');
-            } else {
-                Storage.saveSync('starPaper_session', 'active');
-                Storage.saveSync('starPaperSessionUser', currentUser);
-            }
+            Storage.saveSync('starPaperRemember', Boolean(options.remember));
+            Storage.saveSync('starPaperCurrentUser', currentUser);
             window.currentUser = currentUser;
             window.currentManagerId = currentManagerId;
             return true;
@@ -3097,8 +3186,8 @@ function showLoginForm() {
             currentManagerId = null;
             Storage.saveSync('starPaperCurrentUser', null);
             Storage.saveSync('starPaperRemember', false);
-            localStorage.removeItem('starPaper_session');
-            localStorage.removeItem('starPaperSessionUser');
+            Storage.saveSync('starPaper_session', null);
+            Storage.saveSync('starPaperSessionUser', null);
             window.currentUser = null;
             window.currentManagerId = null;
             // Reset boot flag so a same-tab re-login boots the full app cleanly.
@@ -3111,49 +3200,11 @@ function showLoginForm() {
         window.addEventListener('storage', (event) => {
             const key = event?.key || '';
             if (!key) return;
-            const shouldSync =
-                key.startsWith('starPaper') ||
-                key.startsWith('sp_') ||
-                key.startsWith('sb-');
-            if (!shouldSync) return;
-            const authKeyChanged =
-                key.startsWith('sb-') ||
-                key === 'sp_logged_out' ||
-                key === 'starPaper_session' ||
-                key === 'starPaperSessionUser' ||
-                key === 'starPaperRemember' ||
-                key === 'starPaperCurrentUser';
-            if (authKeyChanged && typeof checkAuth === 'function') {
-                checkAuth();
-                if (!window.__spAppBooted) return;
-            }
-            if (
-                key === 'sp_active_team' &&
-                typeof window.SP?.reloadForResolvedWorkspace === 'function' &&
-                typeof window.SP?.getOwnerId === 'function' &&
-                window.SP.getOwnerId()
-            ) {
-                window.SP.reloadForResolvedWorkspace({
-                    forceShowApp: false,
-                    runMigration: false,
-                    silent: true
-                }).catch((err) => {
-                    console.warn('[StarPaper] workspace sync failed:', err);
-                });
-                return;
-            }
-            if (typeof loadUserData === 'function') {
-                loadUserData();
-            }
-            if (window.__spAppBooted) {
-                if (typeof updateDashboard === 'function') updateDashboard();
-                if (typeof renderBookings === 'function') renderBookings();
-                if (typeof renderExpenses === 'function') renderExpenses();
-                if (typeof renderOtherIncome === 'function') renderOtherIncome();
-                if (typeof renderArtists === 'function') renderArtists();
-                if (typeof renderAudienceMetrics === 'function') renderAudienceMetrics();
-                if (typeof updateTodayBoard === 'function') updateTodayBoard();
-                if (typeof window.renderTasks === 'function') window.renderTasks();
+            if (key === 'sp_logged_out' && event.newValue === '1') {
+                clearAuthSessionState();
+                if (typeof showLoginForm === 'function') {
+                    showLoginForm();
+                }
             }
         });
 
@@ -3707,9 +3758,91 @@ function showLoginForm() {
                 Boolean(window.SP?.getOwnerId?.());
         }
 
+        function syncWindowState() {
+            markSearchIndexDirty();
+            window.bookings = bookings;
+            window.expenses = expenses;
+            window.otherIncome = otherIncome;
+            window.artists = artists;
+            window.audienceMetrics = audienceMetrics;
+            window.revenueGoals = revenueGoals;
+            window.bbfData = bbfData;
+            window.currentManagerId = currentManagerId;
+            window.currentUser = currentUser;
+        }
+
+        function applyCloudSnapshotToRuntime(cloudData, activeScopeKey) {
+            if (!cloudData) {
+                syncWindowState();
+                return;
+            }
+
+            bookings = Array.isArray(cloudData.bookings)
+                ? ensureBookingArtistRefs(cloudData.bookings, currentManagerId)
+                : [];
+            expenses = Array.isArray(cloudData.expenses) ? cloudData.expenses : [];
+            otherIncome = Array.isArray(cloudData.otherIncome) ? cloudData.otherIncome : [];
+            artists = Array.isArray(cloudData.artists) ? cloudData.artists : [];
+
+            if (cloudData.revenueGoal && typeof cloudData.revenueGoal === 'object') {
+                const goalKey = getCurrentRevenueGoalKey();
+                const amount = Number(cloudData.revenueGoal.amount || 0);
+                revenueGoals[goalKey] = Number.isFinite(amount) ? amount : 0;
+                Storage.saveSync('starPaperRevenueGoals', revenueGoals);
+            }
+
+            if (Array.isArray(cloudData.bbfEntries)) {
+                Object.keys(bbfData).forEach((key) => {
+                    if (key.startsWith(`${activeScopeKey}_`)) delete bbfData[key];
+                });
+                cloudData.bbfEntries.forEach((entry) => {
+                    if (!entry?.period) return;
+                    bbfData[`${activeScopeKey}_${entry.period}`] = Number(entry.amount) || 0;
+                });
+                Storage.saveSync('starPaperBBF', bbfData);
+            }
+
+            if (Array.isArray(cloudData.closingThoughts)) {
+                const scopeKey = activeScopeKey || 'default';
+                const store = getClosingThoughtsStore();
+                const nextStore = {};
+                cloudData.closingThoughts.forEach((entry) => {
+                    if (!entry?.period) return;
+                    nextStore[entry.period] = String(entry.content || '');
+                });
+                store[scopeKey] = nextStore;
+                Storage.saveSync(CLOSING_THOUGHTS_STORAGE_KEY, store);
+            }
+
+            if (Array.isArray(cloudData.tasks) && typeof window.applyTaskSync === 'function') {
+                window.applyTaskSync(cloudData.tasks, { source: 'cloud', render: false });
+            }
+
+            audienceMetrics = Array.isArray(cloudData.audienceMetrics)
+                ? cloudData.audienceMetrics
+                : [];
+            saveAudienceMetricsForScope(activeScopeKey, audienceMetrics);
+
+            if (cloudData.theme && typeof applyTheme === 'function') {
+                applyTheme(cloudData.theme, { persist: false, syncRemote: false });
+            }
+
+            syncWindowState();
+        }
+
         function loadUserData(options = {}) {
             updateCurrentManagerContext();
             const activeScopeKey = getActiveDataScopeKey();
+            const initialSnapshot = options.snapshot || window._SP_cloudData || null;
+            if (window.__spCloudOnly) {
+                window._SP_cloudData = null;
+                applyCloudSnapshotToRuntime(initialSnapshot, activeScopeKey);
+                window._SP_syncFromCloud = function(data) {
+                    const scopeKey = getActiveDataScopeKey();
+                    applyCloudSnapshotToRuntime(data, scopeKey);
+                };
+                return;
+            }
             const authenticatedCloudSession = hasAuthenticatedCloudSession();
             const allowLocalFallback =
                 !authenticatedCloudSession ||
@@ -3865,7 +3998,6 @@ function showLoginForm() {
                 return { cloudSynced: false, skipped: true, queued: false };
             }
             bookings = ensureBookingArtistRefs(bookings, currentManagerId);
-            saveManagerData(getActiveDataScopeKey(), { bookings, expenses, otherIncome });
             markSearchIndexDirty();
             // Update window references
             window.bookings    = bookings;
@@ -4711,6 +4843,16 @@ function showLoginForm() {
         }
 
         function checkAuth() {
+            if (window.__spCloudOnly) {
+                if (window.__spCloudBootstrapPending || window.__spSupabaseBootPromise || window.__spAuthRedirectInProgress) {
+                    setBootState('booting-auth');
+                    return;
+                }
+                if (!window.SP?.getOwnerId?.()) {
+                    setBootState('booting-auth');
+                }
+                return;
+            }
             // Guard: if the user explicitly clicked logout, respect that choice.
             // Even if localStorage still has remember=true or a session key, we
             // must NOT auto-boot the app. The user will need to log in again.
@@ -4835,7 +4977,9 @@ function showLoginForm() {
         }
 
         function restoreSession() {
-            checkAuth();
+            if (!window.__spCloudOnly) {
+                checkAuth();
+            }
         }
 
         // Keep the sp-supabase-ready listener as a secondary safety net for
@@ -4844,7 +4988,7 @@ function showLoginForm() {
         if (!window.__spSupabaseReadyListenerBound) {
             window.__spSupabaseReadyListenerBound = true;
             window.addEventListener('sp-supabase-ready', () => {
-                if (!window.__spAppBooted) {
+                if (!window.__spCloudOnly && !window.__spAppBooted) {
                     checkAuth();
                 }
             });
@@ -10419,7 +10563,7 @@ function showLoginForm() {
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=38').then((registration) => {
+                navigator.serviceWorker.register('sw.js?v=39').then((registration) => {
                     registration.update().catch(() => {});
                 }).catch((error) => {
                     console.warn('Service worker registration failed:', error);

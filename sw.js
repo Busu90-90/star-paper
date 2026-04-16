@@ -1,16 +1,16 @@
-const CACHE_NAME = "star-paper-shell-v38";
+const CACHE_NAME = "star-paper-shell-v39";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css",
-  "./supabase.js?v=19",
+  "./styles.css?v=13",
+  "./supabase.js?v=20",
   "./app.migrations.js?v=9",
   "./app.actions.js?v=8",
   "./app.todayboard.js?v=1",
-  "./app.tasks.js?v=2",
+  "./app.tasks.js?v=3",
   "./app.reports.js?v=10",
-  "./app.js?v=37",
-  "./sw.js?v=38",
+  "./app.js?v=38",
+  "./sw.js?v=39",
   "./manifest.json",
   "./manifest.json?v=14",
   "./logo.svg",
@@ -100,17 +100,15 @@ self.addEventListener("fetch", (event) => {
   }
 
   event.respondWith(
-    caches.match(request).then((cached) => {
-      const networkFetch = fetch(request)
-        .then((response) => {
-          if (!response || response.status !== 200) return response;
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          return response;
-        })
-        .catch(() => cached);
-
-      return cached || networkFetch;
-    })
+    fetch(request)
+      .then((response) => {
+        if (!response || response.status !== 200) return response;
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+        return response;
+      })
+      .catch(() =>
+        caches.match(request).then((cached) => cached || Response.error())
+      )
   );
 });
