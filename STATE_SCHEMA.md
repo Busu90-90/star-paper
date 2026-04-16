@@ -6,6 +6,7 @@
 - `starPaperManagerData`: object keyed by managerId for financial records.
 - `starPaperCredentials`: object keyed by username for local auth credentials.
 - `starPaperMessages`: array of message records.
+- `starPaperAudienceMetrics`: object keyed by scope for audience growth entries.
 - `starPaperTheme`: `"light"` or `"dark"`.
 - `starPaperRemember`: boolean remember-me flag.
 - `starPaperRememberedUser`: remembered username.
@@ -35,7 +36,9 @@
   "email": "string (optional)",
   "phone": "string (optional)",
   "specialty": "string (optional)",
-  "bio": "string (optional)"
+  "bio": "string (optional)",
+  "strategicGoal": "string (optional)",
+  "avatar": "string (optional)"
 }
 ```
 
@@ -64,6 +67,7 @@
   "artist": "string",
   "artistId": "string|null",
   "date": "YYYY-MM-DD",
+  "capacity": 0,
   "fee": 0,
   "deposit": 0,
   "balance": 0,
@@ -74,6 +78,21 @@
   "location": "string",
   "createdAt": 0
 }
+
+## Audience Metric Record
+```json
+{
+  "id": "string",
+  "artistId": "string",
+  "artist": "string",
+  "period": "YYYY-MM",
+  "socialFollowers": 0,
+  "spotifyListeners": 0,
+  "youtubeListeners": 0,
+  "createdAt": "ISO-8601",
+  "updatedAt": "ISO-8601"
+}
+```
 ```
 
 ## Expense Record

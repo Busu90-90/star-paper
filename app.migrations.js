@@ -1,6 +1,6 @@
 (function () {
     const SCHEMA_VERSION_KEY = 'starPaperSchemaVersion';
-    const TARGET_SCHEMA_VERSION = 2;
+    const TARGET_SCHEMA_VERSION = 4;
 
     function parseJson(key, fallback) {
         try {
@@ -353,6 +353,49 @@
         writeJson('starPaperCredentials', credentials);
     }
 
+    function migrateToV3AudienceMetricsAndCapacity() {
+        const existingArtists = parseJson('starPaperArtists', []);
+        if (Array.isArray(existingArtists)) {
+            const updatedArtists = existingArtists.map((artist) => ({
+                ...artist,
+                strategicGoal: typeof artist?.strategicGoal === 'string' ? artist.strategicGoal : ''
+            }));
+            writeJson('starPaperArtists', updatedArtists);
+        }
+
+        const existingManagerData = parseJson('starPaperManagerData', {});
+        if (existingManagerData && typeof existingManagerData === 'object' && !Array.isArray(existingManagerData)) {
+            Object.keys(existingManagerData).forEach((key) => {
+                const record = existingManagerData[key];
+                if (!record || typeof record !== 'object') return;
+                const bookings = Array.isArray(record.bookings) ? record.bookings.map((booking) => ({
+                    ...booking,
+                    capacity: Number.isFinite(Number(booking?.capacity)) ? Math.round(Number(booking.capacity)) : 0
+                })) : [];
+                existingManagerData[key] = {
+                    ...record,
+                    bookings
+                };
+            });
+            writeJson('starPaperManagerData', existingManagerData);
+        }
+
+        const existingAudienceMetrics = parseJson('starPaperAudienceMetrics', {});
+        if (!existingAudienceMetrics || typeof existingAudienceMetrics !== 'object' || Array.isArray(existingAudienceMetrics)) {
+            writeJson('starPaperAudienceMetrics', {});
+        }
+    }
+
+    function migrateToV4ArtistAvatar() {
+        const existingArtists = parseJson('starPaperArtists', []);
+        if (!Array.isArray(existingArtists)) return;
+        const updatedArtists = existingArtists.map((artist) => ({
+            ...artist,
+            avatar: typeof artist?.avatar === 'string' ? artist.avatar : ''
+        }));
+        writeJson('starPaperArtists', updatedArtists);
+    }
+
     function runStorageMigrations() {
         const rawVersion = Number(localStorage.getItem(SCHEMA_VERSION_KEY) || 0);
         let currentVersion = Number.isFinite(rawVersion) ? rawVersion : 0;
@@ -365,6 +408,16 @@
         if (currentVersion < 2) {
             migrateToV2UserArtistSeparation();
             currentVersion = 2;
+        }
+
+        if (currentVersion < 3) {
+            migrateToV3AudienceMetricsAndCapacity();
+            currentVersion = 3;
+        }
+
+        if (currentVersion < 4) {
+            migrateToV4ArtistAvatar();
+            currentVersion = 4;
         }
 
         if (currentVersion < TARGET_SCHEMA_VERSION) {
