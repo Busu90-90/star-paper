@@ -466,14 +466,22 @@ const SP_CURRENCIES = {
   function promptTeamSelectionIfNeeded(teams) {
     if (_activeTeamId) return;
     if (!Array.isArray(teams) || teams.length < 2) return;
+    let shouldToast = true;
     try {
-      if (sessionStorage.getItem(TEAM_PROMPT_KEY) === '1') return;
-      sessionStorage.setItem(TEAM_PROMPT_KEY, '1');
+      if (sessionStorage.getItem(TEAM_PROMPT_KEY) === '1') {
+        shouldToast = false;
+      } else {
+        sessionStorage.setItem(TEAM_PROMPT_KEY, '1');
+      }
     } catch (_err) {
-      // Non-fatal: if sessionStorage fails, still show the prompt once.
+      // Non-fatal: if sessionStorage fails, still show the prompt.
     }
-    toastSafe('Info', 'Choose a workspace to finish loading your data.');
+    if (shouldToast) {
+      toastSafe('Info', 'Choose a workspace to finish loading your data.');
+    }
     setTimeout(() => {
+      const modal = document.getElementById('spTeamModal');
+      if (modal && modal.style.display !== 'none') return;
       showTeamModal().catch((err) => warn('Team chooser open failed:', err));
     }, 0);
   }
