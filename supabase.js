@@ -104,6 +104,9 @@ const SP_CURRENCIES = {
   let _lastRefreshAt = 0;
   let _lastCloudSignature = null;
   let _lastSavedSignature = null;       // For differential sync: skip saves when nothing changed
+  let _workspaceResolved = false;
+  let _workspaceRequiresSelection = false;
+  let _workspaceResolutionPromise = null;
 
   // ── SYNC RELIABILITY: Retry Queue + Status Indicator ────────────────────────
   const RETRY_QUEUE_STORAGE_KEY = 'sp_retry_queue';
@@ -185,6 +188,10 @@ const SP_CURRENCIES = {
   async function processRetryQueue() {
     if (!navigator.onLine) {
       updateSyncIndicator('offline');
+      return;
+    }
+    if (!(await ensureWorkspaceReady({ promptOnSelection: false }))) {
+      scheduleRetryQueue();
       return;
     }
     if (_retryQueue.length === 0) return;
@@ -458,19 +465,41 @@ const SP_CURRENCIES = {
   const TEAM_PROMPT_KEY = 'sp_team_select_prompted';
   function promptTeamSelectionIfNeeded(teams) {
     if (_activeTeamId) return;
-    if (!Array.isArray(teams) || teams.length === 0) return;
+    if (!Array.isArray(teams) || teams.length < 2) return;
     try {
       if (sessionStorage.getItem(TEAM_PROMPT_KEY) === '1') return;
       sessionStorage.setItem(TEAM_PROMPT_KEY, '1');
     } catch (_err) {
       // Non-fatal: if sessionStorage fails, still show the prompt once.
     }
-    toastSafe('Info', 'You have a team workspace. Open Team to select it.');
+    toastSafe('Info', 'Choose a workspace to finish loading your data.');
+    setTimeout(() => {
+      showTeamModal().catch((err) => warn('Team chooser open failed:', err));
+    }, 0);
   }
 
   function ensureAppBootReady() {
     return Boolean(window.__spAppBooted) ||
       (typeof window.showApp === 'function' && typeof window.loadUserData === 'function');
+  }
+
+  async function waitForAppBootReady(maxWaitMs = 5000, intervalMs = 50) {
+    if (ensureAppBootReady()) return true;
+    const started = Date.now();
+    return new Promise((resolve) => {
+      const tick = () => {
+        if (ensureAppBootReady()) {
+          resolve(true);
+          return;
+        }
+        if (Date.now() - started >= maxWaitMs) {
+          resolve(false);
+          return;
+        }
+        setTimeout(tick, intervalMs);
+      };
+      tick();
+    });
   }
 
   function scheduleAppBoot(maxWaitMs = 5000, intervalMs = 50) {
@@ -565,7 +594,15 @@ const SP_CURRENCIES = {
     _session = null;
     _profile = null;
     _activeTeamId = null;
+    _workspaceResolved = false;
+    _workspaceRequiresSelection = false;
+    _workspaceResolutionPromise = null;
+    window.__spCloudBootstrapPending = false;
+    window.__spWorkspaceSelectionRequired = false;
     localStorage.removeItem('sp_active_team');
+    try {
+      sessionStorage.removeItem(TEAM_PROMPT_KEY);
+    } catch (_err) {}
     setActiveTeamRole(null);
     unsubscribeFromCoreRealtime();
     unsubscribeFromTeamNotifications();
@@ -657,6 +694,149 @@ const SP_CURRENCIES = {
     if (typeof window.setTeamRole === 'function') {
       window.setTeamRole(_activeTeamRole);
     }
+  }
+
+  function normalizeTeamId(teamId) {
+    const normalized = String(teamId || '').trim();
+    return normalized || null;
+  }
+
+  async function persistActiveTeam(teamId, options = {}) {
+    const normalizedTeamId = normalizeTeamId(teamId);
+    const persistLocal = options.persistLocal !== false;
+    const persistRemote = options.persistRemote !== false;
+
+    _activeTeamId = normalizedTeamId;
+    _workspaceResolved = true;
+    _workspaceRequiresSelection = false;
+    window.__spWorkspaceSelectionRequired = false;
+    try {
+      sessionStorage.removeItem(TEAM_PROMPT_KEY);
+    } catch (_err) {}
+
+    if (persistLocal) {
+      if (normalizedTeamId) {
+        localStorage.setItem('sp_active_team', normalizedTeamId);
+      } else {
+        localStorage.removeItem('sp_active_team');
+      }
+    }
+
+    if (options.role !== undefined) {
+      setActiveTeamRole(options.role);
+    } else if (!normalizedTeamId) {
+      setActiveTeamRole(null);
+    }
+
+    const currentRemembered = normalizeTeamId(options.profile?.last_active_team_id || _profile?.last_active_team_id);
+    if (persistRemote && getOwnerId() && currentRemembered !== normalizedTeamId) {
+      try {
+        await updateProfile({ last_active_team_id: normalizedTeamId }, { throwOnError: true });
+      } catch (err) {
+        warn('Persist active team failed:', err);
+      }
+    } else if (_profile && currentRemembered === normalizedTeamId) {
+      _profile.last_active_team_id = normalizedTeamId;
+    }
+
+    return normalizedTeamId;
+  }
+
+  async function resolveActiveWorkspace(options = {}) {
+    if (_workspaceResolutionPromise) return _workspaceResolutionPromise;
+
+    _workspaceResolutionPromise = (async () => {
+      if (!getOwnerId()) {
+        return { teamId: null, teams: [], profile: _profile, needsSelection: false, source: 'signed-out' };
+      }
+
+      const profile = options.profile || _profile || await getProfile();
+      const teams = Array.isArray(options.teams) ? options.teams : await getMyTeams();
+      const validTeamIds = new Set((teams || []).map((team) => team.id));
+      const rememberedTeamId = normalizeTeamId(profile?.last_active_team_id);
+      const localTeamId = normalizeTeamId(localStorage.getItem('sp_active_team'));
+
+      let selectedTeamId = null;
+      let source = 'personal';
+      let persistRemote = false;
+
+      if (rememberedTeamId && validTeamIds.has(rememberedTeamId)) {
+        selectedTeamId = rememberedTeamId;
+        source = 'profile';
+      } else if (localTeamId && validTeamIds.has(localTeamId)) {
+        selectedTeamId = localTeamId;
+        source = 'local';
+        persistRemote = true;
+      } else if ((teams || []).length === 1) {
+        selectedTeamId = teams[0].id;
+        source = 'single-team';
+        persistRemote = rememberedTeamId !== selectedTeamId;
+      } else if ((teams || []).length === 0) {
+        selectedTeamId = null;
+        source = 'personal';
+        persistRemote = Boolean(rememberedTeamId);
+      } else {
+        _activeTeamId = null;
+        _workspaceResolved = false;
+        _workspaceRequiresSelection = true;
+        window.__spWorkspaceSelectionRequired = true;
+        localStorage.removeItem('sp_active_team');
+        setActiveTeamRole(null);
+
+        if (rememberedTeamId) {
+          try {
+            await updateProfile({ last_active_team_id: null }, { throwOnError: true });
+          } catch (err) {
+            warn('Clearing stale remembered team failed:', err);
+          }
+        }
+
+        if (options.promptOnSelection !== false) {
+          promptTeamSelectionIfNeeded(teams);
+        }
+
+        return {
+          teamId: null,
+          teams,
+          profile,
+          needsSelection: true,
+          source: 'chooser',
+        };
+      }
+
+      const activeTeam = selectedTeamId ? teams.find((team) => team.id === selectedTeamId) : null;
+      await persistActiveTeam(selectedTeamId, {
+        persistRemote,
+        role: activeTeam?.myRole || null,
+        profile,
+      });
+
+      return {
+        teamId: selectedTeamId,
+        teams,
+        profile,
+        needsSelection: false,
+        source,
+      };
+    })().finally(() => {
+      _workspaceResolutionPromise = null;
+    });
+
+    return _workspaceResolutionPromise;
+  }
+
+  async function ensureWorkspaceReady(options = {}) {
+    if (!getOwnerId()) return false;
+    if (_workspaceRequiresSelection) {
+      if (options.promptOnSelection !== false) {
+        const teams = Array.isArray(options.teams) ? options.teams : await getMyTeams();
+        promptTeamSelectionIfNeeded(teams);
+      }
+      return false;
+    }
+    if (_workspaceResolved) return true;
+    const resolution = await resolveActiveWorkspace(options);
+    return !resolution?.needsSelection;
   }
 
   function applyScopeFilter(query, ownerColumn = 'owner_id') {
@@ -1195,6 +1375,7 @@ const SP_CURRENCIES = {
   async function loadData() {
     const ownerId = getOwnerId();
     if (!ownerId) return null;
+    if (!(await ensureWorkspaceReady({ promptOnSelection: false }))) return null;
 
     const filter = (q) => applyScopeFilter(q, 'owner_id');
 
@@ -1501,6 +1682,7 @@ const SP_CURRENCIES = {
   async function loadAllData() {
     const ownerId = getOwnerId();
     if (!ownerId) return null;
+    if (!(await ensureWorkspaceReady({ promptOnSelection: false }))) return null;
     const profile = _profile || await getProfile();
     try {
       const timedLoad = async (label, fn, timeoutMs) => {
@@ -1564,6 +1746,7 @@ const SP_CURRENCIES = {
       await ensureSupabaseSession({ silent: true, clearIfMissing: true });
     }
     if (!getOwnerId()) return null;
+    if (!(await ensureWorkspaceReady({ promptOnSelection: false }))) return null;
     if (_refreshInFlight) return null;
     const now = Date.now();
     const minIntervalMs = typeof options.minIntervalMs === 'number' ? options.minIntervalMs : 5000;
@@ -1621,6 +1804,7 @@ const SP_CURRENCIES = {
     }
     const ownerId = getOwnerId();
     if (!ownerId) return;
+    if (!(await ensureWorkspaceReady({ promptOnSelection: false }))) return;
 
     await refreshSessionIfNeeded({ minTtlSeconds: 90 });
 
@@ -2103,7 +2287,6 @@ const SP_CURRENCIES = {
     const fallbackProfile = { email: activeSession.user.email || '' };
     const username = deriveUsernameFromAuth(activeSession.user, usernameHint);
     syncAuthIntoAppSession(username, fallbackProfile, remember);
-    scheduleAppBoot();
 
     if (typeof window.updateCurrentManagerContext === 'function') {
       try {
@@ -2112,24 +2295,18 @@ const SP_CURRENCIES = {
         warn('updateCurrentManagerContext failed:', err);
       }
     }
-    // Guard: only call showApp() once. If checkAuth() already booted the app
-    // via a localStorage session, __spAppBooted is true and we skip this to
-    // prevent a double-render. This is the safe path for returning users whose
-    // localStorage session was written on a previous visit.
-    if (typeof window.showApp === 'function' && !window.__spAppBooted) {
-      window.showApp();
-      log('bootstrap.uiReady');
-    }
-    if (options.showWelcome && typeof window.showWelcomeMessage === 'function') {
-      window.showWelcomeMessage();
+
+    const appReady = await waitForAppBootReady();
+    if (!appReady) {
+      warn('App boot helpers were not ready before Supabase bootstrap.');
     }
 
-    // Background work: profile + data load should never block UI.
-    (async () => {
-      // Lock out refreshCloudData while bootstrap loads data — concurrent
-      // Supabase requests deadlock on the SDK's Web Lock (see CLAUDE.md §12).
-      _refreshInFlight = true;
-      let profile = null;
+    _refreshInFlight = true;
+    window.__spCloudBootstrapPending = true;
+    let profile = null;
+    let teams = [];
+    let fresh = null;
+    try {
       try {
         profile = await withTimeout(
           () => ensureProfileRecord(activeSession.user, usernameHint),
@@ -2149,31 +2326,43 @@ const SP_CURRENCIES = {
         window.applyTheme(profile.preferred_theme, { persist: false });
       }
 
-      let fresh = null;
+      try {
+        teams = await withTimeout(() => getMyTeams(), 5000, 'getMyTeams[bootstrap]');
+      } catch (teamErr) {
+        warn('Team membership load failed during bootstrap:', teamErr);
+        teams = [];
+      }
+
+      const workspace = await resolveActiveWorkspace({
+        profile,
+        teams,
+        promptOnSelection: true,
+      });
+
+      if (workspace?.needsSelection) {
+        return true;
+      }
+
+      subscribeToCoreRealtime();
+
       try {
         fresh = await withTimeout(() => loadAllData(), 30000, 'loadAllData');
-        log('bootstrap.data.done', { ok: Boolean(fresh) });
+        log('bootstrap.data.done', { ok: Boolean(fresh), source: workspace?.source || 'unknown' });
       } catch (dataError) {
         warn('Cloud data bootstrap failed or timed out:', dataError);
         log('bootstrap.data.timeout', { step: 'loadAllData', error: dataError?.message || 'unknown' });
-        // Non-blocking toast — do NOT re-throw; we must always continue to loadUserData.
         if (dataError?.name === 'TimeoutError') {
-          toastSafe('Warn', 'Cloud data took too long. Showing local data now.');
+          toastSafe('Warn', 'Cloud data took too long. Retrying in the background.');
           setTimeout(() => {
             refreshCloudData({ silent: true, force: true, minIntervalMs: 0 });
           }, 2500);
         }
       }
 
-      // Bootstrap data load complete — unlock refreshCloudData for interval/focus.
-      _refreshInFlight = false;
-
-      // Always sync cloud data if we got it; otherwise loadUserData falls back
-      // to localStorage automatically — this is the Single Source of Truth path.
       if (fresh) {
         const meta = fresh.__meta || null;
         if (meta?.allCriticalTimedOut) {
-          toastSafe('Warn', 'Cloud data took too long. Showing local data now.');
+          toastSafe('Warn', 'Cloud data took too long. Retrying in the background.');
           setTimeout(() => {
             refreshCloudData({ silent: true, force: true, minIntervalMs: 0 });
           }, 2500);
@@ -2184,17 +2373,24 @@ const SP_CURRENCIES = {
         }
       }
 
-      // CRITICAL: loadUserData MUST always be called — cloud or local —
-      // so the app arrays (bookings, expenses, etc.) are never left empty.
       if (typeof window.loadUserData === 'function') {
         try {
-          window.loadUserData();
+          window.loadUserData({
+            allowLocalFallback: !navigator.onLine,
+          });
         } catch (err) {
           warn('loadUserData failed:', err);
         }
       }
 
-      // Only re-render views if the app shell is already visible.
+      if (typeof window.showApp === 'function' && !window.__spAppBooted) {
+        window.showApp();
+        log('bootstrap.uiReady');
+      }
+      if (options.showWelcome && typeof window.showWelcomeMessage === 'function') {
+        window.showWelcomeMessage();
+      }
+
       if (window.__spAppBooted) {
         if (typeof window.updateDashboard === 'function') window.updateDashboard();
         if (typeof window.renderBookings === 'function') window.renderBookings();
@@ -2202,23 +2398,17 @@ const SP_CURRENCIES = {
         if (typeof window.renderOtherIncome === 'function') window.renderOtherIncome();
         if (typeof window.renderArtists === 'function') window.renderArtists();
         if (typeof window.updateTodayBoard === 'function') window.updateTodayBoard();
+        if (typeof window.renderTasks === 'function') window.renderTasks();
+        if (typeof window.renderAudienceMetrics === 'function') window.renderAudienceMetrics();
       }
 
       if (options.runMigration !== false) {
         setTimeout(() => migrateLocalStorageData(), 2000);
       }
-      if (_activeTeamId) {
-        try {
-          const teams = await withTimeout(() => getMyTeams(), 5000, 'getMyTeams');
-          const active = teams.find(t => t.id === _activeTeamId);
-          setActiveTeamRole(active?.myRole || null);
-        } catch (err) {
-          warn('Active team role refresh failed:', err);
-        }
-      } else {
-        setActiveTeamRole(null);
-      }
-    })();
+    } finally {
+      _refreshInFlight = false;
+      window.__spCloudBootstrapPending = false;
+    }
 
     return true;
   }
@@ -2262,7 +2452,15 @@ const SP_CURRENCIES = {
     _session = null;
     _profile = null;
     _activeTeamId = null;
+    _workspaceResolved = false;
+    _workspaceRequiresSelection = false;
+    _workspaceResolutionPromise = null;
+    window.__spCloudBootstrapPending = false;
+    window.__spWorkspaceSelectionRequired = false;
     localStorage.removeItem('sp_active_team');
+    try {
+      sessionStorage.removeItem(TEAM_PROMPT_KEY);
+    } catch (_err) {}
     setActiveTeamRole(null);
     unsubscribeFromCoreRealtime();
     unsubscribeFromTeamNotifications();
@@ -2284,12 +2482,24 @@ const SP_CURRENCIES = {
     return data;
   }
 
-  async function updateProfile(updates) {
+  async function updateProfile(updates, options = {}) {
     if (!getOwnerId()) return;
+    const nextUpdates = { ...updates, updated_at: new Date().toISOString() };
     const { error } = await db.from('profiles')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update(nextUpdates)
       .eq('id', getOwnerId());
-    if (error) warn('Profile update error:', error);
+    if (error) {
+      warn('Profile update error:', error);
+      if (options.throwOnError) {
+        throw error;
+      }
+      return null;
+    }
+    _profile = {
+      ...(_profile || { id: getOwnerId() }),
+      ...nextUpdates,
+    };
+    return _profile;
   }
 
   // Auth state listener
@@ -2315,7 +2525,9 @@ const SP_CURRENCIES = {
     _session = session;
     if (session?.user) {
       await syncRealtimeAuthToken(session);
-      subscribeToCoreRealtime();
+      if (_workspaceResolved && !_workspaceRequiresSelection) {
+        subscribeToCoreRealtime();
+      }
     } else {
       await handleSignedOutSession({
         notify: event === 'SIGNED_OUT' && window.__spAppBooted,
@@ -2361,19 +2573,18 @@ const SP_CURRENCIES = {
     // SIGNED_IN just fired — pull cloud data so the new-device scenario stays in sync.
     if (event === 'SIGNED_IN' && session && window.__spAppBooted && !_bootstrapping) {
       try {
-        const fresh = await withTimeout(() => loadAllData(), 8000, 'loadAllData[reSync]');
-        const meta = fresh?.__meta || null;
-        if (fresh && meta) delete fresh.__meta;
-        if (fresh && window._SP_syncFromCloud) {
-          window._SP_syncFromCloud(fresh);
+        await resolveActiveWorkspace({ promptOnSelection: false });
+        if (_workspaceRequiresSelection) {
+          promptTeamSelectionIfNeeded(await getMyTeams());
+          return;
         }
-        if (typeof window.loadUserData === 'function') window.loadUserData();
-        if (typeof window.updateDashboard === 'function') window.updateDashboard();
-        if (typeof window.renderBookings === 'function') window.renderBookings();
-        if (typeof window.renderExpenses === 'function') window.renderExpenses();
-        if (typeof window.renderOtherIncome === 'function') window.renderOtherIncome();
-        if (typeof window.renderArtists === 'function') window.renderArtists();
-        if (typeof window.renderAudienceMetrics === 'function') window.renderAudienceMetrics();
+        subscribeToCoreRealtime();
+        await reloadForResolvedWorkspace({
+          timeoutMs: 8000,
+          silent: true,
+          forceShowApp: false,
+          runMigration: false,
+        });
       } catch (reSyncErr) {
         warn('onAuthStateChange re-sync failed (non-fatal):', reSyncErr);
       }
@@ -2437,24 +2648,32 @@ const SP_CURRENCIES = {
   }
 
   async function switchTeam(teamId) {
-    _activeTeamId = teamId;
-    localStorage.setItem('sp_active_team', teamId || '');
-    if (_activeTeamId) {
-      try {
-        const teams = await getMyTeams();
-        const active = teams.find(t => t.id === _activeTeamId);
-        setActiveTeamRole(active?.myRole || null);
-      } catch (err) {
-        warn('switchTeam role refresh failed:', err);
-      }
-    } else {
-      setActiveTeamRole(null);
+    const normalizedTeamId = normalizeTeamId(teamId);
+    let teams = [];
+    try {
+      teams = await getMyTeams();
+    } catch (err) {
+      warn('switchTeam role refresh failed:', err);
     }
+    const active = normalizedTeamId ? teams.find((team) => team.id === normalizedTeamId) : null;
+    await persistActiveTeam(normalizedTeamId, {
+      persistRemote: true,
+      role: active?.myRole || null,
+    });
+    unsubscribeFromTeamNotifications();
     subscribeToCoreRealtime();
-    // Reload data in the app
-    if (typeof window.loadUserData === 'function') {
-      await reloadAppData();
+    broadcastLocalSync('workspace');
+
+    const modal = document.getElementById('spTeamModal');
+    if (modal) {
+      modal.style.display = 'none';
+      document.body.style.overflow = '';
     }
+
+    await reloadForResolvedWorkspace({
+      forceShowApp: true,
+      runMigration: false,
+    });
   }
 
   async function leaveTeam(teamId) {
@@ -2463,9 +2682,22 @@ const SP_CURRENCIES = {
       .eq('team_id', teamId)
       .eq('user_id', getOwnerId());
     if (_activeTeamId === teamId) {
-      _activeTeamId = null;
-      localStorage.removeItem('sp_active_team');
-      setActiveTeamRole(null);
+      _workspaceResolved = false;
+      const teams = await getMyTeams();
+      const workspace = await resolveActiveWorkspace({
+        teams,
+        promptOnSelection: true,
+      });
+      if (workspace?.needsSelection) {
+        return;
+      }
+      unsubscribeFromTeamNotifications();
+      subscribeToCoreRealtime();
+      await reloadForResolvedWorkspace({
+        forceShowApp: true,
+        runMigration: false,
+        silent: true,
+      });
     }
   }
 
@@ -2506,15 +2738,11 @@ const SP_CURRENCIES = {
     const previousTeamId = _activeTeamId;
     _activeTeamId = null;
     const personalData = await loadAllData();
-    _activeTeamId = teamId;
-    localStorage.setItem('sp_active_team', teamId);
-    setActiveTeamRole('owner');
+    await persistActiveTeam(teamId, { persistRemote: true, role: 'owner' });
     if (personalData) {
       await saveAllData(personalData);
     }
-    if (typeof window.loadUserData === 'function') {
-      await reloadAppData();
-    }
+    await reloadForResolvedWorkspace({ forceShowApp: true, runMigration: false });
     if (previousTeamId !== teamId && previousTeamId) {
       warn('Personal data migrated to team; previous team context replaced.');
     }
@@ -2606,34 +2834,74 @@ const SP_CURRENCIES = {
   }
 
   // ── APP RELOAD HELPER ─────────────────────────────────────────────────────────
-  async function reloadAppData() {
-    const fresh = await loadAllData();
-    if (!fresh) return;
-    const meta = fresh.__meta || null;
-    if (meta) delete fresh.__meta;
-
-    // Inject data into app's global scope
-    if (Array.isArray(fresh.bookings) && typeof window.bookings !== 'undefined') {
-      window.bookings = fresh.bookings;
-    }
-    if (Array.isArray(fresh.expenses) && typeof window.expenses !== 'undefined') {
-      window.expenses = fresh.expenses;
-    }
-    if (Array.isArray(fresh.otherIncome) && typeof window.otherIncome !== 'undefined') {
-      window.otherIncome = fresh.otherIncome;
+  async function reloadForResolvedWorkspace(options = {}) {
+    if (!(await ensureWorkspaceReady({ promptOnSelection: options.promptOnSelection !== false }))) {
+      return null;
     }
 
-    // Update internal module arrays via saveManagerData bridge
-    if (window._SP_syncFromCloud) {
+    const timeoutMs = typeof options.timeoutMs === 'number' ? options.timeoutMs : 30000;
+    let fresh = null;
+
+    window.__spCloudBootstrapPending = true;
+    _refreshInFlight = true;
+    try {
+      fresh = await withTimeout(() => loadAllData(), timeoutMs, options.label || 'loadAllData[workspace]');
+    } catch (err) {
+      warn('reloadForResolvedWorkspace failed:', err);
+      if (!options.silent) {
+        toastSafe('Warn', 'Cloud data refresh failed. Check your connection and try again.');
+      }
+    } finally {
+      _refreshInFlight = false;
+      window.__spCloudBootstrapPending = false;
+    }
+
+    const meta = fresh?.__meta || null;
+    if (fresh && meta) delete fresh.__meta;
+
+    if (fresh && window._SP_syncFromCloud) {
       window._SP_syncFromCloud(fresh);
     }
 
-    // Trigger re-renders
-    if (typeof window.updateDashboard === 'function')    window.updateDashboard();
-    if (typeof window.renderBookings === 'function')     window.renderBookings();
-    if (typeof window.renderExpenses === 'function')     window.renderExpenses();
-    if (typeof window.renderOtherIncome === 'function')  window.renderOtherIncome();
-    if (typeof window.renderArtists === 'function')      window.renderArtists();
+    if (typeof window.loadUserData === 'function') {
+      window.loadUserData({
+        allowLocalFallback: !navigator.onLine,
+      });
+    }
+
+    if (typeof window.showApp === 'function' && !window.__spAppBooted && options.forceShowApp !== false) {
+      window.showApp();
+      log('workspace.uiReady');
+    }
+
+    if (window.__spAppBooted) {
+      if (typeof window.updateDashboard === 'function') window.updateDashboard();
+      if (typeof window.renderBookings === 'function') window.renderBookings();
+      if (typeof window.renderExpenses === 'function') window.renderExpenses();
+      if (typeof window.renderOtherIncome === 'function') window.renderOtherIncome();
+      if (typeof window.renderArtists === 'function') window.renderArtists();
+      if (typeof window.updateTodayBoard === 'function') window.updateTodayBoard();
+      if (typeof window.renderTasks === 'function') window.renderTasks();
+      if (typeof window.renderAudienceMetrics === 'function') window.renderAudienceMetrics();
+    }
+
+    if (options.showWelcome && typeof window.showWelcomeMessage === 'function') {
+      window.showWelcomeMessage();
+    }
+
+    if (options.runMigration !== false) {
+      setTimeout(() => migrateLocalStorageData(), 2000);
+    }
+
+    return fresh;
+  }
+
+  async function reloadAppData() {
+    return reloadForResolvedWorkspace({
+      forceShowApp: false,
+      runMigration: false,
+      silent: true,
+    });
   }
 
   // ── TEAM UI ─────────────────────────────────────────────────────────────────
@@ -2647,6 +2915,14 @@ const SP_CURRENCIES = {
         </div>
       </div>
     `).join('');
+
+    const personalWorkspaceHTML = `
+      <div class="sp-team-item ${!activeTeamId ? 'sp-team-item--active' : ''}"
+           onclick="window.SP.switchTeam('')">
+        <div class="sp-team-name">Personal Workspace</div>
+        <div class="sp-team-role">solo</div>
+      </div>
+    `;
 
     const teamsHTML = teams.map(t => `
       <div class="sp-team-item ${t.id === activeTeamId ? 'sp-team-item--active' : ''}"
@@ -2665,6 +2941,7 @@ const SP_CURRENCIES = {
 
         <div class="sp-team-section">
           <h4>My Teams</h4>
+          ${personalWorkspaceHTML}
           ${teamsHTML || '<p class="sp-muted">No teams yet</p>'}
           <div class="sp-team-actions">
             <button class="action-btn" onclick="window.SP.showCreateTeamForm()">+ Create Team</button>
@@ -3398,6 +3675,8 @@ const SP_CURRENCIES = {
     signInWithGoogle,
     bootstrap:       bootstrapFromSupabaseSession,
     refreshSessionIfNeeded,
+    resolveActiveWorkspace,
+    persistActiveTeam,
     autoSync:        bindAutoSync,
 
     // Data
@@ -3418,6 +3697,7 @@ const SP_CURRENCIES = {
     deleteArtist,
     deleteTask,
     reloadAppData,
+    reloadForResolvedWorkspace,
 
     // Teams
     createTeam,

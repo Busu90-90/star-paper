@@ -1956,12 +1956,15 @@
         canvas.height = 420;
         const ctx = canvas.getContext('2d');
 
-        const goldGrad = ctx.createLinearGradient(0, 0, 0, 420);
-        goldGrad.addColorStop(0, 'rgba(255,179,0,0.35)');
-        goldGrad.addColorStop(1, 'rgba(255,179,0,0.02)');
-        const greenGrad = ctx.createLinearGradient(0, 0, 0, 420);
-        greenGrad.addColorStop(0, 'rgba(34,197,94,0.3)');
-        greenGrad.addColorStop(1, 'rgba(34,197,94,0.02)');
+        const revenueBarGrad = ctx.createLinearGradient(0, 0, 0, 420);
+        revenueBarGrad.addColorStop(0, '#FACC15');
+        revenueBarGrad.addColorStop(1, '#F59E0B');
+        const expenseBarGrad = ctx.createLinearGradient(0, 0, 0, 420);
+        expenseBarGrad.addColorStop(0, '#FB7185');
+        expenseBarGrad.addColorStop(1, '#EF4444');
+        const profitBarGrad = ctx.createLinearGradient(0, 0, 0, 420);
+        profitBarGrad.addColorStop(0, '#4ADE80');
+        profitBarGrad.addColorStop(1, '#16A34A');
 
         const revData = m.allMonths.map(k => m.monthlyRevenue[k] || 0);
         const expData = m.allMonths.map(k => m.monthlyExpenses[k] || 0);
@@ -1971,13 +1974,46 @@
         ctx.fillRect(0, 0, 920, 420);
 
         const chart = new Chart(ctx, {
-          type: 'line',
+          type: 'bar',
           data: {
             labels: m.allMonths.map(monthLabel),
             datasets: [
-              { label: 'Revenue', data: revData, borderColor: '#FFB300', backgroundColor: goldGrad, fill: true, tension: 0.45, borderWidth: 2.5, pointRadius: 3.6, pointBackgroundColor: '#FFB300' },
-              { label: 'Expenses', data: expData, borderColor: '#ef4444', backgroundColor: 'transparent', fill: false, tension: 0.45, borderWidth: 2, borderDash: [6, 3], pointRadius: 2.8, pointBackgroundColor: '#ef4444' },
-              { label: 'Net Profit', data: profData, borderColor: '#22c55e', backgroundColor: greenGrad, fill: true, tension: 0.45, borderWidth: 2.5, pointRadius: 3.6, pointBackgroundColor: '#22c55e' }
+              {
+                label: 'Revenue',
+                data: revData,
+                borderColor: '#F59E0B',
+                backgroundColor: revenueBarGrad,
+                borderWidth: 1.4,
+                borderRadius: 8,
+                borderSkipped: false,
+                maxBarThickness: 26,
+                categoryPercentage: 0.66,
+                barPercentage: 0.9
+              },
+              {
+                label: 'Expenses',
+                data: expData,
+                borderColor: '#EF4444',
+                backgroundColor: expenseBarGrad,
+                borderWidth: 1.4,
+                borderRadius: 8,
+                borderSkipped: false,
+                maxBarThickness: 26,
+                categoryPercentage: 0.66,
+                barPercentage: 0.9
+              },
+              {
+                label: 'Net Profit',
+                data: profData,
+                borderColor: '#16A34A',
+                backgroundColor: profitBarGrad,
+                borderWidth: 1.4,
+                borderRadius: 8,
+                borderSkipped: false,
+                maxBarThickness: 26,
+                categoryPercentage: 0.66,
+                barPercentage: 0.9
+              }
             ]
           },
           options: {
@@ -2003,7 +2039,7 @@
               },
               x: {
                 ticks: { color: P.chartTicks, font: { size: 12.5 } },
-                grid: { color: P.chartGrid }
+                grid: { display: false }
               }
             }
           }
@@ -2200,11 +2236,12 @@
         const totalStatuses = statusEntries.reduce((sum, [, count]) => sum + Number(count || 0), 0);
         const confirmedCount = Math.max(0, Number(m.confirmedCount) || 0);
         const confirmedPct = totalStatuses > 0 ? Math.round((confirmedCount / totalStatuses) * 100) : 0;
-
-        const donutBoxW = Math.min(34, (w - (cardPad * 2)) * 0.42);
-        const donutX = x + cardPad;
-        const summaryX = donutX + donutBoxW + 8;
-        const summaryW = x + w - cardPad - summaryX;
+        const statusPalette = { confirmed: '#22c55e', pending: '#FFB300', completed: '#60a5fa', cancelled: '#ef4444' };
+        const pieBoxW = Math.min(36, Math.max(28, (w - (cardPad * 2)) * 0.44));
+        const pieX = x + cardPad;
+        const summaryX = pieX + pieBoxW + 5;
+        const summaryW = Math.max(18, (x + w - cardPad) - summaryX);
+        const chartBottomY = chartY + chartH;
 
         if (typeof Chart !== 'undefined' && totalStatuses > 0) {
           const c3 = document.createElement('canvas');
@@ -2213,46 +2250,33 @@
           const ctx3 = c3.getContext('2d');
           ctx3.fillStyle = P.chartCard;
           ctx3.fillRect(0, 0, c3.width, c3.height);
-          const sColors = { confirmed: '#22c55e', pending: '#FFB300', completed: '#60a5fa', cancelled: '#ef4444' };
           const ch3 = new Chart(ctx3, {
-            type: 'doughnut',
+            type: 'pie',
             data: {
               labels: statusEntries.map(([status]) => status),
               datasets: [{
                 data: statusEntries.map(([, count]) => count),
-                backgroundColor: statusEntries.map(([status]) => sColors[status] || '#888'),
-                borderColor: P.chartBorder,
-                borderWidth: 3
+                backgroundColor: statusEntries.map(([status]) => statusPalette[status] || '#888'),
+                borderColor: P.chartCard,
+                borderWidth: 4
               }]
             },
             options: {
               responsive: false,
               maintainAspectRatio: true,
               animation: { duration: 0 },
-              cutout: '60%',
               plugins: { legend: { display: false } }
             }
           });
           ch3.update();
           await new Promise(r => { const t = setTimeout(r, 50); requestAnimationFrame(() => { clearTimeout(t); r(); }); });
 
-          ctx3.save();
-          ctx3.fillStyle = P.chartLegend;
-          ctx3.font = 'bold 56px Courier New';
-          ctx3.textAlign = 'center';
-          ctx3.textBaseline = 'middle';
-          ctx3.fillText(`${confirmedPct}%`, c3.width / 2, (c3.height / 2) - 10);
-          ctx3.fillStyle = P.chartTicks;
-          ctx3.font = '24px Courier New';
-          ctx3.fillText(`${totalStatuses} bookings`, c3.width / 2, (c3.height / 2) + 34);
-          ctx3.restore();
-
           drawContainedImage(
             c3.toDataURL('image/png', 1.0),
-            donutX,
-            chartY,
-            donutBoxW,
-            chartH,
+            pieX,
+            chartY + 0.5,
+            pieBoxW,
+            Math.max(16, chartH - 6),
             c3.width,
             c3.height
           );
@@ -2261,30 +2285,67 @@
           pdf.setFont('helvetica', 'normal');
           pdf.setFontSize(9);
           pdf.setTextColor(...P.textPrimary);
-          pdf.text('No booking data.', donutX, chartY + 12);
+          pdf.text('No booking data.', pieX, chartY + 12);
         }
 
+        const shareLabel = `${confirmedPct}% confirmed`;
+        const shareFit = fitSingleLineText(shareLabel, pieBoxW, 'courier', 'bold', 12, 7.2);
+        pdf.setFont('courier', 'bold');
+        pdf.setFontSize(shareFit.fontSize);
+        pdf.setTextColor(...P.textPrimary);
+        pdf.text(shareFit.text, pieX + ((pieBoxW - pdf.getTextWidth(shareFit.text)) / 2), chartBottomY - 4.6);
+        const bookingCountLabel = `${totalStatuses} live booking${totalStatuses === 1 ? '' : 's'}`;
+        const bookingCountFit = fitSingleLineText(bookingCountLabel, pieBoxW, 'helvetica', 'normal', 6.2, 5.6);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(bookingCountFit.fontSize);
+        pdf.setTextColor(...P.textMuted);
+        pdf.text(bookingCountFit.text, pieX + ((pieBoxW - pdf.getTextWidth(bookingCountFit.text)) / 2), chartBottomY - 1.1);
+
         const summaryEntries = statusEntries.length > 0
-          ? statusEntries.slice().sort((a, b) => b[1] - a[1]).slice(0, 3)
+          ? statusEntries.slice().sort((a, b) => b[1] - a[1]).slice(0, 4)
           : [['confirmed', 0]];
-        const bulletColors = { confirmed: P.green, pending: P.gold, completed: P.blue, cancelled: P.red };
-        let summaryY = chartY + 8;
-        summaryEntries.forEach(([status, count], idx) => {
-          fillColor(bulletColors[status] || P.textMuted);
-          pdf.circle(summaryX + 2.2, summaryY - 1.3, 1.4, 'F');
+        const cardGapY = 2.2;
+        const summaryAvailableH = Math.max(14, chartH - 2);
+        const summaryCardH = Math.max(8.4, Math.min(11, (summaryAvailableH - ((summaryEntries.length - 1) * cardGapY)) / summaryEntries.length));
+        let summaryY = chartY + 1;
+
+        summaryEntries.forEach(([status, count]) => {
+          const sharePct = totalStatuses > 0 ? Math.round((Number(count || 0) / totalStatuses) * 100) : 0;
+          const accent = statusPalette[status] || '#888';
+          const accentRgb = accent.match(/[A-Fa-f0-9]{2}/g)?.map((part) => parseInt(part, 16)) || P.textMuted;
+          fillColor(P.bgPanel);
+          pdf.roundedRect(summaryX, summaryY, summaryW, summaryCardH, 1.8, 1.8, 'F');
+          pdf.setDrawColor(...P.border);
+          pdf.setLineWidth(0.18);
+          pdf.roundedRect(summaryX, summaryY, summaryW, summaryCardH, 1.8, 1.8, 'S');
+          pdf.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+          pdf.roundedRect(summaryX + 1.2, summaryY + 1.2, 1.6, summaryCardH - 2.4, 0.9, 0.9, 'F');
+
+          const labelFit = fitSingleLineText(
+            String(status || 'unknown').toUpperCase(),
+            Math.max(10, summaryW - 20),
+            'helvetica',
+            'bold',
+            7.4,
+            6.2
+          );
           pdf.setFont('helvetica', 'bold');
-          pdf.setFontSize(8.8);
+          pdf.setFontSize(labelFit.fontSize);
           pdf.setTextColor(...P.textPrimary);
-          pdf.text(status, summaryX + 6, summaryY);
+          pdf.text(labelFit.text, summaryX + 4.6, summaryY + 3.7);
+
+          const pctLabel = `${sharePct}%`;
+          pdf.setFont('courier', 'bold');
+          pdf.setFontSize(8.8);
+          pdf.setTextColor(accentRgb[0], accentRgb[1], accentRgb[2]);
+          pdf.text(pctLabel, summaryX + summaryW - 2 - pdf.getTextWidth(pctLabel), summaryY + 3.7);
+
           pdf.setFont('helvetica', 'normal');
-          pdf.setFontSize(7.4);
+          const detailFit = fitSingleLineText(`${count} booking${Number(count) === 1 ? '' : 's'}`, Math.max(10, summaryW - 6), 'helvetica', 'normal', 6.3, 5.7);
+          pdf.setFontSize(detailFit.fontSize);
           pdf.setTextColor(...P.textMuted);
-          const detail = `${count} of ${totalStatuses} bookings`;
-          const detailLines = pdf.splitTextToSize(detail, summaryW - 6);
-          detailLines.slice(0, 2).forEach((line, lineIdx) => {
-            pdf.text(line, summaryX + 6, summaryY + 4 + (lineIdx * 3.6));
-          });
-          summaryY += idx === 0 ? 16 : 12;
+          pdf.text(detailFit.text, summaryX + 4.6, summaryY + summaryCardH - 2.2);
+          summaryY += summaryCardH + cardGapY;
         });
       }
 
@@ -2324,12 +2385,25 @@
         pdf.text('Next on Stage', sidebarX + 6, bodyY + 8);
 
         const sidebarItems = Array.isArray(pdfData.nextOnStage) ? pdfData.nextOnStage.slice(0, 3) : [];
-        const footerLeftX = sidebarX + 6;
-        const footerRightX = sidebarX + sidebarW - 6;
-        const footerSeparatorY = yTop + h - 13.5;
-        const itemsBottomLimit = footerSeparatorY - 4;
-        const footerLabelY = footerSeparatorY + 4.8;
-        const footerMetaY = footerSeparatorY + 9.2;
+        const footerPanelX = sidebarX + 4;
+        const footerPanelW = sidebarW - 8;
+        const hasForecast = pdfData.projectedRevenueShows > 0;
+        const forecastSummary = hasForecast
+          ? `Based on ${pdfData.projectedRevenueShows} confirmed show${pdfData.projectedRevenueShows === 1 ? '' : 's'} in the next 30 days.`
+          : 'No confirmed shows in the next 30 days yet.';
+        const forecastSummaryFit = fitMultilineText(
+          forecastSummary,
+          footerPanelW - 6.4,
+          2,
+          'helvetica',
+          'normal',
+          6.1
+        );
+        const footerPanelH = Math.max(18.6, 12.8 + (forecastSummaryFit.lines.length * 3.3));
+        const footerPanelY = (bodyY + bodyH) - footerPanelH - 2.4;
+        const footerLeftX = footerPanelX + 3.2;
+        const footerRightX = footerPanelX + footerPanelW - 3.2;
+        const itemsBottomLimit = footerPanelY - 4.6;
         let itemY = bodyY + 16;
         if (sidebarItems.length === 0) {
           pdf.setFont('helvetica', 'normal');
@@ -2388,40 +2462,45 @@
           }
         }
 
+        fillColor(P.bgPanel);
+        pdf.roundedRect(footerPanelX, footerPanelY, footerPanelW, footerPanelH, 2, 2, 'F');
         pdf.setDrawColor(...P.border);
         pdf.setLineWidth(0.18);
-        pdf.line(footerLeftX, footerSeparatorY, footerRightX, footerSeparatorY);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(6.8);
+        pdf.roundedRect(footerPanelX, footerPanelY, footerPanelW, footerPanelH, 2, 2, 'S');
+        pdf.setDrawColor(...P.gold);
+        pdf.setLineWidth(0.35);
+        pdf.line(footerPanelX, footerPanelY, footerPanelX, footerPanelY + footerPanelH);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(6.7);
         pdf.setTextColor(...P.textMuted);
-        pdf.text('Projected Revenue', footerLeftX, footerLabelY);
-        const forecastLabel = pdfData.projectedRevenueShows > 0
+        pdf.text('Projected Revenue', footerLeftX, footerPanelY + 4.6);
+        const forecastLabel = hasForecast
           ? `${fmtUGX(pdfData.projectedRevenue)}`
           : 'UGX 0';
-        const forecastValueLabelW = pdf.getTextWidth('Projected Revenue');
-        const forecastValueMaxW = Math.max(24, footerRightX - footerLeftX - forecastValueLabelW - 5);
-        const forecastValueFit = fitSingleLineText(forecastLabel, forecastValueMaxW, 'courier', 'bold', 10.2, 6.6);
+        const forecastValueFit = fitSingleLineText(forecastLabel, Math.max(18, footerPanelW * 0.34), 'courier', 'bold', 9.6, 7);
+        const amountPillW = pdf.getTextWidth(forecastValueFit.text) + 8;
+        const amountPillH = 6.2;
+        const amountPillX = footerRightX - amountPillW;
+        const amountPillY = footerPanelY + 1.8;
+        fillColor(hasForecast ? P.green : P.bgCard);
+        pdf.roundedRect(amountPillX, amountPillY, amountPillW, amountPillH, 3.1, 3.1, 'F');
+        pdf.setDrawColor(...(hasForecast ? P.green : P.border));
+        pdf.setLineWidth(0.18);
+        pdf.roundedRect(amountPillX, amountPillY, amountPillW, amountPillH, 3.1, 3.1, 'S');
         pdf.setFont('courier', 'bold');
         pdf.setFontSize(forecastValueFit.fontSize);
-        pdf.setTextColor(...P.textPrimary);
-        pdf.text(forecastValueFit.text, footerRightX - pdf.getTextWidth(forecastValueFit.text), footerLabelY);
-        pdf.setFont('helvetica', 'normal');
-        const forecastMeta = pdfData.projectedRevenueShows > 0
-          ? `${pdfData.projectedRevenueShows} upcoming show${pdfData.projectedRevenueShows === 1 ? '' : 's'} in the next month`
-          : 'No confirmed revenue forecast in the next month';
-        const forecastMetaFit = fitMultilineText(
-          forecastMeta,
-          sidebarW - 12,
-          1,
-          'helvetica',
-          'normal',
-          5.8
-        );
-        pdf.setFontSize(forecastMetaFit.fontSize);
-        pdf.setTextColor(...P.textMuted);
-        if (forecastMetaFit.lines[0]) {
-          pdf.text(forecastMetaFit.lines[0], footerLeftX, footerMetaY);
+        if (hasForecast) {
+          pdf.setTextColor(...P.bgDark);
+        } else {
+          pdf.setTextColor(...P.textPrimary);
         }
+        pdf.text(forecastValueFit.text, amountPillX + ((amountPillW - pdf.getTextWidth(forecastValueFit.text)) / 2), footerPanelY + 5.9);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(forecastSummaryFit.fontSize);
+        pdf.setTextColor(...P.textMuted);
+        forecastSummaryFit.lines.slice(0, 2).forEach((line, index) => {
+          pdf.text(line, footerLeftX, footerPanelY + 11.3 + (index * 3.3));
+        });
       }
 
       function renderCoverageSnapshotRow(x, yTop, w, h) {

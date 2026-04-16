@@ -3127,6 +3127,21 @@ function showLoginForm() {
                 checkAuth();
                 if (!window.__spAppBooted) return;
             }
+            if (
+                key === 'sp_active_team' &&
+                typeof window.SP?.reloadForResolvedWorkspace === 'function' &&
+                typeof window.SP?.getOwnerId === 'function' &&
+                window.SP.getOwnerId()
+            ) {
+                window.SP.reloadForResolvedWorkspace({
+                    forceShowApp: false,
+                    runMigration: false,
+                    silent: true
+                }).catch((err) => {
+                    console.warn('[StarPaper] workspace sync failed:', err);
+                });
+                return;
+            }
             if (typeof loadUserData === 'function') {
                 loadUserData();
             }
@@ -3686,45 +3701,38 @@ function showLoginForm() {
             });
         }
 
-        function loadUserData() {
+        function loadUserData(options = {}) {
             updateCurrentManagerContext();
+            const activeScopeKey = getActiveDataScopeKey();
+            const authenticatedCloudSession =
+                Boolean(window.__spSupabaseConfigured) &&
+                !window.__spAllowLocalFallback &&
+                Boolean(window.SP?.getOwnerId?.());
+            const allowLocalFallback =
+                Boolean(options.allowLocalFallback) ||
+                !authenticatedCloudSession ||
+                !navigator.onLine;
 
             // â”€â”€ SUPABASE: if cloud data was injected by supabase.js, use it â”€â”€â”€â”€â”€â”€â”€â”€
             const cloudData = window._SP_cloudData;
             if (cloudData) {
                 window._SP_cloudData = null; // consume it
-                const activeScopeKey = getActiveDataScopeKey();
                 const localFallback = getManagerData(activeScopeKey);
                 const fallbackBookings = ensureBookingArtistRefs(localFallback.bookings || [], currentManagerId);
-                const fallbackExpenses = Array.isArray(localFallback.expenses) ? localFallback.expenses : expenses;
-                const fallbackOtherIncome = Array.isArray(localFallback.otherIncome) ? localFallback.otherIncome : otherIncome;
-                const now = Date.now();
-                const hasRecentLocal = (items) => Array.isArray(items) && items.some((item) => {
-                    if (!item) return false;
-                    if (typeof item.id === 'number') {
-                        const created = Number(item.createdAt || item.id);
-                        return Number.isFinite(created) && (now - created) < 120000;
-                    }
-                    return false;
-                });
+                const fallbackExpenses = Array.isArray(localFallback.expenses) ? localFallback.expenses : [];
+                const fallbackOtherIncome = Array.isArray(localFallback.otherIncome) ? localFallback.otherIncome : [];
 
-                const useLocalBookings = Array.isArray(cloudData.bookings) && cloudData.bookings.length === 0 && hasRecentLocal(fallbackBookings);
-                const useLocalExpenses = Array.isArray(cloudData.expenses) && cloudData.expenses.length === 0 && hasRecentLocal(fallbackExpenses);
-                const useLocalIncome = Array.isArray(cloudData.otherIncome) && cloudData.otherIncome.length === 0 && hasRecentLocal(fallbackOtherIncome);
-
-                bookings    = Array.isArray(cloudData.bookings)    && !useLocalBookings ? cloudData.bookings    : fallbackBookings;
-                expenses    = Array.isArray(cloudData.expenses)    && !useLocalExpenses ? cloudData.expenses    : fallbackExpenses;
-                otherIncome = Array.isArray(cloudData.otherIncome) && !useLocalIncome   ? cloudData.otherIncome : fallbackOtherIncome;
+                bookings = Array.isArray(cloudData.bookings)
+                    ? cloudData.bookings
+                    : (allowLocalFallback ? fallbackBookings : []);
+                expenses = Array.isArray(cloudData.expenses)
+                    ? cloudData.expenses
+                    : (allowLocalFallback ? fallbackExpenses : []);
+                otherIncome = Array.isArray(cloudData.otherIncome)
+                    ? cloudData.otherIncome
+                    : (allowLocalFallback ? fallbackOtherIncome : []);
                 if (Array.isArray(cloudData.artists)) {
-                    const teamId = getActiveTeamId();
-                    if (teamId) {
-                        artists = cloudData.artists;
-                    } else if (cloudData.artists.length > 0) {
-                        // Merge cloud artists with any locally created ones
-                        const cloudIds = new Set(cloudData.artists.map(a => a.id));
-                        const localOnly = artists.filter(a => a.managerId === currentManagerId && !cloudIds.has(a.id));
-                        artists = [...cloudData.artists, ...localOnly];
-                    }
+                    artists = cloudData.artists;
                     Storage.saveSync('starPaperArtists', artists);
                 }
                 if (cloudData.revenueGoal && typeof cloudData.revenueGoal === 'object') {
@@ -3771,14 +3779,18 @@ function showLoginForm() {
                 // Also persist to localStorage as offline cache
                 saveManagerData(activeScopeKey, { bookings, expenses, otherIncome });
             } else {
+                const cloudBootPending = Boolean(window.__spCloudBootstrapPending);
+                const shouldUseLocalFallback = allowLocalFallback && (!authenticatedCloudSession || !cloudBootPending);
+                if (shouldUseLocalFallback) {
                 // â”€â”€ FALLBACK: local storage (offline or pre-migration) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-                const data = getManagerData(getActiveDataScopeKey());
+                const data = getManagerData(activeScopeKey);
                 bookings    = ensureBookingArtistRefs(data.bookings, currentManagerId);
                 expenses    = Array.isArray(data.expenses)    ? data.expenses    : [];
                 otherIncome = Array.isArray(data.otherIncome) ? data.otherIncome : [];
-                audienceMetrics = getAudienceMetricsForScope(getActiveDataScopeKey());
+                audienceMetrics = getAudienceMetricsForScope(activeScopeKey);
                 purgeRetiredArtistsForCurrentManager();
-                saveManagerData(getActiveDataScopeKey(), { bookings, expenses, otherIncome });
+                saveManagerData(activeScopeKey, { bookings, expenses, otherIncome });
+                }
             }
 
             markSearchIndexDirty();
@@ -4689,7 +4701,7 @@ function showLoginForm() {
                 }
 
                 // Fire-and-forget: don't block the synchronous call stack.
-                (async () => {
+                window.__spSupabaseBootPromise = window.__spSupabaseBootPromise || (async () => {
                     if (window.__spAppBooted) return;
 
                     // Step 1: Wait for window.SP to be fully initialised.
@@ -4729,6 +4741,8 @@ function showLoginForm() {
                     } catch (err) {
                         // Non-fatal: user stays on landing; they can log in manually.
                         console.warn('[StarPaper] checkAuth Supabase fallback failed:', err);
+                    } finally {
+                        window.__spSupabaseBootPromise = null;
                     }
                 })();
 
