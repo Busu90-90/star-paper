@@ -3701,17 +3701,20 @@ function showLoginForm() {
             });
         }
 
+        function hasAuthenticatedCloudSession() {
+            return Boolean(window.__spSupabaseConfigured) &&
+                !window.__spAllowLocalFallback &&
+                Boolean(window.SP?.getOwnerId?.());
+        }
+
         function loadUserData(options = {}) {
             updateCurrentManagerContext();
             const activeScopeKey = getActiveDataScopeKey();
-            const authenticatedCloudSession =
-                Boolean(window.__spSupabaseConfigured) &&
-                !window.__spAllowLocalFallback &&
-                Boolean(window.SP?.getOwnerId?.());
+            const authenticatedCloudSession = hasAuthenticatedCloudSession();
             const allowLocalFallback =
-                Boolean(options.allowLocalFallback) ||
                 !authenticatedCloudSession ||
-                !navigator.onLine;
+                !navigator.onLine ||
+                (Boolean(options.allowLocalFallback) && !authenticatedCloudSession);
 
             // â”€â”€ SUPABASE: if cloud data was injected by supabase.js, use it â”€â”€â”€â”€â”€â”€â”€â”€
             const cloudData = window._SP_cloudData;
@@ -3780,7 +3783,7 @@ function showLoginForm() {
                 saveManagerData(activeScopeKey, { bookings, expenses, otherIncome });
             } else {
                 const cloudBootPending = Boolean(window.__spCloudBootstrapPending);
-                const shouldUseLocalFallback = allowLocalFallback && (!authenticatedCloudSession || !cloudBootPending);
+                const shouldUseLocalFallback = allowLocalFallback && !cloudBootPending;
                 if (shouldUseLocalFallback) {
                 // â”€â”€ FALLBACK: local storage (offline or pre-migration) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 const data = getManagerData(activeScopeKey);
@@ -3857,23 +3860,24 @@ function showLoginForm() {
             };
         }
 
-        function saveUserData() {
-            if (currentUser && currentManagerId) {
-                bookings = ensureBookingArtistRefs(bookings, currentManagerId);
-                saveManagerData(getActiveDataScopeKey(), { bookings, expenses, otherIncome });
-                markSearchIndexDirty();
-                // Update window references
-                window.bookings    = bookings;
-                window.expenses    = expenses;
-                window.otherIncome = otherIncome;
-                window.artists     = artists;
-                window.audienceMetrics = audienceMetrics;
-                window.revenueGoals = revenueGoals;
-                window.bbfData      = bbfData;
-                // Cloud sync: push all data (bookings, expenses, income, artists,
-                // tasks, goals, BBF, closing thoughts) to Supabase in the background.
-                syncCloudExtras();
+        async function saveUserData() {
+            if (!(currentUser && currentManagerId)) {
+                return { cloudSynced: false, skipped: true, queued: false };
             }
+            bookings = ensureBookingArtistRefs(bookings, currentManagerId);
+            saveManagerData(getActiveDataScopeKey(), { bookings, expenses, otherIncome });
+            markSearchIndexDirty();
+            // Update window references
+            window.bookings    = bookings;
+            window.expenses    = expenses;
+            window.otherIncome = otherIncome;
+            window.artists     = artists;
+            window.audienceMetrics = audienceMetrics;
+            window.revenueGoals = revenueGoals;
+            window.bbfData      = bbfData;
+            // Cloud sync: push all data (bookings, expenses, income, artists,
+            // tasks, goals, BBF, closing thoughts) to Supabase.
+            return await syncCloudExtras();
         }
 
         window.SP_collectAllData = function collectAllData() {
@@ -3923,17 +3927,73 @@ function showLoginForm() {
         };
 
         function syncCloudExtras() {
-            if (typeof window.SP?.queueCloudSync !== 'function' && typeof window.SP?.saveAllData !== 'function') return;
-            if (typeof window.SP_collectAllData !== 'function') return;
+            if (!hasAuthenticatedCloudSession()) {
+                window.__spLastCloudSyncPromise = Promise.resolve({
+                    cloudSynced: false,
+                    skipped: true,
+                    queued: false,
+                    reason: 'no-cloud-session'
+                });
+                return window.__spLastCloudSyncPromise;
+            }
+            if (typeof window.SP?.queueCloudSync !== 'function' && typeof window.SP?.saveAllData !== 'function') {
+                window.__spLastCloudSyncPromise = Promise.resolve({
+                    cloudSynced: false,
+                    skipped: true,
+                    queued: false,
+                    reason: 'no-save-function'
+                });
+                return window.__spLastCloudSyncPromise;
+            }
+            if (typeof window.SP_collectAllData !== 'function') {
+                window.__spLastCloudSyncPromise = Promise.resolve({
+                    cloudSynced: false,
+                    skipped: true,
+                    queued: false,
+                    reason: 'no-payload-collector'
+                });
+                return window.__spLastCloudSyncPromise;
+            }
             const payload = window.SP_collectAllData();
             const saveFn = window.SP.queueCloudSync || window.SP.saveAllData;
-            window.__spLastCloudSyncPromise = Promise.resolve(saveFn(payload)).catch((err) => {
+            window.__spLastCloudSyncPromise = Promise.resolve(saveFn(payload)).then(() => ({
+                cloudSynced: true,
+                skipped: false,
+                queued: false,
+                payload
+            })).catch((err) => {
                 console.warn('Cloud sync failed:', err);
                 if (typeof window.SP?.enqueueSave === 'function') {
                     window.SP.enqueueSave(payload);
                 }
-                return null;
+                return {
+                    cloudSynced: false,
+                    skipped: false,
+                    queued: true,
+                    error: err,
+                    payload
+                };
             });
+            return window.__spLastCloudSyncPromise;
+        }
+
+        async function persistMutationWithCloudFeedback(options = {}) {
+            const result = await saveUserData();
+            if (result?.queued) {
+                toastWarn(options.pendingMessage || 'Saved locally. Cloud sync pending.');
+                return result;
+            }
+            if (options.suppressSuccessToast) {
+                return result;
+            }
+            if (result?.cloudSynced) {
+                toastSuccess(options.cloudSuccessMessage || options.successMessage || 'Saved to cloud!');
+                return result;
+            }
+            if (options.successMessage) {
+                toastSuccess(options.successMessage);
+            }
+            return result;
         }
 
         function getNextNumericRecordId(records) {
@@ -4704,7 +4764,12 @@ function showLoginForm() {
                         return;
                     }
 
+                    if (window.__spSupabaseBootPromise || window.__spCloudBootstrapPending) {
+                        return;
+                    }
+
                     // Fire-and-forget: don't block the synchronous call stack.
+                    window.__spCloudBootstrapPending = true;
                     window.__spSupabaseBootPromise = window.__spSupabaseBootPromise || (async () => {
                     if (window.__spAppBooted) return;
 
@@ -4746,6 +4811,9 @@ function showLoginForm() {
                         // Non-fatal: user stays on landing; they can log in manually.
                         console.warn('[StarPaper] checkAuth Supabase fallback failed:', err);
                     } finally {
+                        if (!window.__spAppBooted) {
+                            window.__spCloudBootstrapPending = false;
+                        }
                         window.__spSupabaseBootPromise = null;
                     }
                 })();
@@ -6642,12 +6710,13 @@ function showLoginForm() {
             }
         }
 
-        function saveExpense() {
+        async function saveExpense() {
             if (guardReadOnly('save expenses')) return;
 
             try {
                 const receiptSrc = document.getElementById('receiptPreview').src || null;
                 const existingExpense = editingExpenseId ? expenses.find(e => e.id === editingExpenseId) : null;
+                const isEdit = Boolean(editingExpenseId);
                 const expense = {
                     id: editingExpenseId || Date.now(),
                     description: sanitizeTextInput(document.getElementById('expenseDesc').value),
@@ -6681,8 +6750,11 @@ function showLoginForm() {
                 // Optimistic UI: render immediately, then persist
                 renderExpenses();
                 cancelExpense();
-                toastSuccess(editingExpenseId === null ? 'Expense saved!' : 'Expense updated!');
-                saveUserData();
+                await persistMutationWithCloudFeedback({
+                    successMessage: isEdit ? 'Expense updated!' : 'Expense saved!',
+                    cloudSuccessMessage: isEdit ? 'Expense updated in cloud!' : 'Expense saved to cloud!',
+                    pendingMessage: isEdit ? 'Expense updated locally. Cloud sync pending.' : 'Expense saved locally. Cloud sync pending.'
+                });
                 updateDashboard();
                 updateReportStatistics();
         
@@ -6752,7 +6824,7 @@ function showLoginForm() {
             }
         }
 
-        function deleteExpense(id, silent = false) {
+        async function deleteExpense(id, silent = false) {
             if (!silent && guardReadOnly('delete expenses')) return;
             if (!silent && !confirm('Are you sure you want to delete this expense?')) {
                 return;
@@ -6763,7 +6835,10 @@ function showLoginForm() {
                     console.warn('Cloud delete expense failed:', err);
                 });
             }
-            saveUserData();
+            const result = await saveUserData();
+            if (result?.queued) {
+                toastWarn('Expense deletion saved locally. Cloud sync pending.');
+            }
             renderExpenses();
             updateDashboard();
             updateReportStatistics();
@@ -6869,12 +6944,13 @@ function showLoginForm() {
             }
         }
 
-        function saveOtherIncome() {
+        async function saveOtherIncome() {
             if (guardReadOnly('save other income')) return;
 
             try {
                 const proofSrc = document.getElementById('otherIncomeProofPreview').src || null;
                 const existingIncome = editingOtherIncomeId ? otherIncome.find(i => i.id === editingOtherIncomeId) : null;
+                const isEdit = Boolean(editingOtherIncomeId);
                 const incomeItem = {
                     id: editingOtherIncomeId || Date.now(),
                     source: sanitizeTextInput(document.getElementById('otherIncomeSource').value),
@@ -6910,9 +6986,13 @@ function showLoginForm() {
                 if (saveBtn) {
                     saveBtn.textContent = 'Save Other Income';
                 }
-                saveUserData();
                 renderOtherIncome();
                 cancelOtherIncome();
+                await persistMutationWithCloudFeedback({
+                    successMessage: isEdit ? 'Other income updated!' : 'Other income saved!',
+                    cloudSuccessMessage: isEdit ? 'Other income updated in cloud!' : 'Other income saved to cloud!',
+                    pendingMessage: isEdit ? 'Other income updated locally. Cloud sync pending.' : 'Other income saved locally. Cloud sync pending.'
+                });
                 updateDashboard();
                 updateReportStatistics();
         
@@ -6995,7 +7075,7 @@ function showLoginForm() {
             }
         }
 
-        function deleteOtherIncome(id, silent = false) {
+        async function deleteOtherIncome(id, silent = false) {
             if (!silent && guardReadOnly('delete other income')) return;
             if (!silent && !confirm('Are you sure you want to delete this entry?')) {
                 return;
@@ -7006,7 +7086,10 @@ function showLoginForm() {
                     console.warn('Cloud delete other income failed:', err);
                 });
             }
-            saveUserData();
+            const result = await saveUserData();
+            if (result?.queued) {
+                toastWarn('Other income deletion saved locally. Cloud sync pending.');
+            }
             renderOtherIncome();
             updateDashboard();
             updateReportStatistics();
@@ -7359,7 +7442,7 @@ function showLoginForm() {
             updateLocationDropdown();
         }
 
-        function saveBooking() {
+        async function saveBooking() {
             if (guardReadOnly('save bookings')) return;
 
             try {
@@ -7422,7 +7505,10 @@ function showLoginForm() {
                 if (booking.status === 'confirmed') triggerGoldDust();
                 toastSuccess(isEdit ? 'Booking updated!' : 'ðŸŽ‰ Booking saved!');
                 // Persist and refresh remaining views
-                saveUserData();
+                await persistMutationWithCloudFeedback({
+                    suppressSuccessToast: true,
+                    pendingMessage: isEdit ? 'Booking updated locally. Cloud sync pending.' : 'Booking saved locally. Cloud sync pending.'
+                });
                 updateDashboard();
                 renderCalendar();
                 renderPerformanceMap();
@@ -7887,7 +7973,7 @@ function showLoginForm() {
             };
         }
 
-        function deleteBooking(id, silent = false) {
+        async function deleteBooking(id, silent = false) {
             if (guardReadOnly('delete bookings')) return;
             if (!silent && !confirm('Are you sure you want to delete this booking?')) return;
             
@@ -7897,7 +7983,10 @@ function showLoginForm() {
                     console.warn('Cloud delete booking failed:', err);
                 });
             }
-            saveUserData();
+            const result = await saveUserData();
+            if (result?.queued) {
+                toastWarn('Booking deletion saved locally. Cloud sync pending.');
+            }
             renderBookings();
             updateDashboard();
             renderCalendar();

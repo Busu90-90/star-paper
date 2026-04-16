@@ -659,6 +659,55 @@ const SP_CURRENCIES = {
     window.__spAppBooted = false;
   }
 
+  function captureSyncException(error, context = {}) {
+    try {
+      if (typeof window.Sentry === 'undefined' || typeof window.Sentry.captureException !== 'function') {
+        return;
+      }
+
+      const err = error instanceof Error
+        ? error
+        : new Error(context.message || String(error || 'Star Paper sync error'));
+      const sentry = window.Sentry;
+      const extra = {
+        operation: context.operation || 'unknown',
+        reason: context.reason || null,
+        event: context.event || null,
+        ownerId: getOwnerId(),
+        activeTeamId: _activeTeamId,
+        workspace: _activeTeamId ? 'team' : 'personal',
+        workspaceResolved: _workspaceResolved,
+        workspaceRequiresSelection: _workspaceRequiresSelection,
+        appBooted: Boolean(window.__spAppBooted),
+        authRedirectInProgress: Boolean(window.__spAuthRedirectInProgress),
+        suppressStoredSessionBootstrap: Boolean(window.__spSuppressStoredSessionBootstrap),
+        syncState: _syncState,
+        ...(context.extra || {}),
+      };
+
+      if (typeof sentry.withScope === 'function') {
+        sentry.withScope((scope) => {
+          scope.setTag('sp.operation', context.operation || 'unknown');
+          scope.setTag('sp.workspace', _activeTeamId ? 'team' : 'personal');
+          scope.setTag('sp.sync_state', _syncState || 'unknown');
+          if (_activeTeamId) scope.setTag('sp.team_id', _activeTeamId);
+          if (context.reason) scope.setTag('sp.reason', String(context.reason));
+          if (getOwnerId()) scope.setUser({ id: getOwnerId() });
+          Object.entries(extra).forEach(([key, value]) => {
+            if (value === undefined) return;
+            scope.setExtra(key, value);
+          });
+          sentry.captureException(err);
+        });
+        return;
+      }
+
+      sentry.captureException(err);
+    } catch (_err) {
+      // Sentry capture is best-effort only.
+    }
+  }
+
   function resetWorkspaceState() {
     _activeTeamId = null;
     _workspaceResolved = false;
@@ -690,9 +739,42 @@ const SP_CURRENCIES = {
 
   async function handleSignedOutSession(options = {}) {
     const explicitLogout = localStorage.getItem('sp_logged_out') === '1';
+    const reason = options.reason || (explicitLogout ? 'explicit-logout' : 'session-missing');
+    const shouldConfirmRestore = !explicitLogout && options.confirm !== false;
+
+    if (shouldConfirmRestore) {
+      try {
+        let recoveredSession = await getSession();
+        if (!recoveredSession?.user) {
+          recoveredSession = await refreshSessionIfNeeded({ minTtlSeconds: 0 });
+        }
+        if (recoveredSession?.user) {
+          _session = recoveredSession;
+          await syncRealtimeAuthToken(recoveredSession);
+          return {
+            recovered: true,
+            session: recoveredSession,
+            reason: 'session-recovered',
+          };
+        }
+      } catch (err) {
+        warn('Session restore confirmation failed:', err);
+        captureSyncException(err, {
+          operation: 'startupSessionRestore',
+          reason: 'confirm-failed',
+          event: options.event,
+          extra: {
+            requestedReason: reason,
+          },
+        });
+      }
+    }
+
     _session = null;
     _profile = null;
-    clearSupabaseAuthArtifacts();
+    if (options.clearAuthArtifacts !== false) {
+      clearSupabaseAuthArtifacts();
+    }
     resetWorkspaceState();
     updateSyncIndicator(navigator.onLine ? 'idle' : 'offline');
 
@@ -700,9 +782,25 @@ const SP_CURRENCIES = {
       window.setActiveScreen('landingScreen');
     }
 
+    if (!explicitLogout) {
+      captureSyncException(
+        options.error || new Error(options.message || 'Session could not be restored.'),
+        {
+          operation: 'startupSessionRestore',
+          reason,
+          event: options.event,
+        }
+      );
+    }
+
     if (!explicitLogout && options.notify !== false && typeof window.toastWarn === 'function') {
       window.toastWarn(options.message || 'Your session expired. Please log in again.');
     }
+
+    return {
+      recovered: false,
+      reason,
+    };
   }
 
   function getOwnerId() {
@@ -1842,6 +1940,15 @@ const SP_CURRENCIES = {
       return fresh;
     } catch (err) {
       warn('refreshCloudData failed:', err);
+      captureSyncException(err, {
+        operation: 'refreshCloudData',
+        reason: options.reason || 'refresh-failed',
+        extra: {
+          force: Boolean(options.force),
+          silent: Boolean(options.silent),
+          minIntervalMs: minIntervalMs,
+        },
+      });
       if (!options.silent) {
         toastSafe('Warn', 'Cloud data refresh failed. Check your connection and try again.');
       }
@@ -1919,6 +2026,16 @@ const SP_CURRENCIES = {
         didSave = true;
       }
     } catch (err) {
+      captureSyncException(err, {
+        operation: 'saveAllData',
+        extra: {
+          bookingCount: Array.isArray(bookings) ? bookings.length : null,
+          expenseCount: Array.isArray(expenses) ? expenses.length : null,
+          otherIncomeCount: Array.isArray(otherIncome) ? otherIncome.length : null,
+          artistCount: Array.isArray(artists) ? artists.length : null,
+          taskCount: Array.isArray(tasks) ? tasks.length : null,
+        },
+      });
       updateSyncIndicator(navigator.onLine ? 'failed' : 'offline');
       throw err;
     }
@@ -2634,17 +2751,25 @@ const SP_CURRENCIES = {
     }
  
 
+    if (!session?.user) {
+      const signedOutState = await handleSignedOutSession({
+        notify: event === 'SIGNED_OUT' && window.__spAppBooted,
+        reason: event === 'SIGNED_OUT' ? 'signed-out-event' : 'missing-session-event',
+        event,
+        confirm: localStorage.getItem('sp_logged_out') !== '1',
+      });
+      if (!signedOutState?.recovered) {
+        return;
+      }
+      session = signedOutState.session;
+    }
+
     _session = session;
     if (session?.user) {
       await syncRealtimeAuthToken(session);
       if (_workspaceResolved && !_workspaceRequiresSelection) {
         subscribeToCoreRealtime();
       }
-    } else {
-      await handleSignedOutSession({
-        notify: event === 'SIGNED_OUT' && window.__spAppBooted,
-      });
-      return;
     }
 
     // Always keep _profile warm on any session event.
@@ -3652,14 +3777,17 @@ const SP_CURRENCIES = {
     const _origSaveUserData = window.saveUserData;
     window.saveUserData = async function supabaseSaveUserData() {
       // 1. Persist to localStorage immediately for offline resilience
-      if (typeof _origSaveUserData === 'function') _origSaveUserData();
-      if (window.__spLastCloudSyncPromise && typeof window.__spLastCloudSyncPromise.then === 'function') {
-        try {
-          await window.__spLastCloudSyncPromise;
-        } catch (_err) {
-          // syncCloudExtras already handled retry state and user feedback.
-        }
+      let result = null;
+      if (typeof _origSaveUserData === 'function') {
+        result = await _origSaveUserData();
       }
+      if (result) {
+        return result;
+      }
+      if (window.__spLastCloudSyncPromise && typeof window.__spLastCloudSyncPromise.then === 'function') {
+        return await window.__spLastCloudSyncPromise;
+      }
+      return { cloudSynced: false, skipped: true, queued: false };
     };
 
     log('App auth patched with Supabase');
