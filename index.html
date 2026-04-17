@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -14,9 +14,9 @@
     <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=12">
     <!--
       SENTRY ERROR MONITORING
-      Step 1: Go to de.sentry.io → Projects → New Project → Browser JavaScript
+      Step 1: Go to de.sentry.io â†’ Projects â†’ New Project â†’ Browser JavaScript
       Step 2: Copy your DSN and replace REPLACE_WITH_YOUR_DSN below (both places)
-      Step 3: Commit this file — errors will instantly appear in your Sentry dashboard
+      Step 3: Commit this file â€” errors will instantly appear in your Sentry dashboard
       DSN format: https://abc123@de.ingest.sentry.io/1234567
     -->
     <script src="https://browser.sentry-cdn.com/8.53.0/bundle.min.js" crossorigin="anonymous"></script>
@@ -26,7 +26,7 @@
           dsn: "https://43eaad14b9ae20eec68d9249f139cbc2@o4511079351189504.ingest.de.sentry.io/4511081427894352",
           environment: window.location.hostname === 'star-paper.netlify.app' ? 'production' : 'development',
           release: 'star-paper@1.0.0',
-          // Capture 10% of sessions for performance — safe for free tier
+          // Capture 10% of sessions for performance â€” safe for free tier
           tracesSampleRate: 0.1,
           // Filter out known non-fatal noise
           ignoreErrors: [
@@ -51,14 +51,14 @@
     <!--
       FIX: Load the Supabase JS SDK synchronously in <head> so window.supabase
       is guaranteed to exist before supabase.js runs. Without this, supabase.js
-      hits `await new Promise(loadCDN)` which yields the thread â€” app.js then
+      hits `await new Promise(loadCDN)` which yields the thread Ã¢â‚¬â€ app.js then
       calls checkAuth() while window.SP is still undefined, causing "stuck on
       landing" for every user with a valid session.
     -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
     <link rel="stylesheet" href="styles.css?v=13">
-    <!-- Phosphor Icons â€” unified icon system -->
+    <!-- Phosphor Icons Ã¢â‚¬â€ unified icon system -->
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
 </head>
@@ -109,12 +109,12 @@
                     </p>
                     <div class="landing-buttons">
                         <button class="landing-btn" id="createAccountBtn" data-action="showSignupForm" onclick="showSignupForm()">Get Started</button>
-                        <button class="landing-btn landing-btn--ghost landing-btn--how" data-action="scrollToFeatures" onclick="document.getElementById('landing-features')?.scrollIntoView({behavior:'smooth',block:'center'})">How It Works â†“</button>
+                        <button class="landing-btn landing-btn--ghost landing-btn--how" data-action="scrollToFeatures" onclick="document.getElementById('landing-features')?.scrollIntoView({behavior:'smooth',block:'center'})">How It Works Ã¢â€ â€œ</button>
                     </div>
                 </div>
                 <div class="landing-hero-right" aria-hidden="true">
                     <div class="landing-dashboard-preview">
-                        <!-- Animated Feature Reel â€” replaces static screenshot -->
+                        <!-- Animated Feature Reel Ã¢â‚¬â€ replaces static screenshot -->
                         <div class="feature-reel">
                             <div class="reel-chrome">
                                 <div class="reel-dots">
@@ -305,11 +305,6 @@
                 </button>
                 <button class="back-btn" data-action="showLanding" onclick="showLanding()">Back</button>
                 <button class="forgot-password-link" type="button" data-action="showForgotPassword" onclick="showForgotPassword()">Forgot password?</button>
-                <div class="auth-oauth-divider" style="margin-top:18px;"><span>dev</span></div>
-                <button type="button" onclick="window.enterLocalTestMode()" class="btn-local-test"
-                    title="Bypass all auth â€” for local testing only. No data is sent to the cloud.">
-                    <i class="ph ph-flask" aria-hidden="true"></i> Local Test Mode
-                </button>
             </div>
             <div id="forgotPasswordForm" style="display: none;">
                 <p class="forgot-password-intro">Enter your username and we'll help you reset your password through your account settings.</p>
@@ -331,11 +326,6 @@
                 </button>
                 <p class="auth-switch-text">Already have an account? <a href="#" class="auth-switch-link" data-action="showLoginForm">Login</a></p>
                 <button class="back-btn" data-action="showLanding" onclick="showLanding()">Back</button>
-                <div class="auth-oauth-divider" style="margin-top:18px;"><span>dev</span></div>
-                <button type="button" onclick="window.enterLocalTestMode()" class="btn-local-test"
-                    title="Bypass all auth â€” for local testing only. No data is sent to the cloud.">
-                    <i class="ph ph-flask" aria-hidden="true"></i> Local Test Mode
-                </button>
             </div>
         </div>
     </div>
@@ -364,7 +354,7 @@
     </div>
 
     <div class="app-container" id="appContainer">
-        <!-- Collapse toggle â€” lives outside sidebar to escape overflow clipping -->
+        <!-- Collapse toggle Ã¢â‚¬â€ lives outside sidebar to escape overflow clipping -->
         <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" aria-label="Toggle sidebar" type="button">
             <i class="scb-icon scb-icon--close ph ph-caret-left" aria-hidden="true" style="font-size:14px;"></i>
             <i class="scb-icon scb-icon--open ph ph-caret-right" aria-hidden="true" style="font-size:14px;"></i>
@@ -410,7 +400,7 @@
                 </div>
             </div>
 
-            <!-- Navigation List â€” Phosphor Icons -->
+            <!-- Navigation List Ã¢â‚¬â€ Phosphor Icons -->
             <nav class="sidebar-nav">
                 <button type="button" class="nav-item active" data-action="showSection" onclick="showSection('dashboard')" data-section="dashboard" data-tooltip="Dashboard">
                     <i class="ph ph-squares-four nav-icon-svg" aria-hidden="true" style="font-size:20px;"></i>
@@ -438,7 +428,7 @@
             <!-- Spacer -->
             <div class="sidebar-spacer"></div>
 
-            <!-- Bottom utility bar: About Â· Settings Â· Logout -->
+            <!-- Bottom utility bar: About Ã‚Â· Settings Ã‚Â· Logout -->
             <div class="sidebar-logout-section">
                 <div class="sidebar-util-row">
                     <button type="button" class="sidebar-util-btn" id="sidebarAboutBtn" data-action="showAboutModal" onclick="showAboutModal()" title="About Star Paper">
@@ -1437,19 +1427,19 @@
         <!--
           FIX: supabase.js moved here from <head>. The Supabase SDK is already
           loaded (synchronously, above in <head>), so this file now runs
-          synchronously â€” window.SP is fully initialised before app.js executes.
+          synchronously Ã¢â‚¬â€ window.SP is fully initialised before app.js executes.
         -->
-        <script src="supabase.js?v=20"></script>
+<script src="supabase.js?v=22"></script>
         <script src="app.migrations.js?v=9"></script>
         <script src="app.actions.js?v=8"></script>
         <script src="app.todayboard.js?v=1"></script>
         <script src="app.tasks.js?v=3"></script>
     <script src="app.reports.js?v=10"></script>
-    <script src="app.js?v=38"></script>
+<script src="app.js?v=40"></script>
         <script>
-        // â”€â”€ FILE:// PROTOCOL GUARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ FILE:// PROTOCOL GUARD Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         // When the app is opened as a local file (double-clicked), window.location.origin
-        // is "null". OAuth (Google sign-in) cannot work on file:// â€” it requires http/https.
+        // is "null". OAuth (Google sign-in) cannot work on file:// Ã¢â‚¬â€ it requires http/https.
         // This block shows a clear warning and disables the Google button gracefully.
         (function fileProtocolGuard() {
             if (window.location.protocol !== 'file:') return;
@@ -1465,7 +1455,7 @@
                     'font-family:sans-serif'
                 ].join(';');
                 banner.innerHTML =
-                    '<strong>âš  Local file detected.</strong> ' +
+                    '<strong>Ã¢Å¡Â  Local file detected.</strong> ' +
                     'Google sign-in requires a local server. ' +
                     'Run <code style="background:rgba(0,0,0,.3);padding:1px 6px;border-radius:3px">npx serve .</code> ' +
                     'in this folder, then open <strong>http://localhost:3000</strong>. ' +
@@ -1478,7 +1468,7 @@
                 // Disable & label Google sign-in buttons
                 document.querySelectorAll('.btn-google, [data-action="signInWithGoogle"]').forEach(function(btn) {
                     btn.disabled = true;
-                    btn.title = 'Google sign-in requires http://localhost â€” not file://';
+                    btn.title = 'Google sign-in requires http://localhost Ã¢â‚¬â€ not file://';
                     btn.style.opacity = '0.4';
                     btn.style.cursor = 'not-allowed';
                 });
@@ -1486,82 +1476,6 @@
         })();
         </script>
         <script>
-        // â”€â”€ LOCAL TEST MODE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        // Bypasses ALL auth (Supabase + local) and logs straight into the app
-        // with a "TestUser" session stored only in sessionStorage (cleared on tab close).
-        // Safe to ship â€” it does nothing on https:// and shows a visible DEV badge.
-        window.enterLocalTestMode = function() {
-            if (typeof window.toastWarn === 'function') {
-                window.toastWarn('Local Test Mode is disabled in cloud-first mode.');
-                return;
-            }
-            alert('Local Test Mode is disabled in cloud-first mode.');
-            return;
-            console.log('[StarPaper] Entering Local Test Mode...');
-            try {
-                // 1. Write a minimal session directly into localStorage
-                //    (same keys checkAuth() reads, so it will auto-restore on reload)
-                var testUser = 'TestUser';
-                localStorage.setItem('starPaper_session',     JSON.stringify('active'));
-                localStorage.setItem('starPaperSessionUser',  JSON.stringify(testUser));
-                localStorage.setItem('starPaperRemember',     JSON.stringify(false));
-
-                // 2. Ensure the user record exists in the users array
-                if (typeof window.applyAuthSession === 'function') {
-                    window.applyAuthSession(testUser, { remember: false });
-                } else {
-                    // Fallback if applyAuthSession isn't ready yet
-                    window.currentUser = testUser;
-                    window.currentManagerId = 'test-' + testUser;
-                }
-
-                // 3. Load any existing local data then show the app
-                if (typeof window.loadUserData === 'function') window.loadUserData();
-                if (typeof window.showApp     === 'function') window.showApp();
-
-                // 4. Show a persistent DEV MODE badge so it's always obvious
-                var badge = document.getElementById('spDevModeBadge');
-                if (!badge) {
-                    badge = document.createElement('div');
-                    badge.id = 'spDevModeBadge';
-                    badge.style.cssText = [
-                        'position:fixed','bottom:12px','left:12px','z-index:99999',
-                        'background:#7c3aed','color:#fff','font-size:11px','font-weight:700',
-                        'padding:4px 10px','border-radius:20px','letter-spacing:.5px',
-                        'pointer-events:none','opacity:.85'
-                    ].join(';');
-                    badge.textContent = 'ðŸ§ª LOCAL TEST MODE';
-                    document.body.appendChild(badge);
-                }
-                console.log('[StarPaper] Local Test Mode active. User: ' + testUser);
-            } catch(err) {
-                console.error('[StarPaper] enterLocalTestMode failed:', err);
-                alert('Local Test Mode failed: ' + err.message + '\nCheck the console for details.');
-            }
-        };
-
-        // Inject btn-local-test styles
-        (function() {
-            var style = document.createElement('style');
-            style.textContent = [
-                '.btn-local-test {',
-                '  width:100%;padding:10px 16px;',
-                '  display:flex;align-items:center;justify-content:center;gap:6px;',
-                '  background:transparent;',
-                '  border:1px dashed rgba(124,58,237,.6);',
-                '  color:rgba(167,139,250,.9);',
-                '  border-radius:8px;cursor:pointer;font-size:13px;',
-                '  transition:background .15s,border-color .15s;',
-                '  margin-top:4px;',
-                '}',
-                '.btn-local-test:hover {',
-                '  background:rgba(124,58,237,.12);',
-                '  border-color:rgba(124,58,237,.9);',
-                '  color:#c4b5fd;',
-                '}',
-            ].join('\n');
-            document.head.appendChild(style);
-        })();
         // This runs after ALL scripts load. It directly calls window functions for
         // every add/action button. Works regardless of app.actions.js, data-action
         // routing, or onclick attributes. Belt-AND-suspenders.
@@ -1586,7 +1500,7 @@
                 'closeReceiptModal':      function() { if (typeof window.closeReceiptModal === 'function') window.closeReceiptModal(); },
                 'closeProfileModal':      function() { if (typeof window.closeProfileModal === 'function') window.closeProfileModal(); },
                 'openProfileModal':       function() { if (typeof window.openProfileModal === 'function') window.openProfileModal(); },
-                // Save (profile / goals only â€” main form saves stay with app.actions.js)
+                // Save (profile / goals only Ã¢â‚¬â€ main form saves stay with app.actions.js)
                 'saveProfileChanges':     function() { if (typeof window.saveProfileChanges === 'function') window.saveProfileChanges(); },
                 'saveMonthlyRevenueGoal': function() { if (typeof window.saveMonthlyRevenueGoal === 'function') window.saveMonthlyRevenueGoal(); },
                 'saveFinancialsMonthlyRevenueGoal': function() { if (typeof window.saveFinancialsMonthlyRevenueGoal === 'function') window.saveFinancialsMonthlyRevenueGoal(); },
@@ -1673,7 +1587,7 @@
                         console.warn('[StarPaper] No handler for "' + action + '". window.' + action + '=', typeof window[action]);
                     }
                 }
-            }, true); // capture phase â€” fires before any other listener
+            }, true); // capture phase Ã¢â‚¬â€ fires before any other listener
         })();
         </script>
         <script>
@@ -1725,15 +1639,8 @@
                                     return;
                                 }
                             }
-                            // Fallback: check local credentials
-                            var stored = JSON.parse(localStorage.getItem('starPaperCredentials') || '{}');
-                            if (stored[username]) {
-                                result.textContent = 'Account found locally but password reset requires cloud mode. Please contact support.';
-                                result.className = 'forgot-password-hint forgot-password-hint--error';
-                            } else {
-                                result.textContent = 'No account found with that username.';
-                                result.className = 'forgot-password-hint forgot-password-hint--error';
-                            }
+                            result.textContent = 'No cloud account was found with that username.';
+                            result.className = 'forgot-password-hint forgot-password-hint--error';
                         } catch (err) {
                             result.textContent = 'Something went wrong. Please try again.';
                             result.className = 'forgot-password-hint forgot-password-hint--error';
@@ -1759,11 +1666,11 @@
                 </div>
             </div>
             <div class="sp-modal-body">
-                <p>Star Paper is a premium management tool built for artist managers in Uganda and beyond. Track bookings, monitor finances, manage your roster, and generate professional reports â€” all in one place.</p>
+                <p>Star Paper is a premium management tool built for artist managers in Uganda and beyond. Track bookings, monitor finances, manage your roster, and generate professional reports Ã¢â‚¬â€ all in one place.</p>
                 <p>Designed for the realities of the African music industry: offline-capable, mobile-first, and built around the workflows that actually matter.</p>
                 <div class="sp-modal-divider"></div>
                 <p style="margin:0; font-size:13px; color:var(--text-muted);">Built with care for the creative economy.</p>
-                <span class="sp-modal-version">v2.0 Â· Phase 5</span>
+                <span class="sp-modal-version">v2.0 Ã‚Â· Phase 5</span>
             </div>
         </div>
     </div>
@@ -1783,7 +1690,7 @@
             <div class="sp-modal-body">
                 <h4 style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">User Management</h4>
                 <div id="spAdminUserList">
-                    <div class="sp-admin-empty">Loading usersâ€¦</div>
+                    <div class="sp-admin-empty">Loading usersÃ¢â‚¬Â¦</div>
                 </div>
                 <div class="sp-modal-divider"></div>
                 <h4 style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">System</h4>
@@ -1801,14 +1708,14 @@
         <div class="sp-palette__header">
             <span class="sp-palette__icon"><i class="ph ph-command" aria-hidden="true"></i></span>
             <input class="sp-palette__input" id="spPaletteInput" type="text"
-                placeholder="Search sections, artists, bookingsâ€¦ or type a command"
+                placeholder="Search sections, artists, bookingsÃ¢â‚¬Â¦ or type a command"
                 autocomplete="off" spellcheck="false" aria-autocomplete="list" aria-controls="spPaletteResults">
             <kbd class="sp-palette__esc">ESC</kbd>
         </div>
         <ul class="sp-palette__results" id="spPaletteResults" role="listbox"></ul>
         <div class="sp-palette__footer">
-            <span><kbd>â†‘</kbd><kbd>â†“</kbd> navigate</span>
-            <span><kbd>â†µ</kbd> select</span>
+            <span><kbd>Ã¢â€ â€˜</kbd><kbd>Ã¢â€ â€œ</kbd> navigate</span>
+            <span><kbd>Ã¢â€ Âµ</kbd> select</span>
             <span><kbd>Esc</kbd> close</span>
             <span class="sp-palette__footer-hint">Try "add booking" or an artist name</span>
         </div>
@@ -1826,17 +1733,17 @@
         </div>
         <div class="sp-cheatsheet__body">
             <div class="sp-cheatsheet__group">
-                <div class="sp-cheatsheet__group-label">Navigation (press G thenâ€¦)</div>
+                <div class="sp-cheatsheet__group-label">Navigation (press G thenÃ¢â‚¬Â¦)</div>
                 <div class="sp-cheatsheet__rows">
                     <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>D</kbd><span>Dashboard</span></div>
                     <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>M</kbd><span>Money (Overview)</span></div>
-                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>F</kbd><span>Money â†’ Financials</span></div>
-                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>E</kbd><span>Money â†’ Expenses</span></div>
-                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>I</kbd><span>Money â†’ Other Income</span></div>
-                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>R</kbd><span>Money â†’ Reports</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>F</kbd><span>Money Ã¢â€ â€™ Financials</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>E</kbd><span>Money Ã¢â€ â€™ Expenses</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>I</kbd><span>Money Ã¢â€ â€™ Other Income</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>R</kbd><span>Money Ã¢â€ â€™ Reports</span></div>
                     <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>S</kbd><span>Schedule</span></div>
-                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>B</kbd><span>Schedule â†’ Bookings</span></div>
-                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>C</kbd><span>Schedule â†’ Calendar</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>B</kbd><span>Schedule Ã¢â€ â€™ Bookings</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>C</kbd><span>Schedule Ã¢â€ â€™ Calendar</span></div>
                     <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>A</kbd><span>Artists</span></div>
                     <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>T</kbd><span>Tasks</span></div>
                 </div>
@@ -1844,7 +1751,7 @@
             <div class="sp-cheatsheet__group">
                 <div class="sp-cheatsheet__group-label">Global</div>
                 <div class="sp-cheatsheet__rows">
-                    <div class="sp-cheatsheet__row"><kbd>âŒ˜</kbd><kbd>K</kbd><span>Command Palette</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>Ã¢Å’Ëœ</kbd><kbd>K</kbd><span>Command Palette</span></div>
                     <div class="sp-cheatsheet__row"><kbd>?</kbd><span>This cheat sheet</span></div>
                     <div class="sp-cheatsheet__row"><kbd>Esc</kbd><span>Close modal / palette</span></div>
                 </div>

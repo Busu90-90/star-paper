@@ -145,7 +145,7 @@ const SP_CURRENCIES = {
     } catch (_err) { /* corrupted — start fresh */ }
   }
 
-  function updateSyncIndicator(state) {
+  function legacyUpdateSyncIndicator(state) {
     _syncState = state || _syncState;
     const el = document.getElementById('spSyncIcon');
     if (!el) return;
@@ -229,7 +229,7 @@ const SP_CURRENCIES = {
     }
   }
 
-  function showSaveToast(isCloud) {
+  function legacyShowSaveToast(isCloud) {
     const now = Date.now();
     if (now - _lastSaveToastAt < SAVE_TOAST_THROTTLE_MS) return;
     _lastSaveToastAt = now;
@@ -1682,9 +1682,9 @@ const SP_CURRENCIES = {
     }
   }
 
-  async function saveArtists(artists) {
+  async function saveArtistsData(artists) {
     const ownerId = getOwnerId();
-    if (!ownerId || !Array.isArray(artists)) return;
+    if (!ownerId || !Array.isArray(artists)) return [];
     const ctx = getContext();
     try {
       const rows = artists.map(a => ({
@@ -1700,20 +1700,242 @@ const SP_CURRENCIES = {
         strategic_goal: a.strategicGoal || '',
         avatar: a.avatar || '',
       }));
+      const results = [];
       const uuidRows   = rows.filter(r => r.id !== undefined);
       const legacyRows = rows.filter(r => r.id === undefined);
       if (uuidRows.length) {
-        const { error } = await db.from('artists').upsert(uuidRows, { onConflict: 'id' });
+        const { data, error } = await db.from('artists')
+          .upsert(uuidRows, { onConflict: 'id' })
+          .select('id,legacy_id');
         throwIfSupabaseError('Artists UUID save', error);
+        if (data) results.push(...data);
       }
       if (legacyRows.length) {
-        const { error } = await db.from('artists').upsert(legacyRows, { onConflict: 'legacy_id,owner_id' });
+        const { data, error } = await db.from('artists')
+          .upsert(legacyRows, { onConflict: 'legacy_id,owner_id' })
+          .select('id,legacy_id');
         throwIfSupabaseError('Artists legacy save', error);
+        if (data) results.push(...data);
       }
+
+      if (results.length) {
+        const legacyMap = {};
+        results.forEach((row) => {
+          if (row?.legacy_id) {
+            legacyMap[String(row.legacy_id)] = row.id;
+          }
+        });
+
+        let artistsChanged = false;
+        artists.forEach((artist) => {
+          if (!artist || isCloudId(artist.id)) return;
+          const nextId = legacyMap[String(artist.id)];
+          if (!nextId) return;
+          artist.id = nextId;
+          artistsChanged = true;
+        });
+        if (artistsChanged && Array.isArray(window.artists)) {
+          window.artists = artists;
+        }
+
+        if (Array.isArray(window.bookings)) {
+          window.bookings.forEach((booking) => {
+            if (!booking || isCloudId(booking.artistId)) return;
+            const nextArtistId = legacyMap[String(booking.artistId)];
+            if (!nextArtistId) return;
+            booking.artistId = nextArtistId;
+          });
+        }
+      }
+
+      return results;
     } catch (err) {
       warn('saveArtists failed:', err);
       throw err;
     }
+  }
+
+  function getStructuredSyncContext(extra = {}) {
+    return {
+      ownerId: getOwnerId() || null,
+      activeTeamId: _activeTeamId || null,
+      workspace: _activeTeamId ? 'team' : 'personal',
+      syncState: _syncState,
+      ...extra,
+    };
+  }
+
+  function formatStructuredSyncMessage(step, err) {
+    if (!navigator.onLine) {
+      return 'You are offline. Reconnect and try again.';
+    }
+
+    const rawMessage = String(err?.message || '').trim();
+    if (err?.code === '42P10' || /no unique or exclusion constraint matching the ON CONFLICT specification/i.test(rawMessage)) {
+      return 'The live Supabase schema is missing the upsert constraint for this data. Re-run the latest schema.sql.';
+    }
+    if (err?.code === '42501' || /row-level security/i.test(rawMessage)) {
+      return 'Supabase rejected this request because this workspace does not have permission for that action.';
+    }
+    if (rawMessage) {
+      return rawMessage;
+    }
+    return `Cloud sync failed during ${step}.`;
+  }
+
+  function buildStructuredSyncResult(ok, options = {}) {
+    return {
+      ok: Boolean(ok),
+      failedStep: ok ? null : (options.failedStep || null),
+      message: options.message || (ok ? 'Saved to cloud.' : 'Cloud sync failed.'),
+      context: getStructuredSyncContext(options.context || {}),
+    };
+  }
+
+  function createStructuredSyncError(step, err, options = {}) {
+    const message = options.message || formatStructuredSyncMessage(step, err);
+    const syncError = err instanceof Error ? err : new Error(message);
+    syncError.message = message;
+    const syncResult = buildStructuredSyncResult(false, {
+      failedStep: step,
+      message,
+      context: {
+        operation: step,
+        errorCode: err?.code || null,
+        ...(options.context || {}),
+      },
+    });
+    syncError.syncResult = syncResult;
+    syncError.failedStep = step;
+    syncError.context = syncResult.context;
+    return syncError;
+  }
+
+  async function runStructuredSyncOperation(step, handler, options = {}) {
+    try {
+      if (!getOwnerId()) {
+        await ensureSupabaseSession({ silent: true, clearIfMissing: false });
+      }
+    } catch (err) {
+      const syncError = createStructuredSyncError(step, err, {
+        context: {
+          reason: 'session-refresh',
+          ...(options.context || {}),
+        },
+      });
+      captureSyncException(syncError, {
+        operation: step,
+        extra: options.extra || {},
+      });
+      updateSyncIndicator(navigator.onLine ? 'failed' : 'offline');
+      return syncError.syncResult;
+    }
+
+    if (!getOwnerId()) {
+      updateSyncIndicator(navigator.onLine ? 'failed' : 'offline');
+      return buildStructuredSyncResult(false, {
+        failedStep: step,
+        message: 'No active cloud session. Please sign in again.',
+        context: {
+          operation: step,
+          reason: 'no-session',
+          ...(options.context || {}),
+        },
+      });
+    }
+
+    if (!(await ensureWorkspaceReady({ promptOnSelection: false }))) {
+      updateSyncIndicator('failed');
+      return buildStructuredSyncResult(false, {
+        failedStep: step,
+        message: 'Workspace resolution failed. Try again in a moment.',
+        context: {
+          operation: step,
+          reason: 'workspace-unresolved',
+          ...(options.context || {}),
+        },
+      });
+    }
+
+    updateSyncIndicator('syncing');
+    try {
+      await refreshSessionIfNeeded({ minTtlSeconds: 90 });
+      await handler();
+      broadcastLocalSync(step);
+      updateSyncIndicator('synced');
+      if (options.showToast !== false) {
+        showSaveToast(true);
+      }
+      return buildStructuredSyncResult(true, {
+        message: options.successMessage || 'Saved to cloud.',
+        context: {
+          operation: step,
+          ...(options.context || {}),
+        },
+      });
+    } catch (err) {
+      const syncError = createStructuredSyncError(step, err, {
+        context: options.context || {},
+      });
+      captureSyncException(syncError, {
+        operation: step,
+        extra: options.extra || {},
+      });
+      updateSyncIndicator(navigator.onLine ? 'failed' : 'offline');
+      return syncError.syncResult;
+    }
+  }
+
+  async function saveBookings(bookings) {
+    return runStructuredSyncOperation('saveBookings', () => saveData({
+      bookings: Array.isArray(bookings) ? bookings : [],
+      expenses: [],
+      otherIncome: [],
+    }), {
+      showToast: false,
+      successMessage: 'Bookings saved to cloud.',
+      context: {
+        bookingCount: Array.isArray(bookings) ? bookings.length : 0,
+      },
+    });
+  }
+
+  async function saveExpenses(expenses) {
+    return runStructuredSyncOperation('saveExpenses', () => saveData({
+      bookings: [],
+      expenses: Array.isArray(expenses) ? expenses : [],
+      otherIncome: [],
+    }), {
+      showToast: false,
+      successMessage: 'Expenses saved to cloud.',
+      context: {
+        expenseCount: Array.isArray(expenses) ? expenses.length : 0,
+      },
+    });
+  }
+
+  async function saveOtherIncome(otherIncome) {
+    return runStructuredSyncOperation('saveOtherIncome', () => saveData({
+      bookings: [],
+      expenses: [],
+      otherIncome: Array.isArray(otherIncome) ? otherIncome : [],
+    }), {
+      showToast: false,
+      successMessage: 'Other income saved to cloud.',
+      context: {
+        otherIncomeCount: Array.isArray(otherIncome) ? otherIncome.length : 0,
+      },
+    });
+  }
+
+  async function saveArtists(artists) {
+    return runStructuredSyncOperation('saveArtists', () => saveArtistsData(artists), {
+      showToast: false,
+      successMessage: 'Artists saved to cloud.',
+      context: {
+        artistCount: Array.isArray(artists) ? artists.length : 0,
+      },
+    });
   }
 
   async function loadTasks() {
@@ -2048,8 +2270,10 @@ const SP_CURRENCIES = {
       theme,
     } = payload || {};
 
+    let failedStep = 'saveAllData';
     try {
       if (Array.isArray(bookings) || Array.isArray(expenses) || Array.isArray(otherIncome)) {
+        failedStep = 'saveData';
         await saveData({
           bookings: Array.isArray(bookings) ? bookings : (window.bookings || []),
           expenses: Array.isArray(expenses) ? expenses : (window.expenses || []),
@@ -2058,37 +2282,55 @@ const SP_CURRENCIES = {
         didSave = true;
       }
       if (Array.isArray(artists)) {
-        await saveArtists(artists);
+        failedStep = 'saveArtists';
+        await saveArtistsData(artists);
         didSave = true;
       }
       if (Array.isArray(audienceMetrics)) {
+        failedStep = 'saveAudienceMetrics';
         await saveAudienceMetrics(audienceMetrics);
         didSave = true;
       }
       if (Array.isArray(tasks)) {
+        failedStep = 'saveTasks';
         await saveTasks(tasks);
         didSave = true;
       }
       if (revenueGoal) {
+        failedStep = 'saveRevenueGoal';
         await saveRevenueGoal(revenueGoal);
         didSave = true;
       }
       if (Array.isArray(bbfEntries)) {
+        failedStep = 'saveBBFEntries';
         await saveBBFEntries(bbfEntries);
         didSave = true;
       }
       if (Array.isArray(closingThoughts)) {
+        failedStep = 'saveClosingThoughts';
         await saveClosingThoughts(closingThoughts);
         didSave = true;
       }
       if (theme) {
+        failedStep = 'updateProfile';
         await updateProfile({ preferred_theme: theme });
         didSave = true;
       }
     } catch (err) {
-      captureSyncException(err, {
+      const syncError = createStructuredSyncError(failedStep, err, {
+        context: {
+          operation: 'saveAllData',
+          bookingCount: Array.isArray(bookings) ? bookings.length : null,
+          expenseCount: Array.isArray(expenses) ? expenses.length : null,
+          otherIncomeCount: Array.isArray(otherIncome) ? otherIncome.length : null,
+          artistCount: Array.isArray(artists) ? artists.length : null,
+          taskCount: Array.isArray(tasks) ? tasks.length : null,
+        },
+      });
+      captureSyncException(syncError, {
         operation: 'saveAllData',
         extra: {
+          failedStep,
           bookingCount: Array.isArray(bookings) ? bookings.length : null,
           expenseCount: Array.isArray(expenses) ? expenses.length : null,
           otherIncomeCount: Array.isArray(otherIncome) ? otherIncome.length : null,
@@ -2097,7 +2339,7 @@ const SP_CURRENCIES = {
         },
       });
       updateSyncIndicator(navigator.onLine ? 'failed' : 'offline');
-      throw err;
+      throw syncError;
     }
 
     if (didSave) {
@@ -2129,40 +2371,39 @@ const SP_CURRENCIES = {
     return _saveInFlight;
   }
 
+  async function runStructuredDelete(step, table, id) {
+    return runStructuredSyncOperation(step, async () => {
+      if (!id) {
+        throw new Error('Missing record id.');
+      }
+      const base = db.from(table).delete();
+      const isUuid = isCloudId(id);
+      let query = isUuid ? base.eq('id', id) : base.eq('legacy_id', String(id));
+      query = _activeTeamId
+        ? query.eq('team_id', _activeTeamId)
+        : query.eq('owner_id', getOwnerId()).is('team_id', null);
+      const { error } = await query;
+      throwIfSupabaseError(`${table} delete`, error);
+    }, {
+      showToast: false,
+      successMessage: 'Deleted from cloud.',
+      context: {
+        table,
+        recordId: id,
+      },
+    });
+  }
+
   async function deleteBooking(id) {
-    if (!id) return;
-    const base = db.from('bookings').delete();
-    const isUuid = isCloudId(id);
-    let query = isUuid ? base.eq('id', id) : base.eq('legacy_id', String(id));
-    query = _activeTeamId
-      ? query.eq('team_id', _activeTeamId)
-      : query.eq('owner_id', getOwnerId()).is('team_id', null);
-    const { error } = await query;
-    if (error) warn('Delete booking error:', error);
+    return runStructuredDelete('deleteBooking', 'bookings', id);
   }
 
   async function deleteExpense(id) {
-    if (!id) return;
-    const base = db.from('expenses').delete();
-    const isUuid = isCloudId(id);
-    let query = isUuid ? base.eq('id', id) : base.eq('legacy_id', String(id));
-    query = _activeTeamId
-      ? query.eq('team_id', _activeTeamId)
-      : query.eq('owner_id', getOwnerId()).is('team_id', null);
-    const { error } = await query;
-    if (error) warn('Delete expense error:', error);
+    return runStructuredDelete('deleteExpense', 'expenses', id);
   }
 
   async function deleteOtherIncome(id) {
-    if (!id) return;
-    const base = db.from('other_income').delete();
-    const isUuid = isCloudId(id);
-    let query = isUuid ? base.eq('id', id) : base.eq('legacy_id', String(id));
-    query = _activeTeamId
-      ? query.eq('team_id', _activeTeamId)
-      : query.eq('owner_id', getOwnerId()).is('team_id', null);
-    const { error } = await query;
-    if (error) warn('Delete other income error:', error);
+    return runStructuredDelete('deleteOtherIncome', 'other_income', id);
   }
 
   async function deleteArtist(id) {
@@ -2641,6 +2882,13 @@ const SP_CURRENCIES = {
       if (typeof window.showApp === 'function' && !window.__spAppBooted) {
         window.showApp();
         log('bootstrap.uiReady');
+      }
+      if (typeof window.restorePostBootUiState === 'function') {
+        try {
+          window.restorePostBootUiState();
+        } catch (err) {
+          warn('restorePostBootUiState failed:', err);
+        }
       }
       if (options.showWelcome && typeof window.showWelcomeMessage === 'function') {
         window.showWelcomeMessage();
@@ -3142,6 +3390,13 @@ const SP_CURRENCIES = {
     if (typeof window.showApp === 'function' && !window.__spAppBooted && options.forceShowApp !== false) {
       window.showApp();
       log('workspace.uiReady');
+    }
+    if (typeof window.restorePostBootUiState === 'function') {
+      try {
+        window.restorePostBootUiState();
+      } catch (err) {
+        warn('restorePostBootUiState failed:', err);
+      }
     }
 
     if (window.__spAppBooted) {
@@ -3988,6 +4243,9 @@ const SP_CURRENCIES = {
     loadAllData,
     refreshCloudData,
     saveData,
+    saveBookings,
+    saveExpenses,
+    saveOtherIncome,
     saveAllData,
     queueCloudSync:  saveAllData,
     saveArtists,

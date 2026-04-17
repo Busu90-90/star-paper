@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Star Paper - UI Initialization Engine
  */
 document.addEventListener('DOMContentLoaded', () => {
@@ -107,7 +107,7 @@ function initializeBootSequence() {
 }
 
 function getSectionIconMarkup(iconKey) {
-        // All icons use Phosphor â€” <i class="ph ph-*"> for consistent rendering
+        // All icons use Phosphor Ã¢â‚¬â€ <i class="ph ph-*"> for consistent rendering
         const phClass = {
             money:      'ph-currency-circle-dollar',
             schedule:   'ph-calendar-blank',
@@ -991,22 +991,6 @@ function getSectionIconMarkup(iconKey) {
             return `${prefix}_${sanitizeIdChunk(seed, prefix)}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
         }
 
-        function getManagerData(managerId) {
-            return {
-                bookings: [],
-                expenses: [],
-                otherIncome: []
-            };
-        }
-
-        function saveManagerData(managerId, payload) {
-            return {
-                bookings: Array.isArray(payload?.bookings) ? payload.bookings : [],
-                expenses: Array.isArray(payload?.expenses) ? payload.expenses : [],
-                otherIncome: Array.isArray(payload?.otherIncome) ? payload.otherIncome : []
-            };
-        }
-
         function getAudienceMetricsForScope(scopeKey) {
             if (!scopeKey) return [];
             if (!audienceMetricsStore || typeof audienceMetricsStore !== 'object' || Array.isArray(audienceMetricsStore)) {
@@ -1245,7 +1229,7 @@ function getSectionIconMarkup(iconKey) {
             saveRevenueGoalFromInput('financialsMonthlyGoalInput', 'financialsMonthlyGoalEditor');
         }
 
-        // â”€â”€ Balance Brought Forward (BBF) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Balance Brought Forward (BBF) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         const BBF_ARTIST_MARKER = '::artist::';
 
         function formatBBFMonthKey(date) {
@@ -1588,7 +1572,7 @@ function getSectionIconMarkup(iconKey) {
             syncCloudExtras();
             toastSuccess(`BBF saved for ${artist?.name || 'Roster'} (${formatBBFPeriodLabel(period)}).`);
         }
-        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
         function normalizeAllManagerBookingReferences() {
             bookings = ensureBookingArtistRefs(bookings, currentManagerId);
@@ -1638,7 +1622,7 @@ function getSectionIconMarkup(iconKey) {
             if (window.__starPaperMainEventsBound) return;
             window.__starPaperMainEventsBound = true;
 
-            // â”€â”€ In-app navigation history stack â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ In-app navigation history stack Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             window._spNavStack = [];   // array of section names
             window._spNavIndex = -1;  // current position in stack
             window._spNavSkip = false; // flag: popstate-driven navigation, don't push
@@ -1658,7 +1642,7 @@ function getSectionIconMarkup(iconKey) {
             document.getElementById('hamburgerBtn')?.addEventListener('click', () => toggleSidebar());
             document.getElementById('sidebarOverlay')?.addEventListener('click', () => closeSidebar());
 
-            // â”€â”€ Back / Forward navigation buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Back / Forward navigation buttons Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             document.getElementById('navBackBtn')?.addEventListener('click', () => {
                 if (window._spNavIndex > 0) {
                     window._spNavIndex--;
@@ -1676,7 +1660,7 @@ function getSectionIconMarkup(iconKey) {
                 }
             });
 
-            // â”€â”€ Scroll-to-top FAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Scroll-to-top FAB Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             const scrollFab = document.getElementById('scrollTopFab');
             const mainContent = document.querySelector('.main-content');
             const showFab = () => {
@@ -1690,7 +1674,7 @@ function getSectionIconMarkup(iconKey) {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             });
 
-            // â”€â”€ Landing: sticky mini-nav on scroll â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Landing: sticky mini-nav on scroll Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             const landingEl = document.getElementById('landingScreen');
             const miniNav   = document.getElementById('landingMiniNav');
             if (landingEl && miniNav) {
@@ -1852,7 +1836,7 @@ function getSectionIconMarkup(iconKey) {
             // Supabase v2 uses the Web Locks API internally to coordinate auth token
             // refresh across tabs. When a new tab steals the lock, every other tab
             // gets an AbortError: "Lock broken by another request with the 'steal' option".
-            // This is non-fatal â€” the auth state self-heals â€” but without this handler
+            // This is non-fatal Ã¢â‚¬â€ the auth state self-heals Ã¢â‚¬â€ but without this handler
             // it surfaces as a red toast. We silence it here and log quietly instead.
             window.addEventListener('unhandledrejection', (event) => {
                 const err = event.reason;
@@ -3172,11 +3156,11 @@ function showLoginForm() {
             }
         });
 
-        // â”€â”€ SAFE WINDOW EXPOSURE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ SAFE WINDOW EXPOSURE Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         // All functions below are global declarations (depth-0) and are already
         // on window automatically in browsers. We use ||= so app.actions.js (which
         // loads first) always wins if it defines its own version. We never override
-        // what another module already set â€” this prevents regression on every deploy.
+        // what another module already set Ã¢â‚¬â€ this prevents regression on every deploy.
 
         // Form show/open
         window.showAddExpense         ||= showAddExpense;
@@ -3360,7 +3344,7 @@ function showLoginForm() {
             try {
                 const remember = document.getElementById('rememberMe')?.checked;
 
-                // ── LOCAL FALLBACK (offline / Supabase not configured) ────────────────
+                // â”€â”€ LOCAL FALLBACK (offline / Supabase not configured) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 const user = findUserByUsername(name) || findUserByUsernameInsensitive(name);
                 const credMatch = (user ? findCredentialByUsername(user.username) : null) || findCredentialByUsername(name);
                 const cred = credMatch?.record;
@@ -3413,7 +3397,7 @@ function showLoginForm() {
                     return;
                 }
 
-                // ── SUPABASE PATH (primary) ───────────────────────────────────────────
+                // â”€â”€ SUPABASE PATH (primary) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 if (window.SP?.signup) {
                     try {
                         const data = await window.SP.signup(name, email, password, phone);
@@ -3422,7 +3406,7 @@ function showLoginForm() {
                             toastSuccess('Account created! Check your email to confirm before logging in.');
                         } else if (data?.session) {
                             toastSuccess('Account created! Welcome to Star Paper.');
-                            // Session is live — bootstrap will fire via onAuthStateChange.
+                            // Session is live â€” bootstrap will fire via onAuthStateChange.
                         } else {
                             toastSuccess('Account created! You can now log in.');
                         }
@@ -3439,7 +3423,7 @@ function showLoginForm() {
                     }
                 }
 
-                // ── LOCAL FALLBACK (offline / no Supabase) ────────────────────────────
+                // â”€â”€ LOCAL FALLBACK (offline / no Supabase) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 if (!hasSecureCredentialCrypto()) {
                     toastError('Secure password storage is not available in this browser.');
                     return;
@@ -3718,6 +3702,26 @@ function showLoginForm() {
             }
         }
 
+        function restorePostBootUiState() {
+            const allowedSections = new Set(['dashboard', 'money', 'schedule', 'artists', 'tasks', 'financials', 'expenses', 'otherIncome', 'reports', 'bookings', 'calendar']);
+            const lastSectionRaw = Storage.loadSync('starPaperLastSection', 'dashboard');
+            const lastMoneyTab = Storage.loadSync('starPaperLastMoneyTab', 'financials');
+            const lastScheduleTab = Storage.loadSync('starPaperLastScheduleTab', 'bookings');
+
+            let targetSection = allowedSections.has(lastSectionRaw) ? lastSectionRaw : 'dashboard';
+            if (targetSection === 'money') {
+                targetSection = allowedSections.has(lastMoneyTab) ? lastMoneyTab : 'financials';
+            } else if (targetSection === 'schedule') {
+                targetSection = allowedSections.has(lastScheduleTab) ? lastScheduleTab : 'bookings';
+            }
+
+            if (typeof showSection === 'function') {
+                showSection(targetSection);
+            }
+            restoreDrafts();
+        }
+        window.restorePostBootUiState = restorePostBootUiState;
+
         function toggleAdminOnlyUI() {
             const isAdmin = currentUser === 'Admin';
             document.querySelectorAll('.admin-only').forEach(el => {
@@ -3927,15 +3931,32 @@ function showLoginForm() {
             return window.__spLastCloudSyncPromise;
         }
 
-        async function persistMutationWithCloudFeedback(options = {}) {
-            const result = await saveUserData();
-            if (result?.cloudSynced) {
+        function getCloudFailureMessage(result, fallback) {
+            if (!result) return fallback || 'Cloud save failed.';
+            return result.message || result.error?.message || fallback || 'Cloud save failed.';
+        }
+
+        async function persistMutationWithCloudFeedback(operation, options = {}) {
+            let result = null;
+            if (typeof operation === 'function') {
+                result = await operation();
+            } else if (operation && typeof operation.then === 'function') {
+                result = await operation;
+            } else {
+                result = await saveUserData();
+            }
+
+            if (result?.ok || result?.cloudSynced) {
                 if (!options.suppressSuccessToast) {
                     toastSuccess(options.successMessage || 'Saved to cloud!');
                 }
                 return result;
             }
-            throw result?.error || new Error(options.failureMessage || 'Cloud save failed.');
+
+            const message = getCloudFailureMessage(result, options.failureMessage);
+            const error = result?.error instanceof Error ? result.error : new Error(message);
+            error.syncResult = result || null;
+            throw error;
         }
 
         function getNextNumericRecordId(records) {
@@ -4540,6 +4561,16 @@ function showLoginForm() {
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.getElementById(parentSection)?.classList.add('active');
             Storage.saveSync('starPaperLastSection', section);
+            if (['financials', 'expenses', 'otherIncome', 'reports'].includes(section)) {
+                Storage.saveSync('starPaperLastMoneyTab', section);
+            } else if (section === 'money') {
+                Storage.saveSync('starPaperLastMoneyTab', Storage.loadSync('starPaperLastMoneyTab', 'financials'));
+            }
+            if (['bookings', 'calendar'].includes(section)) {
+                Storage.saveSync('starPaperLastScheduleTab', section);
+            } else if (section === 'schedule') {
+                Storage.saveSync('starPaperLastScheduleTab', Storage.loadSync('starPaperLastScheduleTab', 'bookings'));
+            }
 
             // Scroll to top on every section change
             window.scrollTo({ top: 0, behavior: 'instant' });
@@ -4550,7 +4581,7 @@ function showLoginForm() {
             const target = el || null;
             target?.classList.add('active');
 
-            // â”€â”€ Push to in-app navigation history stack â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Push to in-app navigation history stack Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             if (!window._spNavSkip) {
                 if (window._spNavStack) {
                     window._spNavStack = window._spNavStack.slice(0, window._spNavIndex + 1);
@@ -4561,13 +4592,13 @@ function showLoginForm() {
             }
             window._spNavSkip = false;
 
-            // â”€â”€ Sync bottom nav (map sub-sections to parent nav entry) â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Sync bottom nav (map sub-sections to parent nav entry) Ã¢â€â‚¬Ã¢â€â‚¬
             const navKey = NAV_SECTION_MAP[section] || section;
             document.querySelectorAll('.bottom-nav-item').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.section === navKey);
             });
 
-            // â”€â”€ Sync sidebar nav active state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Sync sidebar nav active state Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             document.querySelectorAll('.nav-item[data-section]').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.section === navKey);
             });
@@ -4590,13 +4621,13 @@ function showLoginForm() {
             const titles = {
                 'dashboard':  'Dashboard',
                 'money':      'Money',
-                'financials': 'Money â€” Overview',
+                'financials': 'Money Ã¢â‚¬â€ Overview',
                 'artists':    'Artists',
                 'schedule':   'Schedule',
-                'bookings':   'Schedule â€” Bookings',
-                'expenses':   'Money â€” Expenses',
-                'otherIncome':'Money â€” Other Income',
-                'calendar':   'Schedule â€” Calendar',
+                'bookings':   'Schedule Ã¢â‚¬â€ Bookings',
+                'expenses':   'Money Ã¢â‚¬â€ Expenses',
+                'otherIncome':'Money Ã¢â‚¬â€ Other Income',
+                'calendar':   'Schedule Ã¢â‚¬â€ Calendar',
                 'reports':    'Reports',
                 'tasks':      'Tasks',
             };
@@ -4657,156 +4688,10 @@ function showLoginForm() {
                 setBootState('booting-auth');
             }
             return;
-            if (window.__spCloudOnly) {
-                if (window.__spCloudBootstrapPending || window.__spSupabaseBootPromise || window.__spAuthRedirectInProgress) {
-                    setBootState('booting-auth');
-                    return;
-                }
-                if (!window.SP?.getOwnerId?.()) {
-                    setBootState('booting-auth');
-                }
-                return;
-            }
-            // Guard: if the user explicitly clicked logout, respect that choice.
-            // Even if localStorage still has remember=true or a session key, we
-            // must NOT auto-boot the app. The user will need to log in again.
-            // This flag is set by supabaseLogout() and cleared by bootstrapFromSupabaseSession()
-            // on the next successful login.
-            if (localStorage.getItem('sp_logged_out') === '1') {
-                // Still show landing — not the login form, not the app.
-                if (typeof setActiveScreen === 'function') setActiveScreen('landingScreen');
-                return;
-            }
-
-            const sessionActive = Storage.loadSync('starPaper_session', null) === 'active';
-            const sessionUser = Storage.loadSync('starPaperSessionUser', null);
-            const remember = Storage.loadSync('starPaperRemember', false);
-            const rememberedUser = Storage.loadSync('starPaperCurrentUser', null);
-
-            let savedUser = sessionActive ? sessionUser : (remember ? rememberedUser : null);
-            let savedRecord = savedUser ? (findUserByUsername(savedUser) || findUserByUsernameInsensitive(savedUser)) : null;
-
-            if (savedUser && !savedRecord) {
-                const profileHint = window.SP?.getProfileState?.() || {};
-                savedRecord = ensureSessionUserExists(savedUser, profileHint) || null;
-            }
-
-            const cloudMode = Boolean(window.__spSupabaseConfigured) && !window.__spAllowLocalFallback;
-            if (cloudMode) {
-                if (sessionActive) {
-                    localStorage.removeItem('starPaper_session');
-                    localStorage.removeItem('starPaperSessionUser');
-                }
-                savedUser = null;
-                savedRecord = null;
-            }
-
-            // â”€â”€ NO LOCAL SESSION: delegate entirely to Supabase â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            // The old approach used a 12-retry setTimeout loop, which could miss
-            // the sp-supabase-ready event if it fired before the listener was
-            // registered. This replacement uses a Promise that can never be missed:
-            // - If SP is already ready, it resolves immediately.
-            // - If SP is not ready yet, it waits on the sp-supabase-ready event
-            //   (which is dispatched exactly once and cannot be "missed" via a
-            //   Promise resolver the way an event listener can).
-                // - A hard 10-second timeout prevents infinite waiting on network fail.
-                if (!savedUser || !savedRecord) {
-                    if (sessionActive) {
-                        localStorage.removeItem('starPaper_session');
-                        localStorage.removeItem('starPaperSessionUser');
-                    }
-
-                    if (window.__spAuthRedirectInProgress || window.__spSuppressStoredSessionBootstrap) {
-                        return;
-                    }
-
-                    if (window.__spSupabaseBootPromise || window.__spCloudBootstrapPending) {
-                        return;
-                    }
-
-                    // Fire-and-forget: don't block the synchronous call stack.
-                    window.__spCloudBootstrapPending = true;
-                    window.__spSupabaseBootPromise = window.__spSupabaseBootPromise || (async () => {
-                    if (window.__spAppBooted) return;
-
-                    // Step 1: Wait for window.SP to be fully initialised.
-                    // If the Supabase SDK was already in <head> (our fix), this
-                    // resolves synchronously on the very first microtask tick.
-                    if (!window.__spSupabaseReady) {
-                        await new Promise((resolve) => {
-                            // Already ready by the time we check?
-                            if (window.__spSupabaseReady) { resolve(); return; }
-                            const onReady = () => resolve();
-                            window.addEventListener('sp-supabase-ready', onReady, { once: true });
-                            // Hard cap: if Supabase never fires (CDN failure, etc.)
-                            // stop waiting after 10 s so the landing page isn't frozen.
-                            setTimeout(resolve, 10000);
-                        });
-                    }
-
-                    if (window.__spAppBooted) return;
-
-                    // Step 2: Ask Supabase for a live session. Because the SDK is
-                    // already loaded synchronously, getSession() always resolves â€”
-                    // even on the very first page load after an OAuth redirect.
-                    try {
-                        // Prefer the cached in-memory session (zero network round-trip).
-                        let session = window.SP?.getSessionState?.() || null;
-                        if (!session?.user && typeof window.SP?.getSession === 'function') {
-                            session = await window.SP.getSession();
-                        }
-
-                        if (session?.user && typeof window.SP?.bootstrap === 'function') {
-                            await window.SP.bootstrap(session, {
-                                remember: true,
-                                showWelcome: true,
-                                runMigration: true,
-                            });
-                        }
-                    } catch (err) {
-                        // Non-fatal: user stays on landing; they can log in manually.
-                        console.warn('[StarPaper] checkAuth Supabase fallback failed:', err);
-                    } finally {
-                        if (!window.__spAppBooted) {
-                            window.__spCloudBootstrapPending = false;
-                        }
-                        window.__spSupabaseBootPromise = null;
-                    }
-                })();
-
-                return;
-            }
-
-            // â”€â”€ VALID LOCAL SESSION: boot the app â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            currentUser = savedRecord.username;
-            updateCurrentManagerContext();
-            loadUserData();
-            showApp();
-            showWelcomeMessage();
-            const allowedSections = new Set(['dashboard','money','schedule','artists','tasks','financials','expenses','otherIncome','reports','bookings','calendar']);
-            const lastSectionRaw = Storage.loadSync('starPaperLastSection', 'dashboard');
-            const lastSection = allowedSections.has(lastSectionRaw) ? lastSectionRaw : 'dashboard';
-            showSection(lastSection);
-            restoreDrafts();
         }
 
         function restoreSession() {
             return;
-            if (!window.__spCloudOnly) {
-                checkAuth();
-            }
-        }
-
-        // Keep the sp-supabase-ready listener as a secondary safety net for
-        // edge cases where checkAuth() ran before supabase.js finished (should
-        // not happen with the SDK pre-loaded in <head>, but belt-and-suspenders).
-        if (!window.__spSupabaseReadyListenerBound) {
-            window.__spSupabaseReadyListenerBound = true;
-            window.addEventListener('sp-supabase-ready', () => {
-                if (!window.__spCloudOnly && !window.__spAppBooted) {
-                    checkAuth();
-                }
-            });
         }
 
         function cacheDrafts() {
@@ -5983,7 +5868,7 @@ function showLoginForm() {
             return reportLogoDataUrlPromise;
         }
 
-        // ── CSV Export ──────────────────────────────────────────────────────
+        // â”€â”€ CSV Export â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function escapeCSVField(field) {
             const str = String(field ?? '');
             if (str.includes(',') || str.includes('"') || str.includes('\n')) {
@@ -6711,7 +6596,12 @@ function showLoginForm() {
                 // Optimistic UI: render immediately, then persist
                 renderExpenses();
                 cancelExpense();
-                await persistMutationWithCloudFeedback({
+                await persistMutationWithCloudFeedback(() => {
+                    if (typeof window.SP?.saveExpenses === 'function') {
+                        return window.SP.saveExpenses(expenses);
+                    }
+                    return saveUserData();
+                }, {
                     successMessage: isEdit ? 'Expense updated in cloud.' : 'Expense saved to cloud.'
                 });
                 updateDashboard();
@@ -6724,7 +6614,7 @@ function showLoginForm() {
                 renderExpenses();
                 updateDashboard();
                 updateReportStatistics();
-                toastError('Expense could not be saved to the cloud. Your last change was undone.');
+                toastError(getCloudFailureMessage(err?.syncResult, 'Expense could not be saved to the cloud. Your last change was undone.'));
             }
         }
 
@@ -6736,7 +6626,7 @@ function showLoginForm() {
                 tbody.innerHTML = `<tr><td colspan="5">${emptyState({
                     icon: 'ph-receipt',
                     title: 'No expenses yet',
-                    sub: 'Track your costs â€” travel, equipment, studio time, and more.',
+                    sub: 'Track your costs Ã¢â‚¬â€ travel, equipment, studio time, and more.',
                     ctaLabel: '+ Log Expense',
                     ctaAction: "showAddExpense()"
                 })}</td></tr>`;
@@ -6744,7 +6634,7 @@ function showLoginForm() {
                 if (cards) cards.innerHTML = emptyState({
                     icon: 'ph-receipt',
                     title: 'No expenses yet',
-                    sub: 'Track your costs â€” travel, equipment, studio time, and more.',
+                    sub: 'Track your costs Ã¢â‚¬â€ travel, equipment, studio time, and more.',
                     ctaLabel: '+ Log Expense',
                     ctaAction: "showAddExpense()"
                 });
@@ -6798,7 +6688,12 @@ function showLoginForm() {
             window.expenses = expenses;
             renderExpenses();
             try {
-                await persistMutationWithCloudFeedback({
+                await persistMutationWithCloudFeedback(() => {
+                    if (typeof window.SP?.deleteExpense === 'function') {
+                        return window.SP.deleteExpense(id);
+                    }
+                    return saveUserData();
+                }, {
                     successMessage: 'Expense deleted from the cloud.'
                 });
                 updateDashboard();
@@ -6809,7 +6704,7 @@ function showLoginForm() {
                 renderExpenses();
                 updateDashboard();
                 updateReportStatistics();
-                toastError('Expense deletion failed in the cloud. Your last change was undone.');
+                toastError(getCloudFailureMessage(err?.syncResult, 'Expense deletion failed in the cloud. Your last change was undone.'));
             }
         }
 
@@ -6959,7 +6854,12 @@ function showLoginForm() {
                 }
                 renderOtherIncome();
                 cancelOtherIncome();
-                await persistMutationWithCloudFeedback({
+                await persistMutationWithCloudFeedback(() => {
+                    if (typeof window.SP?.saveOtherIncome === 'function') {
+                        return window.SP.saveOtherIncome(otherIncome);
+                    }
+                    return saveUserData();
+                }, {
                     successMessage: isEdit ? 'Other income updated in cloud.' : 'Other income saved to cloud.'
                 });
                 updateDashboard();
@@ -6972,7 +6872,7 @@ function showLoginForm() {
                 renderOtherIncome();
                 updateDashboard();
                 updateReportStatistics();
-                toastError('Other income could not be saved to the cloud. Your last change was undone.');
+                toastError(getCloudFailureMessage(err?.syncResult, 'Other income could not be saved to the cloud. Your last change was undone.'));
             }
         }
 
@@ -7059,7 +6959,12 @@ function showLoginForm() {
             window.otherIncome = otherIncome;
             renderOtherIncome();
             try {
-                await persistMutationWithCloudFeedback({
+                await persistMutationWithCloudFeedback(() => {
+                    if (typeof window.SP?.deleteOtherIncome === 'function') {
+                        return window.SP.deleteOtherIncome(id);
+                    }
+                    return saveUserData();
+                }, {
                     successMessage: 'Other income deleted from the cloud.'
                 });
                 updateDashboard();
@@ -7070,7 +6975,7 @@ function showLoginForm() {
                 renderOtherIncome();
                 updateDashboard();
                 updateReportStatistics();
-                toastError('Other income deletion failed in the cloud. Your last change was undone.');
+                toastError(getCloudFailureMessage(err?.syncResult, 'Other income deletion failed in the cloud. Your last change was undone.'));
             }
         }
 
@@ -7426,6 +7331,7 @@ function showLoginForm() {
 
             let previousBookings = [];
             let previousArtists = [];
+            let bookingSaved = false;
             try {
                 previousBookings = bookings.slice();
                 previousArtists = artists.slice();
@@ -7464,6 +7370,7 @@ function showLoginForm() {
 
                 const linkedArtist = ensureArtistForBookingName(booking.artist, currentManagerId);
                 booking.artistId = linkedArtist?.id || booking.artistId;
+                const artistsChanged = previousArtists.length !== artists.length || previousArtists.some((artist, index) => artist !== artists[index]);
 
                 const isEdit = !!editingBookingId; // capture before it gets nulled
                 if (editingBookingId) {
@@ -7485,9 +7392,35 @@ function showLoginForm() {
                 renderBookings();
                 cancelBooking();
                 showSection('schedule');
-                await persistMutationWithCloudFeedback({
+                let artistSyncResult = { ok: true };
+                if (artistsChanged) {
+                    if (typeof window.SP?.saveArtists === 'function') {
+                        artistSyncResult = await window.SP.saveArtists(artists);
+                    } else {
+                        artistSyncResult = await saveUserData();
+                    }
+                    const syncedArtist = typeof findArtistByName === 'function' ? findArtistByName(booking.artist) : null;
+                    if (syncedArtist?.id) {
+                        booking.artistId = syncedArtist.id;
+                    }
+                }
+
+                await persistMutationWithCloudFeedback(() => {
+                    if (typeof window.SP?.saveBookings === 'function') {
+                        return window.SP.saveBookings(bookings);
+                    }
+                    return saveUserData();
+                }, {
+                    suppressSuccessToast: true,
                     successMessage: isEdit ? 'Booking updated in cloud.' : 'Booking saved to cloud.'
                 });
+                bookingSaved = true;
+
+                if (artistSyncResult && !(artistSyncResult.ok || artistSyncResult.cloudSynced)) {
+                    toastWarn(`Booking saved to cloud, but artist sync needs attention. ${getCloudFailureMessage(artistSyncResult, 'Please retry artist sync.')}`);
+                } else {
+                    toastSuccess(isEdit ? 'Booking updated in cloud.' : 'Booking saved to cloud.');
+                }
                 if (booking.status === 'confirmed') triggerGoldDust();
                 updateDashboard();
                 renderCalendar();
@@ -7496,19 +7429,21 @@ function showLoginForm() {
         
             } catch (err) {
                 console.error('[StarPaper] saveBooking failed:', err);
-                bookings = previousBookings;
-                artists = previousArtists;
-                window.bookings = bookings;
-                window.artists = artists;
-                renderBookings();
-                if (typeof window.renderArtists === 'function') {
-                    window.renderArtists();
+                if (!bookingSaved) {
+                    bookings = previousBookings;
+                    artists = previousArtists;
+                    window.bookings = bookings;
+                    window.artists = artists;
+                    renderBookings();
+                    if (typeof window.renderArtists === 'function') {
+                        window.renderArtists();
+                    }
+                    updateDashboard();
+                    renderCalendar();
+                    renderPerformanceMap();
+                    updateReportStatistics();
+                    toastError(getCloudFailureMessage(err?.syncResult, 'Booking could not be saved to the cloud. Your last change was undone.'));
                 }
-                updateDashboard();
-                renderCalendar();
-                renderPerformanceMap();
-                updateReportStatistics();
-                toastError('Booking could not be saved to the cloud. Your last change was undone.');
             }
         }
 
@@ -7944,7 +7879,7 @@ function showLoginForm() {
             showAddBooking();
         }
 
-        // Custom delete confirmation â€” avoids browser confirm() dialog
+        // Custom delete confirmation Ã¢â‚¬â€ avoids browser confirm() dialog
         function confirmDeleteBooking(id) {
             const modal = document.getElementById('confirmDeleteModal');
             const body  = document.getElementById('confirmDeleteBody');
@@ -7970,7 +7905,12 @@ function showLoginForm() {
             window.bookings = bookings;
             renderBookings();
             try {
-                await persistMutationWithCloudFeedback({
+                await persistMutationWithCloudFeedback(() => {
+                    if (typeof window.SP?.deleteBooking === 'function') {
+                        return window.SP.deleteBooking(id);
+                    }
+                    return saveUserData();
+                }, {
                     successMessage: 'Booking deleted from the cloud.'
                 });
                 updateDashboard();
@@ -7983,7 +7923,7 @@ function showLoginForm() {
                 updateDashboard();
                 renderCalendar();
                 updateReportStatistics();
-                toastError('Booking deletion failed in the cloud. Your last change was undone.');
+                toastError(getCloudFailureMessage(err?.syncResult, 'Booking deletion failed in the cloud. Your last change was undone.'));
             }
         }
 
@@ -9003,7 +8943,7 @@ function showLoginForm() {
             }
         });
 
-        // â”€â”€ Premium Toast System â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Premium Toast System Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         function showToast(message, type = 'info', opts = {}) {
             const stack = document.getElementById('spToastStack');
             if (!stack) return;
@@ -9021,7 +8961,7 @@ function showLoginForm() {
                     <div class="sp-toast__title">${opts.title || ''}</div>
                     <div class="sp-toast__msg">${message}</div>
                 </div>
-                <button class="sp-toast__close" aria-label="Dismiss">âœ•</button>
+                <button class="sp-toast__close" aria-label="Dismiss">Ã¢Å“â€¢</button>
                 <div class="sp-toast__bar" style="--sp-toast-dur:${durSec}"></div>
             `;
             // If no title set, promote message to title
@@ -9050,7 +8990,7 @@ function showLoginForm() {
         function toastInfo(msg, title)    { showToast(msg, 'info',    { title }); }
         function toastWarn(msg, title)    { showToast(msg, 'warning', { title }); }
 
-        // â”€â”€ Relative timestamps â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Relative timestamps Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         function timeAgo(dateInput) {
             if (!dateInput) return '';
             const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
@@ -9069,7 +9009,7 @@ function showLoginForm() {
             return `${Math.floor(secs / 2592000)} months ago`;
         }
 
-        // â”€â”€ Empty state builder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Empty state builder Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         function emptyState({ icon, title, sub, ctaLabel, ctaAction }) {
             // icon = Phosphor class name e.g. 'ph-receipt' OR legacy emoji (renders as text fallback)
             const isPhosphor = typeof icon === 'string' && icon.startsWith('ph-');
@@ -9084,7 +9024,7 @@ function showLoginForm() {
             </div>`;
         }
 
-        // â”€â”€ Revenue Pulse â€” countUp animation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Revenue Pulse Ã¢â‚¬â€ countUp animation Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         function countUp(el, targetValue, prefix = null, duration = 900) {
             if (!el) return;
             const formatValue = (value) => {
@@ -9114,7 +9054,7 @@ function showLoginForm() {
             requestAnimationFrame(step);
         }
 
-        // â”€â”€ Tab switchers: Money â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Tab switchers: Money Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         function activateMoneyTab(tabId) {
             document.querySelectorAll('#moneyTabs .sp-tab').forEach(btn => {
                 btn.classList.toggle('sp-tab--active', btn.dataset.tab === tabId);
@@ -9127,6 +9067,8 @@ function showLoginForm() {
 
         function switchMoneyTab(tab) {
             if (!tab) return;
+            Storage.saveSync('starPaperLastMoneyTab', tab);
+            Storage.saveSync('starPaperLastSection', tab);
             activateMoneyTab(tab);
             if (tab === 'financials') { updateDashboard(); renderPerformanceMap(); }
             else if (tab === 'expenses') renderExpenses();
@@ -9135,7 +9077,7 @@ function showLoginForm() {
         }
         window.switchMoneyTab = switchMoneyTab;
 
-        // â”€â”€ Dedicated tab listener (bypasses all action dispatchers) â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Dedicated tab listener (bypasses all action dispatchers) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         // Runs at capture phase so it fires before any dispatcher can swallow it
         document.addEventListener('click', function spTabListener(e) {
             const btn = e.target.closest('[data-action="switchMoneyTab"],[data-action="switchScheduleTab"]');
@@ -9148,7 +9090,7 @@ function showLoginForm() {
             else if (action === 'switchScheduleTab') switchScheduleTab(tab);
         }, true); // capture phase = runs first
 
-        // â”€â”€ Tab switchers: Schedule â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Tab switchers: Schedule Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         function activateScheduleTab(tabId) {
             document.querySelectorAll('#scheduleTabs .sp-tab').forEach(btn => {
                 btn.classList.toggle('sp-tab--active', btn.dataset.tab === tabId);
@@ -9161,13 +9103,15 @@ function showLoginForm() {
 
         function switchScheduleTab(tab) {
             if (!tab) return;
+            Storage.saveSync('starPaperLastScheduleTab', tab);
+            Storage.saveSync('starPaperLastSection', tab);
             activateScheduleTab(tab);
             if (tab === 'bookings') renderBookings();
             else if (tab === 'calendar') renderCalendar();
         }
         window.switchScheduleTab = switchScheduleTab;
 
-        // â”€â”€ About Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ About Modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         function showAboutModal() {
             const modal = document.getElementById('spAboutModal');
             if (!modal) return;
@@ -9181,7 +9125,7 @@ function showLoginForm() {
             document.getElementById('spAboutBackdrop')?.addEventListener('click', close, { once: true });
         }
 
-        // â”€â”€ Admin Settings Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Admin Settings Modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         function showAdminSettings() {
             const modal = document.getElementById('spAdminModal');
             if (!modal) return;
@@ -9205,8 +9149,8 @@ function showLoginForm() {
                             <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Actions</th></tr></thead>
                             <tbody>${allUsers.map(u => `
                                 <tr>
-                                    <td>${u.name || u.email || 'â€”'}</td>
-                                    <td style="color:var(--text-muted)">${u.email || 'â€”'}</td>
+                                    <td>${u.name || u.email || 'Ã¢â‚¬â€'}</td>
+                                    <td style="color:var(--text-muted)">${u.email || 'Ã¢â‚¬â€'}</td>
                                     <td><span class="sp-admin-pill sp-admin-pill--${u.status}">${u.status}</span></td>
                                     <td><div class="sp-admin-actions">
                                         ${u.status === 'pending' ? `<button class="sp-admin-btn sp-admin-btn--approve" onclick="adminApproveUser('${u.id || u.email}')">Approve</button>` : ''}
@@ -9249,7 +9193,7 @@ function showLoginForm() {
         window.adminApproveUser = adminApproveUser;
         window.adminDeleteUser = adminDeleteUser;
 
-        // â”€â”€ Booking Velocity Gauge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Booking Velocity Gauge Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         function updateVelocityGauge() {
             const fillEl   = document.getElementById('velocityGaugeFill');
             const needleEl = document.getElementById('velocityGaugeNeedle');
@@ -9275,8 +9219,8 @@ function showLoginForm() {
                 return d.getMonth() === lm && d.getFullYear() === ly;
             }).length;
 
-            // Arc: 0â€“180 degrees mapped to 0â€“max shows
-            // Arc total length â‰ˆ 251px (Ï€ * 80)
+            // Arc: 0Ã¢â‚¬â€œ180 degrees mapped to 0Ã¢â‚¬â€œmax shows
+            // Arc total length Ã¢â€°Ë† 251px (Ãâ‚¬ * 80)
             const ARC_LEN = 251;
             const maxShows = Math.max(thisCount, lastCount, 1);
             const ratio = Math.min(thisCount / maxShows, 1);
@@ -9293,19 +9237,19 @@ function showLoginForm() {
             if (deltaEl) {
                 const diff = thisCount - lastCount;
                 if (diff > 0) {
-                    deltaEl.textContent = `â–² ${diff} more`;
+                    deltaEl.textContent = `Ã¢â€“Â² ${diff} more`;
                     deltaEl.className = 'velocity-gauge__delta velocity-gauge__delta--up';
                 } else if (diff < 0) {
-                    deltaEl.textContent = `â–¼ ${Math.abs(diff)} fewer`;
+                    deltaEl.textContent = `Ã¢â€“Â¼ ${Math.abs(diff)} fewer`;
                     deltaEl.className = 'velocity-gauge__delta velocity-gauge__delta--down';
                 } else {
-                    deltaEl.textContent = 'â€” same pace';
+                    deltaEl.textContent = 'Ã¢â‚¬â€ same pace';
                     deltaEl.className = 'velocity-gauge__delta velocity-gauge__delta--flat';
                 }
             }
         }
 
-        // â”€â”€ Today Board + Nudge Engine â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Today Board + Nudge Engine Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         window.updateTodayBoard = function updateTodayBoard() {
             const now = new Date();
             const hour = now.getHours();
@@ -9326,7 +9270,7 @@ function showLoginForm() {
             const todayStr = now.toISOString().slice(0, 10);
             const nudges = [];
 
-            // â”€â”€ Midnight Whisper (9 PM â€“ 4 AM) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Midnight Whisper (9 PM Ã¢â‚¬â€œ 4 AM) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             if (hour >= 21 || hour < 4) {
                 const liveCount = allBookings.filter(b => b.status === 'confirmed' && b.date === todayStr).length;
                 nudges.push({
@@ -9337,7 +9281,7 @@ function showLoginForm() {
                 });
             }
 
-            // â”€â”€ Collection Nudge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Collection Nudge Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             const unpaid = allBookings.filter(b => (Math.round(Number(b.balance) || 0)) > 0);
             if (unpaid.length > 0) {
                 const total = unpaid.reduce((s, b) => s + (Math.round(Number(b.balance) || 0)), 0);
@@ -9349,7 +9293,7 @@ function showLoginForm() {
                 });
             }
 
-            // â”€â”€ Show Nudge â€” show in â‰¤5 days with balance due â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Show Nudge Ã¢â‚¬â€ show in Ã¢â€°Â¤5 days with balance due Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             allBookings.filter(b => {
                 if (!b.date || (Math.round(Number(b.balance) || 0)) <= 0) return false;
                 const diff = (new Date(b.date) - now) / 86400000;
@@ -9364,7 +9308,7 @@ function showLoginForm() {
                 });
             });
 
-            // â”€â”€ Momentum Nudge â€” 3+ confirmed bookings in 3 months â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Momentum Nudge Ã¢â‚¬â€ 3+ confirmed bookings in 3 months Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             const cutoff = new Date(now); cutoff.setMonth(cutoff.getMonth() - 3);
             const recent = allBookings.filter(b => b.status === 'confirmed' && b.date && new Date(b.date) >= cutoff);
             if (recent.length >= 3) {
@@ -9377,7 +9321,7 @@ function showLoginForm() {
                 });
             }
 
-            // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Render Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             if (!alertsEl) return;
             const dismissed = JSON.parse(sessionStorage.getItem('sp_dismissed_nudges') || '[]');
             const visible = nudges.filter(n => !dismissed.includes(n.id));
@@ -9395,7 +9339,7 @@ function showLoginForm() {
             if (visible.length === 0) {
                 alertsEl.innerHTML = `<div class="nudge-item nudge-item--clear">
                     <span class="nudge-icon"><i class="ph ph-check-circle" aria-hidden="true"></i></span>
-                    <span class="nudge-text">All Clear â€” No urgent items require your attention today.</span>
+                    <span class="nudge-text">All Clear Ã¢â‚¬â€ No urgent items require your attention today.</span>
                 </div>`;
                 return;
             }
@@ -9498,7 +9442,7 @@ function showLoginForm() {
             }
         });
 
-        // â”€â”€ In-app navigation history button state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ In-app navigation history button state Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         function updateNavHistButtons() {
             const back = document.getElementById('navBackBtn');
             const fwd  = document.getElementById('navFwdBtn');
@@ -9507,7 +9451,7 @@ function showLoginForm() {
             fwd.disabled  = !window._spNavStack || window._spNavIndex >= window._spNavStack.length - 1;
         }
 
-        // â”€â”€ Falling Gold Coins canvas animation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Falling Gold Coins canvas animation Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         (function initCoinRain() {
             const canvas = document.getElementById('coinRainCanvas');
             if (!canvas) return;
@@ -9799,7 +9743,7 @@ function showLoginForm() {
             updateControls();
         })();
 
-        // â”€â”€ Gold Dust burst â€” triggered on booking confirmed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Gold Dust burst Ã¢â‚¬â€ triggered on booking confirmed Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         function triggerGoldDust() {
             const canvas = document.getElementById('coinRainCanvas');
             if (!canvas) return;
@@ -9860,11 +9804,11 @@ function showLoginForm() {
             requestAnimationFrame(burstTick);
         }
 
-        // â•â• COMMAND PALETTE & KEYBOARD SHORTCUTS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+        // Ã¢â€¢ÂÃ¢â€¢Â COMMAND PALETTE & KEYBOARD SHORTCUTS Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
         (function initCommandPalette() {
 
-            // â”€â”€ Section registry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Section registry Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             const SECTIONS = [
                 { id: 'dashboard',   label: 'Dashboard',    icon: '<i class="ph ph-squares-four"></i>',              sub: 'Overview & KPIs',                key: 'D' },
                 { id: 'money',       label: 'Money',        icon: '<i class="ph ph-currency-circle-dollar"></i>',   sub: 'Financials, Expenses & Reports', key: 'M' },
@@ -9881,7 +9825,7 @@ function showLoginForm() {
                 { label: 'Open Palette',   icon: '<i class="ph ph-command"></i>', sub: 'Cmd/Ctrl+K',           action: () => openPalette() },
             ];
 
-            // â”€â”€ DOM refs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ DOM refs Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             const palette   = document.getElementById('spPalette');
             const backdrop  = document.getElementById('spPaletteBackdrop');
             const input     = document.getElementById('spPaletteInput');
@@ -9893,7 +9837,7 @@ function showLoginForm() {
             let selectedIdx = -1;
             let currentResults = [];
 
-            // â”€â”€ Open / close â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Open / close Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             function isAppActive() {
                 const app = document.getElementById('appContainer');
                 return app && app.style.display !== 'none' && currentUser;
@@ -9922,7 +9866,7 @@ function showLoginForm() {
                 }, { once: true });
             }
 
-            // â”€â”€ Search & render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Search & render Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             function highlight(text, query) {
                 if (!query) return text;
                 const idx = text.toLowerCase().indexOf(query.toLowerCase());
@@ -9986,7 +9930,7 @@ function showLoginForm() {
                     items.push({ type: 'group', label: 'Bookings' });
                     matchBookings.forEach(b => items.push({
                         type: 'booking', label: b.event, icon: 'ph-calendar-check',
-                        sub: `${b.artist} Â· ${b.date || ''}`, query: q,
+                        sub: `${b.artist} Ã‚Â· ${b.date || ''}`, query: q,
                         action: () => { showSection('schedule'); }
                     }));
                 }
@@ -10016,7 +9960,7 @@ function showLoginForm() {
                     return `<li class="sp-palette__result" role="option"
                         aria-selected="${isSelected}"
                         data-result-idx="${resultIdx}">
-                        <div class="sp-palette__result-icon">${item.icon || 'â–¸'}</div>
+                        <div class="sp-palette__result-icon">${item.icon || 'Ã¢â€“Â¸'}</div>
                         <div class="sp-palette__result-body">
                             <div class="sp-palette__result-title">${highlight(item.label, item.query)}</div>
                             <div class="sp-palette__result-sub">${item.sub || ''}</div>
@@ -10056,13 +10000,13 @@ function showLoginForm() {
                 }
             }
 
-            // â”€â”€ Input handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Input handler Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             input.addEventListener('input', () => {
                 selectedIdx = -1;
                 renderResults(input.value);
             });
 
-            // â”€â”€ Keyboard navigation inside palette â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Keyboard navigation inside palette Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             input.addEventListener('keydown', e => {
                 if (e.key === 'ArrowDown') {
                     e.preventDefault();
@@ -10083,7 +10027,7 @@ function showLoginForm() {
             // Close on backdrop click
             backdrop.addEventListener('click', closePalette);
 
-            // â”€â”€ Global keyboard shortcuts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Global keyboard shortcuts Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             let gPressed = false;
             let gTimer = null;
 
@@ -10092,7 +10036,7 @@ function showLoginForm() {
                 const inInput = ['input','textarea','select'].includes(tag) ||
                     document.activeElement?.isContentEditable;
 
-                // Cmd/Ctrl+K â€” open palette
+                // Cmd/Ctrl+K Ã¢â‚¬â€ open palette
                 if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
                     e.preventDefault();
                     if (isOpen) closePalette(); else openPalette();
@@ -10125,13 +10069,13 @@ function showLoginForm() {
                         clearTimeout(gTimer);
                         const section = SECTIONS.find(s => s.id === target);
                         showSection(target);
-                        showKbdHint(`â†’ ${section?.label || target}`);
+                        showKbdHint(`Ã¢â€ â€™ ${section?.label || target}`);
                         return;
                     }
                 }
             });
 
-            // â”€â”€ Keyboard hint display â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Keyboard hint display Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             let hintTimer = null;
             function showKbdHint(text) {
                 if (!kbdHint) return;
@@ -10146,7 +10090,7 @@ function showLoginForm() {
 
         })();
 
-        // â•â• PHASE 5: DENSITY TOGGLE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+        // Ã¢â€¢ÂÃ¢â€¢Â PHASE 5: DENSITY TOGGLE Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
         (function initDensityToggle() {
             const STORAGE_KEY = 'sp_density';
@@ -10170,7 +10114,7 @@ function showLoginForm() {
             compactBtn.addEventListener('click',  () => applyDensity('compact'));
         })();
 
-        // â•â• PHASE 5: GOAL PROGRESS PULSE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+        // Ã¢â€¢ÂÃ¢â€¢Â PHASE 5: GOAL PROGRESS PULSE Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
         // Wrap goal progress bar updates to add pulse animation
         (function patchGoalProgressPulse() {
@@ -10188,7 +10132,7 @@ function showLoginForm() {
             });
         })();
 
-        // â•â• PHASE 5: KEYBOARD CHEAT SHEET â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+        // Ã¢â€¢ÂÃ¢â€¢Â PHASE 5: KEYBOARD CHEAT SHEET Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
         (function initCheatSheet() {
             const sheet    = document.getElementById('spCheatsheet');
@@ -10219,7 +10163,7 @@ function showLoginForm() {
             closeBtn?.addEventListener('click', closeSheet);
             backdrop.addEventListener('click', closeSheet);
 
-            // ? key opens cheat sheet â€” only when not in input and app is active
+            // ? key opens cheat sheet Ã¢â‚¬â€ only when not in input and app is active
             document.addEventListener('keydown', e => {
                 const tag = document.activeElement?.tagName?.toLowerCase();
                 const inInput = ['input','textarea','select'].includes(tag) ||
@@ -10239,7 +10183,7 @@ function showLoginForm() {
             });
         })();
 
-        // â”€â”€ Typewriter headline animation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Typewriter headline animation Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         (function normalizeNavOrder() {
             const sidebarNav = document.querySelector('.sidebar-nav');
             if (sidebarNav) {
@@ -10297,7 +10241,7 @@ function showLoginForm() {
                 return;
             }
 
-            // â”€â”€ Cursor-safe structure: text lives in a <span>, cursor is a sibling <i>
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Cursor-safe structure: text lives in a <span>, cursor is a sibling <i>
             // We NEVER overwrite subtitle.innerHTML so the cursor element persists.
             subtitle.classList.add('landing-hero-subtitle--typing');
             subtitle.innerHTML = '<span class="tw-text"></span><i class="ph ph-cursor-text tw-cursor" aria-hidden="true"></i>';
@@ -10348,11 +10292,11 @@ function showLoginForm() {
                 schedule(DELETE_SPEED);
             }
 
-            // charIndex starts at 0 â€” tick() will type from empty naturally
+            // charIndex starts at 0 Ã¢â‚¬â€ tick() will type from empty naturally
             tick();
         })();
 
-        // â”€â”€ Collapsible sidebar (desktop â‰¥1025px) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Collapsible sidebar (desktop Ã¢â€°Â¥1025px) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         (function initSidebarCollapse() {
             const STORAGE_KEY = 'sp_sidebar_collapsed';
             const btn = document.getElementById('sidebarCollapseBtn');
@@ -10383,7 +10327,7 @@ function showLoginForm() {
                 try { localStorage.setItem(STORAGE_KEY, val ? '1' : '0'); } catch(e) {}
             };
 
-            // Restore saved state â€” set position without transition
+            // Restore saved state Ã¢â‚¬â€ set position without transition
             if (isDesktop()) {
                 let saved = '0';
                 try { saved = localStorage.getItem(STORAGE_KEY) || '0'; } catch(e) {}
