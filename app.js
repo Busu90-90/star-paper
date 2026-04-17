@@ -37,17 +37,14 @@ function hideBootLoaderElement() {
     const loader = document.getElementById('appBootLoader');
     if (!loader) return;
     loader.classList.add('hidden');
-    setTimeout(() => {
-        if (loader && loader.parentElement) {
-            loader.remove();
-        }
-    }, 450);
+    loader.setAttribute('aria-hidden', 'true');
 }
 
 function showBootLoaderElement() {
     const loader = document.getElementById('appBootLoader');
     if (!loader) return;
     loader.classList.remove('hidden');
+    loader.setAttribute('aria-hidden', 'false');
 }
 
 const BOOT_STATE_MESSAGES = {
@@ -103,7 +100,33 @@ function markRootLayoutReady() {
 
 function initializeBootSequence() {
     markRootLayoutReady();
-    setBootState('booting-auth');
+    const url = new URL(window.location.href);
+    const hashParams = new URLSearchParams((url.hash || '').replace(/^#/, ''));
+    const hasAuthCallback = Boolean(
+        hashParams.get('access_token') ||
+        hashParams.get('refresh_token') ||
+        url.searchParams.get('access_token') ||
+        url.searchParams.get('refresh_token') ||
+        url.searchParams.get('code') ||
+        url.searchParams.get('error') ||
+        url.searchParams.get('error_code') ||
+        url.searchParams.get('error_description')
+    );
+    const hasSessionHint = Boolean(
+        window.__spSupabaseConfigured &&
+        localStorage.getItem('sp-starpaper-auth-v1') &&
+        localStorage.getItem('sp_logged_out') !== '1'
+    );
+
+    if (hasAuthCallback || hasSessionHint) {
+        setBootState('booting-auth');
+        return;
+    }
+
+    hideBootLoaderElement();
+    if (typeof setActiveScreen === 'function') {
+        setActiveScreen('landingScreen');
+    }
 }
 
 function getSectionIconMarkup(iconKey) {
@@ -10357,7 +10380,7 @@ function showLoginForm() {
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=39').then((registration) => {
+                navigator.serviceWorker.register('sw.js?v=42').then((registration) => {
                     registration.update().catch(() => {});
                 }).catch((error) => {
                     console.warn('Service worker registration failed:', error);

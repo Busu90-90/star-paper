@@ -63,7 +63,7 @@
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
 </head>
 <body>
-    <div class="app-boot-loader" id="appBootLoader" aria-live="polite" data-state="booting-auth">
+    <div class="app-boot-loader hidden" id="appBootLoader" aria-live="polite" aria-hidden="true" data-state="booting-auth">
         <div class="app-boot-loader__inner">
             <img src="./logo.png?v=12" alt="Star Paper" class="app-boot-loader__logo" />
             <div class="app-boot-loader__text" id="appBootLoaderText">Checking your session...</div>
@@ -1429,13 +1429,13 @@
           loaded (synchronously, above in <head>), so this file now runs
           synchronously Ã¢â‚¬â€ window.SP is fully initialised before app.js executes.
         -->
-<script src="supabase.js?v=22"></script>
+<script src="supabase.js?v=23"></script>
         <script src="app.migrations.js?v=9"></script>
         <script src="app.actions.js?v=8"></script>
         <script src="app.todayboard.js?v=1"></script>
         <script src="app.tasks.js?v=3"></script>
     <script src="app.reports.js?v=10"></script>
-<script src="app.js?v=40"></script>
+<script src="app.js?v=41"></script>
         <script>
         // Ã¢â€â‚¬Ã¢â€â‚¬ FILE:// PROTOCOL GUARD Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         // When the app is opened as a local file (double-clicked), window.location.origin

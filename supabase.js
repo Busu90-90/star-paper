@@ -693,12 +693,46 @@ const SP_CURRENCIES = {
     }
   }
 
+  function showLandingScreen() {
+    if (typeof window.showLanding === 'function') {
+      window.showLanding();
+      return;
+    }
+    if (typeof window.hideBootLoaderElement === 'function') {
+      window.hideBootLoaderElement();
+    }
+    if (typeof window.setActiveScreen === 'function') {
+      window.setActiveScreen('landingScreen');
+    }
+  }
+
   function showBootErrorState(message, detail) {
     setBootStateSafe('boot-error', {
       text: message || 'Cloud sync needs attention',
       subtext: detail || 'We could not load your workspace. Retry or log out.',
       showActions: true,
     });
+  }
+
+  function hasAuthCallbackInUrl() {
+    const url = new URL(window.location.href);
+    const hashParams = new URLSearchParams((url.hash || '').replace(/^#/, ''));
+    return Boolean(
+      hashParams.get('access_token') ||
+      hashParams.get('refresh_token') ||
+      url.searchParams.get('access_token') ||
+      url.searchParams.get('refresh_token') ||
+      url.searchParams.get('code') ||
+      url.searchParams.get('error') ||
+      url.searchParams.get('error_code') ||
+      url.searchParams.get('error_description')
+    );
+  }
+
+  function hasStoredSupabaseSessionHint() {
+    if (!SP_SUPABASE_CONFIGURED) return false;
+    if (localStorage.getItem('sp_logged_out') === '1') return false;
+    return Boolean(localStorage.getItem(SP_SUPABASE_STORAGE_KEY));
   }
 
   function captureSyncException(error, context = {}) {
@@ -4150,14 +4184,23 @@ const SP_CURRENCIES = {
     }
   }
 
-  async function bootstrapInitialSession() {
+  async function bootstrapInitialSession(options = {}) {
     if (_bootstrapping || window.__spAuthRedirectInProgress) return false;
-    setBootStateSafe('booting-auth');
+    const quietIfNoSession = options.quietIfNoSession === true;
+    const loggedOutScreen = options.loggedOutScreen || 'login';
+    if (!quietIfNoSession) {
+      setBootStateSafe('booting-auth');
+    }
     const session = await getSession();
     if (!session?.user) {
-      showLoginScreen();
+      if (loggedOutScreen === 'landing') {
+        showLandingScreen();
+      } else {
+        showLoginScreen();
+      }
       return false;
     }
+    setBootStateSafe('booting-auth');
     _bootstrapping = true;
     try {
       return await bootstrapFromSupabaseSession(session, {
@@ -4191,7 +4234,8 @@ const SP_CURRENCIES = {
     // and the OAuth callback lands on the landing page instead of the dashboard.
     // We defer everything that calls bootstrapFromSupabaseSession to DOMContentLoaded.
     const onAppReady = () => {
-      setBootStateSafe('booting-auth');
+      const hasAuthCallback = hasAuthCallbackInUrl();
+      const hasStoredSessionHint = hasStoredSupabaseSessionHint();
       // Order matters: exchange the OAuth code FIRST, then check for a stored session.
       // exchangeCodeForSession writes to Supabase internal storage;
       // the subsequent getSession() call reads it back.
@@ -4199,11 +4243,21 @@ const SP_CURRENCIES = {
         if (result?.shouldBootstrapStoredSession === false) {
           return;
         }
-        bootstrapInitialSession();
+        bootstrapInitialSession({
+          quietIfNoSession: true,
+          loggedOutScreen: 'landing',
+        });
       });
 
       setTimeout(patchAppAuth, 0);         // replace window.login/signup immediately
       setTimeout(injectSidebarButtons, 1200);
+
+      if (
+        (hasAuthCallback || hasStoredSessionHint) &&
+        typeof window.showBootLoaderElement === 'function'
+      ) {
+        window.showBootLoaderElement();
+      }
     };
 
     if (document.readyState === 'loading') {
