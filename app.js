@@ -47,6 +47,61 @@ function showBootLoaderElement() {
     loader.setAttribute('aria-hidden', 'false');
 }
 
+const APP_BOOT_CONTEXT_STORAGE_KEY = 'sp_boot_context';
+const APP_BOOT_CONTEXT_APP_SHELL = 'app-shell';
+
+function hasAuthCallbackParams(href = window.location.href) {
+    try {
+        const url = new URL(href);
+        const hashParams = new URLSearchParams((url.hash || '').replace(/^#/, ''));
+        return Boolean(
+            hashParams.get('access_token') ||
+            hashParams.get('refresh_token') ||
+            url.searchParams.get('access_token') ||
+            url.searchParams.get('refresh_token') ||
+            url.searchParams.get('code') ||
+            url.searchParams.get('error') ||
+            url.searchParams.get('error_code') ||
+            url.searchParams.get('error_description')
+        );
+    } catch (_err) {
+        return false;
+    }
+}
+
+function readBootContextMarker() {
+    try {
+        return sessionStorage.getItem(APP_BOOT_CONTEXT_STORAGE_KEY) || '';
+    } catch (_err) {
+        return '';
+    }
+}
+
+function setAppShellBootContext() {
+    try {
+        sessionStorage.setItem(APP_BOOT_CONTEXT_STORAGE_KEY, APP_BOOT_CONTEXT_APP_SHELL);
+    } catch (_err) {
+        // Ignore sessionStorage failures in private browsing / restrictive contexts.
+    }
+}
+
+function clearAppShellBootContext() {
+    try {
+        sessionStorage.removeItem(APP_BOOT_CONTEXT_STORAGE_KEY);
+    } catch (_err) {
+        // Ignore sessionStorage failures in private browsing / restrictive contexts.
+    }
+}
+
+function getStartupBootContext() {
+    if (hasAuthCallbackParams()) {
+        return 'auth-callback';
+    }
+    return readBootContextMarker() === APP_BOOT_CONTEXT_APP_SHELL
+        ? 'app-refresh'
+        : 'cold-start';
+}
+
 const BOOT_STATE_MESSAGES = {
     'booting-auth': {
         text: 'Checking your session...',
@@ -100,25 +155,10 @@ function markRootLayoutReady() {
 
 function initializeBootSequence() {
     markRootLayoutReady();
-    const url = new URL(window.location.href);
-    const hashParams = new URLSearchParams((url.hash || '').replace(/^#/, ''));
-    const hasAuthCallback = Boolean(
-        hashParams.get('access_token') ||
-        hashParams.get('refresh_token') ||
-        url.searchParams.get('access_token') ||
-        url.searchParams.get('refresh_token') ||
-        url.searchParams.get('code') ||
-        url.searchParams.get('error') ||
-        url.searchParams.get('error_code') ||
-        url.searchParams.get('error_description')
-    );
-    const hasSessionHint = Boolean(
-        window.__spSupabaseConfigured &&
-        localStorage.getItem('sp-starpaper-auth-v1') &&
-        localStorage.getItem('sp_logged_out') !== '1'
-    );
+    const bootContext = getStartupBootContext();
+    window.__spBootContext = bootContext;
 
-    if (hasAuthCallback || hasSessionHint) {
+    if (bootContext === 'auth-callback' || bootContext === 'app-refresh') {
         setBootState('booting-auth');
         return;
     }
@@ -256,6 +296,9 @@ function getSectionIconMarkup(iconKey) {
         window.setBootState = setBootState;
         window.showBootLoaderElement = showBootLoaderElement;
         window.hideBootLoaderElement = hideBootLoaderElement;
+        window.getStartupBootContext = getStartupBootContext;
+        window.setAppShellBootContext = setAppShellBootContext;
+        window.clearAppShellBootContext = clearAppShellBootContext;
 
         function bindDeclarativeActionFallback() {
             if (window.__starPaperActionsBound || window.__starPaperFallbackActionsBound) return;
@@ -3161,6 +3204,7 @@ function showLoginForm() {
             currentManagerId = null;
             window.currentUser = null;
             window.currentManagerId = null;
+            clearAppShellBootContext();
             // Reset boot flag so a same-tab re-login boots the full app cleanly.
             window.__spAppBooted = false;
         }
@@ -8911,6 +8955,13 @@ function showLoginForm() {
             if (activeScreenId === 'landingScreen') {
                 document.title = 'Star Paper';
             }
+            if (activeScreenId === 'appContainer') {
+                setAppShellBootContext();
+                window.__spBootContext = 'app-refresh';
+            } else {
+                clearAppShellBootContext();
+                window.__spBootContext = 'cold-start';
+            }
             updateLandingTopControlsVisibility();
         }
 
@@ -10380,7 +10431,7 @@ function showLoginForm() {
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=42').then((registration) => {
+                navigator.serviceWorker.register('sw.js?v=43').then((registration) => {
                     registration.update().catch(() => {});
                 }).catch((error) => {
                     console.warn('Service worker registration failed:', error);

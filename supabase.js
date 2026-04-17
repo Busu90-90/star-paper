@@ -112,6 +112,8 @@ const SP_CURRENCIES = {
 
   // ── SYNC RELIABILITY: Retry Queue + Status Indicator ────────────────────────
   const RETRY_QUEUE_STORAGE_KEY = 'sp_retry_queue';
+  const BOOT_CONTEXT_STORAGE_KEY = 'sp_boot_context';
+  const APP_SHELL_BOOT_CONTEXT = 'app-shell';
   let _retryQueue = [];               // Array of { payload, attempts, lastAttempt }
   let _syncState = 'idle';            // 'idle' | 'syncing' | 'synced' | 'failed' | 'offline'
   let _retryTimer = null;
@@ -735,6 +737,27 @@ const SP_CURRENCIES = {
     return Boolean(localStorage.getItem(SP_SUPABASE_STORAGE_KEY));
   }
 
+  function readBootContextMarker() {
+    try {
+      return sessionStorage.getItem(BOOT_CONTEXT_STORAGE_KEY) || '';
+    } catch (_err) {
+      return '';
+    }
+  }
+
+  function getStartupBootContext() {
+    if (typeof window.getStartupBootContext === 'function') {
+      try {
+        const context = String(window.getStartupBootContext() || '').trim();
+        if (context) return context;
+      } catch (_err) {}
+    }
+    if (hasAuthCallbackInUrl()) return 'auth-callback';
+    return readBootContextMarker() === APP_SHELL_BOOT_CONTEXT
+      ? 'app-refresh'
+      : 'cold-start';
+  }
+
   function captureSyncException(error, context = {}) {
     try {
       if (typeof window.Sentry === 'undefined' || typeof window.Sentry.captureException !== 'function') {
@@ -815,6 +838,8 @@ const SP_CURRENCIES = {
   async function handleSignedOutSession(options = {}) {
     const explicitLogout = localStorage.getItem('sp_logged_out') === '1';
     const reason = options.reason || (explicitLogout ? 'explicit-logout' : 'session-missing');
+    const destination = options.destination === 'landing' ? 'landing' : 'login';
+    const suppressDiagnostics = Boolean(options.suppressDiagnostics);
     const shouldConfirmRestore = !explicitLogout && options.confirm !== false;
 
     if (shouldConfirmRestore) {
@@ -852,9 +877,13 @@ const SP_CURRENCIES = {
     }
     resetWorkspaceState();
     updateSyncIndicator(navigator.onLine ? 'idle' : 'offline');
-    showLoginScreen();
+    if (destination === 'landing') {
+      showLandingScreen();
+    } else {
+      showLoginScreen();
+    }
 
-    if (!explicitLogout) {
+    if (!explicitLogout && !suppressDiagnostics) {
       captureSyncException(
         options.error || new Error(options.message || 'Session could not be restored.'),
         {
@@ -865,7 +894,13 @@ const SP_CURRENCIES = {
       );
     }
 
-    if (!explicitLogout && options.notify !== false && typeof window.toastWarn === 'function') {
+    if (
+      !explicitLogout &&
+      !suppressDiagnostics &&
+      destination !== 'landing' &&
+      options.notify !== false &&
+      typeof window.toastWarn === 'function'
+    ) {
       window.toastWarn(options.message || 'Your session expired. Please log in again.');
     }
 
@@ -1310,9 +1345,9 @@ const SP_CURRENCIES = {
   }
 
   function bookingToRow(b, ownerId, teamId) {
-    const cloudId = isCloudId(b.id) ? b.id : undefined;
+    const cloudId = isCloudId(b.id) ? b.id : null;
     return {
-      id: cloudId,                               // only set for Supabase UUID records
+      ...(cloudId ? { id: cloudId } : {}),      // only set for Supabase UUID records
       legacy_id: String(b.id ?? ''),             // always preserve the original local ID
       owner_id: ownerId,
       team_id: teamId || null,
@@ -1348,9 +1383,9 @@ const SP_CURRENCIES = {
   }
 
   function expenseToRow(e, ownerId, teamId) {
-    const cloudId = isCloudId(e.id) ? e.id : undefined;
+    const cloudId = isCloudId(e.id) ? e.id : null;
     return {
-      id: cloudId,
+      ...(cloudId ? { id: cloudId } : {}),
       legacy_id: String(e.id ?? ''),
       owner_id: ownerId,
       team_id: teamId || null,
@@ -1381,9 +1416,9 @@ const SP_CURRENCIES = {
   }
 
   function otherIncomeToRow(i, ownerId, teamId) {
-    const cloudId = isCloudId(i.id) ? i.id : undefined;
+    const cloudId = isCloudId(i.id) ? i.id : null;
     return {
-      id: cloudId,
+      ...(cloudId ? { id: cloudId } : {}),
       legacy_id: String(i.id ?? ''),
       owner_id: ownerId,
       team_id: teamId || null,
@@ -1463,8 +1498,9 @@ const SP_CURRENCIES = {
       if (!artistId && artistName) {
         artistId = artistLookup[artistName.toLowerCase()] || null;
       }
-      return {
-        id: isCloudId(entry?.id) ? entry.id : undefined,
+      const cloudId = isCloudId(entry?.id) ? entry.id : null;
+      return sanitizeUpsertRow({
+        ...(cloudId ? { id: cloudId } : {}),
         legacy_id: String(entry?.id ?? ''),
         owner_id: ownerId,
         team_id: ctx.team_id || null,
@@ -1475,7 +1511,7 @@ const SP_CURRENCIES = {
         spotify_listeners: Number(entry?.spotifyListeners) || 0,
         youtube_listeners: Number(entry?.youtubeListeners) || 0,
         updated_at: new Date().toISOString(),
-      };
+      });
     }).filter(row => row.artist_id && row.period);
     if (rows.length === 0) return;
     try {
@@ -1580,6 +1616,16 @@ const SP_CURRENCIES = {
     return typeof id === 'string' && UUID_RE.test(id);
   }
 
+  function sanitizeUpsertRow(row) {
+    const sanitized = {};
+    Object.entries(row || {}).forEach(([key, value]) => {
+      if (typeof value === 'undefined') return;
+      if (key === 'id' && !isCloudId(value)) return;
+      sanitized[key] = value;
+    });
+    return sanitized;
+  }
+
   // ── CORE DATA API ────────────────────────────────────────────────────────────
   async function loadData() {
     const ownerId = getOwnerId();
@@ -1659,9 +1705,9 @@ const SP_CURRENCIES = {
     // UUID records → upsert on 'id'.  Legacy records → upsert on 'legacy_id,owner_id'
     async function smartUpsert(table, items, toRow) {
       if (!items || !items.length) return [];
-      const rows = items.map(item => toRow(item, ownerId, ctx.team_id));
-      const uuidRows    = rows.filter(r => r.id !== undefined);
-      const legacyRows  = rows.filter(r => r.id === undefined);
+      const rows = items.map(item => sanitizeUpsertRow(toRow(item, ownerId, ctx.team_id)));
+      const uuidRows    = rows.filter(r => isCloudId(r.id));
+      const legacyRows  = rows.filter(r => !isCloudId(r.id));
       const results = [];
 
       if (uuidRows.length) {
@@ -1721,8 +1767,8 @@ const SP_CURRENCIES = {
     if (!ownerId || !Array.isArray(artists)) return [];
     const ctx = getContext();
     try {
-      const rows = artists.map(a => ({
-        id: isCloudId(a.id) ? a.id : undefined,
+      const rows = artists.map(a => sanitizeUpsertRow({
+        ...(isCloudId(a.id) ? { id: a.id } : {}),
         legacy_id: String(a.id ?? ''),
         owner_id: ownerId,
         team_id: ctx.team_id || null,
@@ -1735,8 +1781,8 @@ const SP_CURRENCIES = {
         avatar: a.avatar || '',
       }));
       const results = [];
-      const uuidRows   = rows.filter(r => r.id !== undefined);
-      const legacyRows = rows.filter(r => r.id === undefined);
+      const uuidRows   = rows.filter(r => isCloudId(r.id));
+      const legacyRows = rows.filter(r => !isCloudId(r.id));
       if (uuidRows.length) {
         const { data, error } = await db.from('artists')
           .upsert(uuidRows, { onConflict: 'id' })
@@ -3058,11 +3104,18 @@ const SP_CURRENCIES = {
  
 
     if (!session?.user) {
+      const bootContext = getStartupBootContext();
+      const coldStartAnonymous = !window.__spAppBooted &&
+        event !== 'SIGNED_OUT' &&
+        bootContext === 'cold-start';
       const signedOutState = await handleSignedOutSession({
-        notify: event === 'SIGNED_OUT' && window.__spAppBooted,
+        notify: !coldStartAnonymous && event === 'SIGNED_OUT' && window.__spAppBooted,
         reason: event === 'SIGNED_OUT' ? 'signed-out-event' : 'missing-session-event',
         event,
-        confirm: localStorage.getItem('sp_logged_out') !== '1',
+        confirm: !coldStartAnonymous && localStorage.getItem('sp_logged_out') !== '1',
+        destination: coldStartAnonymous ? 'landing' : 'login',
+        clearAuthArtifacts: coldStartAnonymous ? false : undefined,
+        suppressDiagnostics: coldStartAnonymous,
       });
       if (!signedOutState?.recovered) {
         return;
@@ -4234,8 +4287,8 @@ const SP_CURRENCIES = {
     // and the OAuth callback lands on the landing page instead of the dashboard.
     // We defer everything that calls bootstrapFromSupabaseSession to DOMContentLoaded.
     const onAppReady = () => {
-      const hasAuthCallback = hasAuthCallbackInUrl();
-      const hasStoredSessionHint = hasStoredSupabaseSessionHint();
+      const bootContext = getStartupBootContext();
+      const shouldShowBootLoader = bootContext === 'auth-callback' || bootContext === 'app-refresh';
       // Order matters: exchange the OAuth code FIRST, then check for a stored session.
       // exchangeCodeForSession writes to Supabase internal storage;
       // the subsequent getSession() call reads it back.
@@ -4244,18 +4297,15 @@ const SP_CURRENCIES = {
           return;
         }
         bootstrapInitialSession({
-          quietIfNoSession: true,
-          loggedOutScreen: 'landing',
+          quietIfNoSession: bootContext === 'cold-start',
+          loggedOutScreen: bootContext === 'cold-start' ? 'landing' : 'login',
         });
       });
 
       setTimeout(patchAppAuth, 0);         // replace window.login/signup immediately
       setTimeout(injectSidebarButtons, 1200);
 
-      if (
-        (hasAuthCallback || hasStoredSessionHint) &&
-        typeof window.showBootLoaderElement === 'function'
-      ) {
+      if (shouldShowBootLoader && typeof window.showBootLoaderElement === 'function') {
         window.showBootLoaderElement();
       }
     };
