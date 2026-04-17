@@ -236,7 +236,7 @@ const SP_CURRENCIES = {
     if (isCloud) {
       toastSafe('Success', 'Saved to cloud');
     } else {
-      toastSafe('Info', 'Saved locally, will sync when online');
+      toastSafe('Info', 'Reconnect to save your latest cloud changes.');
     }
   }
 
@@ -244,6 +244,40 @@ const SP_CURRENCIES = {
   // Supabase JS v2 acquires a Web Lock for every auth-bearing request. Firing
   // multiple requests concurrently causes "AbortError: Lock broken by steal".
   // This queue serialises all DB calls so only ONE request is in-flight at a time.
+  function updateSyncIndicator(state) {
+    _syncState = state || _syncState;
+    const el = document.getElementById('spSyncIcon');
+    if (!el) return;
+    const map = {
+      idle:    { icon: 'ph-cloud',          color: '#888',    title: 'Cloud idle' },
+      syncing: { icon: 'ph-cloud-arrow-up', color: '#FFB300', title: 'Syncing to cloud...' },
+      synced:  { icon: 'ph-cloud-check',    color: '#81c784', title: 'Saved to cloud' },
+      failed:  { icon: 'ph-cloud-slash',    color: '#ef9a9a', title: 'Cloud sync failed' },
+      offline: { icon: 'ph-cloud-x',        color: '#888',    title: 'Offline — reconnect to save and refresh cloud data' },
+    };
+    const cfg = map[_syncState] || map.idle;
+    el.className = 'ph ' + cfg.icon + ' sp-sync-icon';
+    el.style.color = cfg.color;
+    el.parentElement.title = cfg.title;
+    el.parentElement.setAttribute('aria-label', cfg.title);
+    if (_syncState === 'syncing') {
+      el.classList.add('sp-sync-pulse');
+    } else {
+      el.classList.remove('sp-sync-pulse');
+    }
+  }
+
+  function showSaveToast(isCloud) {
+    const now = Date.now();
+    if (now - _lastSaveToastAt < SAVE_TOAST_THROTTLE_MS) return;
+    _lastSaveToastAt = now;
+    if (isCloud) {
+      toastSafe('Success', 'Saved to cloud');
+    } else {
+      toastSafe('Info', 'Reconnect to save your latest cloud changes.');
+    }
+  }
+
   let _dbQueue = Promise.resolve();
   function dbSerial(fn) {
     _dbQueue = _dbQueue.then(() => fn()).catch(err => {
@@ -515,31 +549,7 @@ const SP_CURRENCIES = {
   }
 
   function scheduleAppBoot(maxWaitMs = 5000, intervalMs = 50) {
-    if (window.__spAppBooted) return;
-    const start = Date.now();
-    const tick = () => {
-      if (window.__spAppBooted) return;
-      if (ensureAppBootReady()) {
-        try {
-          if (typeof window.loadUserData === 'function') {
-            window.loadUserData();
-          }
-          if (typeof window.showApp === 'function' && !window.__spAppBooted) {
-            window.showApp();
-          }
-          log('bootstrap.uiReady');
-        } catch (err) {
-          warn('Deferred app boot failed:', err);
-        }
-        return;
-      }
-      if (Date.now() - start >= maxWaitMs) {
-        log('bootstrap.uiDeferredTimeout');
-        return;
-      }
-      setTimeout(tick, intervalMs);
-    };
-    setTimeout(tick, 0);
+    return;
   }
 
   function withTimeout(task, ms, label) {
@@ -747,7 +757,6 @@ const SP_CURRENCIES = {
     _workspaceResolutionPromise = null;
     window.__spCloudBootstrapPending = false;
     window.__spWorkspaceSelectionRequired = false;
-    localStorage.removeItem('sp_active_team');
     try {
       sessionStorage.removeItem(TEAM_PROMPT_KEY);
     } catch (_err) {}
@@ -862,18 +871,16 @@ const SP_CURRENCIES = {
 
     if (session?.user) return session;
 
-    const hasLocalSession =
-      localStorage.getItem('starPaper_session') === 'active' ||
-      Boolean(window.currentUser);
-
-    if (hasLocalSession && clearIfMissing) {
+    if (clearIfMissing) {
       if (!silent) {
         toastSafe('Warn', 'Your session expired. Please log in again.');
       }
-      if (typeof window.clearAuthSessionState === 'function') {
-        window.clearAuthSessionState();
-      }
-      showLoginScreen();
+      await handleSignedOutSession({
+        reason: 'session-missing',
+        confirm: false,
+        notify: false,
+        message: 'Your session expired. Please log in again.',
+      });
     }
 
     return null;
@@ -1909,6 +1916,42 @@ const SP_CURRENCIES = {
     }
   }
 
+  async function loadAllDataWithRetry(options = {}) {
+    const timeoutMs = typeof options.timeoutMs === 'number' ? options.timeoutMs : 30000;
+    const retries = typeof options.retries === 'number' ? options.retries : 1;
+    const label = options.label || 'loadAllData';
+    let lastError = null;
+
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+      try {
+        const fresh = await withTimeout(
+          () => loadAllData(),
+          timeoutMs,
+          attempt === 0 ? label : `${label}[retry-${attempt}]`
+        );
+        if (fresh) {
+          return fresh;
+        }
+      } catch (err) {
+        lastError = err;
+        warn('loadAllDataWithRetry failed:', err);
+      }
+
+      if (attempt < retries) {
+        try {
+          await refreshSessionIfNeeded({ minTtlSeconds: 0 });
+        } catch (refreshErr) {
+          warn('Session refresh before retry failed:', refreshErr);
+        }
+      }
+    }
+
+    if (lastError) {
+      throw lastError;
+    }
+    return null;
+  }
+
   async function refreshCloudData(options = {}) {
     if (!getOwnerId()) {
       await ensureSupabaseSession({ silent: true, clearIfMissing: true });
@@ -2553,7 +2596,7 @@ const SP_CURRENCIES = {
       subscribeToCoreRealtime();
 
       try {
-        fresh = await withTimeout(() => loadAllData(), 30000, 'loadAllData');
+        fresh = await loadAllDataWithRetry({ timeoutMs: 30000, label: 'loadAllData', retries: 1 });
         log('bootstrap.data.done', { ok: Boolean(fresh), source: workspace?.source || 'unknown' });
       } catch (dataError) {
         warn('Cloud data bootstrap failed or timed out:', dataError);
@@ -3063,7 +3106,11 @@ const SP_CURRENCIES = {
     window.__spCloudBootstrapPending = true;
     _refreshInFlight = true;
     try {
-      fresh = await withTimeout(() => loadAllData(), timeoutMs, options.label || 'loadAllData[workspace]');
+      fresh = await loadAllDataWithRetry({
+        timeoutMs,
+        label: options.label || 'loadAllData[workspace]',
+        retries: 1,
+      });
     } catch (err) {
       warn('reloadForResolvedWorkspace failed:', err);
       if (!options.silent) {

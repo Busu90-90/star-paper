@@ -443,22 +443,15 @@ function getSectionIconMarkup(iconKey) {
 
 
         // Data Storage
-        let users = Storage.loadSync('starPaperUsers', []);
-        if (!Array.isArray(users)) users = [];
-        let artists = Storage.loadSync('starPaperArtists', []);
-        if (!Array.isArray(artists)) artists = [];
-        let managerData = Storage.loadSync('starPaperManagerData', {});
-        if (!managerData || typeof managerData !== 'object' || Array.isArray(managerData)) managerData = {};
-        let credentials = Storage.loadSync('starPaperCredentials', {});
-        if (!credentials || typeof credentials !== 'object' || Array.isArray(credentials)) credentials = {};
-        let revenueGoals = Storage.loadSync('starPaperRevenueGoals', {});
-        if (!revenueGoals || typeof revenueGoals !== 'object' || Array.isArray(revenueGoals)) revenueGoals = {};
-        let bbfData = Storage.loadSync('starPaperBBF', {});
-        if (!bbfData || typeof bbfData !== 'object' || Array.isArray(bbfData)) bbfData = {};
+        let users = [];
+        let artists = [];
+        let managerData = {};
+        let credentials = {};
+        let revenueGoals = {};
+        let bbfData = {};
         let bbfViewState = Storage.loadSync('starPaperBBFViewState', {});
         if (!bbfViewState || typeof bbfViewState !== 'object' || Array.isArray(bbfViewState)) bbfViewState = {};
-        let audienceMetricsStore = Storage.loadSync('starPaperAudienceMetrics', {});
-        if (!audienceMetricsStore || typeof audienceMetricsStore !== 'object' || Array.isArray(audienceMetricsStore)) audienceMetricsStore = {};
+        let audienceMetricsStore = {};
         let audienceMetrics = [];
         let currentUser = null;
         let currentManagerId = null;
@@ -492,6 +485,9 @@ function getSectionIconMarkup(iconKey) {
         }
 
         function refreshDataStoresFromStorage() {
+            if (window.__spCloudOnly) {
+                return;
+            }
             const loadedUsers = Storage.loadSync('starPaperUsers', []);
             users = Array.isArray(loadedUsers) ? loadedUsers : [];
             const loadedArtists = Storage.loadSync('starPaperArtists', []);
@@ -511,6 +507,9 @@ function getSectionIconMarkup(iconKey) {
         }
 
         function saveIdentityStores() {
+            if (window.__spCloudOnly) {
+                return;
+            }
             Storage.saveSync('starPaperUsers', users);
             Storage.saveSync('starPaperArtists', artists);
             Storage.saveSync('starPaperCredentials', credentials);
@@ -914,9 +913,6 @@ function getSectionIconMarkup(iconKey) {
 
                 if (nextUsername !== oldUsername) {
                     currentUser = nextUsername;
-                    Storage.saveSync('starPaperSessionUser', currentUser);
-                    const remember = Storage.loadSync('starPaperRemember', false);
-                    Storage.saveSync('starPaperCurrentUser', remember ? currentUser : null);
                 }
 
                 saveIdentityStores();
@@ -996,29 +992,19 @@ function getSectionIconMarkup(iconKey) {
         }
 
         function getManagerData(managerId) {
-            const key = String(managerId || getActiveDataScopeKey() || '');
-            if (!key) {
-                return { bookings: [], expenses: [], otherIncome: [] };
-            }
-            if (!managerData[key] || typeof managerData[key] !== 'object') {
-                managerData[key] = { bookings: [], expenses: [], otherIncome: [] };
-            }
-            managerData[key].bookings = Array.isArray(managerData[key].bookings) ? managerData[key].bookings : [];
-            managerData[key].expenses = Array.isArray(managerData[key].expenses) ? managerData[key].expenses : [];
-            managerData[key].otherIncome = Array.isArray(managerData[key].otherIncome) ? managerData[key].otherIncome : [];
-            return managerData[key];
+            return {
+                bookings: [],
+                expenses: [],
+                otherIncome: []
+            };
         }
 
         function saveManagerData(managerId, payload) {
-            const key = String(managerId || getActiveDataScopeKey() || '');
-            if (!key) return;
-            const normalized = {
+            return {
                 bookings: Array.isArray(payload?.bookings) ? payload.bookings : [],
                 expenses: Array.isArray(payload?.expenses) ? payload.expenses : [],
                 otherIncome: Array.isArray(payload?.otherIncome) ? payload.otherIncome : []
             };
-            managerData[key] = normalized;
-            Storage.saveSync('starPaperManagerData', managerData);
         }
 
         function getAudienceMetricsForScope(scopeKey) {
@@ -1605,16 +1591,8 @@ function getSectionIconMarkup(iconKey) {
         // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
         function normalizeAllManagerBookingReferences() {
-            Object.keys(managerData || {}).forEach((managerId) => {
-                const data = getManagerData(managerId);
-                const managerHint = String(managerId || '').startsWith('team:') ? currentManagerId : managerId;
-                const normalizedBookings = ensureBookingArtistRefs(data.bookings, managerHint);
-                saveManagerData(managerId, {
-                    bookings: normalizedBookings,
-                    expenses: data.expenses,
-                    otherIncome: data.otherIncome
-                });
-            });
+            bookings = ensureBookingArtistRefs(bookings, currentManagerId);
+            window.bookings = bookings;
         }
 
         function getRecordSortTimestamp(item) {
@@ -1904,19 +1882,11 @@ function getSectionIconMarkup(iconKey) {
 
         // Seed demo data only when explicitly enabled and storage is empty.
         function initializeData() {
-            if (Object.keys(users).length > 0) return;
-            const shouldSeedDemo = localStorage.getItem('starPaperSeedDemo') === 'true';
-            if (!shouldSeedDemo) {
-                users = [];
-                artists = [];
-                managerData = {};
-                credentials = {};
-                Storage.saveSync('starPaperUsers', users);
-                Storage.saveSync('starPaperArtists', artists);
-                Storage.saveSync('starPaperManagerData', managerData);
-                Storage.saveSync('starPaperCredentials', credentials);
-                return;
-            }
+            users = [];
+            artists = [];
+            managerData = {};
+            credentials = {};
+            return;
             users = {
                     'Admin': {
                         password: 'admin123',
@@ -3174,8 +3144,6 @@ function showLoginForm() {
             ensureSessionUserExists(normalized, options.profile || {});
             currentUser = normalized;
             updateCurrentManagerContext();
-            Storage.saveSync('starPaperRemember', Boolean(options.remember));
-            Storage.saveSync('starPaperCurrentUser', currentUser);
             window.currentUser = currentUser;
             window.currentManagerId = currentManagerId;
             return true;
@@ -3184,10 +3152,6 @@ function showLoginForm() {
         function clearAuthSessionState() {
             currentUser = null;
             currentManagerId = null;
-            Storage.saveSync('starPaperCurrentUser', null);
-            Storage.saveSync('starPaperRemember', false);
-            Storage.saveSync('starPaper_session', null);
-            Storage.saveSync('starPaperSessionUser', null);
             window.currentUser = null;
             window.currentManagerId = null;
             // Reset boot flag so a same-tab re-login boots the full app cleanly.
@@ -3338,11 +3302,11 @@ function showLoginForm() {
 
         window.exportAllData ||= function() {
             const data = {
-                bookings:    JSON.parse(localStorage.getItem('starPaperBookings')    || '[]'),
-                expenses:    JSON.parse(localStorage.getItem('starPaperExpenses')    || '[]'),
-                otherIncome: JSON.parse(localStorage.getItem('starPaperOtherIncome') || '[]'),
-                artists:     JSON.parse(localStorage.getItem('starPaperArtists')     || '[]'),
-                tasks:       JSON.parse(localStorage.getItem('sp_tasks')             || '[]'),
+                bookings: Array.isArray(bookings) ? bookings : [],
+                expenses: Array.isArray(expenses) ? expenses : [],
+                otherIncome: Array.isArray(otherIncome) ? otherIncome : [],
+                artists: Array.isArray(artists) ? artists : [],
+                tasks: typeof window.loadTasks === 'function' ? window.loadTasks() : [],
             };
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url  = URL.createObjectURL(blob);
@@ -3354,13 +3318,14 @@ function showLoginForm() {
         };
 
         window.clearAllData ||= function() {
-            if (!confirm('Delete ALL local data? This cannot be undone.')) return;
-            ['starPaperBookings','starPaperExpenses','starPaperOtherIncome',
-             'starPaperArtists','starPaperManagerData','sp_tasks',
-             'starPaperUsers','starPaperCredentials'
-            ].forEach(k => localStorage.removeItem(k));
-            if (typeof window.loadUserData === 'function') window.loadUserData();
-            if (typeof window.toastSuccess === 'function') window.toastSuccess('All local data cleared.');
+            if (!confirm('Clear legacy local cache and drafts on this device?')) return;
+            if (typeof window.clearLegacyCloudDataKeys === 'function') {
+                window.clearLegacyCloudDataKeys();
+            }
+            sessionStorage.removeItem('sp_dismissed_nudges');
+            if (typeof window.toastSuccess === 'function') {
+                window.toastSuccess('Local cache cleared.');
+            }
         };
 
         // Login System
@@ -3370,6 +3335,10 @@ function showLoginForm() {
         // all cloud auth. This function is only invoked when Supabase is unavailable
         // (offline, not configured, or network error). Do NOT add Supabase calls here.
         async function login() {
+            if (window.__spCloudOnly) {
+                toastError('Cloud login is managed by Supabase. Please try again in a moment.');
+                return;
+            }
             clearLoginValidation();
             const name = getInput('loginName');
             const password = getInput('loginPassword');
@@ -3425,6 +3394,10 @@ function showLoginForm() {
         }
 
         async function signup() {
+            if (window.__spCloudOnly) {
+                toastError('Cloud signup is managed by Supabase. Please try again in a moment.');
+                return;
+            }
             try {
                 const name = document.getElementById('signupName').value.trim();
                 const password = document.getElementById('signupPassword').value;
@@ -3834,162 +3807,10 @@ function showLoginForm() {
             updateCurrentManagerContext();
             const activeScopeKey = getActiveDataScopeKey();
             const initialSnapshot = options.snapshot || window._SP_cloudData || null;
-            if (window.__spCloudOnly) {
-                window._SP_cloudData = null;
-                applyCloudSnapshotToRuntime(initialSnapshot, activeScopeKey);
-                window._SP_syncFromCloud = function(data) {
-                    const scopeKey = getActiveDataScopeKey();
-                    applyCloudSnapshotToRuntime(data, scopeKey);
-                };
-                return;
-            }
-            const authenticatedCloudSession = hasAuthenticatedCloudSession();
-            const allowLocalFallback =
-                !authenticatedCloudSession ||
-                !navigator.onLine ||
-                (Boolean(options.allowLocalFallback) && !authenticatedCloudSession);
-
-            // â”€â”€ SUPABASE: if cloud data was injected by supabase.js, use it â”€â”€â”€â”€â”€â”€â”€â”€
-            const cloudData = window._SP_cloudData;
-            if (cloudData) {
-                window._SP_cloudData = null; // consume it
-                const localFallback = getManagerData(activeScopeKey);
-                const fallbackBookings = ensureBookingArtistRefs(localFallback.bookings || [], currentManagerId);
-                const fallbackExpenses = Array.isArray(localFallback.expenses) ? localFallback.expenses : [];
-                const fallbackOtherIncome = Array.isArray(localFallback.otherIncome) ? localFallback.otherIncome : [];
-
-                bookings = Array.isArray(cloudData.bookings)
-                    ? cloudData.bookings
-                    : (allowLocalFallback ? fallbackBookings : []);
-                expenses = Array.isArray(cloudData.expenses)
-                    ? cloudData.expenses
-                    : (allowLocalFallback ? fallbackExpenses : []);
-                otherIncome = Array.isArray(cloudData.otherIncome)
-                    ? cloudData.otherIncome
-                    : (allowLocalFallback ? fallbackOtherIncome : []);
-                if (Array.isArray(cloudData.artists)) {
-                    artists = cloudData.artists;
-                    Storage.saveSync('starPaperArtists', artists);
-                }
-                if (cloudData.revenueGoal && typeof cloudData.revenueGoal === 'object') {
-                    const goalKey = getCurrentRevenueGoalKey();
-                    const amount = Number(cloudData.revenueGoal.amount || 0);
-                    revenueGoals[goalKey] = Number.isFinite(amount) ? amount : 0;
-                    Storage.saveSync('starPaperRevenueGoals', revenueGoals);
-                }
-                if (Array.isArray(cloudData.bbfEntries)) {
-                    const scopeKey = activeScopeKey;
-                    Object.keys(bbfData).forEach((key) => {
-                        if (key.startsWith(`${scopeKey}_`)) delete bbfData[key];
-                    });
-                    cloudData.bbfEntries.forEach((entry) => {
-                        if (!entry?.period) return;
-                        const amount = Number(entry.amount) || 0;
-                        bbfData[`${scopeKey}_${entry.period}`] = amount;
-                    });
-                    Storage.saveSync('starPaperBBF', bbfData);
-                }
-                if (Array.isArray(cloudData.closingThoughts)) {
-                    const scopeKey = activeScopeKey || 'default';
-                    const store = getClosingThoughtsStore();
-                    const nextStore = {};
-                    cloudData.closingThoughts.forEach((entry) => {
-                        if (!entry?.period || !entry?.content) return;
-                        nextStore[entry.period] = String(entry.content);
-                    });
-                    store[scopeKey] = nextStore;
-                    Storage.saveSync(CLOSING_THOUGHTS_STORAGE_KEY, store);
-                }
-                if (Array.isArray(cloudData.tasks) && typeof window.applyTaskSync === 'function') {
-                    window.applyTaskSync(cloudData.tasks, { source: 'cloud' });
-                }
-                if (Array.isArray(cloudData.audienceMetrics)) {
-                    audienceMetrics = cloudData.audienceMetrics;
-                    saveAudienceMetricsForScope(activeScopeKey, audienceMetrics);
-                } else {
-                    audienceMetrics = getAudienceMetricsForScope(activeScopeKey);
-                }
-                if (cloudData.theme && typeof applyTheme === 'function') {
-                    applyTheme(cloudData.theme, { persist: false });
-                }
-                // Also persist to localStorage as offline cache
-                saveManagerData(activeScopeKey, { bookings, expenses, otherIncome });
-            } else {
-                const cloudBootPending = Boolean(window.__spCloudBootstrapPending);
-                const shouldUseLocalFallback = allowLocalFallback && !cloudBootPending;
-                if (shouldUseLocalFallback) {
-                // â”€â”€ FALLBACK: local storage (offline or pre-migration) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-                const data = getManagerData(activeScopeKey);
-                bookings    = ensureBookingArtistRefs(data.bookings, currentManagerId);
-                expenses    = Array.isArray(data.expenses)    ? data.expenses    : [];
-                otherIncome = Array.isArray(data.otherIncome) ? data.otherIncome : [];
-                audienceMetrics = getAudienceMetricsForScope(activeScopeKey);
-                purgeRetiredArtistsForCurrentManager();
-                saveManagerData(activeScopeKey, { bookings, expenses, otherIncome });
-                }
-            }
-
-            markSearchIndexDirty();
-            // Expose to window for other modules and for supabase.js
-            window.bookings     = bookings;
-            window.expenses     = expenses;
-            window.otherIncome  = otherIncome;
-            window.artists      = artists;
-            window.audienceMetrics = audienceMetrics;
-            window.revenueGoals = revenueGoals;
-            window.bbfData      = bbfData;
-            window.currentManagerId = currentManagerId;
-            window.currentUser  = currentUser;
-
-            // â”€â”€ Sync bridge: lets supabase.js inject fresh cloud data any time â”€â”€â”€â”€
+            window._SP_cloudData = null;
+            applyCloudSnapshotToRuntime(initialSnapshot, activeScopeKey);
             window._SP_syncFromCloud = function(data) {
-                window._SP_cloudData = null;
-                if (Array.isArray(data.bookings))    { bookings    = data.bookings;    window.bookings    = bookings; }
-                if (Array.isArray(data.expenses))    { expenses    = data.expenses;    window.expenses    = expenses; }
-                if (Array.isArray(data.otherIncome)) { otherIncome = data.otherIncome; window.otherIncome = otherIncome; }
-                if (Array.isArray(data.artists))     { artists     = data.artists;     window.artists     = artists; }
-                if (data.revenueGoal && typeof data.revenueGoal === 'object') {
-                    const goalKey = getCurrentRevenueGoalKey();
-                    const amount = Number(data.revenueGoal.amount || 0);
-                    revenueGoals[goalKey] = Number.isFinite(amount) ? amount : 0;
-                    Storage.saveSync('starPaperRevenueGoals', revenueGoals);
-                }
-                if (Array.isArray(data.bbfEntries)) {
-                    const scopeKey = getActiveDataScopeKey();
-                    Object.keys(bbfData).forEach((key) => {
-                        if (key.startsWith(`${scopeKey}_`)) delete bbfData[key];
-                    });
-                    data.bbfEntries.forEach((entry) => {
-                        if (!entry?.period) return;
-                        const amount = Number(entry.amount) || 0;
-                        bbfData[`${scopeKey}_${entry.period}`] = amount;
-                    });
-                    Storage.saveSync('starPaperBBF', bbfData);
-                }
-                if (Array.isArray(data.closingThoughts)) {
-                    const scopeKey = getActiveDataScopeKey() || 'default';
-                    const store = getClosingThoughtsStore();
-                    const nextStore = {};
-                    data.closingThoughts.forEach((entry) => {
-                        if (!entry?.period || !entry?.content) return;
-                        nextStore[entry.period] = String(entry.content);
-                    });
-                    store[scopeKey] = nextStore;
-                    Storage.saveSync(CLOSING_THOUGHTS_STORAGE_KEY, store);
-                }
-                if (Array.isArray(data.tasks) && typeof window.applyTaskSync === 'function') {
-                    window.applyTaskSync(data.tasks, { source: 'cloud' });
-                }
-                if (Array.isArray(data.audienceMetrics)) {
-                    audienceMetrics = data.audienceMetrics;
-                    window.audienceMetrics = audienceMetrics;
-                    saveAudienceMetricsForScope(getActiveDataScopeKey(), audienceMetrics);
-                }
-                if (data.theme && typeof applyTheme === 'function') {
-                    applyTheme(data.theme, { persist: false });
-                }
-                saveManagerData(getActiveDataScopeKey(), { bookings, expenses, otherIncome });
-                markSearchIndexDirty();
+                applyCloudSnapshotToRuntime(data, getActiveDataScopeKey());
             };
         }
 
@@ -4095,13 +3916,10 @@ function showLoginForm() {
                 payload
             })).catch((err) => {
                 console.warn('Cloud sync failed:', err);
-                if (typeof window.SP?.enqueueSave === 'function') {
-                    window.SP.enqueueSave(payload);
-                }
                 return {
                     cloudSynced: false,
                     skipped: false,
-                    queued: true,
+                    queued: false,
                     error: err,
                     payload
                 };
@@ -4111,21 +3929,13 @@ function showLoginForm() {
 
         async function persistMutationWithCloudFeedback(options = {}) {
             const result = await saveUserData();
-            if (result?.queued) {
-                toastWarn(options.pendingMessage || 'Saved locally. Cloud sync pending.');
-                return result;
-            }
-            if (options.suppressSuccessToast) {
-                return result;
-            }
             if (result?.cloudSynced) {
-                toastSuccess(options.cloudSuccessMessage || options.successMessage || 'Saved to cloud!');
+                if (!options.suppressSuccessToast) {
+                    toastSuccess(options.successMessage || 'Saved to cloud!');
+                }
                 return result;
             }
-            if (options.successMessage) {
-                toastSuccess(options.successMessage);
-            }
-            return result;
+            throw result?.error || new Error(options.failureMessage || 'Cloud save failed.');
         }
 
         function getNextNumericRecordId(records) {
@@ -4843,6 +4653,10 @@ function showLoginForm() {
         }
 
         function checkAuth() {
+            if (window.__spCloudBootstrapPending || window.__spSupabaseBootPromise || window.__spAuthRedirectInProgress) {
+                setBootState('booting-auth');
+            }
+            return;
             if (window.__spCloudOnly) {
                 if (window.__spCloudBootstrapPending || window.__spSupabaseBootPromise || window.__spAuthRedirectInProgress) {
                     setBootState('booting-auth');
@@ -4977,6 +4791,7 @@ function showLoginForm() {
         }
 
         function restoreSession() {
+            return;
             if (!window.__spCloudOnly) {
                 checkAuth();
             }
@@ -6857,7 +6672,9 @@ function showLoginForm() {
         async function saveExpense() {
             if (guardReadOnly('save expenses')) return;
 
+            let previousExpenses = [];
             try {
+                previousExpenses = expenses.slice();
                 const receiptSrc = document.getElementById('receiptPreview').src || null;
                 const existingExpense = editingExpenseId ? expenses.find(e => e.id === editingExpenseId) : null;
                 const isEdit = Boolean(editingExpenseId);
@@ -6895,16 +6712,19 @@ function showLoginForm() {
                 renderExpenses();
                 cancelExpense();
                 await persistMutationWithCloudFeedback({
-                    successMessage: isEdit ? 'Expense updated!' : 'Expense saved!',
-                    cloudSuccessMessage: isEdit ? 'Expense updated in cloud!' : 'Expense saved to cloud!',
-                    pendingMessage: isEdit ? 'Expense updated locally. Cloud sync pending.' : 'Expense saved locally. Cloud sync pending.'
+                    successMessage: isEdit ? 'Expense updated in cloud.' : 'Expense saved to cloud.'
                 });
                 updateDashboard();
                 updateReportStatistics();
         
             } catch (err) {
                 console.error('[StarPaper] saveExpense failed:', err);
-                toastError('Something went wrong. Check the console for details.');
+                expenses = previousExpenses;
+                window.expenses = expenses;
+                renderExpenses();
+                updateDashboard();
+                updateReportStatistics();
+                toastError('Expense could not be saved to the cloud. Your last change was undone.');
             }
         }
 
@@ -6973,19 +6793,24 @@ function showLoginForm() {
             if (!silent && !confirm('Are you sure you want to delete this expense?')) {
                 return;
             }
+            const previousExpenses = expenses.slice();
             expenses = expenses.filter(e => e.id !== id);
-            if (window.SP?.deleteExpense) {
-                window.SP.deleteExpense(id).catch((err) => {
-                    console.warn('Cloud delete expense failed:', err);
-                });
-            }
-            const result = await saveUserData();
-            if (result?.queued) {
-                toastWarn('Expense deletion saved locally. Cloud sync pending.');
-            }
+            window.expenses = expenses;
             renderExpenses();
-            updateDashboard();
-            updateReportStatistics();
+            try {
+                await persistMutationWithCloudFeedback({
+                    successMessage: 'Expense deleted from the cloud.'
+                });
+                updateDashboard();
+                updateReportStatistics();
+            } catch (err) {
+                expenses = previousExpenses;
+                window.expenses = expenses;
+                renderExpenses();
+                updateDashboard();
+                updateReportStatistics();
+                toastError('Expense deletion failed in the cloud. Your last change was undone.');
+            }
         }
 
         function editExpense(id) {
@@ -7091,7 +6916,9 @@ function showLoginForm() {
         async function saveOtherIncome() {
             if (guardReadOnly('save other income')) return;
 
+            let previousOtherIncome = [];
             try {
+                previousOtherIncome = otherIncome.slice();
                 const proofSrc = document.getElementById('otherIncomeProofPreview').src || null;
                 const existingIncome = editingOtherIncomeId ? otherIncome.find(i => i.id === editingOtherIncomeId) : null;
                 const isEdit = Boolean(editingOtherIncomeId);
@@ -7133,16 +6960,19 @@ function showLoginForm() {
                 renderOtherIncome();
                 cancelOtherIncome();
                 await persistMutationWithCloudFeedback({
-                    successMessage: isEdit ? 'Other income updated!' : 'Other income saved!',
-                    cloudSuccessMessage: isEdit ? 'Other income updated in cloud!' : 'Other income saved to cloud!',
-                    pendingMessage: isEdit ? 'Other income updated locally. Cloud sync pending.' : 'Other income saved locally. Cloud sync pending.'
+                    successMessage: isEdit ? 'Other income updated in cloud.' : 'Other income saved to cloud.'
                 });
                 updateDashboard();
                 updateReportStatistics();
         
             } catch (err) {
                 console.error('[StarPaper] saveOtherIncome failed:', err);
-                toastError('Something went wrong. Check the console for details.');
+                otherIncome = previousOtherIncome;
+                window.otherIncome = otherIncome;
+                renderOtherIncome();
+                updateDashboard();
+                updateReportStatistics();
+                toastError('Other income could not be saved to the cloud. Your last change was undone.');
             }
         }
 
@@ -7224,19 +7054,24 @@ function showLoginForm() {
             if (!silent && !confirm('Are you sure you want to delete this entry?')) {
                 return;
             }
+            const previousOtherIncome = otherIncome.slice();
             otherIncome = otherIncome.filter(i => i.id !== id);
-            if (window.SP?.deleteOtherIncome) {
-                window.SP.deleteOtherIncome(id).catch((err) => {
-                    console.warn('Cloud delete other income failed:', err);
-                });
-            }
-            const result = await saveUserData();
-            if (result?.queued) {
-                toastWarn('Other income deletion saved locally. Cloud sync pending.');
-            }
+            window.otherIncome = otherIncome;
             renderOtherIncome();
-            updateDashboard();
-            updateReportStatistics();
+            try {
+                await persistMutationWithCloudFeedback({
+                    successMessage: 'Other income deleted from the cloud.'
+                });
+                updateDashboard();
+                updateReportStatistics();
+            } catch (err) {
+                otherIncome = previousOtherIncome;
+                window.otherIncome = otherIncome;
+                renderOtherIncome();
+                updateDashboard();
+                updateReportStatistics();
+                toastError('Other income deletion failed in the cloud. Your last change was undone.');
+            }
         }
 
         function editOtherIncome(id) {
@@ -7589,7 +7424,11 @@ function showLoginForm() {
         async function saveBooking() {
             if (guardReadOnly('save bookings')) return;
 
+            let previousBookings = [];
+            let previousArtists = [];
             try {
+                previousBookings = bookings.slice();
+                previousArtists = artists.slice();
                 const locationType = document.getElementById('bookingLocationType').value;
                 const location = locationType === 'uganda' 
                     ? document.getElementById('bookingUgandaLocation').value
@@ -7646,13 +7485,10 @@ function showLoginForm() {
                 renderBookings();
                 cancelBooking();
                 showSection('schedule');
-                if (booking.status === 'confirmed') triggerGoldDust();
-                toastSuccess(isEdit ? 'Booking updated!' : 'ðŸŽ‰ Booking saved!');
-                // Persist and refresh remaining views
                 await persistMutationWithCloudFeedback({
-                    suppressSuccessToast: true,
-                    pendingMessage: isEdit ? 'Booking updated locally. Cloud sync pending.' : 'Booking saved locally. Cloud sync pending.'
+                    successMessage: isEdit ? 'Booking updated in cloud.' : 'Booking saved to cloud.'
                 });
+                if (booking.status === 'confirmed') triggerGoldDust();
                 updateDashboard();
                 renderCalendar();
                 renderPerformanceMap();
@@ -7660,7 +7496,19 @@ function showLoginForm() {
         
             } catch (err) {
                 console.error('[StarPaper] saveBooking failed:', err);
-                toastError('Something went wrong. Check the console for details.');
+                bookings = previousBookings;
+                artists = previousArtists;
+                window.bookings = bookings;
+                window.artists = artists;
+                renderBookings();
+                if (typeof window.renderArtists === 'function') {
+                    window.renderArtists();
+                }
+                updateDashboard();
+                renderCalendar();
+                renderPerformanceMap();
+                updateReportStatistics();
+                toastError('Booking could not be saved to the cloud. Your last change was undone.');
             }
         }
 
@@ -8001,10 +7849,7 @@ function showLoginForm() {
         }
 
         function getAllBookings() {
-            return Object.values(managerData || {}).reduce((acc, record) => {
-                const managerBookings = Array.isArray(record?.bookings) ? record.bookings : [];
-                return acc.concat(managerBookings);
-            }, []);
+            return Array.isArray(bookings) ? bookings.slice() : [];
         }
 
         function updateAvailabilityArtists() {
@@ -8120,21 +7965,26 @@ function showLoginForm() {
         async function deleteBooking(id, silent = false) {
             if (guardReadOnly('delete bookings')) return;
             if (!silent && !confirm('Are you sure you want to delete this booking?')) return;
-            
+            const previousBookings = bookings.slice();
             bookings = bookings.filter(b => b.id !== id);
-            if (window.SP?.deleteBooking) {
-                window.SP.deleteBooking(id).catch((err) => {
-                    console.warn('Cloud delete booking failed:', err);
-                });
-            }
-            const result = await saveUserData();
-            if (result?.queued) {
-                toastWarn('Booking deletion saved locally. Cloud sync pending.');
-            }
+            window.bookings = bookings;
             renderBookings();
-            updateDashboard();
-            renderCalendar();
-            updateReportStatistics();
+            try {
+                await persistMutationWithCloudFeedback({
+                    successMessage: 'Booking deleted from the cloud.'
+                });
+                updateDashboard();
+                renderCalendar();
+                updateReportStatistics();
+            } catch (err) {
+                bookings = previousBookings;
+                window.bookings = bookings;
+                renderBookings();
+                updateDashboard();
+                renderCalendar();
+                updateReportStatistics();
+                toastError('Booking deletion failed in the cloud. Your last change was undone.');
+            }
         }
 
         function getCurrentMonthData() {
