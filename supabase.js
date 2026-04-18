@@ -3677,7 +3677,7 @@ const SP_CURRENCIES = {
       <div class="sp-team-panel">
         <div class="sp-team-panel-header">
           <h3>Team Workspace</h3>
-          <button class="sp-modal-close" onclick="document.getElementById('spTeamModal').style.display='none'">✕</button>
+          <button class="sp-modal-close" onclick="document.getElementById('spTeamModal').style.display='none'"><i class="ph ph-x" aria-hidden="true"></i></button>
         </div>
 
         <div class="sp-team-section">
@@ -3768,7 +3768,7 @@ const SP_CURRENCIES = {
       <div class="sp-team-panel">
         <div class="sp-team-panel-header">
           <h3>Team Workspace</h3>
-          <button class="sp-modal-close" onclick="document.getElementById('spTeamModal').style.display='none'">âœ•</button>
+          <button class="sp-modal-close" onclick="document.getElementById('spTeamModal').style.display='none'"><i class="ph ph-x" aria-hidden="true"></i></button>
         </div>
 
         <div class="sp-team-section">
@@ -3879,7 +3879,7 @@ const SP_CURRENCIES = {
         content.innerHTML = `
           <div class="sp-team-panel-header">
             <h3>Team Workspace</h3>
-            <button class="sp-modal-close" onclick="document.getElementById('spTeamModal').style.display='none'">✕</button>
+            <button class="sp-modal-close" onclick="document.getElementById('spTeamModal').style.display='none'"><i class="ph ph-x" aria-hidden="true"></i></button>
           </div>
           <p style="color:#ef4444;padding:16px 0;">
             ${isTimeout

@@ -4719,13 +4719,13 @@ function showLoginForm() {
             const titles = {
                 'dashboard':  'Dashboard',
                 'money':      'Money',
-                'financials': 'Money Ã¢â‚¬â€ Overview',
+                'financials': 'Money - Overview',
                 'artists':    'Artists',
                 'schedule':   'Schedule',
-                'bookings':   'Schedule Ã¢â‚¬â€ Bookings',
-                'expenses':   'Money Ã¢â‚¬â€ Expenses',
-                'otherIncome':'Money Ã¢â‚¬â€ Other Income',
-                'calendar':   'Schedule Ã¢â‚¬â€ Calendar',
+                'bookings':   'Schedule - Bookings',
+                'expenses':   'Money - Expenses',
+                'otherIncome':'Money - Other Income',
+                'calendar':   'Schedule - Calendar',
                 'reports':    'Reports',
                 'tasks':      'Tasks',
             };
@@ -6797,7 +6797,7 @@ function showLoginForm() {
                 tbody.innerHTML = `<tr><td colspan="5">${emptyState({
                     icon: 'ph-receipt',
                     title: 'No expenses yet',
-                    sub: 'Track your costs Ã¢â‚¬â€ travel, equipment, studio time, and more.',
+                    sub: 'Track your costs - travel, equipment, studio time, and more.',
                     ctaLabel: '+ Log Expense',
                     ctaAction: "showAddExpense()"
                 })}</td></tr>`;
@@ -6805,7 +6805,7 @@ function showLoginForm() {
                 if (cards) cards.innerHTML = emptyState({
                     icon: 'ph-receipt',
                     title: 'No expenses yet',
-                    sub: 'Track your costs Ã¢â‚¬â€ travel, equipment, studio time, and more.',
+                    sub: 'Track your costs - travel, equipment, studio time, and more.',
                     ctaLabel: '+ Log Expense',
                     ctaAction: "showAddExpense()"
                 });
@@ -9139,7 +9139,7 @@ function showLoginForm() {
                     <div class="sp-toast__title">${opts.title || ''}</div>
                     <div class="sp-toast__msg">${message}</div>
                 </div>
-                <button class="sp-toast__close" aria-label="Dismiss">Ã¢Å“â€¢</button>
+                <button class="sp-toast__close" aria-label="Dismiss"><i class="ph ph-x" aria-hidden="true"></i></button>
                 <div class="sp-toast__bar" style="--sp-toast-dur:${durSec}"></div>
             `;
             // If no title set, promote message to title
@@ -9327,8 +9327,8 @@ function showLoginForm() {
                             <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Actions</th></tr></thead>
                             <tbody>${allUsers.map(u => `
                                 <tr>
-                                    <td>${u.name || u.email || 'Ã¢â‚¬â€'}</td>
-                                    <td style="color:var(--text-muted)">${u.email || 'Ã¢â‚¬â€'}</td>
+                                    <td>${u.name || u.email || '-'}</td>
+                                    <td style="color:var(--text-muted)">${u.email || '-'}</td>
                                     <td><span class="sp-admin-pill sp-admin-pill--${u.status}">${u.status}</span></td>
                                     <td><div class="sp-admin-actions">
                                         ${u.status === 'pending' ? `<button class="sp-admin-btn sp-admin-btn--approve" onclick="adminApproveUser('${u.id || u.email}')">Approve</button>` : ''}
@@ -9415,13 +9415,13 @@ function showLoginForm() {
             if (deltaEl) {
                 const diff = thisCount - lastCount;
                 if (diff > 0) {
-                    deltaEl.textContent = `Ã¢â€“Â² ${diff} more`;
+                    deltaEl.textContent = `+ ${diff} more`;
                     deltaEl.className = 'velocity-gauge__delta velocity-gauge__delta--up';
                 } else if (diff < 0) {
-                    deltaEl.textContent = `Ã¢â€“Â¼ ${Math.abs(diff)} fewer`;
+                    deltaEl.textContent = `- ${Math.abs(diff)} fewer`;
                     deltaEl.className = 'velocity-gauge__delta velocity-gauge__delta--down';
                 } else {
-                    deltaEl.textContent = 'Ã¢â‚¬â€ same pace';
+                    deltaEl.textContent = 'Same pace';
                     deltaEl.className = 'velocity-gauge__delta velocity-gauge__delta--flat';
                 }
             }
@@ -9517,7 +9517,7 @@ function showLoginForm() {
             if (visible.length === 0) {
                 alertsEl.innerHTML = `<div class="nudge-item nudge-item--clear">
                     <span class="nudge-icon"><i class="ph ph-check-circle" aria-hidden="true"></i></span>
-                    <span class="nudge-text">All Clear Ã¢â‚¬â€ No urgent items require your attention today.</span>
+                    <span class="nudge-text">All Clear - No urgent items require your attention today.</span>
                 </div>`;
                 return;
             }
@@ -9630,6 +9630,20 @@ function showLoginForm() {
         }
 
         // Ã¢â€â‚¬Ã¢â€â‚¬ Falling Gold Coins canvas animation Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+        function drawCoinDollarMark(ctx, radius, scaleX) {
+            if (radius < 7 || scaleX < 0.30) return;
+            ctx.scale(1 / scaleX, 1);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = `700 ${Math.round(radius * 0.9)}px Georgia, serif`;
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = Math.max(0.8, radius * 0.08);
+            ctx.strokeStyle = 'rgba(255, 244, 176, 0.32)';
+            ctx.strokeText('$', 0.25, -0.12);
+            ctx.fillStyle = 'rgba(78, 49, 0, 0.84)';
+            ctx.fillText('$', 0, 0.15);
+        }
+
         (function initCoinRain() {
             const canvas = document.getElementById('coinRainCanvas');
             if (!canvas) return;
@@ -9682,14 +9696,7 @@ function showLoginForm() {
                 ctx.strokeStyle = 'rgba(255,210,60,0.50)';
                 ctx.lineWidth = 1.2 / scaleX;
                 ctx.stroke();
-                if (scaleX > 0.35) {
-                    ctx.scale(1 / scaleX, 1);
-                    ctx.fillStyle = 'rgba(80,50,0,0.65)';
-                    ctx.font = `bold ${Math.round(c.r * 0.92)}px Georgia,serif`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText('$', 0, 0);
-                }
+                drawCoinDollarMark(ctx, c.r, scaleX);
                 ctx.restore();
             }
 
@@ -9780,14 +9787,7 @@ function showLoginForm() {
                 ctx.strokeStyle = 'rgba(255,210,60,0.36)';
                 ctx.lineWidth = 1 / scaleX;
                 ctx.stroke();
-                if (scaleX > 0.38) {
-                    ctx.scale(1 / scaleX, 1);
-                    ctx.fillStyle = 'rgba(80,50,0,0.62)';
-                    ctx.font = `bold ${Math.round(coin.r * 0.86)}px Georgia,serif`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText('$', 0, 0);
-                }
+                drawCoinDollarMark(ctx, coin.r, scaleX);
                 ctx.restore();
             }
 
@@ -10108,7 +10108,7 @@ function showLoginForm() {
                     items.push({ type: 'group', label: 'Bookings' });
                     matchBookings.forEach(b => items.push({
                         type: 'booking', label: b.event, icon: 'ph-calendar-check',
-                        sub: `${b.artist} Ã‚Â· ${b.date || ''}`, query: q,
+                        sub: `${b.artist} - ${b.date || ''}`, query: q,
                         action: () => { showSection('schedule'); }
                     }));
                 }
@@ -10135,10 +10135,17 @@ function showLoginForm() {
                     const isSelected = resultIdx === selectedIdx;
                     const kbdHtml = item.key
                         ? `<span class="sp-palette__result-kbd">G+${item.key}</span>` : '';
+                    const iconHtml = !item.icon
+                        ? '<i class="ph ph-dot-outline" aria-hidden="true"></i>'
+                        : item.icon.includes('<')
+                            ? item.icon
+                            : item.icon.startsWith('ph-')
+                                ? `<i class="ph ${item.icon}" aria-hidden="true"></i>`
+                                : escapeHtml(item.icon);
                     return `<li class="sp-palette__result" role="option"
                         aria-selected="${isSelected}"
                         data-result-idx="${resultIdx}">
-                        <div class="sp-palette__result-icon">${item.icon || 'Ã¢â€“Â¸'}</div>
+                        <div class="sp-palette__result-icon">${iconHtml}</div>
                         <div class="sp-palette__result-body">
                             <div class="sp-palette__result-title">${highlight(item.label, item.query)}</div>
                             <div class="sp-palette__result-sub">${item.sub || ''}</div>
@@ -10247,7 +10254,7 @@ function showLoginForm() {
                         clearTimeout(gTimer);
                         const section = SECTIONS.find(s => s.id === target);
                         showSection(target);
-                        showKbdHint(`Ã¢â€ â€™ ${section?.label || target}`);
+                        showKbdHint(`-> ${section?.label || target}`);
                         return;
                     }
                 }

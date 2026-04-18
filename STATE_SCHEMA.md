@@ -1,141 +1,173 @@
-# State Schema
+# Star Paper Cloud-Only State Schema
 
-## localStorage Keys
-- `starPaperUsers`: array of manager records.
-- `starPaperArtists`: array of artist records.
-- `starPaperManagerData`: object keyed by managerId for financial records.
-- `starPaperCredentials`: object keyed by username for local auth credentials.
-- `starPaperMessages`: array of message records.
-- `starPaperAudienceMetrics`: object keyed by scope for audience growth entries.
-- `starPaperTheme`: `"light"` or `"dark"`.
-- `starPaperRemember`: boolean remember-me flag.
-- `starPaperRememberedUser`: remembered username.
-- `starPaperCurrentUser`: active session username.
-- `starPaperSeedDemo`: `"true"` enables first-run demo seed.
-- `starPaperApiBaseUrl`: backend API base URL (enables server auth path).
-- `starPaperSchemaVersion`: numeric data schema version for migrations.
+This document describes the current Star Paper state model after the cloud-first refactor.
 
-## User Record (Manager)
-```json
-{
-  "id": "string",
-  "username": "string",
-  "email": "string",
-  "avatar": "string",
-  "createdAt": "ISO-8601"
-}
-```
+## 1. Source of truth
 
-## Artist Record
-```json
-{
-  "id": "string",
-  "name": "string",
-  "managerId": "string",
-  "createdAt": "ISO-8601",
-  "email": "string (optional)",
-  "phone": "string (optional)",
-  "specialty": "string (optional)",
-  "bio": "string (optional)",
-  "strategicGoal": "string (optional)",
-  "avatar": "string (optional)"
-}
-```
+### Authoritative cloud state
 
-## Credentials Record
-```json
-{
-  "password": "string",
-  "createdAt": "ISO-8601"
-}
-```
+The following categories are authoritative in Supabase:
 
-## Manager Data Record
-```json
-{
-  "bookings": [],
-  "expenses": [],
-  "otherIncome": []
-}
-```
+- auth session
+- profile
+- bookings
+- expenses
+- other income
+- artists
+- tasks
+- audience metrics
+- revenue goals
+- BBF entries
+- closing thoughts
+- teams
+- team members
+- team chat/messages
 
-## Booking Record
-```json
-{
-  "id": 0,
-  "event": "string",
-  "artist": "string",
-  "artistId": "string|null",
-  "date": "YYYY-MM-DD",
-  "capacity": 0,
-  "fee": 0,
-  "deposit": 0,
-  "balance": 0,
-  "contact": "string",
-  "status": "string",
-  "notes": "string",
-  "locationType": "uganda|abroad",
-  "location": "string",
-  "createdAt": 0
-}
+### Non-authoritative browser state
 
-## Audience Metric Record
-```json
-{
-  "id": "string",
-  "artistId": "string",
-  "artist": "string",
-  "period": "YYYY-MM",
-  "socialFollowers": 0,
-  "spotifyListeners": 0,
-  "youtubeListeners": 0,
-  "createdAt": "ISO-8601",
-  "updatedAt": "ISO-8601"
-}
-```
-```
+The browser may keep local helper state for:
 
-## Expense Record
-```json
-{
-  "id": 0,
-  "description": "string",
-  "amount": 0,
-  "date": "YYYY-MM-DD",
-  "category": "string",
-  "receipt": "data-url|null",
-  "createdAt": 0
-}
-```
+- boot context
+- logout guard
+- sync retry queue
+- theme
+- density
+- currency preference
+- sidebar collapsed state
+- last-view restore
+- drafts
+- push subscription/device settings
+- service worker shell cache
 
-## Other Income Record
-```json
-{
-  "id": 0,
-  "source": "string",
-  "amount": 0,
-  "date": "YYYY-MM-DD",
-  "type": "string",
-  "payer": "string",
-  "method": "string",
-  "status": "string",
-  "notes": "string",
-  "proof": "data-url|null",
-  "createdAt": 0
-}
-```
+## 2. Browser storage keys
 
-## Message Record
-```json
-{
-  "id": 0,
-  "from": "string",
-  "to": "string|ALL",
-  "subject": "string",
-  "body": "string",
-  "attachments": [],
-  "timestamp": "ISO-8601",
-  "archivedBy": [],
-  "starredBy": []
-}
-```
+### Runtime helper keys that are still valid
+
+- `sp_boot_context`
+- `sp_logged_out`
+- `sp_retry_queue`
+- `sp_currency`
+- `sp_density`
+- `sp_sidebar_collapsed`
+- `starPaperTheme`
+- `starPaperLastSection`
+- `starPaperLastMoneyTab`
+- `starPaperLastScheduleTab`
+- `starPaperDrafts`
+- `starPaperPushEndpoint`
+- `starPaperPushLastSend`
+- `starPaperPushPublicKey`
+- `starPaperPushSubscription`
+- `starPaperBBFViewState`
+
+### Legacy keys that are shadowed, ignored, or cleared in cloud-only mode
+
+- `starPaperManagerData`
+- `starPaperBookings`
+- `starPaperExpenses`
+- `starPaperOtherIncome`
+- `starPaperArtists`
+- `starPaperRevenueGoals`
+- `starPaperBBF`
+- `starPaperClosingThoughtsByPeriod`
+- `starPaperAudienceMetrics`
+- `sp_tasks`
+- `starPaperTasks`
+- `starPaperUsers`
+- `starPaperCredentials`
+- `starPaperCurrentUser`
+- `starPaperRemember`
+- `starPaper_session`
+- `starPaperSessionUser`
+- `starPaperSchemaVersion`
+- `spManagers`
+- `spPendingUsers`
+
+These keys must not be treated as the active truth for authenticated business data or profile state.
+
+## 3. Auth and boot state
+
+### Auth source
+
+Supabase Auth is the only valid session authority.
+
+### Boot context values
+
+`sp_boot_context` can represent:
+
+- `auth-return`
+- `app-shell`
+
+At runtime these resolve to user-facing startup modes such as:
+
+- cold-start
+- auth-callback
+- app-refresh
+
+## 4. Workspace model
+
+Star Paper supports two workspace scopes:
+
+- personal workspace
+- team workspace
+
+Scope resolution is driven by:
+
+- authenticated user ID
+- active runtime team ID
+- `profiles.last_active_team_id`
+- current team membership
+
+The runtime should default to personal workspace when no valid team is selected.
+
+## 5. Cloud payload expectations
+
+### Report totals
+
+`getReportPeriodData()` returns BBF-aware totals including:
+
+- `periodNetProfit`
+- `bbf`
+- `closingBalance`
+
+Meaning:
+
+- `periodNetProfit` measures only the selected period
+- `bbf` is the opening balance brought forward
+- `closingBalance = bbf + income + other income - expenses`
+
+### Profile persistence
+
+Profile saves are cloud-backed and update:
+
+- `profiles.username`
+- `profiles.email`
+- `profiles.phone`
+- `profiles.bio`
+- `profiles.avatar`
+
+Auth-sensitive changes such as email and password go through Supabase Auth first.
+
+### Structured sync results
+
+Cloud save flows can return structured failure metadata such as:
+
+- `ok`
+- `failedStep`
+- `message`
+- `context`
+
+This allows the UI to show which cloud step actually failed.
+
+## 6. Sync rules
+
+For authenticated users:
+
+- cloud-confirmed save is success
+- failed cloud write is failure
+- refresh must rehydrate from the cloud
+- another browser on the same account must see the same records after refresh or normal sync
+
+## 7. Service worker rule
+
+The shell cache exists for startup speed, but auth/bootstrap-critical assets should behave network-first so stale startup logic does not persist across deploys.

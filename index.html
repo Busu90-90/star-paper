@@ -68,12 +68,19 @@
       html.sp-force-boot #loginScreen {
         visibility: hidden;
       }
+
+      /* UPGRADE: Premium polish kill-switch failsafe (also in styles.premium.css) */
+      html.sp-prem-off .sp-prem-widget { display: none !important; }
     </style>
 
     <link rel="stylesheet" href="styles.css?v=14">
+    <!-- UPGRADE: Premium polish layer (additive, kill-switchable via localStorage.sp_prem_off) -->
+    <link rel="stylesheet" href="styles.premium.css?v=1">
     <!-- Phosphor Icons Ã¢â‚¬â€ unified icon system -->
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+    <!-- UPGRADE: duotone variant for primary actions -->
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/duotone/style.css">
 </head>
 <body>
     <script>
@@ -99,7 +106,7 @@
         } catch (_err) {}
       })();
     </script>
-    <div class="app-boot-loader hidden" id="appBootLoader" aria-live="polite" aria-hidden="true" data-state="booting-auth">
+    <div class="app-boot-loader hidden sp-prem-reveal" id="appBootLoader" aria-live="polite" aria-hidden="true" data-state="booting-auth">
         <div class="app-boot-loader__inner">
             <img src="./logo.png?v=12" alt="Star Paper" class="app-boot-loader__logo" />
             <div class="app-boot-loader__text" id="appBootLoaderText">Checking your session...</div>
@@ -144,8 +151,8 @@
                         Built for managers, labels, and teams who need clarity, speed, and control.
                     </p>
                     <div class="landing-buttons">
-                        <button class="landing-btn" id="createAccountBtn" data-action="showSignupForm" onclick="showSignupForm()">Get Started</button>
-                        <button class="landing-btn landing-btn--ghost landing-btn--how" data-action="scrollToFeatures" onclick="document.getElementById('landing-features')?.scrollIntoView({behavior:'smooth',block:'center'})">How It Works Ã¢â€ â€œ</button>
+                        <button class="landing-btn" id="createAccountBtn" data-action="showSignupForm" data-sp-prem-pulse="gold" onclick="showSignupForm()">Get Started</button>
+                        <button class="landing-btn landing-btn--ghost landing-btn--how" data-action="scrollToFeatures" onclick="document.getElementById('landing-features')?.scrollIntoView({behavior:'smooth',block:'center'})">How It Works -&gt;</button>
                     </div>
                 </div>
                 <div class="landing-hero-right" aria-hidden="true">
@@ -290,15 +297,15 @@
             </div>
             <div class="landing-feature-dots" id="landingFeatureDots" aria-hidden="true"></div>
             <div class="landing-metrics-strip" id="landing-features" aria-label="Mainstage Metrics">
-                <div class="landing-metric-item">
+                <div class="landing-metric-item sp-prem-reveal sp-prem-reveal--d1" data-sp-reveal>
                     <div class="landing-metric-value">150+</div>
                     <div class="landing-metric-label">bookings coordinated</div>
                 </div>
-                <div class="landing-metric-item">
+                <div class="landing-metric-item sp-prem-reveal sp-prem-reveal--d2" data-sp-reveal>
                     <div class="landing-metric-value">30+</div>
                     <div class="landing-metric-label">artists on the roster</div>
                 </div>
-                <div class="landing-metric-item">
+                <div class="landing-metric-item sp-prem-reveal sp-prem-reveal--d3" data-sp-reveal>
                     <div class="landing-metric-value">UGX 500M+</div>
                     <div class="landing-metric-label">in artist revenue tracked</div>
                 </div>
@@ -577,7 +584,7 @@
 
                 <div class="dashboard-home-layout">
                     <!-- Today Board - Dominant Command Center -->
-                    <div class="card dashboard-section-card today-board-card">
+                    <div class="card dashboard-section-card today-board-card" data-sp-reveal>
                         <div class="today-board__header">
                             <div class="today-board__date">
                                 <div class="today-board__day" id="todayBoardDay">Monday</div>
@@ -604,7 +611,7 @@
                                 <button class="action-btn" type="button" data-action="toggleMonthlyGoalEditor">Set Goal</button>
                             </div>
                             <div class="monthly-goal-track__metrics">
-                                <div class="monthly-goal-metric">
+                                <div class="monthly-goal-metric" data-sp-prem-goal-ring="true">
                                     <div class="monthly-goal-metric__label">Goal Amount</div>
                                     <div class="monthly-goal-metric__value" id="monthlyGoalAmount"><span class="sp-skeleton"></span></div>
                                 </div>
@@ -627,19 +634,19 @@
                             </div>
                         </div>
                         <div class="dashboard-glance-grid">
-                            <div class="mainstage-kpi">
+                            <div class="mainstage-kpi" data-sp-prem-sparkline="income">
                                 <div class="mainstage-kpi__label" id="dashboardRevenueLabel">Month Year Revenue</div>
                                 <div class="mainstage-kpi__value income-green" id="totalIncome"><span class="sp-skeleton"></span></div>
                             </div>
-                            <div class="mainstage-kpi">
+                            <div class="mainstage-kpi" data-sp-prem-sparkline="deposits">
                                 <div class="mainstage-kpi__label">Deposits Received</div>
                                 <div class="mainstage-kpi__value deposit-blue" id="dashboardDepositsReceived"><span class="sp-skeleton"></span></div>
                             </div>
-                            <div class="mainstage-kpi">
+                            <div class="mainstage-kpi" data-sp-prem-sparkline="expenses">
                                 <div class="mainstage-kpi__label" id="dashboardExpensesLabel">Expenses (Month Year)</div>
                                 <div class="mainstage-kpi__value expense-red" id="dashboardExpenses"><span class="sp-skeleton"></span></div>
                             </div>
-                            <div class="mainstage-kpi">
+                            <div class="mainstage-kpi" data-sp-prem-sparkline="net">
                                 <div class="mainstage-kpi__label">Net Profit</div>
                                 <div class="mainstage-kpi__value income-green" id="dashboardCashAtHand"><span class="sp-skeleton"></span></div>
                             </div>
@@ -829,7 +836,7 @@
 
                 <div class="card">
                     <h3 class="section-title" data-icon="reports">Financial Snapshot</h3>
-                    <div class="chart-container">
+                    <div class="chart-container sp-prem-chart-host">
                         <canvas id="performanceChart"></canvas>
                     </div>
                 </div>
@@ -1472,6 +1479,8 @@
         <script src="app.tasks.js?v=3"></script>
     <script src="app.reports.js?v=11"></script>
 <script src="app.js?v=45"></script>
+        <!-- UPGRADE: Premium polish JS layer (loaded last, no mutation of existing state) -->
+        <script src="app.premium.js?v=1"></script>
         <script>
         // Ã¢â€â‚¬Ã¢â€â‚¬ FILE:// PROTOCOL GUARD Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         // When the app is opened as a local file (double-clicked), window.location.origin
@@ -1491,7 +1500,7 @@
                     'font-family:sans-serif'
                 ].join(';');
                 banner.innerHTML =
-                    '<strong>Ã¢Å¡Â  Local file detected.</strong> ' +
+                    '<strong>Warning: Local file detected.</strong> ' +
                     'Google sign-in requires a local server. ' +
                     'Run <code style="background:rgba(0,0,0,.3);padding:1px 6px;border-radius:3px">npx serve .</code> ' +
                     'in this folder, then open <strong>http://localhost:3000</strong>. ' +
@@ -1504,7 +1513,7 @@
                 // Disable & label Google sign-in buttons
                 document.querySelectorAll('.btn-google, [data-action="signInWithGoogle"]').forEach(function(btn) {
                     btn.disabled = true;
-                    btn.title = 'Google sign-in requires http://localhost Ã¢â‚¬â€ not file://';
+                    btn.title = 'Google sign-in requires http://localhost - not file://';
                     btn.style.opacity = '0.4';
                     btn.style.cursor = 'not-allowed';
                 });
@@ -1702,11 +1711,11 @@
                 </div>
             </div>
             <div class="sp-modal-body">
-                <p>Star Paper is a premium management tool built for artist managers in Uganda and beyond. Track bookings, monitor finances, manage your roster, and generate professional reports Ã¢â‚¬â€ all in one place.</p>
+                <p>Star Paper is a premium management tool built for artist managers in Uganda and beyond. Track bookings, monitor finances, manage your roster, and generate professional reports - all in one place.</p>
                 <p>Designed for the realities of the African music industry: offline-capable, mobile-first, and built around the workflows that actually matter.</p>
                 <div class="sp-modal-divider"></div>
                 <p style="margin:0; font-size:13px; color:var(--text-muted);">Built with care for the creative economy.</p>
-                <span class="sp-modal-version">v2.0 Ã‚Â· Phase 5</span>
+                <span class="sp-modal-version">v2.0 - Phase 5</span>
             </div>
         </div>
     </div>
@@ -1726,7 +1735,7 @@
             <div class="sp-modal-body">
                 <h4 style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">User Management</h4>
                 <div id="spAdminUserList">
-                    <div class="sp-admin-empty">Loading usersÃ¢â‚¬Â¦</div>
+                    <div class="sp-admin-empty">Loading users...</div>
                 </div>
                 <div class="sp-modal-divider"></div>
                 <h4 style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">System</h4>
@@ -1744,14 +1753,14 @@
         <div class="sp-palette__header">
             <span class="sp-palette__icon"><i class="ph ph-command" aria-hidden="true"></i></span>
             <input class="sp-palette__input" id="spPaletteInput" type="text"
-                placeholder="Search sections, artists, bookingsÃ¢â‚¬Â¦ or type a command"
+                placeholder="Search sections, artists, bookings... or type a command"
                 autocomplete="off" spellcheck="false" aria-autocomplete="list" aria-controls="spPaletteResults">
             <kbd class="sp-palette__esc">ESC</kbd>
         </div>
         <ul class="sp-palette__results" id="spPaletteResults" role="listbox"></ul>
         <div class="sp-palette__footer">
-            <span><kbd>Ã¢â€ â€˜</kbd><kbd>Ã¢â€ â€œ</kbd> navigate</span>
-            <span><kbd>Ã¢â€ Âµ</kbd> select</span>
+            <span><kbd>Up</kbd><kbd>Down</kbd> navigate</span>
+            <span><kbd>Enter</kbd> select</span>
             <span><kbd>Esc</kbd> close</span>
             <span class="sp-palette__footer-hint">Try "add booking" or an artist name</span>
         </div>
@@ -1769,17 +1778,17 @@
         </div>
         <div class="sp-cheatsheet__body">
             <div class="sp-cheatsheet__group">
-                <div class="sp-cheatsheet__group-label">Navigation (press G thenÃ¢â‚¬Â¦)</div>
+                <div class="sp-cheatsheet__group-label">Navigation (press G then...)</div>
                 <div class="sp-cheatsheet__rows">
                     <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>D</kbd><span>Dashboard</span></div>
                     <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>M</kbd><span>Money (Overview)</span></div>
-                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>F</kbd><span>Money Ã¢â€ â€™ Financials</span></div>
-                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>E</kbd><span>Money Ã¢â€ â€™ Expenses</span></div>
-                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>I</kbd><span>Money Ã¢â€ â€™ Other Income</span></div>
-                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>R</kbd><span>Money Ã¢â€ â€™ Reports</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>F</kbd><span>Money - Financials</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>E</kbd><span>Money - Expenses</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>I</kbd><span>Money - Other Income</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>R</kbd><span>Money - Reports</span></div>
                     <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>S</kbd><span>Schedule</span></div>
-                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>B</kbd><span>Schedule Ã¢â€ â€™ Bookings</span></div>
-                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>C</kbd><span>Schedule Ã¢â€ â€™ Calendar</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>B</kbd><span>Schedule - Bookings</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>C</kbd><span>Schedule - Calendar</span></div>
                     <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>A</kbd><span>Artists</span></div>
                     <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>T</kbd><span>Tasks</span></div>
                 </div>
@@ -1787,7 +1796,7 @@
             <div class="sp-cheatsheet__group">
                 <div class="sp-cheatsheet__group-label">Global</div>
                 <div class="sp-cheatsheet__rows">
-                    <div class="sp-cheatsheet__row"><kbd>Ã¢Å’Ëœ</kbd><kbd>K</kbd><span>Command Palette</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>Ctrl/Cmd</kbd><kbd>K</kbd><span>Command Palette</span></div>
                     <div class="sp-cheatsheet__row"><kbd>?</kbd><span>This cheat sheet</span></div>
                     <div class="sp-cheatsheet__row"><kbd>Esc</kbd><span>Close modal / palette</span></div>
                 </div>

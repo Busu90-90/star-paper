@@ -9,7 +9,7 @@
 ## II. THE TECHNICAL STACK (The "Law of the Land")
 - Frontend: Vanilla JS, Mobile-First.
 - Backend: Supabase (PostgreSQL).
-- Architecture: Cloud-First. localStorage is a cache, NOT the source of truth.
+- Architecture: Cloud-First. 
 - State: Hydrate app state from Supabase on init.
 - Concurrency: Sequential async execution to prevent Web Lock AbortErrors.
 
