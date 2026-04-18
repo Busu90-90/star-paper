@@ -175,6 +175,9 @@
   function computeMetrics(data, prevData) {
     const { filteredBookings, filteredExpenses, filteredOtherIncome,
             totalIncome, totalExpenses, totalOtherIncome, netProfit, balancesDue } = data;
+    const periodNetProfit = Number(data?.periodNetProfit ?? netProfit) || 0;
+    const bbf = Number(data?.bbf) || 0;
+    const closingBalance = Number(data?.closingBalance ?? (bbf + periodNetProfit)) || 0;
 
     const totalBookings = filteredBookings.length;
     const grossIncome = totalIncome + totalOtherIncome;
@@ -257,7 +260,7 @@
       : 0;
 
     return {
-      grossIncome, netProfit, totalIncome, totalExpenses, totalOtherIncome,
+      grossIncome, netProfit, periodNetProfit, bbf, closingBalance, totalIncome, totalExpenses, totalOtherIncome,
       profitMargin, avgPerShow, revenuePerBooking, balancesDue,
       trendPct, statusCounts, expenseByCat, showPerf,
       monthlyRevenue, monthlyExpenses, allMonths,
@@ -694,33 +697,18 @@
     const getPeriod = window.getReportPeriodSelection || (() => ({ period: 'month', periodLabel: new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' }) }));
     const getData = window.getReportPeriodData || (() => ({
       filteredBookings: [], filteredExpenses: [], filteredOtherIncome: [],
-      totalIncome: 0, totalExpenses: 0, totalOtherIncome: 0, netProfit: 0, balancesDue: 0, totalBookings: 0
+      totalIncome: 0, totalExpenses: 0, totalOtherIncome: 0, netProfit: 0, periodNetProfit: 0, balancesDue: 0, totalBookings: 0, bbf: 0, closingBalance: 0
     }));
 
     const { period, periodLabel } = getPeriod();
-    let data = getData(period, { sortNewestFirst: true });
+    const artists = Array.isArray(window.artists) ? window.artists : [];
+    const selectedArtist = artists.some(a => a.name === previousArtistFilter) ? previousArtistFilter : '';
+    let data = getData(period, { sortNewestFirst: true, selectedArtist });
 
     // Previous period data for trend
     const prevPeriodMap = { month: 'prevMonth', year: 'prevYear', quarter: 'all', prevMonth: 'month', prevYear: 'year', all: 'all' };
     const prevPeriod = prevPeriodMap[period] || 'all';
-    const prevData = getData(prevPeriod, { sortNewestFirst: false });
-
-    // Artist filter
-    const artists = Array.isArray(window.artists) ? window.artists : [];
-    const selectedArtist = artists.some(a => a.name === previousArtistFilter) ? previousArtistFilter : '';
-    if (selectedArtist) {
-      const fb = data.filteredBookings.filter(b => b.artist === selectedArtist);
-      const totalIncome = fb.reduce((s, b) => s + Math.round(Number(b.fee) || 0), 0);
-      const balancesDue = fb.reduce((s, b) => s + Math.max(0, Math.round((Number(b.fee) || 0) - (Number(b.deposit) || 0))), 0);
-      data = {
-        ...data,
-        filteredBookings: fb,
-        totalIncome,
-        totalBookings: fb.length,
-        netProfit: totalIncome + data.totalOtherIncome - data.totalExpenses,
-        balancesDue,
-      };
-    }
+    const prevData = getData(prevPeriod, { sortNewestFirst: false, selectedArtist });
 
     const m = computeMetrics(data, prevData);
     const artistOptions = artists.map(a => {
@@ -1160,54 +1148,26 @@
       const getPeriod = window.getReportPeriodSelection || (() => ({ period: 'month', periodLabel: new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' }) }));
       const getData = window.getReportPeriodData || (() => ({
         filteredBookings: [], filteredExpenses: [], filteredOtherIncome: [],
-        totalIncome: 0, totalExpenses: 0, totalOtherIncome: 0, netProfit: 0, balancesDue: 0, totalBookings: 0
+        totalIncome: 0, totalExpenses: 0, totalOtherIncome: 0, netProfit: 0, periodNetProfit: 0, balancesDue: 0, totalBookings: 0, bbf: 0, closingBalance: 0
       }));
 
       const { period, periodLabel } = getPeriod();
-      let data = getData(period, { sortNewestFirst: true });
-      const prevPeriodMap = { month: 'prevMonth', year: 'prevYear', quarter: 'all', prevMonth: 'month', prevYear: 'year', all: 'all' };
-      const prevData = getData(prevPeriodMap[period] || 'all', { sortNewestFirst: false });
-
-      // Apply artist filter
-      if (selectedArtist) {
-        const fb = data.filteredBookings.filter(b => b.artist === selectedArtist);
-        const totalIncome = fb.reduce((s, b) => s + Math.round(Number(b.fee) || 0), 0);
-        const balancesDue = fb.reduce((s, b) => s + Math.round((Number(b.fee) || 0) - (Number(b.deposit) || 0)), 0);
-        data = {
-          ...data,
-          filteredBookings: fb,
-          totalIncome,
-          totalBookings: fb.length,
-          netProfit: totalIncome + data.totalOtherIncome - data.totalExpenses,
-          balancesDue: Math.max(0, balancesDue),
-        };
-      }
-
-      // Apply custom date range filter
-      if (dateStart || dateEnd) {
-        const filterDate = (items, dateField) => items.filter(item => {
-          const d = item[dateField];
-          if (!d) return false;
-          if (dateStart && d < dateStart) return false;
-          if (dateEnd && d > dateEnd) return false;
-          return true;
-        });
-        const fb = filterDate(data.filteredBookings, 'date');
-        const fe = filterDate(data.filteredExpenses, 'date');
-        const fo = filterDate(data.filteredOtherIncome, 'date');
-        const totalIncome = fb.reduce((s, b) => s + Math.round(Number(b.fee) || 0), 0);
-        const totalExpenses = fe.reduce((s, e) => s + Math.round(Number(e.amount) || 0), 0);
-        const totalOtherIncome = fo.reduce((s, i) => s + Math.round(Number(i.amount) || 0), 0);
-        const balancesDue = fb.reduce((s, b) => s + Math.max(0, Math.round((Number(b.fee) || 0) - (Number(b.deposit) || 0))), 0);
-        data = {
-          filteredBookings: fb, filteredExpenses: fe, filteredOtherIncome: fo,
-          totalIncome, totalExpenses, totalOtherIncome,
-          netProfit: totalIncome + totalOtherIncome - totalExpenses,
-          balancesDue, totalBookings: fb.length,
-        };
-      }
-
       const artists = Array.isArray(window.artists) ? window.artists : [];
+      const selectedArtistId = selectedArtist ? (artists.find(a => a.name === selectedArtist)?.id || '') : '';
+      let data = getData(period, {
+        sortNewestFirst: true,
+        selectedArtist,
+        artistId: selectedArtistId,
+        dateStart,
+        dateEnd
+      });
+      const prevPeriodMap = { month: 'prevMonth', year: 'prevYear', quarter: 'all', prevMonth: 'month', prevYear: 'year', all: 'all' };
+      const prevData = getData(prevPeriodMap[period] || 'all', {
+        sortNewestFirst: false,
+        selectedArtist,
+        artistId: selectedArtistId
+      });
+
       const artistObj = selectedArtist ? artists.find(a => a.name === selectedArtist) : null;
       const artistName = artistObj ? artistObj.name : (selectedArtist || (window.currentUser || 'Manager'));
       const audienceTrend = getAudienceTrend(Array.isArray(window.audienceMetrics) ? window.audienceMetrics : [], selectedArtist, artistObj?.id);
@@ -1243,7 +1203,6 @@
       // ── Artist info ──
       const reportTitle = `MONEY MOVES: ${(artistName || 'ROSTER').toUpperCase()}`;
       const actualPeriodLabel = getActualPeriodLabel(dateStart, dateEnd, periodLabel);
-      const reportBbfPeriod = getReportStartPeriodKey(period, dateStart, data);
       // ── Load assets ──
       let logoDataUrl = '';
       if (typeof window.getReportLogoDataUrl === 'function') {
@@ -1261,37 +1220,13 @@
       const avatarHeaderAsset = avatarDataUrl
         ? await prepareReportHeaderAsset(avatarDataUrl, { mode: 'cover', circular: true })
         : '';
-      const bbfContext = typeof window.getActiveBBFContext === 'function'
-        ? window.getActiveBBFContext({
-            period: reportBbfPeriod,
-            artistId: artistObj?.id,
-            artistName: artistObj?.name,
-            artist: artistObj,
-            fallbackToGlobal: true
-          })
-        : null;
-      const bbfVal = bbfContext
-        ? Number(bbfContext.amount) || 0
-        : (typeof window.getCurrentBBF === 'function'
-            ? window.getCurrentBBF({
-                period: reportBbfPeriod,
-                artistId: artistObj?.id,
-                artistName: artistObj?.name,
-                fallbackToGlobal: true
-              })
-            : 0);
 
       // ── Closing thoughts ──
       const closingInput = document.getElementById('closingThoughtsInput');
       const closingDraft = String(closingInput?.value || '').trim();
       const closingFn = window.getClosingThoughtsForPeriod;
       const closingThoughts = closingDraft || (typeof closingFn === 'function' ? closingFn(period).trim() : '');
-      const pdfClosingBalance = Math.round(
-        (Number(bbfVal) || 0) +
-        (Number(m.totalIncome) || 0) +
-        (Number(m.totalOtherIncome) || 0) -
-        (Number(m.totalExpenses) || 0)
-      );
+      const pdfClosingBalance = Math.round(Number(data.closingBalance ?? m.closingBalance) || 0);
       const pdfVenuePerf = buildPdfVenuePerformance(m.filteredBookings, m.totalExpenses);
       const pdfTransactions = sortTransactionsForPdf([
         ...m.filteredBookings.map(b => ({ type: 'Booking', date: b.date, desc: b.event || b.artist || '', amount: Math.round(Number(b.fee) || 0) })),
@@ -1324,15 +1259,15 @@
         themeMode: getCurrentThemeMode(),
         raw: {
           ...data,
-          bbf: Math.round(Number(bbfVal) || 0),
-          bbfPeriod: bbfContext?.period || reportBbfPeriod
+          bbf: Math.round(Number(data.bbf) || 0),
+          bbfPeriod: data.bbfPeriod || getReportStartPeriodKey(period, dateStart, data)
         },
         metrics: {
           ...m,
           pdfVenuePerf,
-          bbf: Math.round(Number(bbfVal) || 0),
-          bbfPeriod: bbfContext?.period || reportBbfPeriod,
-          bbfSourcePeriodLabel: bbfContext?.sourcePeriodLabel || '',
+          bbf: Math.round(Number(data.bbf) || 0),
+          bbfPeriod: data.bbfPeriod || getReportStartPeriodKey(period, dateStart, data),
+          bbfSourcePeriodLabel: data.bbfSourcePeriodLabel || '',
           closingBalance: pdfClosingBalance
         },
         generatedBy: window.currentUser || 'Manager',
@@ -2725,6 +2660,8 @@
   window.generateMomentumPDF ||= generateMomentumPDF;
   window.openPdfExportModal ||= openPdfExportModal;
   window.closePdfExportModal ||= closePdfExportModal;
+  window.getReportStartPeriodKey ||= getReportStartPeriodKey;
+  window.getActualReportPeriodLabel ||= getActualPeriodLabel;
 
   // Listen for period changes to auto-refresh
   document.addEventListener('DOMContentLoaded', () => {

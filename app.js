@@ -49,6 +49,7 @@ function showBootLoaderElement() {
 
 const APP_BOOT_CONTEXT_STORAGE_KEY = 'sp_boot_context';
 const APP_BOOT_CONTEXT_APP_SHELL = 'app-shell';
+const APP_BOOT_CONTEXT_AUTH_RETURN = 'auth-return';
 
 function hasAuthCallbackParams(href = window.location.href) {
     try {
@@ -85,6 +86,14 @@ function setAppShellBootContext() {
     }
 }
 
+function setAuthReturnBootContext() {
+    try {
+        sessionStorage.setItem(APP_BOOT_CONTEXT_STORAGE_KEY, APP_BOOT_CONTEXT_AUTH_RETURN);
+    } catch (_err) {
+        // Ignore sessionStorage failures in private browsing / restrictive contexts.
+    }
+}
+
 function clearAppShellBootContext() {
     try {
         sessionStorage.removeItem(APP_BOOT_CONTEXT_STORAGE_KEY);
@@ -97,9 +106,11 @@ function getStartupBootContext() {
     if (hasAuthCallbackParams()) {
         return 'auth-callback';
     }
-    return readBootContextMarker() === APP_BOOT_CONTEXT_APP_SHELL
-        ? 'app-refresh'
-        : 'cold-start';
+    const marker = readBootContextMarker();
+    if (marker === APP_BOOT_CONTEXT_AUTH_RETURN) {
+        return 'auth-callback';
+    }
+    return marker === APP_BOOT_CONTEXT_APP_SHELL ? 'app-refresh' : 'cold-start';
 }
 
 const BOOT_STATE_MESSAGES = {
@@ -214,7 +225,9 @@ function getSectionIconMarkup(iconKey) {
             'starPaperRemember',
             'starPaper_session',
             'starPaperSessionUser',
-            'starPaperSchemaVersion'
+            'starPaperSchemaVersion',
+            'spManagers',
+            'spPendingUsers'
         ]);
         const cloudOnlyStorageShadow = {};
         const closingThoughtsMemoryStore = {};
@@ -282,7 +295,9 @@ function getSectionIconMarkup(iconKey) {
             'starPaper_session',
             'starPaperSessionUser',
             'starPaperSchemaVersion',
-            'sp_active_team'
+            'sp_active_team',
+            'spManagers',
+            'spPendingUsers'
         ];
 
         function clearLegacyCloudDataKeys() {
@@ -298,6 +313,7 @@ function getSectionIconMarkup(iconKey) {
         window.hideBootLoaderElement = hideBootLoaderElement;
         window.getStartupBootContext = getStartupBootContext;
         window.setAppShellBootContext = setAppShellBootContext;
+        window.setAuthReturnBootContext = setAuthReturnBootContext;
         window.clearAppShellBootContext = clearAppShellBootContext;
 
         function bindDeclarativeActionFallback() {
@@ -749,10 +765,20 @@ function getSectionIconMarkup(iconKey) {
         }
 
         function getCurrentUserRecord() {
-            const localRecord = findUserByUsername(currentUser);
             const profile = typeof window.SP?.getProfileState === 'function'
                 ? (window.SP.getProfileState() || null)
                 : null;
+            if (window.__spCloudOnly) {
+                return {
+                    id: profile?.id || window.SP?.getOwnerId?.() || null,
+                    username: profile?.username || currentUser || '',
+                    email: profile?.email || '',
+                    phone: profile?.phone || '',
+                    bio: profile?.bio || '',
+                    avatar: profile?.avatar || profile?.avatar_url || ''
+                };
+            }
+            const localRecord = findUserByUsername(currentUser);
             if (!profile) return localRecord;
             return {
                 ...localRecord,
@@ -831,12 +857,14 @@ function getSectionIconMarkup(iconKey) {
         function updateHeaderGreeting() {
             const userNameEl = document.getElementById('userName');
             if (!userNameEl) return;
-            if (!currentUser) {
+            const user = getCurrentUserRecord();
+            const displayName = String(user?.username || currentUser || '').trim();
+            if (!displayName) {
                 userNameEl.textContent = '';
                 userNameEl.style.display = 'none';
                 return;
             }
-            userNameEl.textContent = `Hi, ${currentUser}`;
+            userNameEl.textContent = `Hi, ${displayName}`;
             userNameEl.style.display = 'inline';
         }
 
@@ -937,59 +965,45 @@ function getSectionIconMarkup(iconKey) {
                     toastError('Username is required.');
                     return;
                 }
-                const conflictingUser = findUserByUsername(nextUsername) || findUserByUsernameInsensitive(nextUsername);
-                if (nextUsername !== oldUsername && conflictingUser && conflictingUser.username !== oldUsername) {
-                    toastError('That username is already in use.');
+                const nextAvatar = pendingProfileAvatarValue || user.avatar || '';
+                const saveBridge = window.SP?.saveAccountProfile;
+                if (typeof saveBridge !== 'function') {
+                    toastError('Profile sync is not ready yet. Please try again in a moment.');
                     return;
                 }
 
-                user.username = nextUsername;
-                user.email = nextEmail;
-                user.phone = nextPhone;
-                user.bio = nextBio;
-                if (pendingProfileAvatarValue) {
-                    user.avatar = pendingProfileAvatarValue;
+                const result = await saveBridge({
+                    username: nextUsername,
+                    email: nextEmail,
+                    phone: nextPhone,
+                    bio: nextBio,
+                    avatar: nextAvatar,
+                    password: nextPassword
+                });
+
+                if (!result?.profile) {
+                    toastError(result?.message || 'Could not save profile changes.');
+                    return;
                 }
 
-                const existingCred = (credentials[oldUsername] && typeof credentials[oldUsername] === 'object')
-                    ? credentials[oldUsername]
-                    : { createdAt: new Date().toISOString() };
-
-                let nextCredential = existingCred;
-                if (nextPassword) {
-                    if (!hasSecureCredentialCrypto()) {
-                        toastError('Secure password storage is not available in this browser.');
-                        return;
-                    }
-                    nextCredential = await createHashedCredentialRecord(nextPassword, existingCred);
-                } else if (!isHashedCredentialRecord(existingCred) && typeof existingCred.password === 'string' && existingCred.password) {
-                    if (hasSecureCredentialCrypto()) {
-                        try {
-                            nextCredential = await createHashedCredentialRecord(existingCred.password, existingCred);
-                        } catch (rehashError) {
-                            console.warn('Profile credential hardening skipped:', rehashError);
-                        }
-                    }
-                }
-
-                if (nextUsername !== oldUsername) {
-                    delete credentials[oldUsername];
-                }
-                credentials[nextUsername] = nextCredential;
-
-                if (nextUsername !== oldUsername) {
-                    currentUser = nextUsername;
-                }
-
-                saveIdentityStores();
+                currentUser = result.profile.username || nextUsername || currentUser;
+                window.currentUser = currentUser;
                 updateCurrentManagerContext();
                 markSearchIndexDirty();
                 refreshProfileUI();
+                const passwordInput = document.getElementById('profilePassword');
+                if (passwordInput) {
+                    passwordInput.value = '';
+                }
                 closeProfileModal();
-                toastSuccess('Profile updated');
+                if (result?.emailConfirmationPending) {
+                    toastSuccess(result.message || 'Profile updated. Confirm your new email to finish the email change.');
+                } else {
+                    toastSuccess(result?.message || 'Profile updated.');
+                }
             } catch (error) {
                 console.error('Profile save failed:', error);
-                toastError('Could not save profile changes.');
+                toastError(error?.message || 'Could not save profile changes.');
             }
         }
 
@@ -3171,6 +3185,17 @@ function showLoginForm() {
         function ensureSessionUserExists(username, profile = {}) {
             const normalized = String(username || '').trim();
             if (!normalized) return null;
+            if (window.__spCloudOnly) {
+                return {
+                    id: profile.id || profile.user_id || window.SP?.getOwnerId?.() || null,
+                    username: normalized,
+                    email: profile.email || '',
+                    phone: profile.phone || '',
+                    bio: profile.bio || '',
+                    avatar: profile.avatar || profile.avatar_url || '',
+                    createdAt: new Date().toISOString()
+                };
+            }
             const existing = findUserByUsername(normalized) || findUserByUsernameInsensitive(normalized);
             if (existing) return existing;
 
@@ -5257,22 +5282,85 @@ function showLoginForm() {
         }
 
         function getReportPeriodData(period, options = {}) {
-            const { sortNewestFirst = false } = options;
+            const {
+                sortNewestFirst = false,
+                selectedArtist = '',
+                artist = null,
+                artistId = '',
+                artistName = '',
+                dateStart = '',
+                dateEnd = ''
+            } = options;
             const maybeSort = (items) => {
                 if (!sortNewestFirst) return items;
                 return [...items].sort((a, b) => new Date(b.date) - new Date(a.date));
             };
 
-            const filteredBookings = maybeSort(filterByPeriod(bookings, period));
-            const filteredExpenses = maybeSort(filterByPeriod(expenses, period));
-            const filteredOtherIncome = maybeSort(filterByPeriod(otherIncome, period));
+            const filterDateRange = (items, dateField = 'date') => {
+                if (!dateStart && !dateEnd) return items;
+                return items.filter((item) => {
+                    const value = String(item?.[dateField] || '').trim();
+                    if (!value) return false;
+                    if (dateStart && value < dateStart) return false;
+                    if (dateEnd && value > dateEnd) return false;
+                    return true;
+                });
+            };
+
+            let filteredBookings = filterByPeriod(bookings, period);
+            let filteredExpenses = filterByPeriod(expenses, period);
+            let filteredOtherIncome = filterByPeriod(otherIncome, period);
+
+            const selectedArtistName = String(
+                artistName ||
+                selectedArtist ||
+                artist?.name ||
+                ''
+            ).trim();
+            if (selectedArtistName) {
+                filteredBookings = filteredBookings.filter((booking) => String(booking?.artist || '').trim() === selectedArtistName);
+            }
+
+            filteredBookings = maybeSort(filterDateRange(filteredBookings, 'date'));
+            filteredExpenses = maybeSort(filterDateRange(filteredExpenses, 'date'));
+            filteredOtherIncome = maybeSort(filterDateRange(filteredOtherIncome, 'date'));
 
             const totalBookings = filteredBookings.length;
             const totalIncome = filteredBookings.reduce((sum, b) => sum + (Math.round(Number(b.fee) || 0)), 0);
             const totalExpenses = filteredExpenses.reduce((sum, e) => sum + (Math.round(Number(e.amount) || 0)), 0);
             const totalOtherIncome = filteredOtherIncome.reduce((sum, i) => sum + (Math.round(Number(i.amount) || 0)), 0);
-            const netProfit = (totalIncome + totalOtherIncome) - totalExpenses;
+            const periodNetProfit = (totalIncome + totalOtherIncome) - totalExpenses;
             const balancesDue = filteredBookings.reduce((sum, b) => sum + (Math.round(Number(b.balance) || 0)), 0);
+            const reportStartPeriod = typeof window.getReportStartPeriodKey === 'function'
+                ? window.getReportStartPeriodKey(period, dateStart, {
+                    filteredBookings,
+                    filteredExpenses,
+                    filteredOtherIncome
+                })
+                : (dateStart ? String(dateStart).slice(0, 7) : new Date().toISOString().slice(0, 7));
+            const resolvedArtist = artist
+                || (artistId ? findArtistById(artistId) : null)
+                || (selectedArtistName ? findArtistByName(selectedArtistName) : null);
+            const bbfContext = typeof getActiveBBFContext === 'function'
+                ? getActiveBBFContext({
+                    period: reportStartPeriod,
+                    artist: resolvedArtist,
+                    artistId: artistId || resolvedArtist?.id,
+                    artistName: selectedArtistName || resolvedArtist?.name,
+                    fallbackToGlobal: true
+                })
+                : null;
+            const bbf = bbfContext
+                ? Number(bbfContext.amount) || 0
+                : (typeof getCurrentBBF === 'function'
+                    ? Number(getCurrentBBF({
+                        period: reportStartPeriod,
+                        artistId: artistId || resolvedArtist?.id,
+                        artistName: selectedArtistName || resolvedArtist?.name,
+                        fallbackToGlobal: true
+                    })) || 0
+                    : 0);
+            const closingBalance = bbf + periodNetProfit;
 
             return {
                 filteredBookings,
@@ -5282,8 +5370,13 @@ function showLoginForm() {
                 totalIncome,
                 totalExpenses,
                 totalOtherIncome,
-                netProfit,
-                balancesDue
+                netProfit: periodNetProfit,
+                periodNetProfit,
+                balancesDue,
+                bbf,
+                closingBalance,
+                bbfPeriod: bbfContext?.period || reportStartPeriod,
+                bbfSourcePeriodLabel: bbfContext?.sourcePeriodLabel || ''
             };
         }
 
@@ -6062,7 +6155,11 @@ function showLoginForm() {
                     totalExpenses,
                     totalOtherIncome,
                     netProfit,
-                    balancesDue
+                    periodNetProfit,
+                    balancesDue,
+                    bbf,
+                    closingBalance,
+                    bbfSourcePeriodLabel
                 } = getReportPeriodData(period, { sortNewestFirst: true });
     
                 const drawHeader = (subtitle = 'Activity Report') => {
@@ -6145,8 +6242,9 @@ function showLoginForm() {
                     { label: 'Show Income', value: formatMoney(totalIncome), color: palette.income },
                     { label: 'Other Income', value: formatMoney(totalOtherIncome), color: palette.income },
                     { label: 'Total Expenses', value: formatMoney(totalExpenses), color: palette.expense },
-                    { label: 'Balance Brought Forward', value: formatMoney(getCurrentBBF()), color: palette.neutral },
-                    { label: 'Net Profit', value: formatMoney(netProfit), color: netProfit >= 0 ? palette.income : palette.expense }
+                    { label: 'Opening Balance (BBF)', value: formatMoney(bbf), color: palette.neutral },
+                    { label: 'Period Net Profit', value: formatMoney(periodNetProfit), color: periodNetProfit >= 0 ? palette.income : palette.expense },
+                    { label: 'Closing Balance', value: formatMoney(closingBalance), color: closingBalance >= 0 ? palette.income : palette.expense }
                 ];
     
                 const cardGap = 4;
@@ -6499,8 +6597,8 @@ function showLoginForm() {
                 pdf.setFont('helvetica', 'normal');
                 pdf.setFontSize(8.5);
                 pdf.setTextColor(...palette.muted);
-                pdf.text(`Balance brought forward: ${formatMoney(getCurrentBBF())}`, statusPanel.x + 1, statusY + 4);
-                pdf.text(`Net profit trend: ${netProfit >= 0 ? 'Positive' : 'Negative'} (${formatMoney(netProfit)})`, statusPanel.x + 1, statusY + 11);
+                pdf.text(`Opening balance (BBF): ${formatMoney(bbf)}${bbfSourcePeriodLabel ? ` from ${bbfSourcePeriodLabel}` : ''}`, statusPanel.x + 1, statusY + 4);
+                pdf.text(`Closing balance = BBF + income + other income - expenses = ${formatMoney(closingBalance)}`, statusPanel.x + 1, statusY + 11);
     
                 if (closingThoughts) {
                     const frameTop = 34;
@@ -10431,7 +10529,7 @@ function showLoginForm() {
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=43').then((registration) => {
+                navigator.serviceWorker.register('sw.js?v=45').then((registration) => {
                     registration.update().catch(() => {});
                 }).catch((error) => {
                     console.warn('Service worker registration failed:', error);

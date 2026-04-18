@@ -114,6 +114,7 @@ const SP_CURRENCIES = {
   const RETRY_QUEUE_STORAGE_KEY = 'sp_retry_queue';
   const BOOT_CONTEXT_STORAGE_KEY = 'sp_boot_context';
   const APP_SHELL_BOOT_CONTEXT = 'app-shell';
+  const AUTH_RETURN_BOOT_CONTEXT = 'auth-return';
   let _retryQueue = [];               // Array of { payload, attempts, lastAttempt }
   let _syncState = 'idle';            // 'idle' | 'syncing' | 'synced' | 'failed' | 'offline'
   let _retryTimer = null;
@@ -753,9 +754,9 @@ const SP_CURRENCIES = {
       } catch (_err) {}
     }
     if (hasAuthCallbackInUrl()) return 'auth-callback';
-    return readBootContextMarker() === APP_SHELL_BOOT_CONTEXT
-      ? 'app-refresh'
-      : 'cold-start';
+    const marker = readBootContextMarker();
+    if (marker === AUTH_RETURN_BOOT_CONTEXT) return 'auth-callback';
+    return marker === APP_SHELL_BOOT_CONTEXT ? 'app-refresh' : 'cold-start';
   }
 
   function captureSyncException(error, context = {}) {
@@ -1097,6 +1098,11 @@ const SP_CURRENCIES = {
   async function migrateLocalStorageData() {
     const migrationKey = 'sp_migrated_' + getOwnerId();
     if (localStorage.getItem(migrationKey)) return;
+
+    if (SP_CLOUD_ONLY_MODE) {
+      localStorage.setItem(migrationKey, '1');
+      return;
+    }
 
     try {
       const managerData = JSON.parse(localStorage.getItem('starPaperManagerData') || '{}');
@@ -3005,11 +3011,20 @@ const SP_CURRENCIES = {
     localStorage.removeItem('sp_logged_out');
     window.__spSuppressStoredSessionBootstrap = false;
     window.__spAuthRedirectInProgress = false;
+    try {
+      sessionStorage.setItem(BOOT_CONTEXT_STORAGE_KEY, AUTH_RETURN_BOOT_CONTEXT);
+    } catch (_err) {}
+    if (typeof window.setAuthReturnBootContext === 'function') {
+      window.setAuthReturnBootContext();
+    }
     const redirectTo = getSafeRedirectUrl({
       requireHttpOrigin: true,
       fallbackToProduction: false,
     });
     if (!redirectTo) {
+      try {
+        sessionStorage.removeItem(BOOT_CONTEXT_STORAGE_KEY);
+      } catch (_err) {}
       throw new Error('Google sign-in requires http://localhost or your deployed https:// URL. file:// cannot receive OAuth redirects.');
     }
     const { error } = await db.auth.signInWithOAuth({
@@ -3022,7 +3037,12 @@ const SP_CURRENCIES = {
         },
       }
     });
-    if (error) throw error;
+    if (error) {
+      try {
+        sessionStorage.removeItem(BOOT_CONTEXT_STORAGE_KEY);
+      } catch (_err) {}
+      throw error;
+    }
   }
 
   // Declarative action bridge used by data-action="signInWithGoogle".
@@ -3076,6 +3096,103 @@ const SP_CURRENCIES = {
       ...nextUpdates,
     };
     return _profile;
+  }
+
+  async function saveAccountProfile(payload = {}) {
+    return dbSerial(async () => {
+      const ownerId = getOwnerId();
+      if (!ownerId) {
+        throw new Error('No active cloud session. Please sign in again.');
+      }
+
+      const session = _session || await getSession();
+      const authUser = session?.user || null;
+      if (!authUser) {
+        throw new Error('Your session is not ready yet. Please try again.');
+      }
+
+      const currentProfile = _profile || await getProfile() || {};
+      const nextUsername = String(payload.username || currentProfile.username || '').trim();
+      if (!nextUsername) {
+        throw new Error('Username is required.');
+      }
+
+      const currentUsername = String(currentProfile.username || '').trim();
+      if (nextUsername !== currentUsername) {
+        const available = await isUsernameAvailable(nextUsername);
+        if (available !== true) {
+          if (available === false) {
+            throw new Error('That username is already in use.');
+          }
+          throw new Error('Could not verify username availability. Please try again.');
+        }
+      }
+
+      const currentEmail = String(authUser.email || currentProfile.email || '').trim();
+      const requestedEmail = String(payload.email || currentEmail || '').trim();
+      const requestedPassword = String(payload.password || '');
+      const nextPhone = String(payload.phone || '').trim();
+      const nextBio = String(payload.bio || '').trim();
+      const nextAvatar = String(payload.avatar || '').trim();
+
+      let updatedAuthUser = authUser;
+      let emailConfirmationPending = false;
+      let pendingEmail = '';
+
+      const authUpdates = {};
+      if (requestedEmail && requestedEmail !== currentEmail) {
+        authUpdates.email = requestedEmail;
+      }
+      if (requestedPassword) {
+        authUpdates.password = requestedPassword;
+      }
+
+      if (Object.keys(authUpdates).length) {
+        const { data, error } = await db.auth.updateUser(authUpdates);
+        throwIfSupabaseError('Account auth update', error);
+        updatedAuthUser = data?.user || updatedAuthUser;
+        pendingEmail = String(updatedAuthUser?.new_email || '').trim();
+        emailConfirmationPending = Boolean(
+          authUpdates.email &&
+          pendingEmail &&
+          pendingEmail !== String(updatedAuthUser?.email || '').trim()
+        );
+        if (_session?.user) {
+          _session = {
+            ..._session,
+            user: updatedAuthUser
+          };
+        }
+      }
+
+      const effectiveEmail = String(updatedAuthUser?.email || currentEmail || '').trim();
+      await updateProfile({
+        username: nextUsername,
+        email: effectiveEmail,
+        phone: nextPhone,
+        bio: nextBio,
+        avatar: nextAvatar
+      }, { throwOnError: true });
+
+      const freshProfile = await getProfile() || {
+        ...currentProfile,
+        username: nextUsername,
+        email: effectiveEmail,
+        phone: nextPhone,
+        bio: nextBio,
+        avatar: nextAvatar
+      };
+
+      return {
+        ok: true,
+        profile: freshProfile,
+        emailConfirmationPending,
+        pendingEmail,
+        message: emailConfirmationPending
+          ? `Profile updated. Confirm ${pendingEmail || requestedEmail} to finish the email change.`
+          : 'Profile updated.'
+      };
+    });
   }
 
   // Auth state listener
@@ -4334,6 +4451,7 @@ const SP_CURRENCIES = {
     getSession,
     getProfile,
     updateProfile,
+    saveAccountProfile,
     signInWithGoogle,
     bootstrap:       bootstrapFromSupabaseSession,
     bootstrapInitialSession,

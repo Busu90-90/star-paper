@@ -57,12 +57,48 @@
     -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
+    <style>
+      html.sp-force-boot #appBootLoader.hidden {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+      }
+
+      html.sp-force-boot #landingScreen,
+      html.sp-force-boot #loginScreen {
+        visibility: hidden;
+      }
+    </style>
+
     <link rel="stylesheet" href="styles.css?v=13">
     <!-- Phosphor Icons Ã¢â‚¬â€ unified icon system -->
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
 </head>
 <body>
+    <script>
+      (function() {
+        try {
+          const key = 'sp_boot_context';
+          const marker = sessionStorage.getItem(key) || '';
+          const url = new URL(window.location.href);
+          const hashParams = new URLSearchParams((url.hash || '').replace(/^#/, ''));
+          const hasAuthCallback = Boolean(
+            hashParams.get('access_token') ||
+            hashParams.get('refresh_token') ||
+            url.searchParams.get('access_token') ||
+            url.searchParams.get('refresh_token') ||
+            url.searchParams.get('code') ||
+            url.searchParams.get('error') ||
+            url.searchParams.get('error_code') ||
+            url.searchParams.get('error_description')
+          );
+          if (hasAuthCallback || marker === 'auth-return' || marker === 'app-shell') {
+            document.documentElement.classList.add('sp-force-boot');
+          }
+        } catch (_err) {}
+      })();
+    </script>
     <div class="app-boot-loader hidden" id="appBootLoader" aria-live="polite" aria-hidden="true" data-state="booting-auth">
         <div class="app-boot-loader__inner">
             <img src="./logo.png?v=12" alt="Star Paper" class="app-boot-loader__logo" />
@@ -1429,13 +1465,13 @@
           loaded (synchronously, above in <head>), so this file now runs
           synchronously Ã¢â‚¬â€ window.SP is fully initialised before app.js executes.
         -->
-<script src="supabase.js?v=24"></script>
+<script src="supabase.js?v=26"></script>
         <script src="app.migrations.js?v=9"></script>
         <script src="app.actions.js?v=8"></script>
         <script src="app.todayboard.js?v=1"></script>
         <script src="app.tasks.js?v=3"></script>
-    <script src="app.reports.js?v=10"></script>
-<script src="app.js?v=42"></script>
+    <script src="app.reports.js?v=11"></script>
+<script src="app.js?v=44"></script>
         <script>
         // Ã¢â€â‚¬Ã¢â€â‚¬ FILE:// PROTOCOL GUARD Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         // When the app is opened as a local file (double-clicked), window.location.origin
