@@ -2980,10 +2980,18 @@ const SP_CURRENCIES = {
         window.showWelcomeMessage();
       }
 
+      if (typeof window.setAppShellBootContext === 'function') {
+        window.setAppShellBootContext();
+      } else {
+        try {
+          sessionStorage.setItem(BOOT_CONTEXT_STORAGE_KEY, APP_SHELL_BOOT_CONTEXT);
+        } catch (_err) {}
+      }
+      window.__spBootContext = 'app-refresh';
+
       if (typeof window.clearLegacyCloudDataKeys === 'function') {
         window.clearLegacyCloudDataKeys();
       }
-      setBootStateSafe('ready');
       if (typeof window.hideBootLoaderElement === 'function') {
         window.hideBootLoaderElement();
       }

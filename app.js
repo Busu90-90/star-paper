@@ -34,13 +34,19 @@ function initScrollAnimations() {
 }
 
 function hideBootLoaderElement() {
+    document.documentElement.classList.remove('sp-force-boot');
     const loader = document.getElementById('appBootLoader');
     if (!loader) return;
+    const actions = document.getElementById('appBootLoaderActions');
+    if (actions) {
+        actions.hidden = true;
+    }
     loader.classList.add('hidden');
     loader.setAttribute('aria-hidden', 'true');
 }
 
 function showBootLoaderElement() {
+    document.documentElement.classList.add('sp-force-boot');
     const loader = document.getElementById('appBootLoader');
     if (!loader) return;
     loader.classList.remove('hidden');
@@ -10529,7 +10535,7 @@ function showLoginForm() {
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=45').then((registration) => {
+                navigator.serviceWorker.register('sw.js?v=46').then((registration) => {
                     registration.update().catch(() => {});
                 }).catch((error) => {
                     console.warn('Service worker registration failed:', error);
