@@ -100,6 +100,7 @@ const SP_CURRENCIES = {
   let _teamNotifyChannel = null;       // Persistent channel for messages + team_members
   let _syncBroadcast = null;
   let _bootstrapping = false;
+  let _bootstrapPromise = null;
   let _refreshInFlight = false;
   let _saveInFlight = null;
   let _pendingSavePayload = null;
@@ -570,6 +571,18 @@ const SP_CURRENCIES = {
     ]).finally(() => {
       if (timer) clearTimeout(timer);
     });
+  }
+
+  function runBootstrapTask(task) {
+    if (_bootstrapPromise) return _bootstrapPromise;
+    _bootstrapping = true;
+    _bootstrapPromise = Promise.resolve()
+      .then(task)
+      .finally(() => {
+        _bootstrapping = false;
+        _bootstrapPromise = null;
+      });
+    return _bootstrapPromise;
   }
 
   async function syncRealtimeAuthToken(session = _session) {
@@ -2627,10 +2640,10 @@ const SP_CURRENCIES = {
 
       if (session) {
         window.__spSuppressStoredSessionBootstrap = false;
-        await bootstrapFromSupabaseSession(session, {
+        await runBootstrapTask(() => bootstrapFromSupabaseSession(session, {
           remember: true,
           showWelcome: true,
-        });
+        }));
         return finishWith('success', {
           shouldBootstrapStoredSession: false,
         });
@@ -3278,15 +3291,10 @@ const SP_CURRENCIES = {
       (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED');
 
     if (shouldBootstrap) {
-      _bootstrapping = true;
-      try {
-        await bootstrapFromSupabaseSession(session, {
-          remember: true,
-          showWelcome: event === 'SIGNED_IN',
-        });
-      } finally {
-        _bootstrapping = false;
-      }
+      await runBootstrapTask(() => bootstrapFromSupabaseSession(session, {
+        remember: true,
+        showWelcome: event === 'SIGNED_IN',
+      }));
       return;
     }
 
@@ -4363,13 +4371,41 @@ const SP_CURRENCIES = {
   }
 
   async function bootstrapInitialSession(options = {}) {
-    if (_bootstrapping || window.__spAuthRedirectInProgress) return false;
+    if (_bootstrapPromise) {
+      try {
+        return await withTimeout(
+          _bootstrapPromise,
+          typeof options.inFlightTimeoutMs === 'number' ? options.inFlightTimeoutMs : 15000,
+          'bootstrapInitialSession[inflight]'
+        );
+      } catch (err) {
+        warn('Waiting for in-flight bootstrap failed:', err);
+        showBootErrorState('Session restore stalled', 'Retry to reconnect to Star Paper, or log out and sign in again.');
+        return false;
+      }
+    }
+    if (window.__spAuthRedirectInProgress) return false;
     const quietIfNoSession = options.quietIfNoSession === true;
     const loggedOutScreen = options.loggedOutScreen || 'login';
     if (!quietIfNoSession) {
       setBootStateSafe('booting-auth');
     }
-    const session = await getSession();
+    let session = null;
+    try {
+      session = await withTimeout(
+        () => getSession(),
+        typeof options.sessionTimeoutMs === 'number' ? options.sessionTimeoutMs : 8000,
+        'getSession[initial]'
+      );
+    } catch (err) {
+      warn('Initial session restore failed:', err);
+      if (quietIfNoSession && loggedOutScreen === 'landing') {
+        showLandingScreen();
+      } else {
+        showBootErrorState('Session restore took too long', 'Retry to reconnect to Star Paper, or log out and sign in again.');
+      }
+      return false;
+    }
     if (!session?.user) {
       if (loggedOutScreen === 'landing') {
         showLandingScreen();
@@ -4379,15 +4415,10 @@ const SP_CURRENCIES = {
       return false;
     }
     setBootStateSafe('booting-auth');
-    _bootstrapping = true;
-    try {
-      return await bootstrapFromSupabaseSession(session, {
-        remember: true,
-        showWelcome: false,
-      });
-    } finally {
-      _bootstrapping = false;
-    }
+    return runBootstrapTask(() => bootstrapFromSupabaseSession(session, {
+      remember: true,
+      showWelcome: false,
+    }));
   }
 
   window.retryInitialCloudBootstrap = async function retryInitialCloudBootstrap() {
