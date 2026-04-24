@@ -1,22 +1,22 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: blob: https:; font-src 'self' data: https://unpkg.com; connect-src 'self' https: wss:; manifest-src 'self'; worker-src 'self' blob:; frame-ancestors 'none';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://unpkg.com https://fonts.gstatic.com; connect-src 'self' https: wss:; manifest-src 'self'; worker-src 'self' blob:; frame-ancestors 'none';">
     <title>Star Paper</title>
-    <link rel="manifest" href="manifest.json?v=14">
+    <link rel="manifest" href="manifest.json?v=21">
     <meta name="theme-color" content="#0B0B0B">
-    <link rel="icon" type="image/png" sizes="192x192" href="./logo-192.png?v=12">
-    <link rel="icon" type="image/png" sizes="32x32" href="./logo-32.png?v=12">
-    <link rel="icon" type="image/x-icon" href="./favicon.ico?v=12">
-    <link rel="shortcut icon" type="image/png" href="./logo-32.png?v=12">
-    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=12">
+    <link rel="icon" type="image/png" sizes="192x192" href="./logo-192.png?v=21">
+    <link rel="icon" type="image/png" sizes="32x32" href="./logo-32.png?v=21">
+    <link rel="icon" type="image/x-icon" href="./favicon.ico?v=21">
+    <link rel="shortcut icon" type="image/png" href="./logo-32.png?v=21">
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=21">
     <!--
       SENTRY ERROR MONITORING
-      Step 1: Go to de.sentry.io → Projects → New Project → Browser JavaScript
+      Step 1: Go to de.sentry.io â†’ Projects â†’ New Project â†’ Browser JavaScript
       Step 2: Copy your DSN and replace REPLACE_WITH_YOUR_DSN below (both places)
-      Step 3: Commit this file — errors will instantly appear in your Sentry dashboard
+      Step 3: Commit this file â€” errors will instantly appear in your Sentry dashboard
       DSN format: https://abc123@de.ingest.sentry.io/1234567
     -->
     <script src="https://browser.sentry-cdn.com/8.53.0/bundle.min.js" crossorigin="anonymous"></script>
@@ -26,7 +26,7 @@
           dsn: "https://43eaad14b9ae20eec68d9249f139cbc2@o4511079351189504.ingest.de.sentry.io/4511081427894352",
           environment: window.location.hostname === 'star-paper.netlify.app' ? 'production' : 'development',
           release: 'star-paper@1.0.0',
-          // Capture 10% of sessions for performance — safe for free tier
+          // Capture 10% of sessions for performance â€” safe for free tier
           tracesSampleRate: 0.1,
           // Filter out known non-fatal noise
           ignoreErrors: [
@@ -51,224 +51,240 @@
     <!--
       FIX: Load the Supabase JS SDK synchronously in <head> so window.supabase
       is guaranteed to exist before supabase.js runs. Without this, supabase.js
-      hits `await new Promise(loadCDN)` which yields the thread â€” app.js then
+      hits `await new Promise(loadCDN)` which yields the thread Ã¢â‚¬â€ app.js then
       calls checkAuth() while window.SP is still undefined, causing "stuck on
       landing" for every user with a valid session.
     -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-    <link rel="stylesheet" href="styles.css">
-    <!-- Phosphor Icons â€” unified icon system -->
+    <style>
+      html.sp-force-boot #appBootLoader.hidden {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+      }
+
+      html.sp-force-boot #landingScreen,
+      html.sp-force-boot #loginScreen {
+        visibility: hidden;
+      }
+
+      /* UPGRADE: Premium polish kill-switch failsafe (also in styles.premium.css) */
+      html.sp-prem-off .sp-prem-widget { display: none !important; }
+    </style>
+
+    <link rel="stylesheet" href="styles.css?v=27">
+    <!-- UPGRADE: Final premium relayering token layer (additive, kill-switchable via localStorage.sp_prem_off) -->
+    <link rel="stylesheet" href="star-paper-tokens.css?v=21">
+    <!-- UPGRADE: Premium polish layer (additive, kill-switchable via localStorage.sp_prem_off) -->
+    <link rel="stylesheet" href="styles.premium.css?v=7">
+    <link rel="stylesheet" href="styles.shell.css?v=2">
+    <!-- Phosphor Icons Ã¢â‚¬â€ unified icon system -->
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+    <!-- UPGRADE: duotone variant for primary actions -->
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/duotone/style.css">
 </head>
 <body>
-    <div class="app-boot-loader" id="appBootLoader" aria-live="polite">
+    <script>
+      (function() {
+        try {
+          const key = 'sp_boot_context';
+          const marker = sessionStorage.getItem(key) || '';
+          const url = new URL(window.location.href);
+          const hashParams = new URLSearchParams((url.hash || '').replace(/^#/, ''));
+          const hasAuthCallback = Boolean(
+            hashParams.get('access_token') ||
+            hashParams.get('refresh_token') ||
+            url.searchParams.get('access_token') ||
+            url.searchParams.get('refresh_token') ||
+            url.searchParams.get('code') ||
+            url.searchParams.get('error') ||
+            url.searchParams.get('error_code') ||
+            url.searchParams.get('error_description')
+          );
+          if (hasAuthCallback || marker === 'auth-return' || marker === 'app-shell') {
+            document.documentElement.classList.add('sp-force-boot');
+          }
+        } catch (_err) {}
+      })();
+    </script>
+    <div class="app-boot-loader hidden sp-prem-reveal" id="appBootLoader" aria-live="polite" aria-hidden="true" data-state="booting-auth">
         <div class="app-boot-loader__inner">
-            <img src="./logo.png?v=12" alt="Star Paper" class="app-boot-loader__logo" />
-            <div class="app-boot-loader__text">Loading Star Paper...</div>
+            <img src="./logo-ui.png?v=21" alt="Star Paper" class="app-boot-loader__logo" />
+            <div class="app-boot-loader__text" id="appBootLoaderText">Checking your session...</div>
+            <div class="app-boot-loader__subtext" id="appBootLoaderSubtext">Loading Star Paper...</div>
+            <div class="app-boot-loader__actions" id="appBootLoaderActions" hidden>
+                <button class="app-boot-loader__button" type="button" onclick="window.retryInitialCloudBootstrap?.()">Retry</button>
+                <button class="app-boot-loader__button app-boot-loader__button--ghost" type="button" onclick="window.logout?.()">Log Out</button>
+            </div>
         </div>
     </div>
 
     <!-- Landing Page -->
-    <div class="landing-container" id="landingScreen">
-        <!-- Falling gold coins background -->
-        <canvas id="coinRainCanvas" aria-hidden="true"></canvas>
-
+    <div class="landing-container sp-prem-landing-refine landing-home-page" id="landingScreen">
         <!-- Sticky mini-nav (appears after scrolling past hero CTA on mobile) -->
         <div class="landing-mini-nav" id="landingMiniNav" aria-hidden="true">
-            <img src="./logo.png?v=12" alt="Star Paper" class="mini-nav-logo">
-            <span class="mini-nav-brand">STAR PAPER</span>
+            <a class="landing-mini-nav-brand" href="./index.html" aria-label="Go to Star Paper home">
+                <img src="./logo-ui.png?v=21" alt="Star Paper" class="mini-nav-logo">
+                <span class="mini-nav-brand">STAR PAPER</span>
+            </a>
             <button class="mini-nav-cta" data-action="showSignupForm" onclick="showSignupForm()">Get Started</button>
         </div>
 
-        <div class="landing-top-controls">
-            <button class="theme-toggle icon-toggle landing-theme-toggle" id="landingThemeToggle" type="button" aria-label="Toggle theme">
-                <i class="ph ph-moon" aria-hidden="true" style="font-size:15px;"></i>
-            </button>
-        </div>
-        <div class="landing-card landing-mainstage-card">
-            <div class="landing-hero-grid">
-                <div class="landing-hero-left">
-                    <div class="hero-brand-row">
-                        <span class="logo-wrapper hero-logo-wrapper">
-                            <img src="./logo.png?v=12" alt="Star Paper Logo" class="brand-logo brand-logo-landing" loading="eager">
-                        </span>
-                        <div class="hero-product-name">STAR PAPER</div>
+        <div class="landing-hero-stage" id="landingHeroStage">
+            <div class="sp-prem-landing-mesh sp-prem-widget" aria-hidden="true">
+                <div class="sp-prem-orb sp-prem-orb--1"></div>
+                <div class="sp-prem-orb sp-prem-orb--2"></div>
+                <div class="sp-prem-orb sp-prem-orb--3"></div>
+            </div>
+            <div class="landing-card landing-mainstage-card landing-hero-shell">
+                <div class="landing-hero-rail">
+                    <div class="landing-shell-nav">
+                        <a class="landing-shell-brand" href="./index.html" aria-label="Go to Star Paper home">
+                            <img src="./logo-192.png?v=21" alt="Star Paper" class="landing-shell-logo" />
+                            <span class="landing-shell-brand-text">STAR PAPER</span>
+                        </a>
+                        <div class="landing-shell-nav-actions">
+                            <button class="landing-shell-login" type="button" data-action="showLoginForm" onclick="showLoginForm()">Login</button>
+                            <div class="landing-top-controls" data-inline="1">
+                                <button class="theme-toggle icon-toggle landing-theme-toggle" id="landingThemeToggle" type="button" aria-label="Toggle theme">
+                                    <i class="ph ph-moon" aria-hidden="true" style="font-size:15px;"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <h1 class="landing-hero-heading">
-                        Run your entire artist operation from one command center.
-                    </h1>
-                    <p class="landing-hero-subtitle">
-                        Built for managers, labels, and teams who need clarity, speed, and control.
-                    </p>
-                    <div class="landing-buttons">
-                        <button class="landing-btn" id="createAccountBtn" data-action="showSignupForm" onclick="showSignupForm()">Get Started</button>
-                        <button class="landing-btn landing-btn--ghost landing-btn--how" data-action="scrollToFeatures" onclick="document.getElementById('landing-features')?.scrollIntoView({behavior:'smooth',block:'center'})">How It Works â†“</button>
-                    </div>
-                </div>
-                <div class="landing-hero-right" aria-hidden="true">
-                    <div class="landing-dashboard-preview">
-                        <!-- Animated Feature Reel â€” replaces static screenshot -->
-                        <div class="feature-reel">
-                            <div class="reel-chrome">
-                                <div class="reel-dots">
-                                    <span class="reel-dot"></span>
-                                    <span class="reel-dot"></span>
-                                    <span class="reel-dot"></span>
+
+                    <div class="landing-shell-body">
+                        <div class="landing-shell-hero sp-prem-hero-layout">
+                            <div class="sp-prem-hero-copy">
+                                <div class="landing-hero-intro">
+                                    <div class="landing-hero-medallion">
+                                        <img src="./logo-192.png?v=21" alt="Star Paper" class="landing-hero-medallion-logo" />
+                                    </div>
+                                    <div class="landing-shell-kicker">The Manager&apos;s Mainstage!</div>
                                 </div>
-                                <div class="reel-tabs">
-                                    <span class="reel-tab reel-tab--1">
-                                        <i class="ph ph-calendar-blank" aria-hidden="true" style="font-size:10px;"></i>
-                                        Bookings
-                                    </span>
-                                    <span class="reel-tab reel-tab--2">
-                                        <i class="ph ph-currency-dollar" aria-hidden="true" style="font-size:10px;"></i>
-                                        Finances
-                                    </span>
-                                    <span class="reel-tab reel-tab--3">
-                                        <i class="ph ph-user" aria-hidden="true" style="font-size:10px;"></i>
-                                        Artists
-                                    </span>
+                                <h1 class="landing-hero-heading" data-tw-static="1">
+                                    Run your entire
+                                    <span class="landing-hero-highlight">artist operation</span>
+                                    from one command center.
+                                </h1>
+                                <p class="landing-hero-subtitle">
+                                    Built for managers, labels &amp; teams who need clarity, speed, and control.
+                                </p>
+                                <div class="landing-buttons">
+                                    <button class="landing-btn" id="createAccountBtn" data-action="showSignupForm" data-sp-prem-pulse="gold" onclick="showSignupForm()">Get Started &rarr;</button>
+                                    <a class="landing-btn landing-btn--ghost landing-btn--how" href="./how-it-works.html#landing-features">
+                                        <span>How It Works</span>
+                                        <i class="ph ph-arrow-down" aria-hidden="true"></i>
+                                    </a>
                                 </div>
                             </div>
+                            <div class="sp-prem-hero-product sp-prem-widget" aria-hidden="true">
+                                <div class="sp-prem-device-glow"></div>
+                                <div class="landing-dashboard-preview sp-prem-device-parallax">
+                                    <div class="landing-preview-shell">
+                                        <div class="landing-preview-sidebar">
+                                            <div class="landing-preview-brand">
+                                                <img src="./logo-192.png?v=21" alt="" class="landing-preview-logo" aria-hidden="true" />
+                                                <div class="landing-preview-brand-label">The Manager&apos;s Mainstage!</div>
+                                            </div>
+                                            <span class="landing-preview-rail-icon is-active"><i class="ph ph-house" aria-hidden="true"></i></span>
+                                            <span class="landing-preview-rail-icon"><i class="ph ph-currency-circle-dollar" aria-hidden="true"></i></span>
+                                            <span class="landing-preview-rail-icon"><i class="ph ph-calendar-blank" aria-hidden="true"></i></span>
+                                            <span class="landing-preview-rail-icon"><i class="ph ph-microphone-stage" aria-hidden="true"></i></span>
+                                        </div>
+                                        <div class="landing-preview-main">
+                                            <div class="landing-preview-topbar">
+                                                <div>
+                                                    <div class="landing-preview-heading">Overview</div>
+                                                    <div class="landing-preview-subheading">Live artist operations snapshot</div>
+                                                </div>
+                                                <div class="landing-preview-live-pill">Live</div>
+                                            </div>
 
-                            <div class="reel-body">
-                                <!-- Slide 1: Bookings -->
-                                <div class="reel-slide reel-slide--1">
-                                    <div class="reel-section-label">All Bookings</div>
-                                    <div class="reel-table">
-                                        <div class="reel-thead">
-                                            <span>Event</span><span>Artist</span><span>Fee</span><span>Status</span>
-                                        </div>
-                                        <div class="reel-trow">
-                                            <span class="reel-td-main">Zanzibar Beach</span>
-                                            <span>Wizkid</span>
-                                            <span class="reel-income">24M</span>
-                                            <span class="reel-badge reel-badge--confirmed">Confirmed</span>
-                                        </div>
-                                        <div class="reel-trow">
-                                            <span class="reel-td-main">Lake Victoria</span>
-                                            <span>Davido</span>
-                                            <span class="reel-income">20M</span>
-                                            <span class="reel-badge reel-badge--pending">Pending</span>
-                                        </div>
-                                        <div class="reel-trow">
-                                            <span class="reel-td-main">Fort Portal Jazz</span>
-                                            <span>Tiwa S.</span>
-                                            <span class="reel-income">14M</span>
-                                            <span class="reel-badge reel-badge--confirmed">Confirmed</span>
+                                            <div class="landing-preview-grid">
+                                                <div class="landing-preview-stat landing-preview-stat--primary">
+                                                    <div class="landing-preview-stat-label">Artist revenue</div>
+                                                    <div class="landing-preview-stat-value">58M</div>
+                                                    <div class="landing-preview-stat-sub">UGX collected</div>
+                                                    <div class="landing-preview-pulse" aria-hidden="true">
+                                                        <span class="landing-preview-pulse-bar"></span>
+                                                        <span class="landing-preview-pulse-bar"></span>
+                                                        <span class="landing-preview-pulse-bar"></span>
+                                                        <span class="landing-preview-pulse-bar"></span>
+                                                        <span class="landing-preview-pulse-bar"></span>
+                                                        <span class="landing-preview-pulse-bar"></span>
+                                                    </div>
+                                                </div>
+                                                <div class="landing-preview-stat landing-preview-stat--success">
+                                                    <div class="landing-preview-stat-label">Artists</div>
+                                                    <div class="landing-preview-stat-value">30+</div>
+                                                    <div class="landing-preview-stat-sub">active roster</div>
+                                                    <div class="landing-preview-roster">
+                                                        <span class="landing-preview-roster-pill">AYA</span>
+                                                        <span class="landing-preview-roster-pill">KATO</span>
+                                                        <span class="landing-preview-roster-pill">MARA</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="landing-preview-band">
+                                                <div class="landing-preview-band-card">
+                                                    <div class="landing-preview-band-label">Revenue pulse</div>
+                                                    <div class="landing-preview-band-value">+12%</div>
+                                                </div>
+                                                <div class="landing-preview-band-card">
+                                                    <div class="landing-preview-band-label">Balances due</div>
+                                                    <div class="landing-preview-band-value">3 shows</div>
+                                                </div>
+                                                <div class="landing-preview-band-card">
+                                                    <div class="landing-preview-band-label">Team sync</div>
+                                                    <div class="landing-preview-band-value">Fresh</div>
+                                                </div>
+                                            </div>
+
+                                            <div class="landing-preview-toast-stack">
+                                                <div class="landing-preview-toast landing-preview-toast--booking">
+                                                    <span class="landing-preview-toast-icon" aria-hidden="true"><i class="ph ph-check-circle"></i></span>
+                                                    <div>
+                                                        <div class="landing-preview-toast-title">Booking confirmed</div>
+                                                        <div class="landing-preview-toast-copy">Kampala Arena · deposit locked</div>
+                                                    </div>
+                                                </div>
+                                                <div class="landing-preview-toast landing-preview-toast--expense">
+                                                    <span class="landing-preview-toast-icon" aria-hidden="true"><i class="ph ph-receipt"></i></span>
+                                                    <div>
+                                                        <div class="landing-preview-toast-title">Expense logged</div>
+                                                        <div class="landing-preview-toast-copy">Stage production · 4.2M UGX</div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-
-                                <!-- Slide 2: Finances -->
-                                <div class="reel-slide reel-slide--2">
-                                    <div class="reel-section-label">Monthly Financials</div>
-                                    <div class="reel-kpi-grid">
-                                        <div class="reel-kpi">
-                                            <div class="reel-kpi-label">Show Income</div>
-                                            <div class="reel-kpi-value reel-income">UGX 58M</div>
-                                        </div>
-                                        <div class="reel-kpi">
-                                            <div class="reel-kpi-label">Net Profit</div>
-                                            <div class="reel-kpi-value reel-income">UGX 41M</div>
-                                        </div>
-                                        <div class="reel-kpi">
-                                            <div class="reel-kpi-label">Expenses</div>
-                                            <div class="reel-kpi-value reel-expense">UGX 9.2M</div>
-                                        </div>
-                                        <div class="reel-kpi">
-                                            <div class="reel-kpi-label">Net Profit</div>
-                                            <div class="reel-kpi-value reel-income">UGX 31.8M</div>
-                                        </div>
-                                    </div>
-                                    <div class="reel-bars">
-                                        <div class="reel-bar"><div class="reel-bar-fill" style="height:62%"></div></div>
-                                        <div class="reel-bar"><div class="reel-bar-fill" style="height:80%"></div></div>
-                                        <div class="reel-bar"><div class="reel-bar-fill" style="height:45%"></div></div>
-                                        <div class="reel-bar"><div class="reel-bar-fill" style="height:90%"></div></div>
-                                        <div class="reel-bar"><div class="reel-bar-fill" style="height:68%"></div></div>
-                                        <div class="reel-bar"><div class="reel-bar-fill" style="height:55%"></div></div>
-                                    </div>
-                                </div>
-
-                                <!-- Slide 3: Artists -->
-                                <div class="reel-slide reel-slide--3">
-                                    <div class="reel-section-label">Your Artists</div>
-                                    <div class="reel-artists">
-                                        <div class="reel-artist">
-                                            <div class="reel-avatar">W</div>
-                                            <div class="reel-artist-name">Wizkid</div>
-                                            <div class="reel-artist-genre">Afrobeats</div>
-                                            <div class="reel-artist-stat reel-income">3 shows</div>
-                                        </div>
-                                        <div class="reel-artist">
-                                            <div class="reel-avatar">D</div>
-                                            <div class="reel-artist-name">Davido</div>
-                                            <div class="reel-artist-genre">Afropop</div>
-                                            <div class="reel-artist-stat reel-income">2 shows</div>
-                                        </div>
-                                        <div class="reel-artist">
-                                            <div class="reel-avatar">T</div>
-                                            <div class="reel-artist-name">Tiwa Savage</div>
-                                            <div class="reel-artist-genre">R&amp;B / Afro</div>
-                                            <div class="reel-artist-stat reel-pending">1 pending</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div><!-- /reel-body -->
-                        </div><!-- /feature-reel -->
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="landing-feature-carousel" id="landingFeatureCarousel">
-                <button class="landing-feature-nav landing-feature-nav--prev" type="button" aria-label="Previous feature card" data-action="landingFeaturePrev">
-                    <i class="ph ph-caret-left" aria-hidden="true" style="font-size:18px;"></i>
-                </button>
-                <div class="landing-feature-strip" aria-label="Star Paper Core Features">
-                    <article class="landing-feature-card">
-                        <span class="landing-feature-icon" aria-hidden="true"><i class="ph ph-microphone-stage" style="font-size:28px;"></i></span>
-                        <h3>Manage Artists</h3>
-                        <p>Keep every artist profile, manager ownership, and artist records organized in one command center.</p>
-                    </article>
-                    <article class="landing-feature-card">
-                        <span class="landing-feature-icon" aria-hidden="true"><i class="ph ph-calendar-check" style="font-size:28px;"></i></span>
-                        <h3>Track Bookings</h3>
-                        <p>Plan events, monitor status, and stay ahead of schedules with a clear booking timeline.</p>
-                    </article>
-                    <article class="landing-feature-card">
-                        <span class="landing-feature-icon" aria-hidden="true"><i class="ph ph-chart-line-up" style="font-size:28px;"></i></span>
-                        <h3>Control Finances</h3>
-                        <p>See income, expenses, balances, and net performance with precision and confidence.</p>
-                    </article>
-                </div>
-                <button class="landing-feature-nav landing-feature-nav--next" type="button" aria-label="Next feature card" data-action="landingFeatureNext">
-                    <i class="ph ph-caret-right" aria-hidden="true" style="font-size:18px;"></i>
-                </button>
-            </div>
-            <div class="landing-feature-dots" id="landingFeatureDots" aria-hidden="true"></div>
-            <div class="landing-metrics-strip" id="landing-features" aria-label="Mainstage Metrics">
-                <div class="landing-metric-item">
-                    <div class="landing-metric-value">150+</div>
-                    <div class="landing-metric-label">bookings coordinated</div>
-                </div>
-                <div class="landing-metric-item">
-                    <div class="landing-metric-value">30+</div>
-                    <div class="landing-metric-label">artists on the roster</div>
-                </div>
-                <div class="landing-metric-item">
-                    <div class="landing-metric-value">UGX 500M+</div>
-                    <div class="landing-metric-label">in artist revenue tracked</div>
-                </div>
-            </div>
-
-            <div class="landing-testimonial">
-                <i class="ph ph-quotes landing-quote-icon" aria-hidden="true" style="font-size:20px;"></i>
-                <p class="landing-quote-text">Finally a tool that keeps my artists, bookings, and money in one place. I stopped using spreadsheets on day one.</p>
-                <div class="landing-quote-attr">- AGGIE BEST, Artist Manager, Kampala</div>
-            </div>
         </div>
+
+        <footer class="sp-prem-landing-footer sp-prem-widget" aria-label="Star Paper landing footer">
+            <a class="sp-prem-landing-footer__brand" href="./index.html" aria-label="Go to Star Paper home">
+                <img src="./logo-192.png?v=21" alt="Star Paper" class="sp-prem-landing-footer__logo" />
+                <div>
+                    <div class="sp-prem-landing-footer__name">STAR PAPER</div>
+                    <div class="sp-prem-landing-footer__meta">&copy; 2026 Star Paper</div>
+                </div>
+            </a>
+            <nav class="sp-prem-landing-footer__links" aria-label="Landing sections">
+                <a href="./index.html">Home</a>
+                <a href="./how-it-works.html">How It Works</a>
+                <a href="./testimonials.html">Testimonials</a>
+                <a href="./proof.html">Proof</a>
+            </nav>
+        </footer>
     </div>
 
     <!-- Login Container -->
@@ -278,11 +294,11 @@
                 <div class="spinner"></div>
                 <div>Logging in...</div>
             </div>
-            <div class="logo">
-                <img src="./logo.png?v=12" alt="Star Paper" class="login-box-logo" />
+            <a class="logo login-home-link" href="#landingScreen" data-action="showLanding" onclick="showLanding(); return false;" aria-label="Return to Star Paper landing">
+                <img src="./logo-ui.png?v=21" alt="Star Paper" class="login-box-logo" />
                 <p id="loginBoxHeading">Welcome back to Star Paper</p>
                 <small class="login-subtext" id="loginBoxSubtext">Sign in to continue to your dashboard.</small>
-            </div>
+            </a>
             <div id="loginForm" style="display: none;">
                 <input type="text" id="loginName" placeholder="Username" autocomplete="username" />
                 <div class="validation-message" id="loginNameError"></div>
@@ -300,11 +316,6 @@
                 </button>
                 <button class="back-btn" data-action="showLanding" onclick="showLanding()">Back</button>
                 <button class="forgot-password-link" type="button" data-action="showForgotPassword" onclick="showForgotPassword()">Forgot password?</button>
-                <div class="auth-oauth-divider" style="margin-top:18px;"><span>dev</span></div>
-                <button type="button" onclick="window.enterLocalTestMode()" class="btn-local-test"
-                    title="Bypass all auth â€” for local testing only. No data is sent to the cloud.">
-                    <i class="ph ph-flask" aria-hidden="true"></i> Local Test Mode
-                </button>
             </div>
             <div id="forgotPasswordForm" style="display: none;">
                 <p class="forgot-password-intro">Enter your username and we'll help you reset your password through your account settings.</p>
@@ -326,11 +337,6 @@
                 </button>
                 <p class="auth-switch-text">Already have an account? <a href="#" class="auth-switch-link" data-action="showLoginForm">Login</a></p>
                 <button class="back-btn" data-action="showLanding" onclick="showLanding()">Back</button>
-                <div class="auth-oauth-divider" style="margin-top:18px;"><span>dev</span></div>
-                <button type="button" onclick="window.enterLocalTestMode()" class="btn-local-test"
-                    title="Bypass all auth â€” for local testing only. No data is sent to the cloud.">
-                    <i class="ph ph-flask" aria-hidden="true"></i> Local Test Mode
-                </button>
             </div>
         </div>
     </div>
@@ -359,7 +365,7 @@
     </div>
 
     <div class="app-container" id="appContainer">
-        <!-- Collapse toggle â€” lives outside sidebar to escape overflow clipping -->
+        <!-- Collapse toggle Ã¢â‚¬â€ lives outside sidebar to escape overflow clipping -->
         <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" aria-label="Toggle sidebar" type="button">
             <i class="scb-icon scb-icon--close ph ph-caret-left" aria-hidden="true" style="font-size:14px;"></i>
             <i class="scb-icon scb-icon--open ph ph-caret-right" aria-hidden="true" style="font-size:14px;"></i>
@@ -368,8 +374,8 @@
             <!-- Profile Header Section -->
             <div class="sidebar-profile">
                 <div class="sidebar-profile-content">
-                    <div class="sidebar-avatar">
-                        <img src="./logo.png" alt="User Avatar" class="avatar-img" id="sidebarAvatarImg">
+                    <div class="sidebar-avatar sidebar-avatar--brand-mark">
+                        <img src="./logo-ui.png?v=21" alt="User Avatar" class="avatar-img avatar-img--brand-mark" id="sidebarAvatarImg">
                     </div>
                     <div class="sidebar-greeting">
                         <div class="greeting-name" id="sidebarUserName">Manager</div>
@@ -405,10 +411,10 @@
                 </div>
             </div>
 
-            <!-- Navigation List â€” Phosphor Icons -->
+            <!-- Navigation List Ã¢â‚¬â€ Phosphor Icons -->
             <nav class="sidebar-nav">
                 <button type="button" class="nav-item active" data-action="showSection" onclick="showSection('dashboard')" data-section="dashboard" data-tooltip="Dashboard">
-                    <i class="ph ph-squares-four nav-icon-svg" aria-hidden="true" style="font-size:20px;"></i>
+                    <i class="ph ph-house nav-icon-svg" aria-hidden="true" style="font-size:20px;"></i>
                     <span class="nav-label">Dashboard</span>
                 </button>
                 <button type="button" class="nav-item" data-action="showSection" onclick="showSection('money')" data-section="money" data-tooltip="Money">
@@ -433,7 +439,7 @@
             <!-- Spacer -->
             <div class="sidebar-spacer"></div>
 
-            <!-- Bottom utility bar: About Â· Settings Â· Logout -->
+            <!-- Bottom utility bar: About Ã‚Â· Settings Ã‚Â· Logout -->
             <div class="sidebar-logout-section">
                 <div class="sidebar-util-row">
                     <button type="button" class="sidebar-util-btn" id="sidebarAboutBtn" data-action="showAboutModal" onclick="showAboutModal()" title="About Star Paper">
@@ -456,7 +462,7 @@
         <!-- Mobile bottom navigation bar -->
         <nav class="bottom-nav" id="bottomNav" aria-label="Quick navigation">
             <button class="bottom-nav-item" data-action="showSection" onclick="showSection('dashboard')" data-section="dashboard" data-tooltip="Dashboard" aria-label="Dashboard">
-                <i class="ph ph-squares-four" aria-hidden="true" style="font-size:22px;"></i>
+                <i class="ph ph-house" aria-hidden="true" style="font-size:22px;"></i>
                 <span>Home</span>
             </button>
             <button class="bottom-nav-item" data-action="showSection" onclick="showSection('schedule')" data-section="schedule" data-tooltip="Schedule" aria-label="Schedule">
@@ -546,7 +552,7 @@
 
                 <div class="dashboard-home-layout">
                     <!-- Today Board - Dominant Command Center -->
-                    <div class="card dashboard-section-card today-board-card">
+                    <div class="card dashboard-section-card today-board-card" data-sp-reveal>
                         <div class="today-board__header">
                             <div class="today-board__date">
                                 <div class="today-board__day" id="todayBoardDay">Monday</div>
@@ -573,7 +579,7 @@
                                 <button class="action-btn" type="button" data-action="toggleMonthlyGoalEditor">Set Goal</button>
                             </div>
                             <div class="monthly-goal-track__metrics">
-                                <div class="monthly-goal-metric">
+                                <div class="monthly-goal-metric" data-sp-prem-goal-ring="true">
                                     <div class="monthly-goal-metric__label">Goal Amount</div>
                                     <div class="monthly-goal-metric__value" id="monthlyGoalAmount"><span class="sp-skeleton"></span></div>
                                 </div>
@@ -596,19 +602,19 @@
                             </div>
                         </div>
                         <div class="dashboard-glance-grid">
-                            <div class="mainstage-kpi">
+                            <div class="mainstage-kpi" data-sp-prem-sparkline="income">
                                 <div class="mainstage-kpi__label" id="dashboardRevenueLabel">Month Year Revenue</div>
                                 <div class="mainstage-kpi__value income-green" id="totalIncome"><span class="sp-skeleton"></span></div>
                             </div>
-                            <div class="mainstage-kpi">
+                            <div class="mainstage-kpi" data-sp-prem-sparkline="deposits">
                                 <div class="mainstage-kpi__label">Deposits Received</div>
                                 <div class="mainstage-kpi__value deposit-blue" id="dashboardDepositsReceived"><span class="sp-skeleton"></span></div>
                             </div>
-                            <div class="mainstage-kpi">
+                            <div class="mainstage-kpi" data-sp-prem-sparkline="expenses">
                                 <div class="mainstage-kpi__label" id="dashboardExpensesLabel">Expenses (Month Year)</div>
                                 <div class="mainstage-kpi__value expense-red" id="dashboardExpenses"><span class="sp-skeleton"></span></div>
                             </div>
-                            <div class="mainstage-kpi">
+                            <div class="mainstage-kpi" data-sp-prem-sparkline="net">
                                 <div class="mainstage-kpi__label">Net Profit</div>
                                 <div class="mainstage-kpi__value income-green" id="dashboardCashAtHand"><span class="sp-skeleton"></span></div>
                             </div>
@@ -798,7 +804,7 @@
 
                 <div class="card">
                     <h3 class="section-title" data-icon="reports">Financial Snapshot</h3>
-                    <div class="chart-container">
+                    <div class="chart-container sp-prem-chart-host">
                         <canvas id="performanceChart"></canvas>
                     </div>
                 </div>
@@ -1290,8 +1296,8 @@
             <button class="close-receipt" data-action="closeProfileModal" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
             <h3 class="section-title" data-icon="dashboard">Edit Profile</h3>
             <div class="profile-avatar-row">
-                <div class="sidebar-avatar profile-avatar-preview">
-                    <img src="./logo.png" alt="Profile Avatar" class="avatar-img" id="profileAvatarPreview">
+                <div class="sidebar-avatar profile-avatar-preview sidebar-avatar--brand-mark">
+                    <img src="./logo-ui.png?v=21" alt="Profile Avatar" class="avatar-img avatar-img--brand-mark" id="profileAvatarPreview">
                 </div>
                 <div class="profile-avatar-actions">
                     <label class="action-btn profile-upload-btn" for="profileAvatarUpload">Upload Photo</label>
@@ -1358,7 +1364,7 @@
                 <div class="footer-section footer-bottom">
                     <div class="footer-copyright-wrap">
                         <span class="logo-wrapper footer-logo-wrapper">
-                            <img src="./logo.png?v=12" alt="Star Paper Footer Logo" class="brand-logo logo-footer" loading="lazy">
+                            <img src="./logo-ui.png?v=21" alt="Star Paper Footer Logo" class="brand-logo logo-footer" loading="lazy">
                         </span>
                         <p class="footer-copyright">&copy; 2026 Star Paper. All rights reserved.</p>
                     </div>
@@ -1432,19 +1438,21 @@
         <!--
           FIX: supabase.js moved here from <head>. The Supabase SDK is already
           loaded (synchronously, above in <head>), so this file now runs
-          synchronously â€” window.SP is fully initialised before app.js executes.
+          synchronously Ã¢â‚¬â€ window.SP is fully initialised before app.js executes.
         -->
-        <script src="supabase.js?v=19"></script>
+<script src="supabase.js?v=27"></script>
         <script src="app.migrations.js?v=9"></script>
         <script src="app.actions.js?v=8"></script>
         <script src="app.todayboard.js?v=1"></script>
-        <script src="app.tasks.js?v=2"></script>
-    <script src="app.reports.js?v=10"></script>
-    <script src="app.js?v=37"></script>
+        <script src="app.tasks.js?v=3"></script>
+    <script src="app.reports.js?v=11"></script>
+<script src="app.js?v=61"></script>
+        <!-- UPGRADE: Premium polish JS layer (loaded last, no mutation of existing state) -->
+        <script src="app.premium.js?v=4"></script>
         <script>
-        // â”€â”€ FILE:// PROTOCOL GUARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ FILE:// PROTOCOL GUARD Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         // When the app is opened as a local file (double-clicked), window.location.origin
-        // is "null". OAuth (Google sign-in) cannot work on file:// â€” it requires http/https.
+        // is "null". OAuth (Google sign-in) cannot work on file:// Ã¢â‚¬â€ it requires http/https.
         // This block shows a clear warning and disables the Google button gracefully.
         (function fileProtocolGuard() {
             if (window.location.protocol !== 'file:') return;
@@ -1460,7 +1468,7 @@
                     'font-family:sans-serif'
                 ].join(';');
                 banner.innerHTML =
-                    '<strong>âš  Local file detected.</strong> ' +
+                    '<strong>Warning: Local file detected.</strong> ' +
                     'Google sign-in requires a local server. ' +
                     'Run <code style="background:rgba(0,0,0,.3);padding:1px 6px;border-radius:3px">npx serve .</code> ' +
                     'in this folder, then open <strong>http://localhost:3000</strong>. ' +
@@ -1473,7 +1481,7 @@
                 // Disable & label Google sign-in buttons
                 document.querySelectorAll('.btn-google, [data-action="signInWithGoogle"]').forEach(function(btn) {
                     btn.disabled = true;
-                    btn.title = 'Google sign-in requires http://localhost â€” not file://';
+                    btn.title = 'Google sign-in requires http://localhost - not file://';
                     btn.style.opacity = '0.4';
                     btn.style.cursor = 'not-allowed';
                 });
@@ -1481,76 +1489,6 @@
         })();
         </script>
         <script>
-        // â”€â”€ LOCAL TEST MODE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        // Bypasses ALL auth (Supabase + local) and logs straight into the app
-        // with a "TestUser" session stored only in sessionStorage (cleared on tab close).
-        // Safe to ship â€” it does nothing on https:// and shows a visible DEV badge.
-        window.enterLocalTestMode = function() {
-            console.log('[StarPaper] Entering Local Test Mode...');
-            try {
-                // 1. Write a minimal session directly into localStorage
-                //    (same keys checkAuth() reads, so it will auto-restore on reload)
-                var testUser = 'TestUser';
-                localStorage.setItem('starPaper_session',     JSON.stringify('active'));
-                localStorage.setItem('starPaperSessionUser',  JSON.stringify(testUser));
-                localStorage.setItem('starPaperRemember',     JSON.stringify(false));
-
-                // 2. Ensure the user record exists in the users array
-                if (typeof window.applyAuthSession === 'function') {
-                    window.applyAuthSession(testUser, { remember: false });
-                } else {
-                    // Fallback if applyAuthSession isn't ready yet
-                    window.currentUser = testUser;
-                    window.currentManagerId = 'test-' + testUser;
-                }
-
-                // 3. Load any existing local data then show the app
-                if (typeof window.loadUserData === 'function') window.loadUserData();
-                if (typeof window.showApp     === 'function') window.showApp();
-
-                // 4. Show a persistent DEV MODE badge so it's always obvious
-                var badge = document.getElementById('spDevModeBadge');
-                if (!badge) {
-                    badge = document.createElement('div');
-                    badge.id = 'spDevModeBadge';
-                    badge.style.cssText = [
-                        'position:fixed','bottom:12px','left:12px','z-index:99999',
-                        'background:#7c3aed','color:#fff','font-size:11px','font-weight:700',
-                        'padding:4px 10px','border-radius:20px','letter-spacing:.5px',
-                        'pointer-events:none','opacity:.85'
-                    ].join(';');
-                    badge.textContent = 'ðŸ§ª LOCAL TEST MODE';
-                    document.body.appendChild(badge);
-                }
-                console.log('[StarPaper] Local Test Mode active. User: ' + testUser);
-            } catch(err) {
-                console.error('[StarPaper] enterLocalTestMode failed:', err);
-                alert('Local Test Mode failed: ' + err.message + '\nCheck the console for details.');
-            }
-        };
-
-        // Inject btn-local-test styles
-        (function() {
-            var style = document.createElement('style');
-            style.textContent = [
-                '.btn-local-test {',
-                '  width:100%;padding:10px 16px;',
-                '  display:flex;align-items:center;justify-content:center;gap:6px;',
-                '  background:transparent;',
-                '  border:1px dashed rgba(124,58,237,.6);',
-                '  color:rgba(167,139,250,.9);',
-                '  border-radius:8px;cursor:pointer;font-size:13px;',
-                '  transition:background .15s,border-color .15s;',
-                '  margin-top:4px;',
-                '}',
-                '.btn-local-test:hover {',
-                '  background:rgba(124,58,237,.12);',
-                '  border-color:rgba(124,58,237,.9);',
-                '  color:#c4b5fd;',
-                '}',
-            ].join('\n');
-            document.head.appendChild(style);
-        })();
         // This runs after ALL scripts load. It directly calls window functions for
         // every add/action button. Works regardless of app.actions.js, data-action
         // routing, or onclick attributes. Belt-AND-suspenders.
@@ -1565,18 +1503,8 @@
                 'showAddOtherIncome':     function() { if (typeof window.showAddOtherIncome === 'function') window.showAddOtherIncome(); },
                 'showAddArtistForm':      function() { if (typeof window.showAddArtistForm === 'function') window.showAddArtistForm(); },
                 'showAddEventToCalendar': function() { if (typeof window.showAddEventToCalendar === 'function') window.showAddEventToCalendar(); },
-                // Auth
-                'showSignupForm':         function() { if (typeof window.showSignupForm  === 'function') window.showSignupForm(); },
-                'showLoginForm':          function() { if (typeof window.showLoginForm   === 'function') window.showLoginForm(); },
-                'showLanding':            function() { if (typeof window.showLanding     === 'function') window.showLanding(); },
-                'showForgotPassword':     function() {
-                    document.getElementById('loginForm') && (document.getElementById('loginForm').style.display = 'none');
-                    document.getElementById('signupForm') && (document.getElementById('signupForm').style.display = 'none');
-                    document.getElementById('forgotPasswordForm') && (document.getElementById('forgotPasswordForm').style.display = 'block');
-                },
-                'signup':                 function() { if (typeof window.signup          === 'function') window.signup(); },
-                'signInWithGoogle':       function() { if (typeof window.signInWithGoogle === 'function') window.signInWithGoogle(); },
-                'submitForgotPassword':   function() { if (typeof window.submitForgotPassword === 'function') window.submitForgotPassword(); },
+                // Auth actions intentionally excluded here to avoid duplicate dispatch
+                // with app.actions.js and inline onclick fallbacks.
                 // Cancel / close
                 'cancelExpense':          function() { if (typeof window.cancelExpense   === 'function') window.cancelExpense(); },
                 'cancelBooking':          function() { if (typeof window.cancelBooking   === 'function') window.cancelBooking(); },
@@ -1585,7 +1513,7 @@
                 'closeReceiptModal':      function() { if (typeof window.closeReceiptModal === 'function') window.closeReceiptModal(); },
                 'closeProfileModal':      function() { if (typeof window.closeProfileModal === 'function') window.closeProfileModal(); },
                 'openProfileModal':       function() { if (typeof window.openProfileModal === 'function') window.openProfileModal(); },
-                // Save (profile / goals only â€” main form saves stay with app.actions.js)
+                // Save (profile / goals only Ã¢â‚¬â€ main form saves stay with app.actions.js)
                 'saveProfileChanges':     function() { if (typeof window.saveProfileChanges === 'function') window.saveProfileChanges(); },
                 'saveMonthlyRevenueGoal': function() { if (typeof window.saveMonthlyRevenueGoal === 'function') window.saveMonthlyRevenueGoal(); },
                 'saveFinancialsMonthlyRevenueGoal': function() { if (typeof window.saveFinancialsMonthlyRevenueGoal === 'function') window.saveFinancialsMonthlyRevenueGoal(); },
@@ -1664,22 +1592,19 @@
                 } else {
                     // Only warn for actions that should be in MAP (not data-* routing ones)
                     if (action && !['showSection','openQuickAdd','switchMoneyTab','switchScheduleTab',
+                                    'showSignupForm','showLoginForm','showLanding','showForgotPassword',
+                                    'signup','signInWithGoogle','submitForgotPassword',
                                     'saveBooking','saveExpense','saveOtherIncome','saveArtist',
                                     'saveProfileChanges','switchScheduleTab','showDetailView',
                                     'landingFeaturePrev','landingFeatureNext'].includes(action)) {
                         console.warn('[StarPaper] No handler for "' + action + '". window.' + action + '=', typeof window[action]);
                     }
                 }
-            }, true); // capture phase â€” fires before any other listener
+            }, true); // capture phase Ã¢â‚¬â€ fires before any other listener
         })();
         </script>
         <script>
-            // Scroll-to-features handler for landing page secondary CTA
             document.addEventListener('click', function(e) {
-                if (e.target.closest('[data-action="scrollToFeatures"]')) {
-                    var el = document.getElementById('landing-features');
-                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
                 if (e.target.closest('[data-action="showForgotPassword"]')) {
                     document.getElementById('loginForm').style.display = 'none';
                     document.getElementById('signupForm').style.display = 'none';
@@ -1722,15 +1647,8 @@
                                     return;
                                 }
                             }
-                            // Fallback: check local credentials
-                            var stored = JSON.parse(localStorage.getItem('starPaperCredentials') || '{}');
-                            if (stored[username]) {
-                                result.textContent = 'Account found locally but password reset requires cloud mode. Please contact support.';
-                                result.className = 'forgot-password-hint forgot-password-hint--error';
-                            } else {
-                                result.textContent = 'No account found with that username.';
-                                result.className = 'forgot-password-hint forgot-password-hint--error';
-                            }
+                            result.textContent = 'No cloud account was found with that username.';
+                            result.className = 'forgot-password-hint forgot-password-hint--error';
                         } catch (err) {
                             result.textContent = 'Something went wrong. Please try again.';
                             result.className = 'forgot-password-hint forgot-password-hint--error';
@@ -1756,11 +1674,11 @@
                 </div>
             </div>
             <div class="sp-modal-body">
-                <p>Star Paper is a premium management tool built for artist managers in Uganda and beyond. Track bookings, monitor finances, manage your roster, and generate professional reports â€” all in one place.</p>
+                <p>Star Paper is a premium management tool built for artist managers in Uganda and beyond. Track bookings, monitor finances, manage your roster, and generate professional reports - all in one place.</p>
                 <p>Designed for the realities of the African music industry: offline-capable, mobile-first, and built around the workflows that actually matter.</p>
                 <div class="sp-modal-divider"></div>
                 <p style="margin:0; font-size:13px; color:var(--text-muted);">Built with care for the creative economy.</p>
-                <span class="sp-modal-version">v2.0 Â· Phase 5</span>
+                <span class="sp-modal-version">v2.0 - Phase 5</span>
             </div>
         </div>
     </div>
@@ -1780,7 +1698,7 @@
             <div class="sp-modal-body">
                 <h4 style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">User Management</h4>
                 <div id="spAdminUserList">
-                    <div class="sp-admin-empty">Loading usersâ€¦</div>
+                    <div class="sp-admin-empty">Loading users...</div>
                 </div>
                 <div class="sp-modal-divider"></div>
                 <h4 style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">System</h4>
@@ -1798,14 +1716,14 @@
         <div class="sp-palette__header">
             <span class="sp-palette__icon"><i class="ph ph-command" aria-hidden="true"></i></span>
             <input class="sp-palette__input" id="spPaletteInput" type="text"
-                placeholder="Search sections, artists, bookingsâ€¦ or type a command"
+                placeholder="Search sections, artists, bookings... or type a command"
                 autocomplete="off" spellcheck="false" aria-autocomplete="list" aria-controls="spPaletteResults">
             <kbd class="sp-palette__esc">ESC</kbd>
         </div>
         <ul class="sp-palette__results" id="spPaletteResults" role="listbox"></ul>
         <div class="sp-palette__footer">
-            <span><kbd>â†‘</kbd><kbd>â†“</kbd> navigate</span>
-            <span><kbd>â†µ</kbd> select</span>
+            <span><kbd>Up</kbd><kbd>Down</kbd> navigate</span>
+            <span><kbd>Enter</kbd> select</span>
             <span><kbd>Esc</kbd> close</span>
             <span class="sp-palette__footer-hint">Try "add booking" or an artist name</span>
         </div>
@@ -1823,17 +1741,17 @@
         </div>
         <div class="sp-cheatsheet__body">
             <div class="sp-cheatsheet__group">
-                <div class="sp-cheatsheet__group-label">Navigation (press G thenâ€¦)</div>
+                <div class="sp-cheatsheet__group-label">Navigation (press G then...)</div>
                 <div class="sp-cheatsheet__rows">
                     <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>D</kbd><span>Dashboard</span></div>
                     <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>M</kbd><span>Money (Overview)</span></div>
-                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>F</kbd><span>Money â†’ Financials</span></div>
-                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>E</kbd><span>Money â†’ Expenses</span></div>
-                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>I</kbd><span>Money â†’ Other Income</span></div>
-                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>R</kbd><span>Money â†’ Reports</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>F</kbd><span>Money - Financials</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>E</kbd><span>Money - Expenses</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>I</kbd><span>Money - Other Income</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>R</kbd><span>Money - Reports</span></div>
                     <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>S</kbd><span>Schedule</span></div>
-                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>B</kbd><span>Schedule â†’ Bookings</span></div>
-                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>C</kbd><span>Schedule â†’ Calendar</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>B</kbd><span>Schedule - Bookings</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>C</kbd><span>Schedule - Calendar</span></div>
                     <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>A</kbd><span>Artists</span></div>
                     <div class="sp-cheatsheet__row"><kbd>G</kbd><kbd>T</kbd><span>Tasks</span></div>
                 </div>
@@ -1841,7 +1759,7 @@
             <div class="sp-cheatsheet__group">
                 <div class="sp-cheatsheet__group-label">Global</div>
                 <div class="sp-cheatsheet__rows">
-                    <div class="sp-cheatsheet__row"><kbd>âŒ˜</kbd><kbd>K</kbd><span>Command Palette</span></div>
+                    <div class="sp-cheatsheet__row"><kbd>Ctrl/Cmd</kbd><kbd>K</kbd><span>Command Palette</span></div>
                     <div class="sp-cheatsheet__row"><kbd>?</kbd><span>This cheat sheet</span></div>
                     <div class="sp-cheatsheet__row"><kbd>Esc</kbd><span>Close modal / palette</span></div>
                 </div>

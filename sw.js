@@ -1,30 +1,37 @@
-const CACHE_NAME = "star-paper-shell-v38";
+const CACHE_NAME = "star-paper-shell-v71";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css",
-  "./supabase.js?v=19",
+  "./styles.css?v=27",
+  "./styles.premium.css?v=7",
+  "./styles.shell.css?v=2",
+  "./star-paper-tokens.css?v=21",
+  "./supabase.js?v=27",
   "./app.migrations.js?v=9",
   "./app.actions.js?v=8",
   "./app.todayboard.js?v=1",
-  "./app.tasks.js?v=2",
-  "./app.reports.js?v=10",
-  "./app.js?v=37",
-  "./sw.js?v=38",
+  "./app.tasks.js?v=3",
+  "./app.reports.js?v=11",
+  "./app.js?v=61",
+  "./app.premium.js?v=4",
+  "./sw.js?v=70",
   "./manifest.json",
-  "./manifest.json?v=14",
+  "./manifest.json?v=21",
   "./logo.svg",
-  "./logo.svg?v=12",
+  "./logo.svg?v=13",
+  "./logo-ui.png",
+  "./logo-ui.png?v=21",
   "./logo.png",
+  "./logo.png?v=21",
   "./logo-192.png",
-  "./logo-192.png?v=12",
+  "./logo-192.png?v=21",
   "./logo-32.png",
-  "./logo-32.png?v=12",
+  "./logo-32.png?v=21",
   "./apple-touch-icon.png",
-  "./apple-touch-icon.png?v=12",
+  "./apple-touch-icon.png?v=21",
   "./logo-report.png",
-  "./logo-report.png?v=12",
-  "./favicon.ico?v=12",
+  "./logo-report.png?v=21",
+  "./favicon.ico?v=21",
 ];
 
 const APP_SHELL_URLS = new Set(
@@ -100,17 +107,15 @@ self.addEventListener("fetch", (event) => {
   }
 
   event.respondWith(
-    caches.match(request).then((cached) => {
-      const networkFetch = fetch(request)
-        .then((response) => {
-          if (!response || response.status !== 200) return response;
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          return response;
-        })
-        .catch(() => cached);
-
-      return cached || networkFetch;
-    })
+    fetch(request)
+      .then((response) => {
+        if (!response || response.status !== 200) return response;
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+        return response;
+      })
+      .catch(() =>
+        caches.match(request).then((cached) => cached || Response.error())
+      )
   );
 });

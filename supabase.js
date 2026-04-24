@@ -16,6 +16,8 @@
 const SP_SUPABASE_URL  = 'https://fxcyocdwvjiyatqnaahg.supabase.co';
 const SP_SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4Y3lvY2R3dmppeWF0cW5hYWhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5Nzg4NDEsImV4cCI6MjA4ODU1NDg0MX0.OTtDpyfA69rbVOTJkBh51pwj3wEkR1L04x4ouDkeWZ0';
 const SP_SUPABASE_STORAGE_KEY = 'sp-starpaper-auth-v1';
+const SP_SUPABASE_PKCE_KEY = `${SP_SUPABASE_STORAGE_KEY}-code-verifier`;
+const SP_SUPABASE_PROJECT_REF = SP_SUPABASE_URL.replace('https://', '').replace('.supabase.co', '');
 const SP_SUPABASE_CONFIGURED =
   typeof SP_SUPABASE_URL === 'string' &&
   typeof SP_SUPABASE_KEY === 'string' &&
@@ -89,7 +91,7 @@ const SP_CURRENCIES = {
   // ── STATE ───────────────────────────────────────────────────────────────────
   let _session  = null;
   let _profile  = null;
-  let _activeTeamId = localStorage.getItem('sp_active_team') || null;
+  let _activeTeamId = null;
   let _activeTeamRole = null;
   let _currency = localStorage.getItem('sp_currency') || 'UGX';
   let _realtimeChannel = null;
@@ -98,6 +100,7 @@ const SP_CURRENCIES = {
   let _teamNotifyChannel = null;       // Persistent channel for messages + team_members
   let _syncBroadcast = null;
   let _bootstrapping = false;
+  let _bootstrapPromise = null;
   let _refreshInFlight = false;
   let _saveInFlight = null;
   let _pendingSavePayload = null;
@@ -110,12 +113,17 @@ const SP_CURRENCIES = {
 
   // ── SYNC RELIABILITY: Retry Queue + Status Indicator ────────────────────────
   const RETRY_QUEUE_STORAGE_KEY = 'sp_retry_queue';
+  const BOOT_CONTEXT_STORAGE_KEY = 'sp_boot_context';
+  const APP_SHELL_BOOT_CONTEXT = 'app-shell';
+  const AUTH_RETURN_BOOT_CONTEXT = 'auth-return';
   let _retryQueue = [];               // Array of { payload, attempts, lastAttempt }
   let _syncState = 'idle';            // 'idle' | 'syncing' | 'synced' | 'failed' | 'offline'
   let _retryTimer = null;
   let _lastSaveToastAt = 0;
   const MAX_RETRY_ATTEMPTS = 5;
   const SAVE_TOAST_THROTTLE_MS = 10000;
+  window.__spAuthRedirectInProgress = false;
+  window.__spSuppressStoredSessionBootstrap = false;
 
   function persistRetryQueue() {
     try {
@@ -141,7 +149,7 @@ const SP_CURRENCIES = {
     } catch (_err) { /* corrupted — start fresh */ }
   }
 
-  function updateSyncIndicator(state) {
+  function legacyUpdateSyncIndicator(state) {
     _syncState = state || _syncState;
     const el = document.getElementById('spSyncIcon');
     if (!el) return;
@@ -225,14 +233,14 @@ const SP_CURRENCIES = {
     }
   }
 
-  function showSaveToast(isCloud) {
+  function legacyShowSaveToast(isCloud) {
     const now = Date.now();
     if (now - _lastSaveToastAt < SAVE_TOAST_THROTTLE_MS) return;
     _lastSaveToastAt = now;
     if (isCloud) {
       toastSafe('Success', 'Saved to cloud');
     } else {
-      toastSafe('Info', 'Saved locally, will sync when online');
+      toastSafe('Info', 'Reconnect to save your latest cloud changes.');
     }
   }
 
@@ -240,6 +248,40 @@ const SP_CURRENCIES = {
   // Supabase JS v2 acquires a Web Lock for every auth-bearing request. Firing
   // multiple requests concurrently causes "AbortError: Lock broken by steal".
   // This queue serialises all DB calls so only ONE request is in-flight at a time.
+  function updateSyncIndicator(state) {
+    _syncState = state || _syncState;
+    const el = document.getElementById('spSyncIcon');
+    if (!el) return;
+    const map = {
+      idle:    { icon: 'ph-cloud',          color: '#888',    title: 'Cloud idle' },
+      syncing: { icon: 'ph-cloud-arrow-up', color: '#FFB300', title: 'Syncing to cloud...' },
+      synced:  { icon: 'ph-cloud-check',    color: '#81c784', title: 'Saved to cloud' },
+      failed:  { icon: 'ph-cloud-slash',    color: '#ef9a9a', title: 'Cloud sync failed' },
+      offline: { icon: 'ph-cloud-x',        color: '#888',    title: 'Offline — reconnect to save and refresh cloud data' },
+    };
+    const cfg = map[_syncState] || map.idle;
+    el.className = 'ph ' + cfg.icon + ' sp-sync-icon';
+    el.style.color = cfg.color;
+    el.parentElement.title = cfg.title;
+    el.parentElement.setAttribute('aria-label', cfg.title);
+    if (_syncState === 'syncing') {
+      el.classList.add('sp-sync-pulse');
+    } else {
+      el.classList.remove('sp-sync-pulse');
+    }
+  }
+
+  function showSaveToast(isCloud) {
+    const now = Date.now();
+    if (now - _lastSaveToastAt < SAVE_TOAST_THROTTLE_MS) return;
+    _lastSaveToastAt = now;
+    if (isCloud) {
+      toastSafe('Success', 'Saved to cloud');
+    } else {
+      toastSafe('Info', 'Reconnect to save your latest cloud changes.');
+    }
+  }
+
   let _dbQueue = Promise.resolve();
   function dbSerial(fn) {
     _dbQueue = _dbQueue.then(() => fn()).catch(err => {
@@ -466,14 +508,22 @@ const SP_CURRENCIES = {
   function promptTeamSelectionIfNeeded(teams) {
     if (_activeTeamId) return;
     if (!Array.isArray(teams) || teams.length < 2) return;
+    let shouldToast = true;
     try {
-      if (sessionStorage.getItem(TEAM_PROMPT_KEY) === '1') return;
-      sessionStorage.setItem(TEAM_PROMPT_KEY, '1');
+      if (sessionStorage.getItem(TEAM_PROMPT_KEY) === '1') {
+        shouldToast = false;
+      } else {
+        sessionStorage.setItem(TEAM_PROMPT_KEY, '1');
+      }
     } catch (_err) {
-      // Non-fatal: if sessionStorage fails, still show the prompt once.
+      // Non-fatal: if sessionStorage fails, still show the prompt.
     }
-    toastSafe('Info', 'Choose a workspace to finish loading your data.');
+    if (shouldToast) {
+      toastSafe('Info', 'Choose a workspace to finish loading your data.');
+    }
     setTimeout(() => {
+      const modal = document.getElementById('spTeamModal');
+      if (modal && modal.style.display !== 'none') return;
       showTeamModal().catch((err) => warn('Team chooser open failed:', err));
     }, 0);
   }
@@ -503,31 +553,7 @@ const SP_CURRENCIES = {
   }
 
   function scheduleAppBoot(maxWaitMs = 5000, intervalMs = 50) {
-    if (window.__spAppBooted) return;
-    const start = Date.now();
-    const tick = () => {
-      if (window.__spAppBooted) return;
-      if (ensureAppBootReady()) {
-        try {
-          if (typeof window.loadUserData === 'function') {
-            window.loadUserData();
-          }
-          if (typeof window.showApp === 'function' && !window.__spAppBooted) {
-            window.showApp();
-          }
-          log('bootstrap.uiReady');
-        } catch (err) {
-          warn('Deferred app boot failed:', err);
-        }
-        return;
-      }
-      if (Date.now() - start >= maxWaitMs) {
-        log('bootstrap.uiDeferredTimeout');
-        return;
-      }
-      setTimeout(tick, intervalMs);
-    };
-    setTimeout(tick, 0);
+    return;
   }
 
   function withTimeout(task, ms, label) {
@@ -545,6 +571,18 @@ const SP_CURRENCIES = {
     ]).finally(() => {
       if (timer) clearTimeout(timer);
     });
+  }
+
+  function runBootstrapTask(task) {
+    if (_bootstrapPromise) return _bootstrapPromise;
+    _bootstrapping = true;
+    _bootstrapPromise = Promise.resolve()
+      .then(task)
+      .finally(() => {
+        _bootstrapping = false;
+        _bootstrapPromise = null;
+      });
+    return _bootstrapPromise;
   }
 
   async function syncRealtimeAuthToken(session = _session) {
@@ -589,44 +627,301 @@ const SP_CURRENCIES = {
     throw err;
   }
 
-  async function handleSignedOutSession(options = {}) {
-    const explicitLogout = localStorage.getItem('sp_logged_out') === '1';
-    _session = null;
-    _profile = null;
+  function detectAuthCallbackState(href = window.location.href) {
+    let url = null;
+    try {
+      url = new URL(href);
+    } catch (_err) {
+      return {
+        hasCallbackParams: false,
+        hasError: false,
+      };
+    }
+
+    const hashParams = new URLSearchParams((url.hash || '').replace(/^#/, ''));
+    const readParam = (key) => hashParams.get(key) || url.searchParams.get(key) || '';
+    const error = readParam('error');
+    const errorCode = readParam('error_code');
+    const errorDescription = readParam('error_description');
+    const hasCallbackParams = Boolean(
+      readParam('access_token') ||
+      readParam('refresh_token') ||
+      readParam('code') ||
+      error ||
+      errorCode ||
+      errorDescription
+    );
+
+    return {
+      hasCallbackParams,
+      hasError: Boolean(error || errorCode || errorDescription),
+    };
+  }
+
+  function clearSupabaseAuthArtifacts(options = {}) {
+    const clearAppSession = options.clearAppSession !== false;
+    try {
+      localStorage.removeItem(`sb-${SP_SUPABASE_PROJECT_REF}-auth-token`);
+      localStorage.removeItem(`sb-${SP_SUPABASE_PROJECT_REF}-auth-token-code-verifier`);
+      localStorage.removeItem(SP_SUPABASE_STORAGE_KEY);
+      localStorage.removeItem(SP_SUPABASE_PKCE_KEY);
+    } catch (_err) {
+      // Best-effort cleanup only.
+    }
+
+    if (typeof window.clearLegacyCloudDataKeys === 'function') {
+      window.clearLegacyCloudDataKeys();
+    }
+
+    if (!clearAppSession) return;
+
+    if (typeof window.clearAuthSessionState === 'function') {
+      window.clearAuthSessionState();
+      return;
+    }
+
+    localStorage.removeItem('starPaper_session');
+    localStorage.removeItem('starPaperSessionUser');
+    localStorage.removeItem('starPaperRemember');
+    localStorage.removeItem('starPaperCurrentUser');
+    window.currentUser = null;
+    window.currentManagerId = null;
+    window.__spAppBooted = false;
+  }
+
+  function setBootStateSafe(state, options = {}) {
+    if (typeof window.setBootState === 'function') {
+      window.setBootState(state, options);
+    }
+  }
+
+  function showLoginScreen(options = {}) {
+    setBootStateSafe('auth-required', { text: options.text, subtext: options.subtext });
+    if (typeof window.showLoginForm === 'function') {
+      window.showLoginForm();
+      return;
+    }
+    if (typeof window.setActiveScreen === 'function') {
+      window.setActiveScreen('loginScreen');
+    }
+    if (typeof window.hideBootLoaderElement === 'function') {
+      window.hideBootLoaderElement();
+    }
+  }
+
+  function showLandingScreen() {
+    if (typeof window.showLanding === 'function') {
+      window.showLanding();
+      return;
+    }
+    if (typeof window.hideBootLoaderElement === 'function') {
+      window.hideBootLoaderElement();
+    }
+    if (typeof window.setActiveScreen === 'function') {
+      window.setActiveScreen('landingScreen');
+    }
+  }
+
+  function showBootErrorState(message, detail) {
+    setBootStateSafe('boot-error', {
+      text: message || 'Cloud sync needs attention',
+      subtext: detail || 'We could not load your workspace. Retry or log out.',
+      showActions: true,
+    });
+  }
+
+  function hasAuthCallbackInUrl() {
+    const url = new URL(window.location.href);
+    const hashParams = new URLSearchParams((url.hash || '').replace(/^#/, ''));
+    return Boolean(
+      hashParams.get('access_token') ||
+      hashParams.get('refresh_token') ||
+      url.searchParams.get('access_token') ||
+      url.searchParams.get('refresh_token') ||
+      url.searchParams.get('code') ||
+      url.searchParams.get('error') ||
+      url.searchParams.get('error_code') ||
+      url.searchParams.get('error_description')
+    );
+  }
+
+  function hasStoredSupabaseSessionHint() {
+    if (!SP_SUPABASE_CONFIGURED) return false;
+    if (localStorage.getItem('sp_logged_out') === '1') return false;
+    return Boolean(localStorage.getItem(SP_SUPABASE_STORAGE_KEY));
+  }
+
+  function readBootContextMarker() {
+    try {
+      return sessionStorage.getItem(BOOT_CONTEXT_STORAGE_KEY) || '';
+    } catch (_err) {
+      return '';
+    }
+  }
+
+  function getStartupBootContext() {
+    if (typeof window.getStartupBootContext === 'function') {
+      try {
+        const context = String(window.getStartupBootContext() || '').trim();
+        if (context) return context;
+      } catch (_err) {}
+    }
+    if (hasAuthCallbackInUrl()) return 'auth-callback';
+    const marker = readBootContextMarker();
+    if (marker === AUTH_RETURN_BOOT_CONTEXT) return 'auth-callback';
+    return marker === APP_SHELL_BOOT_CONTEXT ? 'app-refresh' : 'cold-start';
+  }
+
+  function captureSyncException(error, context = {}) {
+    try {
+      if (typeof window.Sentry === 'undefined' || typeof window.Sentry.captureException !== 'function') {
+        return;
+      }
+
+      const err = error instanceof Error
+        ? error
+        : new Error(context.message || String(error || 'Star Paper sync error'));
+      const sentry = window.Sentry;
+      const extra = {
+        operation: context.operation || 'unknown',
+        reason: context.reason || null,
+        event: context.event || null,
+        ownerId: getOwnerId(),
+        activeTeamId: _activeTeamId,
+        workspace: _activeTeamId ? 'team' : 'personal',
+        workspaceResolved: _workspaceResolved,
+        workspaceRequiresSelection: _workspaceRequiresSelection,
+        appBooted: Boolean(window.__spAppBooted),
+        authRedirectInProgress: Boolean(window.__spAuthRedirectInProgress),
+        suppressStoredSessionBootstrap: Boolean(window.__spSuppressStoredSessionBootstrap),
+        syncState: _syncState,
+        ...(context.extra || {}),
+      };
+
+      if (typeof sentry.withScope === 'function') {
+        sentry.withScope((scope) => {
+          scope.setTag('sp.operation', context.operation || 'unknown');
+          scope.setTag('sp.workspace', _activeTeamId ? 'team' : 'personal');
+          scope.setTag('sp.sync_state', _syncState || 'unknown');
+          if (_activeTeamId) scope.setTag('sp.team_id', _activeTeamId);
+          if (context.reason) scope.setTag('sp.reason', String(context.reason));
+          if (getOwnerId()) scope.setUser({ id: getOwnerId() });
+          Object.entries(extra).forEach(([key, value]) => {
+            if (value === undefined) return;
+            scope.setExtra(key, value);
+          });
+          sentry.captureException(err);
+        });
+        return;
+      }
+
+      sentry.captureException(err);
+    } catch (_err) {
+      // Sentry capture is best-effort only.
+    }
+  }
+
+  function resetWorkspaceState() {
     _activeTeamId = null;
     _workspaceResolved = false;
     _workspaceRequiresSelection = false;
     _workspaceResolutionPromise = null;
     window.__spCloudBootstrapPending = false;
     window.__spWorkspaceSelectionRequired = false;
-    localStorage.removeItem('sp_active_team');
     try {
       sessionStorage.removeItem(TEAM_PROMPT_KEY);
     } catch (_err) {}
     setActiveTeamRole(null);
     unsubscribeFromCoreRealtime();
     unsubscribeFromTeamNotifications();
+    const modal = document.getElementById('spTeamModal');
+    if (modal) {
+      modal.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+  }
+
+  const _initialAuthCallbackState = detectAuthCallbackState();
+  if (_initialAuthCallbackState.hasCallbackParams) {
+    window.__spAuthRedirectInProgress = true;
+    if (_initialAuthCallbackState.hasError) {
+      window.__spSuppressStoredSessionBootstrap = true;
+    }
+  }
+
+  async function handleSignedOutSession(options = {}) {
+    const explicitLogout = localStorage.getItem('sp_logged_out') === '1';
+    const reason = options.reason || (explicitLogout ? 'explicit-logout' : 'session-missing');
+    const destination = options.destination === 'landing' ? 'landing' : 'login';
+    const suppressDiagnostics = Boolean(options.suppressDiagnostics);
+    const shouldConfirmRestore = !explicitLogout && options.confirm !== false;
+
+    if (shouldConfirmRestore) {
+      try {
+        let recoveredSession = await getSession();
+        if (!recoveredSession?.user) {
+          recoveredSession = await refreshSessionIfNeeded({ minTtlSeconds: 0 });
+        }
+        if (recoveredSession?.user) {
+          _session = recoveredSession;
+          await syncRealtimeAuthToken(recoveredSession);
+          return {
+            recovered: true,
+            session: recoveredSession,
+            reason: 'session-recovered',
+          };
+        }
+      } catch (err) {
+        warn('Session restore confirmation failed:', err);
+        captureSyncException(err, {
+          operation: 'startupSessionRestore',
+          reason: 'confirm-failed',
+          event: options.event,
+          extra: {
+            requestedReason: reason,
+          },
+        });
+      }
+    }
+
+    _session = null;
+    _profile = null;
+    if (options.clearAuthArtifacts !== false) {
+      clearSupabaseAuthArtifacts();
+    }
+    resetWorkspaceState();
     updateSyncIndicator(navigator.onLine ? 'idle' : 'offline');
-
-    if (typeof window.clearAuthSessionState === 'function') {
-      window.clearAuthSessionState();
+    if (destination === 'landing') {
+      showLandingScreen();
     } else {
-      localStorage.removeItem('starPaper_session');
-      localStorage.removeItem('starPaperSessionUser');
-      localStorage.removeItem('starPaperRemember');
-      localStorage.removeItem('starPaperCurrentUser');
-      window.currentUser = null;
-      window.currentManagerId = null;
-      window.__spAppBooted = false;
+      showLoginScreen();
     }
 
-    if (typeof window.setActiveScreen === 'function') {
-      window.setActiveScreen('landingScreen');
+    if (!explicitLogout && !suppressDiagnostics) {
+      captureSyncException(
+        options.error || new Error(options.message || 'Session could not be restored.'),
+        {
+          operation: 'startupSessionRestore',
+          reason,
+          event: options.event,
+        }
+      );
     }
 
-    if (!explicitLogout && options.notify !== false && typeof window.toastWarn === 'function') {
+    if (
+      !explicitLogout &&
+      !suppressDiagnostics &&
+      destination !== 'landing' &&
+      options.notify !== false &&
+      typeof window.toastWarn === 'function'
+    ) {
       window.toastWarn(options.message || 'Your session expired. Please log in again.');
     }
+
+    return {
+      recovered: false,
+      reason,
+    };
   }
 
   function getOwnerId() {
@@ -659,20 +954,16 @@ const SP_CURRENCIES = {
 
     if (session?.user) return session;
 
-    const hasLocalSession =
-      localStorage.getItem('starPaper_session') === 'active' ||
-      Boolean(window.currentUser);
-
-    if (hasLocalSession && clearIfMissing) {
+    if (clearIfMissing) {
       if (!silent) {
         toastSafe('Warn', 'Your session expired. Please log in again.');
       }
-      if (typeof window.clearAuthSessionState === 'function') {
-        window.clearAuthSessionState();
-      }
-      if (typeof window.setActiveScreen === 'function') {
-        window.setActiveScreen('landingScreen');
-      }
+      await handleSignedOutSession({
+        reason: 'session-missing',
+        confirm: false,
+        notify: false,
+        message: 'Your session expired. Please log in again.',
+      });
     }
 
     return null;
@@ -703,7 +994,6 @@ const SP_CURRENCIES = {
 
   async function persistActiveTeam(teamId, options = {}) {
     const normalizedTeamId = normalizeTeamId(teamId);
-    const persistLocal = options.persistLocal !== false;
     const persistRemote = options.persistRemote !== false;
 
     _activeTeamId = normalizedTeamId;
@@ -713,14 +1003,6 @@ const SP_CURRENCIES = {
     try {
       sessionStorage.removeItem(TEAM_PROMPT_KEY);
     } catch (_err) {}
-
-    if (persistLocal) {
-      if (normalizedTeamId) {
-        localStorage.setItem('sp_active_team', normalizedTeamId);
-      } else {
-        localStorage.removeItem('sp_active_team');
-      }
-    }
 
     if (options.role !== undefined) {
       setActiveTeamRole(options.role);
@@ -754,7 +1036,7 @@ const SP_CURRENCIES = {
       const teams = Array.isArray(options.teams) ? options.teams : await getMyTeams();
       const validTeamIds = new Set((teams || []).map((team) => team.id));
       const rememberedTeamId = normalizeTeamId(profile?.last_active_team_id);
-      const localTeamId = normalizeTeamId(localStorage.getItem('sp_active_team'));
+      const runtimeTeamId = normalizeTeamId(_activeTeamId);
 
       let selectedTeamId = null;
       let source = 'personal';
@@ -763,10 +1045,9 @@ const SP_CURRENCIES = {
       if (rememberedTeamId && validTeamIds.has(rememberedTeamId)) {
         selectedTeamId = rememberedTeamId;
         source = 'profile';
-      } else if (localTeamId && validTeamIds.has(localTeamId)) {
-        selectedTeamId = localTeamId;
-        source = 'local';
-        persistRemote = true;
+      } else if (runtimeTeamId && validTeamIds.has(runtimeTeamId)) {
+        selectedTeamId = runtimeTeamId;
+        source = 'runtime';
       } else if ((teams || []).length === 1) {
         selectedTeamId = teams[0].id;
         source = 'single-team';
@@ -776,32 +1057,9 @@ const SP_CURRENCIES = {
         source = 'personal';
         persistRemote = Boolean(rememberedTeamId);
       } else {
-        _activeTeamId = null;
-        _workspaceResolved = false;
-        _workspaceRequiresSelection = true;
-        window.__spWorkspaceSelectionRequired = true;
-        localStorage.removeItem('sp_active_team');
-        setActiveTeamRole(null);
-
-        if (rememberedTeamId) {
-          try {
-            await updateProfile({ last_active_team_id: null }, { throwOnError: true });
-          } catch (err) {
-            warn('Clearing stale remembered team failed:', err);
-          }
-        }
-
-        if (options.promptOnSelection !== false) {
-          promptTeamSelectionIfNeeded(teams);
-        }
-
-        return {
-          teamId: null,
-          teams,
-          profile,
-          needsSelection: true,
-          source: 'chooser',
-        };
+        selectedTeamId = null;
+        source = 'personal';
+        persistRemote = Boolean(rememberedTeamId);
       }
 
       const activeTeam = selectedTeamId ? teams.find((team) => team.id === selectedTeamId) : null;
@@ -853,6 +1111,11 @@ const SP_CURRENCIES = {
   async function migrateLocalStorageData() {
     const migrationKey = 'sp_migrated_' + getOwnerId();
     if (localStorage.getItem(migrationKey)) return;
+
+    if (SP_CLOUD_ONLY_MODE) {
+      localStorage.setItem(migrationKey, '1');
+      return;
+    }
 
     try {
       const managerData = JSON.parse(localStorage.getItem('starPaperManagerData') || '{}');
@@ -1101,9 +1364,9 @@ const SP_CURRENCIES = {
   }
 
   function bookingToRow(b, ownerId, teamId) {
-    const cloudId = isCloudId(b.id) ? b.id : undefined;
+    const cloudId = isCloudId(b.id) ? b.id : null;
     return {
-      id: cloudId,                               // only set for Supabase UUID records
+      ...(cloudId ? { id: cloudId } : {}),      // only set for Supabase UUID records
       legacy_id: String(b.id ?? ''),             // always preserve the original local ID
       owner_id: ownerId,
       team_id: teamId || null,
@@ -1139,9 +1402,9 @@ const SP_CURRENCIES = {
   }
 
   function expenseToRow(e, ownerId, teamId) {
-    const cloudId = isCloudId(e.id) ? e.id : undefined;
+    const cloudId = isCloudId(e.id) ? e.id : null;
     return {
-      id: cloudId,
+      ...(cloudId ? { id: cloudId } : {}),
       legacy_id: String(e.id ?? ''),
       owner_id: ownerId,
       team_id: teamId || null,
@@ -1172,9 +1435,9 @@ const SP_CURRENCIES = {
   }
 
   function otherIncomeToRow(i, ownerId, teamId) {
-    const cloudId = isCloudId(i.id) ? i.id : undefined;
+    const cloudId = isCloudId(i.id) ? i.id : null;
     return {
-      id: cloudId,
+      ...(cloudId ? { id: cloudId } : {}),
       legacy_id: String(i.id ?? ''),
       owner_id: ownerId,
       team_id: teamId || null,
@@ -1254,8 +1517,9 @@ const SP_CURRENCIES = {
       if (!artistId && artistName) {
         artistId = artistLookup[artistName.toLowerCase()] || null;
       }
-      return {
-        id: isCloudId(entry?.id) ? entry.id : undefined,
+      const cloudId = isCloudId(entry?.id) ? entry.id : null;
+      return sanitizeUpsertRow({
+        ...(cloudId ? { id: cloudId } : {}),
         legacy_id: String(entry?.id ?? ''),
         owner_id: ownerId,
         team_id: ctx.team_id || null,
@@ -1266,7 +1530,7 @@ const SP_CURRENCIES = {
         spotify_listeners: Number(entry?.spotifyListeners) || 0,
         youtube_listeners: Number(entry?.youtubeListeners) || 0,
         updated_at: new Date().toISOString(),
-      };
+      });
     }).filter(row => row.artist_id && row.period);
     if (rows.length === 0) return;
     try {
@@ -1371,6 +1635,16 @@ const SP_CURRENCIES = {
     return typeof id === 'string' && UUID_RE.test(id);
   }
 
+  function sanitizeUpsertRow(row) {
+    const sanitized = {};
+    Object.entries(row || {}).forEach(([key, value]) => {
+      if (typeof value === 'undefined') return;
+      if (key === 'id' && !isCloudId(value)) return;
+      sanitized[key] = value;
+    });
+    return sanitized;
+  }
+
   // ── CORE DATA API ────────────────────────────────────────────────────────────
   async function loadData() {
     const ownerId = getOwnerId();
@@ -1450,9 +1724,9 @@ const SP_CURRENCIES = {
     // UUID records → upsert on 'id'.  Legacy records → upsert on 'legacy_id,owner_id'
     async function smartUpsert(table, items, toRow) {
       if (!items || !items.length) return [];
-      const rows = items.map(item => toRow(item, ownerId, ctx.team_id));
-      const uuidRows    = rows.filter(r => r.id !== undefined);
-      const legacyRows  = rows.filter(r => r.id === undefined);
+      const rows = items.map(item => sanitizeUpsertRow(toRow(item, ownerId, ctx.team_id)));
+      const uuidRows    = rows.filter(r => isCloudId(r.id));
+      const legacyRows  = rows.filter(r => !isCloudId(r.id));
       const results = [];
 
       if (uuidRows.length) {
@@ -1507,13 +1781,13 @@ const SP_CURRENCIES = {
     }
   }
 
-  async function saveArtists(artists) {
+  async function saveArtistsData(artists) {
     const ownerId = getOwnerId();
-    if (!ownerId || !Array.isArray(artists)) return;
+    if (!ownerId || !Array.isArray(artists)) return [];
     const ctx = getContext();
     try {
-      const rows = artists.map(a => ({
-        id: isCloudId(a.id) ? a.id : undefined,
+      const rows = artists.map(a => sanitizeUpsertRow({
+        ...(isCloudId(a.id) ? { id: a.id } : {}),
         legacy_id: String(a.id ?? ''),
         owner_id: ownerId,
         team_id: ctx.team_id || null,
@@ -1525,20 +1799,242 @@ const SP_CURRENCIES = {
         strategic_goal: a.strategicGoal || '',
         avatar: a.avatar || '',
       }));
-      const uuidRows   = rows.filter(r => r.id !== undefined);
-      const legacyRows = rows.filter(r => r.id === undefined);
+      const results = [];
+      const uuidRows   = rows.filter(r => isCloudId(r.id));
+      const legacyRows = rows.filter(r => !isCloudId(r.id));
       if (uuidRows.length) {
-        const { error } = await db.from('artists').upsert(uuidRows, { onConflict: 'id' });
+        const { data, error } = await db.from('artists')
+          .upsert(uuidRows, { onConflict: 'id' })
+          .select('id,legacy_id');
         throwIfSupabaseError('Artists UUID save', error);
+        if (data) results.push(...data);
       }
       if (legacyRows.length) {
-        const { error } = await db.from('artists').upsert(legacyRows, { onConflict: 'legacy_id,owner_id' });
+        const { data, error } = await db.from('artists')
+          .upsert(legacyRows, { onConflict: 'legacy_id,owner_id' })
+          .select('id,legacy_id');
         throwIfSupabaseError('Artists legacy save', error);
+        if (data) results.push(...data);
       }
+
+      if (results.length) {
+        const legacyMap = {};
+        results.forEach((row) => {
+          if (row?.legacy_id) {
+            legacyMap[String(row.legacy_id)] = row.id;
+          }
+        });
+
+        let artistsChanged = false;
+        artists.forEach((artist) => {
+          if (!artist || isCloudId(artist.id)) return;
+          const nextId = legacyMap[String(artist.id)];
+          if (!nextId) return;
+          artist.id = nextId;
+          artistsChanged = true;
+        });
+        if (artistsChanged && Array.isArray(window.artists)) {
+          window.artists = artists;
+        }
+
+        if (Array.isArray(window.bookings)) {
+          window.bookings.forEach((booking) => {
+            if (!booking || isCloudId(booking.artistId)) return;
+            const nextArtistId = legacyMap[String(booking.artistId)];
+            if (!nextArtistId) return;
+            booking.artistId = nextArtistId;
+          });
+        }
+      }
+
+      return results;
     } catch (err) {
       warn('saveArtists failed:', err);
       throw err;
     }
+  }
+
+  function getStructuredSyncContext(extra = {}) {
+    return {
+      ownerId: getOwnerId() || null,
+      activeTeamId: _activeTeamId || null,
+      workspace: _activeTeamId ? 'team' : 'personal',
+      syncState: _syncState,
+      ...extra,
+    };
+  }
+
+  function formatStructuredSyncMessage(step, err) {
+    if (!navigator.onLine) {
+      return 'You are offline. Reconnect and try again.';
+    }
+
+    const rawMessage = String(err?.message || '').trim();
+    if (err?.code === '42P10' || /no unique or exclusion constraint matching the ON CONFLICT specification/i.test(rawMessage)) {
+      return 'The live Supabase schema is missing the upsert constraint for this data. Re-run the latest schema.sql.';
+    }
+    if (err?.code === '42501' || /row-level security/i.test(rawMessage)) {
+      return 'Supabase rejected this request because this workspace does not have permission for that action.';
+    }
+    if (rawMessage) {
+      return rawMessage;
+    }
+    return `Cloud sync failed during ${step}.`;
+  }
+
+  function buildStructuredSyncResult(ok, options = {}) {
+    return {
+      ok: Boolean(ok),
+      failedStep: ok ? null : (options.failedStep || null),
+      message: options.message || (ok ? 'Saved to cloud.' : 'Cloud sync failed.'),
+      context: getStructuredSyncContext(options.context || {}),
+    };
+  }
+
+  function createStructuredSyncError(step, err, options = {}) {
+    const message = options.message || formatStructuredSyncMessage(step, err);
+    const syncError = err instanceof Error ? err : new Error(message);
+    syncError.message = message;
+    const syncResult = buildStructuredSyncResult(false, {
+      failedStep: step,
+      message,
+      context: {
+        operation: step,
+        errorCode: err?.code || null,
+        ...(options.context || {}),
+      },
+    });
+    syncError.syncResult = syncResult;
+    syncError.failedStep = step;
+    syncError.context = syncResult.context;
+    return syncError;
+  }
+
+  async function runStructuredSyncOperation(step, handler, options = {}) {
+    try {
+      if (!getOwnerId()) {
+        await ensureSupabaseSession({ silent: true, clearIfMissing: false });
+      }
+    } catch (err) {
+      const syncError = createStructuredSyncError(step, err, {
+        context: {
+          reason: 'session-refresh',
+          ...(options.context || {}),
+        },
+      });
+      captureSyncException(syncError, {
+        operation: step,
+        extra: options.extra || {},
+      });
+      updateSyncIndicator(navigator.onLine ? 'failed' : 'offline');
+      return syncError.syncResult;
+    }
+
+    if (!getOwnerId()) {
+      updateSyncIndicator(navigator.onLine ? 'failed' : 'offline');
+      return buildStructuredSyncResult(false, {
+        failedStep: step,
+        message: 'No active cloud session. Please sign in again.',
+        context: {
+          operation: step,
+          reason: 'no-session',
+          ...(options.context || {}),
+        },
+      });
+    }
+
+    if (!(await ensureWorkspaceReady({ promptOnSelection: false }))) {
+      updateSyncIndicator('failed');
+      return buildStructuredSyncResult(false, {
+        failedStep: step,
+        message: 'Workspace resolution failed. Try again in a moment.',
+        context: {
+          operation: step,
+          reason: 'workspace-unresolved',
+          ...(options.context || {}),
+        },
+      });
+    }
+
+    updateSyncIndicator('syncing');
+    try {
+      await refreshSessionIfNeeded({ minTtlSeconds: 90 });
+      await handler();
+      broadcastLocalSync(step);
+      updateSyncIndicator('synced');
+      if (options.showToast !== false) {
+        showSaveToast(true);
+      }
+      return buildStructuredSyncResult(true, {
+        message: options.successMessage || 'Saved to cloud.',
+        context: {
+          operation: step,
+          ...(options.context || {}),
+        },
+      });
+    } catch (err) {
+      const syncError = createStructuredSyncError(step, err, {
+        context: options.context || {},
+      });
+      captureSyncException(syncError, {
+        operation: step,
+        extra: options.extra || {},
+      });
+      updateSyncIndicator(navigator.onLine ? 'failed' : 'offline');
+      return syncError.syncResult;
+    }
+  }
+
+  async function saveBookings(bookings) {
+    return runStructuredSyncOperation('saveBookings', () => saveData({
+      bookings: Array.isArray(bookings) ? bookings : [],
+      expenses: [],
+      otherIncome: [],
+    }), {
+      showToast: false,
+      successMessage: 'Bookings saved to cloud.',
+      context: {
+        bookingCount: Array.isArray(bookings) ? bookings.length : 0,
+      },
+    });
+  }
+
+  async function saveExpenses(expenses) {
+    return runStructuredSyncOperation('saveExpenses', () => saveData({
+      bookings: [],
+      expenses: Array.isArray(expenses) ? expenses : [],
+      otherIncome: [],
+    }), {
+      showToast: false,
+      successMessage: 'Expenses saved to cloud.',
+      context: {
+        expenseCount: Array.isArray(expenses) ? expenses.length : 0,
+      },
+    });
+  }
+
+  async function saveOtherIncome(otherIncome) {
+    return runStructuredSyncOperation('saveOtherIncome', () => saveData({
+      bookings: [],
+      expenses: [],
+      otherIncome: Array.isArray(otherIncome) ? otherIncome : [],
+    }), {
+      showToast: false,
+      successMessage: 'Other income saved to cloud.',
+      context: {
+        otherIncomeCount: Array.isArray(otherIncome) ? otherIncome.length : 0,
+      },
+    });
+  }
+
+  async function saveArtists(artists) {
+    return runStructuredSyncOperation('saveArtists', () => saveArtistsData(artists), {
+      showToast: false,
+      successMessage: 'Artists saved to cloud.',
+      context: {
+        artistCount: Array.isArray(artists) ? artists.length : 0,
+      },
+    });
   }
 
   async function loadTasks() {
@@ -1741,6 +2237,42 @@ const SP_CURRENCIES = {
     }
   }
 
+  async function loadAllDataWithRetry(options = {}) {
+    const timeoutMs = typeof options.timeoutMs === 'number' ? options.timeoutMs : 30000;
+    const retries = typeof options.retries === 'number' ? options.retries : 1;
+    const label = options.label || 'loadAllData';
+    let lastError = null;
+
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+      try {
+        const fresh = await withTimeout(
+          () => loadAllData(),
+          timeoutMs,
+          attempt === 0 ? label : `${label}[retry-${attempt}]`
+        );
+        if (fresh) {
+          return fresh;
+        }
+      } catch (err) {
+        lastError = err;
+        warn('loadAllDataWithRetry failed:', err);
+      }
+
+      if (attempt < retries) {
+        try {
+          await refreshSessionIfNeeded({ minTtlSeconds: 0 });
+        } catch (refreshErr) {
+          warn('Session refresh before retry failed:', refreshErr);
+        }
+      }
+    }
+
+    if (lastError) {
+      throw lastError;
+    }
+    return null;
+  }
+
   async function refreshCloudData(options = {}) {
     if (!getOwnerId()) {
       await ensureSupabaseSession({ silent: true, clearIfMissing: true });
@@ -1774,7 +2306,7 @@ const SP_CURRENCIES = {
       }
       const shouldSync = Boolean(fresh) || !window.__spCloudOnly;
       if (shouldSync && typeof window.loadUserData === 'function') {
-        window.loadUserData();
+        window.loadUserData({ snapshot: fresh || undefined });
       }
       if (shouldSync && window.__spAppBooted) {
         if (typeof window.updateDashboard === 'function') window.updateDashboard();
@@ -1789,6 +2321,15 @@ const SP_CURRENCIES = {
       return fresh;
     } catch (err) {
       warn('refreshCloudData failed:', err);
+      captureSyncException(err, {
+        operation: 'refreshCloudData',
+        reason: options.reason || 'refresh-failed',
+        extra: {
+          force: Boolean(options.force),
+          silent: Boolean(options.silent),
+          minIntervalMs: minIntervalMs,
+        },
+      });
       if (!options.silent) {
         toastSafe('Warn', 'Cloud data refresh failed. Check your connection and try again.');
       }
@@ -1828,8 +2369,10 @@ const SP_CURRENCIES = {
       theme,
     } = payload || {};
 
+    let failedStep = 'saveAllData';
     try {
       if (Array.isArray(bookings) || Array.isArray(expenses) || Array.isArray(otherIncome)) {
+        failedStep = 'saveData';
         await saveData({
           bookings: Array.isArray(bookings) ? bookings : (window.bookings || []),
           expenses: Array.isArray(expenses) ? expenses : (window.expenses || []),
@@ -1838,36 +2381,64 @@ const SP_CURRENCIES = {
         didSave = true;
       }
       if (Array.isArray(artists)) {
-        await saveArtists(artists);
+        failedStep = 'saveArtists';
+        await saveArtistsData(artists);
         didSave = true;
       }
       if (Array.isArray(audienceMetrics)) {
+        failedStep = 'saveAudienceMetrics';
         await saveAudienceMetrics(audienceMetrics);
         didSave = true;
       }
       if (Array.isArray(tasks)) {
+        failedStep = 'saveTasks';
         await saveTasks(tasks);
         didSave = true;
       }
       if (revenueGoal) {
+        failedStep = 'saveRevenueGoal';
         await saveRevenueGoal(revenueGoal);
         didSave = true;
       }
       if (Array.isArray(bbfEntries)) {
+        failedStep = 'saveBBFEntries';
         await saveBBFEntries(bbfEntries);
         didSave = true;
       }
       if (Array.isArray(closingThoughts)) {
+        failedStep = 'saveClosingThoughts';
         await saveClosingThoughts(closingThoughts);
         didSave = true;
       }
       if (theme) {
+        failedStep = 'updateProfile';
         await updateProfile({ preferred_theme: theme });
         didSave = true;
       }
     } catch (err) {
+      const syncError = createStructuredSyncError(failedStep, err, {
+        context: {
+          operation: 'saveAllData',
+          bookingCount: Array.isArray(bookings) ? bookings.length : null,
+          expenseCount: Array.isArray(expenses) ? expenses.length : null,
+          otherIncomeCount: Array.isArray(otherIncome) ? otherIncome.length : null,
+          artistCount: Array.isArray(artists) ? artists.length : null,
+          taskCount: Array.isArray(tasks) ? tasks.length : null,
+        },
+      });
+      captureSyncException(syncError, {
+        operation: 'saveAllData',
+        extra: {
+          failedStep,
+          bookingCount: Array.isArray(bookings) ? bookings.length : null,
+          expenseCount: Array.isArray(expenses) ? expenses.length : null,
+          otherIncomeCount: Array.isArray(otherIncome) ? otherIncome.length : null,
+          artistCount: Array.isArray(artists) ? artists.length : null,
+          taskCount: Array.isArray(tasks) ? tasks.length : null,
+        },
+      });
       updateSyncIndicator(navigator.onLine ? 'failed' : 'offline');
-      throw err;
+      throw syncError;
     }
 
     if (didSave) {
@@ -1899,40 +2470,39 @@ const SP_CURRENCIES = {
     return _saveInFlight;
   }
 
+  async function runStructuredDelete(step, table, id) {
+    return runStructuredSyncOperation(step, async () => {
+      if (!id) {
+        throw new Error('Missing record id.');
+      }
+      const base = db.from(table).delete();
+      const isUuid = isCloudId(id);
+      let query = isUuid ? base.eq('id', id) : base.eq('legacy_id', String(id));
+      query = _activeTeamId
+        ? query.eq('team_id', _activeTeamId)
+        : query.eq('owner_id', getOwnerId()).is('team_id', null);
+      const { error } = await query;
+      throwIfSupabaseError(`${table} delete`, error);
+    }, {
+      showToast: false,
+      successMessage: 'Deleted from cloud.',
+      context: {
+        table,
+        recordId: id,
+      },
+    });
+  }
+
   async function deleteBooking(id) {
-    if (!id) return;
-    const base = db.from('bookings').delete();
-    const isUuid = isCloudId(id);
-    let query = isUuid ? base.eq('id', id) : base.eq('legacy_id', String(id));
-    query = _activeTeamId
-      ? query.eq('team_id', _activeTeamId)
-      : query.eq('owner_id', getOwnerId()).is('team_id', null);
-    const { error } = await query;
-    if (error) warn('Delete booking error:', error);
+    return runStructuredDelete('deleteBooking', 'bookings', id);
   }
 
   async function deleteExpense(id) {
-    if (!id) return;
-    const base = db.from('expenses').delete();
-    const isUuid = isCloudId(id);
-    let query = isUuid ? base.eq('id', id) : base.eq('legacy_id', String(id));
-    query = _activeTeamId
-      ? query.eq('team_id', _activeTeamId)
-      : query.eq('owner_id', getOwnerId()).is('team_id', null);
-    const { error } = await query;
-    if (error) warn('Delete expense error:', error);
+    return runStructuredDelete('deleteExpense', 'expenses', id);
   }
 
   async function deleteOtherIncome(id) {
-    if (!id) return;
-    const base = db.from('other_income').delete();
-    const isUuid = isCloudId(id);
-    let query = isUuid ? base.eq('id', id) : base.eq('legacy_id', String(id));
-    query = _activeTeamId
-      ? query.eq('team_id', _activeTeamId)
-      : query.eq('owner_id', getOwnerId()).is('team_id', null);
-    const { error } = await query;
-    if (error) warn('Delete other income error:', error);
+    return runStructuredDelete('deleteOtherIncome', 'other_income', id);
   }
 
   async function deleteArtist(id) {
@@ -1992,14 +2562,54 @@ const SP_CURRENCIES = {
     const accessToken = hashParams.get('access_token') || url.searchParams.get('access_token');
     const refreshToken = hashParams.get('refresh_token') || url.searchParams.get('refresh_token');
     const code = url.searchParams.get('code');
+    const oauthError = hashParams.get('error') || url.searchParams.get('error');
+    const oauthErrorCode = hashParams.get('error_code') || url.searchParams.get('error_code');
+    const oauthErrorDescription = hashParams.get('error_description') || url.searchParams.get('error_description');
+    const hadAuthCallback = Boolean(
+      accessToken ||
+      refreshToken ||
+      code ||
+      oauthError ||
+      oauthErrorCode ||
+      oauthErrorDescription
+    );
+    const finishWith = (status, overrides = {}) => ({
+      hadAuthCallback,
+      status,
+      shouldBootstrapStoredSession: overrides.shouldBootstrapStoredSession !== false,
+      ...overrides,
+    });
 
     // No OAuth params present — nothing to do.
-    if (!accessToken && !refreshToken && !code) return;
+    if (!hadAuthCallback) {
+      window.__spAuthRedirectInProgress = false;
+      return finishWith('none');
+    }
+
+    window.__spAuthRedirectInProgress = true;
+    setBootStateSafe('booting-auth');
 
     // Explicit OAuth callback always clears the "logged out" guard.
     localStorage.removeItem('sp_logged_out');
 
     try {
+      if (oauthError || oauthErrorCode || oauthErrorDescription) {
+        const errorMessage = oauthErrorDescription || oauthErrorCode || oauthError || 'Sign-in failed.';
+        clearSupabaseAuthArtifacts();
+        resetWorkspaceState();
+        _session = null;
+        _profile = null;
+        window.__spSuppressStoredSessionBootstrap = true;
+        showLoginScreen();
+        if (typeof window.toastError === 'function') {
+          window.toastError(errorMessage);
+        }
+        return finishWith('error', {
+          error: errorMessage,
+          shouldBootstrapStoredSession: false,
+        });
+      }
+
       let session = null;
       let exchangeError = null;
 
@@ -2029,37 +2639,54 @@ const SP_CURRENCIES = {
       }
 
       if (session) {
-        await bootstrapFromSupabaseSession(session, {
+        window.__spSuppressStoredSessionBootstrap = false;
+        await runBootstrapTask(() => bootstrapFromSupabaseSession(session, {
           remember: true,
           showWelcome: true,
-          runMigration: true,
+        }));
+        return finishWith('success', {
+          shouldBootstrapStoredSession: false,
         });
       } else {
         // Exchange failed AND no stored session — clear the loader and show login
         // so the user isn't stranded on a blank page after a bad OAuth redirect.
         warn('Auth redirect: no valid session recovered — showing login.');
-        if (typeof window.hideBootLoaderElement === 'function') window.hideBootLoaderElement();
-        if (typeof window.showLoginForm === 'function') window.showLoginForm();
+        clearSupabaseAuthArtifacts();
+        resetWorkspaceState();
+        _session = null;
+        _profile = null;
+        window.__spSuppressStoredSessionBootstrap = true;
+        showLoginScreen();
         if (typeof window.toastError === 'function') {
           window.toastError('Sign-in link expired or invalid. Please log in again.');
         }
+        return finishWith('error', {
+          error: exchangeError?.message || 'Sign-in link expired or invalid. Please log in again.',
+          shouldBootstrapStoredSession: false,
+        });
       }
 
     } catch (err) {
       warn('Auth redirect handling failed:', err);
-      // Safety net: always clear the loader even on unexpected throws.
-      if (typeof window.hideBootLoaderElement === 'function') window.hideBootLoaderElement();
-      if (!window.__spAppBooted && typeof window.showLoginForm === 'function') {
-        window.showLoginForm();
-      }
+      clearSupabaseAuthArtifacts();
+      resetWorkspaceState();
+      _session = null;
+      _profile = null;
+      window.__spSuppressStoredSessionBootstrap = true;
+      showLoginScreen();
+      return finishWith('error', {
+        error: err?.message || 'Sign-in failed. Please try again.',
+        shouldBootstrapStoredSession: false,
+      });
     } finally {
       // Always strip auth tokens from the URL regardless of outcome.
       url.hash = '';
-      ['access_token', 'refresh_token', 'type', 'token_type', 'expires_in', 'code'].forEach((key) => {
+      ['access_token', 'refresh_token', 'type', 'token_type', 'expires_in', 'code', 'error', 'error_code', 'error_description', 'state'].forEach((key) => {
         url.searchParams.delete(key);
       });
       const cleanUrl = url.pathname + url.search;
       window.history.replaceState({}, document.title, cleanUrl);
+      window.__spAuthRedirectInProgress = false;
     }
   }
 
@@ -2227,42 +2854,6 @@ const SP_CURRENCIES = {
       });
       return;
     }
-
-    // Ensure the local user registry exists for checkAuth() on fresh OAuth boots.
-    try {
-      const normalizeKey = (value) => String(value || '').trim().toLowerCase();
-      const storedUsers = JSON.parse(localStorage.getItem('starPaperUsers') || '[]');
-      const users = Array.isArray(storedUsers) ? storedUsers : [];
-      const existing = users.find((u) => normalizeKey(u?.username) === normalizeKey(normalized));
-      if (!existing) {
-        const userId = profileShape.id ? `mgr_${profileShape.id}` : `mgr_${normalizeKey(normalized)}`;
-        users.push({
-          id: userId,
-          username: normalized,
-          email: profileShape.email || '',
-          phone: profileShape.phone || '',
-          bio: '',
-          avatar: '',
-          createdAt: new Date().toISOString(),
-        });
-      } else {
-        existing.email = profileShape.email || existing.email || '';
-        existing.phone = profileShape.phone || existing.phone || '';
-      }
-      localStorage.setItem('starPaperUsers', JSON.stringify(users));
-    } catch (err) {
-      warn('Local user registry update failed:', err);
-    }
-
-    localStorage.setItem('starPaperRemember', JSON.stringify(Boolean(remember)));
-    localStorage.setItem('starPaperCurrentUser', JSON.stringify(Boolean(remember) ? normalized : null));
-    if (window.__spSupabaseConfigured && !window.__spAllowLocalFallback) {
-      localStorage.removeItem('starPaper_session');
-      localStorage.removeItem('starPaperSessionUser');
-    } else {
-      localStorage.setItem('starPaper_session', JSON.stringify('active'));
-      localStorage.setItem('starPaperSessionUser', JSON.stringify(normalized));
-    }
     window.currentUser = normalized;
   }
 
@@ -2270,12 +2861,15 @@ const SP_CURRENCIES = {
     log('bootstrap.start');
     const activeSession = session || _session || await getSession();
     if (!activeSession?.user) return false;
+    setBootStateSafe('booting-data');
 
     // Step C: A real authenticated user exists — clear the "explicitly logged out"
     // flag so that onAuthStateChange and checkAuth() can bootstrap normally from
     // this point forward. This is the only place we clear it, ensuring it always
     // takes effect on the very next successful login.
     localStorage.removeItem('sp_logged_out');
+    window.__spSuppressStoredSessionBootstrap = false;
+    window.__spAuthRedirectInProgress = false;
 
     _session = activeSession;
     await syncRealtimeAuthToken(activeSession);
@@ -2336,17 +2930,13 @@ const SP_CURRENCIES = {
       const workspace = await resolveActiveWorkspace({
         profile,
         teams,
-        promptOnSelection: true,
+        promptOnSelection: false,
       });
-
-      if (workspace?.needsSelection) {
-        return true;
-      }
 
       subscribeToCoreRealtime();
 
       try {
-        fresh = await withTimeout(() => loadAllData(), 30000, 'loadAllData');
+        fresh = await loadAllDataWithRetry({ timeoutMs: 30000, label: 'loadAllData', retries: 1 });
         log('bootstrap.data.done', { ok: Boolean(fresh), source: workspace?.source || 'unknown' });
       } catch (dataError) {
         warn('Cloud data bootstrap failed or timed out:', dataError);
@@ -2373,10 +2963,15 @@ const SP_CURRENCIES = {
         }
       }
 
+      if (!fresh) {
+        showBootErrorState('Cloud data could not load', 'Retry to reconnect to Star Paper, or log out and sign in again.');
+        return false;
+      }
+
       if (typeof window.loadUserData === 'function') {
         try {
           window.loadUserData({
-            allowLocalFallback: !navigator.onLine,
+            snapshot: fresh,
           });
         } catch (err) {
           warn('loadUserData failed:', err);
@@ -2387,8 +2982,31 @@ const SP_CURRENCIES = {
         window.showApp();
         log('bootstrap.uiReady');
       }
+      if (typeof window.restorePostBootUiState === 'function') {
+        try {
+          window.restorePostBootUiState();
+        } catch (err) {
+          warn('restorePostBootUiState failed:', err);
+        }
+      }
       if (options.showWelcome && typeof window.showWelcomeMessage === 'function') {
         window.showWelcomeMessage();
+      }
+
+      if (typeof window.setAppShellBootContext === 'function') {
+        window.setAppShellBootContext();
+      } else {
+        try {
+          sessionStorage.setItem(BOOT_CONTEXT_STORAGE_KEY, APP_SHELL_BOOT_CONTEXT);
+        } catch (_err) {}
+      }
+      window.__spBootContext = 'app-refresh';
+
+      if (typeof window.clearLegacyCloudDataKeys === 'function') {
+        window.clearLegacyCloudDataKeys();
+      }
+      if (typeof window.hideBootLoaderElement === 'function') {
+        window.hideBootLoaderElement();
       }
 
       if (window.__spAppBooted) {
@@ -2401,10 +3019,6 @@ const SP_CURRENCIES = {
         if (typeof window.renderTasks === 'function') window.renderTasks();
         if (typeof window.renderAudienceMetrics === 'function') window.renderAudienceMetrics();
       }
-
-      if (options.runMigration !== false) {
-        setTimeout(() => migrateLocalStorageData(), 2000);
-      }
     } finally {
       _refreshInFlight = false;
       window.__spCloudBootstrapPending = false;
@@ -2416,11 +3030,22 @@ const SP_CURRENCIES = {
   async function signInWithGoogle() {
     // If user explicitly logged out before, allow a fresh OAuth login.
     localStorage.removeItem('sp_logged_out');
+    window.__spSuppressStoredSessionBootstrap = false;
+    window.__spAuthRedirectInProgress = false;
+    try {
+      sessionStorage.setItem(BOOT_CONTEXT_STORAGE_KEY, AUTH_RETURN_BOOT_CONTEXT);
+    } catch (_err) {}
+    if (typeof window.setAuthReturnBootContext === 'function') {
+      window.setAuthReturnBootContext();
+    }
     const redirectTo = getSafeRedirectUrl({
       requireHttpOrigin: true,
       fallbackToProduction: false,
     });
     if (!redirectTo) {
+      try {
+        sessionStorage.removeItem(BOOT_CONTEXT_STORAGE_KEY);
+      } catch (_err) {}
       throw new Error('Google sign-in requires http://localhost or your deployed https:// URL. file:// cannot receive OAuth redirects.');
     }
     const { error } = await db.auth.signInWithOAuth({
@@ -2433,7 +3058,12 @@ const SP_CURRENCIES = {
         },
       }
     });
-    if (error) throw error;
+    if (error) {
+      try {
+        sessionStorage.removeItem(BOOT_CONTEXT_STORAGE_KEY);
+      } catch (_err) {}
+      throw error;
+    }
   }
 
   // Declarative action bridge used by data-action="signInWithGoogle".
@@ -2451,19 +3081,6 @@ const SP_CURRENCIES = {
     await db.auth.signOut();
     _session = null;
     _profile = null;
-    _activeTeamId = null;
-    _workspaceResolved = false;
-    _workspaceRequiresSelection = false;
-    _workspaceResolutionPromise = null;
-    window.__spCloudBootstrapPending = false;
-    window.__spWorkspaceSelectionRequired = false;
-    localStorage.removeItem('sp_active_team');
-    try {
-      sessionStorage.removeItem(TEAM_PROMPT_KEY);
-    } catch (_err) {}
-    setActiveTeamRole(null);
-    unsubscribeFromCoreRealtime();
-    unsubscribeFromTeamNotifications();
   }
 
   async function getSession() {
@@ -2502,8 +3119,110 @@ const SP_CURRENCIES = {
     return _profile;
   }
 
+  async function saveAccountProfile(payload = {}) {
+    return dbSerial(async () => {
+      const ownerId = getOwnerId();
+      if (!ownerId) {
+        throw new Error('No active cloud session. Please sign in again.');
+      }
+
+      const session = _session || await getSession();
+      const authUser = session?.user || null;
+      if (!authUser) {
+        throw new Error('Your session is not ready yet. Please try again.');
+      }
+
+      const currentProfile = _profile || await getProfile() || {};
+      const nextUsername = String(payload.username || currentProfile.username || '').trim();
+      if (!nextUsername) {
+        throw new Error('Username is required.');
+      }
+
+      const currentUsername = String(currentProfile.username || '').trim();
+      if (nextUsername !== currentUsername) {
+        const available = await isUsernameAvailable(nextUsername);
+        if (available !== true) {
+          if (available === false) {
+            throw new Error('That username is already in use.');
+          }
+          throw new Error('Could not verify username availability. Please try again.');
+        }
+      }
+
+      const currentEmail = String(authUser.email || currentProfile.email || '').trim();
+      const requestedEmail = String(payload.email || currentEmail || '').trim();
+      const requestedPassword = String(payload.password || '');
+      const nextPhone = String(payload.phone || '').trim();
+      const nextBio = String(payload.bio || '').trim();
+      const nextAvatar = String(payload.avatar || '').trim();
+
+      let updatedAuthUser = authUser;
+      let emailConfirmationPending = false;
+      let pendingEmail = '';
+
+      const authUpdates = {};
+      if (requestedEmail && requestedEmail !== currentEmail) {
+        authUpdates.email = requestedEmail;
+      }
+      if (requestedPassword) {
+        authUpdates.password = requestedPassword;
+      }
+
+      if (Object.keys(authUpdates).length) {
+        const { data, error } = await db.auth.updateUser(authUpdates);
+        throwIfSupabaseError('Account auth update', error);
+        updatedAuthUser = data?.user || updatedAuthUser;
+        pendingEmail = String(updatedAuthUser?.new_email || '').trim();
+        emailConfirmationPending = Boolean(
+          authUpdates.email &&
+          pendingEmail &&
+          pendingEmail !== String(updatedAuthUser?.email || '').trim()
+        );
+        if (_session?.user) {
+          _session = {
+            ..._session,
+            user: updatedAuthUser
+          };
+        }
+      }
+
+      const effectiveEmail = String(updatedAuthUser?.email || currentEmail || '').trim();
+      await updateProfile({
+        username: nextUsername,
+        email: effectiveEmail,
+        phone: nextPhone,
+        bio: nextBio,
+        avatar: nextAvatar
+      }, { throwOnError: true });
+
+      const freshProfile = await getProfile() || {
+        ...currentProfile,
+        username: nextUsername,
+        email: effectiveEmail,
+        phone: nextPhone,
+        bio: nextBio,
+        avatar: nextAvatar
+      };
+
+      return {
+        ok: true,
+        profile: freshProfile,
+        emailConfirmationPending,
+        pendingEmail,
+        message: emailConfirmationPending
+          ? `Profile updated. Confirm ${pendingEmail || requestedEmail} to finish the email change.`
+          : 'Profile updated.'
+      };
+    });
+  }
+
   // Auth state listener
   db.auth.onAuthStateChange(async (event, session) => {
+    if (window.__spAuthRedirectInProgress && !window.__spAppBooted) {
+      log('Deferring auth state event until redirect handling completes', { event });
+      return;
+    }
+
     // Guard: if the user explicitly logged out, do NOT re-bootstrap even if
     // the Supabase SDK fires INITIAL_SESSION with a stale token (e.g. because
     // the server-side revocation hasn't propagated yet). Clean up and bail out.
@@ -2522,17 +3241,32 @@ const SP_CURRENCIES = {
     }
  
 
+    if (!session?.user) {
+      const bootContext = getStartupBootContext();
+      const coldStartAnonymous = !window.__spAppBooted &&
+        event !== 'SIGNED_OUT' &&
+        bootContext === 'cold-start';
+      const signedOutState = await handleSignedOutSession({
+        notify: !coldStartAnonymous && event === 'SIGNED_OUT' && window.__spAppBooted,
+        reason: event === 'SIGNED_OUT' ? 'signed-out-event' : 'missing-session-event',
+        event,
+        confirm: !coldStartAnonymous && localStorage.getItem('sp_logged_out') !== '1',
+        destination: coldStartAnonymous ? 'landing' : 'login',
+        clearAuthArtifacts: coldStartAnonymous ? false : undefined,
+        suppressDiagnostics: coldStartAnonymous,
+      });
+      if (!signedOutState?.recovered) {
+        return;
+      }
+      session = signedOutState.session;
+    }
+
     _session = session;
     if (session?.user) {
       await syncRealtimeAuthToken(session);
       if (_workspaceResolved && !_workspaceRequiresSelection) {
         subscribeToCoreRealtime();
       }
-    } else {
-      await handleSignedOutSession({
-        notify: event === 'SIGNED_OUT' && window.__spAppBooted,
-      });
-      return;
     }
 
     // Always keep _profile warm on any session event.
@@ -2551,21 +3285,16 @@ const SP_CURRENCIES = {
     // Full bootstrap path: app not yet booted, not already in progress.
     const shouldBootstrap =
       Boolean(session) &&
+      !window.__spSuppressStoredSessionBootstrap &&
       !window.__spAppBooted &&
       !_bootstrapping &&
       (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED');
 
     if (shouldBootstrap) {
-      _bootstrapping = true;
-      try {
-        await bootstrapFromSupabaseSession(session, {
-          remember: true,
-          showWelcome: event === 'SIGNED_IN',
-          runMigration: true,
-        });
-      } finally {
-        _bootstrapping = false;
-      }
+      await runBootstrapTask(() => bootstrapFromSupabaseSession(session, {
+        remember: true,
+        showWelcome: event === 'SIGNED_IN',
+      }));
       return;
     }
 
@@ -2845,7 +3574,11 @@ const SP_CURRENCIES = {
     window.__spCloudBootstrapPending = true;
     _refreshInFlight = true;
     try {
-      fresh = await withTimeout(() => loadAllData(), timeoutMs, options.label || 'loadAllData[workspace]');
+      fresh = await loadAllDataWithRetry({
+        timeoutMs,
+        label: options.label || 'loadAllData[workspace]',
+        retries: 1,
+      });
     } catch (err) {
       warn('reloadForResolvedWorkspace failed:', err);
       if (!options.silent) {
@@ -2859,19 +3592,31 @@ const SP_CURRENCIES = {
     const meta = fresh?.__meta || null;
     if (fresh && meta) delete fresh.__meta;
 
+    if (!fresh && !window.__spAppBooted) {
+      showBootErrorState('Workspace refresh failed', 'Retry to reconnect to the cloud and reload your latest data.');
+      return null;
+    }
+
     if (fresh && window._SP_syncFromCloud) {
       window._SP_syncFromCloud(fresh);
     }
 
     if (typeof window.loadUserData === 'function') {
       window.loadUserData({
-        allowLocalFallback: !navigator.onLine,
+        snapshot: fresh,
       });
     }
 
     if (typeof window.showApp === 'function' && !window.__spAppBooted && options.forceShowApp !== false) {
       window.showApp();
       log('workspace.uiReady');
+    }
+    if (typeof window.restorePostBootUiState === 'function') {
+      try {
+        window.restorePostBootUiState();
+      } catch (err) {
+        warn('restorePostBootUiState failed:', err);
+      }
     }
 
     if (window.__spAppBooted) {
@@ -2887,10 +3632,6 @@ const SP_CURRENCIES = {
 
     if (options.showWelcome && typeof window.showWelcomeMessage === 'function') {
       window.showWelcomeMessage();
-    }
-
-    if (options.runMigration !== false) {
-      setTimeout(() => migrateLocalStorageData(), 2000);
     }
 
     return fresh;
@@ -2936,7 +3677,7 @@ const SP_CURRENCIES = {
       <div class="sp-team-panel">
         <div class="sp-team-panel-header">
           <h3>Team Workspace</h3>
-          <button class="sp-modal-close" onclick="document.getElementById('spTeamModal').style.display='none'">✕</button>
+          <button class="sp-modal-close" onclick="document.getElementById('spTeamModal').style.display='none'"><i class="ph ph-x" aria-hidden="true"></i></button>
         </div>
 
         <div class="sp-team-section">
@@ -2980,6 +3721,13 @@ const SP_CURRENCIES = {
   function buildTeamPanelHTML(teams, activeTeamId, members) {
     const activeTeam = teams.find(t => t.id === activeTeamId);
     const isOwner = activeTeam && activeTeam.owner_id === getOwnerId();
+    const personalWorkspaceHTML = `
+      <div class="sp-team-item ${!activeTeamId ? 'sp-team-item--active' : ''}"
+           onclick="window.SP.switchTeam('')">
+        <div class="sp-team-name">Personal Workspace</div>
+        <div class="sp-team-role">solo</div>
+      </div>
+    `;
 
     const membersHTML = members.length ? members.map(m => {
       const displayName = m.username || m.email || 'Member';
@@ -3020,11 +3768,12 @@ const SP_CURRENCIES = {
       <div class="sp-team-panel">
         <div class="sp-team-panel-header">
           <h3>Team Workspace</h3>
-          <button class="sp-modal-close" onclick="document.getElementById('spTeamModal').style.display='none'">âœ•</button>
+          <button class="sp-modal-close" onclick="document.getElementById('spTeamModal').style.display='none'"><i class="ph ph-x" aria-hidden="true"></i></button>
         </div>
 
         <div class="sp-team-section">
           <h4>My Teams</h4>
+          ${personalWorkspaceHTML}
           ${teamsHTML || '<p class="sp-muted">No teams yet</p>'}
           <div class="sp-team-actions">
             <button class="action-btn" onclick="window.SP.showCreateTeamForm()">+ Create Team</button>
@@ -3130,7 +3879,7 @@ const SP_CURRENCIES = {
         content.innerHTML = `
           <div class="sp-team-panel-header">
             <h3>Team Workspace</h3>
-            <button class="sp-modal-close" onclick="document.getElementById('spTeamModal').style.display='none'">✕</button>
+            <button class="sp-modal-close" onclick="document.getElementById('spTeamModal').style.display='none'"><i class="ph ph-x" aria-hidden="true"></i></button>
           </div>
           <p style="color:#ef4444;padding:16px 0;">
             ${isTimeout
@@ -3353,6 +4102,7 @@ const SP_CURRENCIES = {
       setLoading(true);
 
       try {
+        window.__spSuppressStoredSessionBootstrap = false;
         // If input looks like a username (no @), look up email from profile
         let email = nameOrEmail;
         if (!nameOrEmail.includes('@')) {
@@ -3370,11 +4120,9 @@ const SP_CURRENCIES = {
           usernameHint: nameOrEmail,
           remember: Boolean(document.getElementById('rememberMe')?.checked),
           showWelcome: true,
-          runMigration: true,
         });
         if (!booted) {
-          // Session was valid but bootstrap couldn't show the app — surface an error.
-          throw new Error('Login failed: could not initialise session.');
+          return;
         }
       } catch (err) {
         const errMsg = String(err?.message || '').toLowerCase();
@@ -3401,6 +4149,9 @@ const SP_CURRENCIES = {
         let msg = 'Invalid credentials. Please try again.';
         if (errMsg.includes('email not confirmed')) msg = 'Please check your email to confirm your account first.';
         if (errMsg.includes('invalid login credentials')) msg = 'Incorrect email or password.';
+        if (errMsg.includes('could not initialise session')) {
+          msg = 'Sign-in succeeded, but your cloud data could not load. Use Retry or log out.';
+        }
         if (typeof window.toastError === 'function') window.toastError(msg);
       } finally {
         // Guaranteed: spinner always stops, button always re-enables.
@@ -3421,6 +4172,7 @@ const SP_CURRENCIES = {
       }
 
       try {
+        window.__spSuppressStoredSessionBootstrap = false;
         const available = await isUsernameAvailable(name);
         if (available === false) {
           if (typeof window.toastError === 'function') {
@@ -3430,12 +4182,14 @@ const SP_CURRENCIES = {
         }
         const result = await signUp(name, email, pw, phone);
         if (result?.session) {
-          await bootstrapFromSupabaseSession(result.session, {
+          const booted = await bootstrapFromSupabaseSession(result.session, {
             usernameHint: name,
             remember: true,
             showWelcome: true,
-            runMigration: true,
           });
+          if (!booted) {
+            return;
+          }
           if (typeof window.toastSuccess === 'function') {
             window.toastSuccess('Account created and signed in.');
           }
@@ -3480,17 +4234,16 @@ const SP_CURRENCIES = {
     // ── SUPABASE LOGOUT ─────────────────────────────────────────────────────────
     window.logout = async function supabaseLogout() {
       // 1. Persist any unsaved work to localStorage first.
-      if (typeof window.saveUserData === 'function') window.saveUserData();
+      if (typeof window.saveUserData === 'function') {
+        try { await window.saveUserData(); } catch (_err) {}
+      }
 
       // 2. CRITICAL — Directly delete the Supabase SDK's own auth token from
       //    localStorage. The SDK stores it under a well-known key. This is
       //    synchronous and instant. Without this step, the SDK finds its own
       //    token on the next page load and fires onAuthStateChange('INITIAL_SESSION'),
       //    which re-boots the app even though the user logged out.
-      const _projectRef = SP_SUPABASE_URL.replace('https://', '').replace('.supabase.co', '');
-      localStorage.removeItem('sb-' + _projectRef + '-auth-token');
-      localStorage.removeItem('sb-' + _projectRef + '-auth-token-code-verifier');
-      localStorage.removeItem(SP_SUPABASE_STORAGE_KEY);
+      clearSupabaseAuthArtifacts({ clearAppSession: false });
 
       // 3. Set a persistent "explicitly logged out" flag.
       //    onAuthStateChange and checkAuth() both check this before bootstrapping.
@@ -3510,16 +4263,20 @@ const SP_CURRENCIES = {
 
       // 5. Reset runtime flag so a same-tab re-login works cleanly.
       window.__spAppBooted = false;
+      window.__spSuppressStoredSessionBootstrap = false;
+      window.__spAuthRedirectInProgress = false;
       _session = null;
       _profile = null;
       _retryQueue = [];
       persistRetryQueue();
       if (_retryTimer) { clearTimeout(_retryTimer); _retryTimer = null; }
-      unsubscribeFromCoreRealtime();
-      unsubscribeFromTeamNotifications();
+      resetWorkspaceState();
 
       // 6. Show landing page immediately — user doesn't wait for any network call.
-      if (typeof window.setActiveScreen === 'function') window.setActiveScreen('landingScreen');
+      if (typeof window.clearLegacyCloudDataKeys === 'function') {
+        window.clearLegacyCloudDataKeys();
+      }
+      showLoginScreen();
       if (typeof window.toastInfo === 'function') window.toastInfo('Logged out');
 
       // 7. Revoke the server-side token in the background (best-effort).
@@ -3531,14 +4288,17 @@ const SP_CURRENCIES = {
     const _origSaveUserData = window.saveUserData;
     window.saveUserData = async function supabaseSaveUserData() {
       // 1. Persist to localStorage immediately for offline resilience
-      if (typeof _origSaveUserData === 'function') _origSaveUserData();
-      if (window.__spLastCloudSyncPromise && typeof window.__spLastCloudSyncPromise.then === 'function') {
-        try {
-          await window.__spLastCloudSyncPromise;
-        } catch (_err) {
-          // syncCloudExtras already handled retry state and user feedback.
-        }
+      let result = null;
+      if (typeof _origSaveUserData === 'function') {
+        result = await _origSaveUserData();
       }
+      if (result) {
+        return result;
+      }
+      if (window.__spLastCloudSyncPromise && typeof window.__spLastCloudSyncPromise.then === 'function') {
+        return await window.__spLastCloudSyncPromise;
+      }
+      return { cloudSynced: false, skipped: true, queued: false };
     };
 
     log('App auth patched with Supabase');
@@ -3610,6 +4370,67 @@ const SP_CURRENCIES = {
     }
   }
 
+  async function bootstrapInitialSession(options = {}) {
+    if (_bootstrapPromise) {
+      try {
+        return await withTimeout(
+          _bootstrapPromise,
+          typeof options.inFlightTimeoutMs === 'number' ? options.inFlightTimeoutMs : 15000,
+          'bootstrapInitialSession[inflight]'
+        );
+      } catch (err) {
+        warn('Waiting for in-flight bootstrap failed:', err);
+        showBootErrorState('Session restore stalled', 'Retry to reconnect to Star Paper, or log out and sign in again.');
+        return false;
+      }
+    }
+    if (window.__spAuthRedirectInProgress) return false;
+    const quietIfNoSession = options.quietIfNoSession === true;
+    const loggedOutScreen = options.loggedOutScreen || 'login';
+    if (!quietIfNoSession) {
+      setBootStateSafe('booting-auth');
+    }
+    let session = null;
+    try {
+      session = await withTimeout(
+        () => getSession(),
+        typeof options.sessionTimeoutMs === 'number' ? options.sessionTimeoutMs : 8000,
+        'getSession[initial]'
+      );
+    } catch (err) {
+      warn('Initial session restore failed:', err);
+      if (quietIfNoSession && loggedOutScreen === 'landing') {
+        showLandingScreen();
+      } else {
+        showBootErrorState('Session restore took too long', 'Retry to reconnect to Star Paper, or log out and sign in again.');
+      }
+      return false;
+    }
+    if (!session?.user) {
+      if (loggedOutScreen === 'landing') {
+        showLandingScreen();
+      } else {
+        showLoginScreen();
+      }
+      return false;
+    }
+    setBootStateSafe('booting-auth');
+    return runBootstrapTask(() => bootstrapFromSupabaseSession(session, {
+      remember: true,
+      showWelcome: false,
+    }));
+  }
+
+  window.retryInitialCloudBootstrap = async function retryInitialCloudBootstrap() {
+    try {
+      setBootStateSafe('booting-data');
+      await bootstrapInitialSession();
+    } catch (err) {
+      warn('Retry bootstrap failed:', err);
+      showBootErrorState('Retry failed', err?.message || 'Please check your connection and try again.');
+    }
+  };
+
   function init() {
     setupSyncBridge();
     applyCurrency(_currency);
@@ -3622,15 +4443,27 @@ const SP_CURRENCIES = {
     // and the OAuth callback lands on the landing page instead of the dashboard.
     // We defer everything that calls bootstrapFromSupabaseSession to DOMContentLoaded.
     const onAppReady = () => {
+      const bootContext = getStartupBootContext();
+      const shouldShowBootLoader = bootContext === 'auth-callback' || bootContext === 'app-refresh';
       // Order matters: exchange the OAuth code FIRST, then check for a stored session.
       // exchangeCodeForSession writes to Supabase internal storage;
       // the subsequent getSession() call reads it back.
-      handleAuthRedirect().then(() => {
-        bootstrapFromStoredSession();
+      handleAuthRedirect().then((result) => {
+        if (result?.shouldBootstrapStoredSession === false) {
+          return;
+        }
+        bootstrapInitialSession({
+          quietIfNoSession: bootContext === 'cold-start',
+          loggedOutScreen: bootContext === 'cold-start' ? 'landing' : 'login',
+        });
       });
 
       setTimeout(patchAppAuth, 0);         // replace window.login/signup immediately
       setTimeout(injectSidebarButtons, 1200);
+
+      if (shouldShowBootLoader && typeof window.showBootLoaderElement === 'function') {
+        window.showBootLoaderElement();
+      }
     };
 
     if (document.readyState === 'loading') {
@@ -3644,22 +4477,7 @@ const SP_CURRENCIES = {
 
   // Separated from init() so it can be sequenced after handleAuthRedirect resolves.
   async function bootstrapFromStoredSession() {
-    if (window.__spAppBooted || _bootstrapping) return;
-    const session = await getSession();
-    if (!session) return;
-    _bootstrapping = true;
-    try {
-      const restored = await bootstrapFromSupabaseSession(session, {
-        remember: true,
-        showWelcome: false,
-        runMigration: true,
-      });
-      if (restored) {
-        log('Session restored for:', _profile?.username || session.user?.email || 'user');
-      }
-    } finally {
-      _bootstrapping = false;
-    }
+    return bootstrapInitialSession();
   }
 
 
@@ -3672,8 +4490,10 @@ const SP_CURRENCIES = {
     getSession,
     getProfile,
     updateProfile,
+    saveAccountProfile,
     signInWithGoogle,
     bootstrap:       bootstrapFromSupabaseSession,
+    bootstrapInitialSession,
     refreshSessionIfNeeded,
     resolveActiveWorkspace,
     persistActiveTeam,
@@ -3684,6 +4504,9 @@ const SP_CURRENCIES = {
     loadAllData,
     refreshCloudData,
     saveData,
+    saveBookings,
+    saveExpenses,
+    saveOtherIncome,
     saveAllData,
     queueCloudSync:  saveAllData,
     saveArtists,

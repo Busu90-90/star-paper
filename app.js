@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Star Paper - UI Initialization Engine
  */
 document.addEventListener('DOMContentLoaded', () => {
@@ -34,14 +34,135 @@ function initScrollAnimations() {
 }
 
 function hideBootLoaderElement() {
+    document.documentElement.classList.remove('sp-force-boot');
     const loader = document.getElementById('appBootLoader');
     if (!loader) return;
+    const actions = document.getElementById('appBootLoaderActions');
+    if (actions) {
+        actions.hidden = true;
+    }
     loader.classList.add('hidden');
-    setTimeout(() => {
-        if (loader && loader.parentElement) {
-            loader.remove();
-        }
-    }, 450);
+    loader.setAttribute('aria-hidden', 'true');
+}
+
+function showBootLoaderElement() {
+    document.documentElement.classList.add('sp-force-boot');
+    const loader = document.getElementById('appBootLoader');
+    if (!loader) return;
+    loader.classList.remove('hidden');
+    loader.setAttribute('aria-hidden', 'false');
+}
+
+const APP_BOOT_CONTEXT_STORAGE_KEY = 'sp_boot_context';
+const APP_BOOT_CONTEXT_APP_SHELL = 'app-shell';
+const APP_BOOT_CONTEXT_AUTH_RETURN = 'auth-return';
+
+function hasAuthCallbackParams(href = window.location.href) {
+    try {
+        const url = new URL(href);
+        const hashParams = new URLSearchParams((url.hash || '').replace(/^#/, ''));
+        return Boolean(
+            hashParams.get('access_token') ||
+            hashParams.get('refresh_token') ||
+            url.searchParams.get('access_token') ||
+            url.searchParams.get('refresh_token') ||
+            url.searchParams.get('code') ||
+            url.searchParams.get('error') ||
+            url.searchParams.get('error_code') ||
+            url.searchParams.get('error_description')
+        );
+    } catch (_err) {
+        return false;
+    }
+}
+
+function readBootContextMarker() {
+    try {
+        return sessionStorage.getItem(APP_BOOT_CONTEXT_STORAGE_KEY) || '';
+    } catch (_err) {
+        return '';
+    }
+}
+
+function setAppShellBootContext() {
+    try {
+        sessionStorage.setItem(APP_BOOT_CONTEXT_STORAGE_KEY, APP_BOOT_CONTEXT_APP_SHELL);
+    } catch (_err) {
+        // Ignore sessionStorage failures in private browsing / restrictive contexts.
+    }
+}
+
+function setAuthReturnBootContext() {
+    try {
+        sessionStorage.setItem(APP_BOOT_CONTEXT_STORAGE_KEY, APP_BOOT_CONTEXT_AUTH_RETURN);
+    } catch (_err) {
+        // Ignore sessionStorage failures in private browsing / restrictive contexts.
+    }
+}
+
+function clearAppShellBootContext() {
+    try {
+        sessionStorage.removeItem(APP_BOOT_CONTEXT_STORAGE_KEY);
+    } catch (_err) {
+        // Ignore sessionStorage failures in private browsing / restrictive contexts.
+    }
+}
+
+function getStartupBootContext() {
+    if (hasAuthCallbackParams()) {
+        return 'auth-callback';
+    }
+    const marker = readBootContextMarker();
+    if (marker === APP_BOOT_CONTEXT_AUTH_RETURN) {
+        return 'auth-callback';
+    }
+    return marker === APP_BOOT_CONTEXT_APP_SHELL ? 'app-refresh' : 'cold-start';
+}
+
+const BOOT_STATE_MESSAGES = {
+    'booting-auth': {
+        text: 'Checking your session...',
+        subtext: 'Loading Star Paper...'
+    },
+    'booting-data': {
+        text: 'Syncing your workspace...',
+        subtext: 'Fetching your latest cloud data.'
+    },
+    'auth-required': {
+        text: 'Sign in to continue',
+        subtext: 'Your session is not active right now.'
+    },
+    'boot-error': {
+        text: 'Cloud sync needs attention',
+        subtext: 'We could not load your workspace. Retry or log out.'
+    },
+    'ready': {
+        text: 'Ready',
+        subtext: ''
+    }
+};
+
+function setBootState(state, options = {}) {
+    const loader = document.getElementById('appBootLoader');
+    if (!loader) return;
+    const preset = BOOT_STATE_MESSAGES[state] || BOOT_STATE_MESSAGES['booting-auth'];
+    const nextText = options.text || preset.text;
+    const nextSubtext = options.subtext ?? preset.subtext;
+    const showActions = Boolean(options.showActions || state === 'boot-error');
+    loader.dataset.state = state;
+    showBootLoaderElement();
+
+    const textEl = document.getElementById('appBootLoaderText');
+    if (textEl) textEl.textContent = nextText;
+    const subtextEl = document.getElementById('appBootLoaderSubtext');
+    if (subtextEl) {
+        subtextEl.textContent = nextSubtext;
+        subtextEl.hidden = !nextSubtext;
+    }
+    const actionsEl = document.getElementById('appBootLoaderActions');
+    if (actionsEl) {
+        actionsEl.hidden = !showActions;
+    }
 }
 
 function markRootLayoutReady() {
@@ -50,32 +171,27 @@ function markRootLayoutReady() {
 }
 
 function initializeBootSequence() {
-    let completed = false;
-    const finishBoot = () => {
-        if (completed) return;
-        completed = true;
-        markRootLayoutReady();
-        hideBootLoaderElement();
-    };
+    markRootLayoutReady();
+    const bootContext = getStartupBootContext();
+    window.__spBootContext = bootContext;
 
-    if (document.readyState === 'complete') {
-        setTimeout(finishBoot, 180);
-    } else {
-        window.addEventListener('load', () => {
-            setTimeout(finishBoot, 180);
-        }, { once: true });
+    if (bootContext === 'auth-callback' || bootContext === 'app-refresh') {
+        setBootState('booting-auth');
+        return;
     }
 
-    // Fail-safe to avoid a blocked interface on slow or interrupted loads.
-    setTimeout(finishBoot, 2200);
+    hideBootLoaderElement();
+    if (typeof setActiveScreen === 'function') {
+        setActiveScreen('landingScreen');
+    }
 }
 
 function getSectionIconMarkup(iconKey) {
-        // All icons use Phosphor â€” <i class="ph ph-*"> for consistent rendering
+        // All icons use Phosphor Ã¢â‚¬â€ <i class="ph ph-*"> for consistent rendering
         const phClass = {
             money:      'ph-currency-circle-dollar',
             schedule:   'ph-calendar-blank',
-            dashboard:  'ph-squares-four',
+            dashboard:  'ph-house',
             artists:    'ph-microphone-stage',
             bookings:   'ph-calendar-check',
             financials: 'ph-chart-bar',
@@ -108,8 +224,18 @@ function getSectionIconMarkup(iconKey) {
             'starPaperClosingThoughtsByPeriod',
             'starPaperAudienceMetrics',
             'sp_tasks',
-            'starPaperTasks'
+            'starPaperTasks',
+            'starPaperUsers',
+            'starPaperCredentials',
+            'starPaperCurrentUser',
+            'starPaperRemember',
+            'starPaper_session',
+            'starPaperSessionUser',
+            'starPaperSchemaVersion',
+            'spManagers',
+            'spPendingUsers'
         ]);
+        const cloudOnlyStorageShadow = {};
         const closingThoughtsMemoryStore = {};
         function isCloudOnlyStorageKey(key) {
             return isCloudOnlyMode() && CLOUD_ONLY_STORAGE_KEYS.has(key);
@@ -118,7 +244,14 @@ function getSectionIconMarkup(iconKey) {
         const Storage = {
             saveSync(key, value) {
                 try {
-                    if (isCloudOnlyStorageKey(key)) return true;
+                    if (isCloudOnlyStorageKey(key)) {
+                        if (value === null || typeof value === 'undefined') {
+                            delete cloudOnlyStorageShadow[key];
+                        } else {
+                            cloudOnlyStorageShadow[key] = value;
+                        }
+                        return true;
+                    }
                     localStorage.setItem(key, JSON.stringify(value));
                     return true;
                 } catch (err) {
@@ -131,7 +264,11 @@ function getSectionIconMarkup(iconKey) {
             },
             loadSync(key, fallback = null) {
                 try {
-                    if (isCloudOnlyStorageKey(key)) return fallback;
+                    if (isCloudOnlyStorageKey(key)) {
+                        return Object.prototype.hasOwnProperty.call(cloudOnlyStorageShadow, key)
+                            ? cloudOnlyStorageShadow[key]
+                            : fallback;
+                    }
                     return JSON.parse(localStorage.getItem(key)) ?? fallback;
                 } catch {
                     return fallback;
@@ -145,9 +282,45 @@ function getSectionIconMarkup(iconKey) {
             }
         };
 
-        if (typeof window.runStarPaperMigrations === 'function') {
-            window.runStarPaperMigrations();
+        const LEGACY_CLOUD_RUNTIME_KEYS = [
+            'starPaperManagerData',
+            'starPaperBookings',
+            'starPaperExpenses',
+            'starPaperOtherIncome',
+            'starPaperArtists',
+            'starPaperRevenueGoals',
+            'starPaperBBF',
+            'starPaperClosingThoughtsByPeriod',
+            'starPaperAudienceMetrics',
+            'sp_tasks',
+            'starPaperTasks',
+            'starPaperUsers',
+            'starPaperCredentials',
+            'starPaperCurrentUser',
+            'starPaperRemember',
+            'starPaper_session',
+            'starPaperSessionUser',
+            'starPaperSchemaVersion',
+            'sp_active_team',
+            'spManagers',
+            'spPendingUsers'
+        ];
+
+        function clearLegacyCloudDataKeys() {
+            LEGACY_CLOUD_RUNTIME_KEYS.forEach((key) => {
+                delete cloudOnlyStorageShadow[key];
+                localStorage.removeItem(key);
+            });
         }
+
+        window.clearLegacyCloudDataKeys = clearLegacyCloudDataKeys;
+        window.setBootState = setBootState;
+        window.showBootLoaderElement = showBootLoaderElement;
+        window.hideBootLoaderElement = hideBootLoaderElement;
+        window.getStartupBootContext = getStartupBootContext;
+        window.setAppShellBootContext = setAppShellBootContext;
+        window.setAuthReturnBootContext = setAuthReturnBootContext;
+        window.clearAppShellBootContext = clearAppShellBootContext;
 
         function bindDeclarativeActionFallback() {
             if (window.__starPaperActionsBound || window.__starPaperFallbackActionsBound) return;
@@ -358,22 +531,15 @@ function getSectionIconMarkup(iconKey) {
 
 
         // Data Storage
-        let users = Storage.loadSync('starPaperUsers', []);
-        if (!Array.isArray(users)) users = [];
-        let artists = Storage.loadSync('starPaperArtists', []);
-        if (!Array.isArray(artists)) artists = [];
-        let managerData = Storage.loadSync('starPaperManagerData', {});
-        if (!managerData || typeof managerData !== 'object' || Array.isArray(managerData)) managerData = {};
-        let credentials = Storage.loadSync('starPaperCredentials', {});
-        if (!credentials || typeof credentials !== 'object' || Array.isArray(credentials)) credentials = {};
-        let revenueGoals = Storage.loadSync('starPaperRevenueGoals', {});
-        if (!revenueGoals || typeof revenueGoals !== 'object' || Array.isArray(revenueGoals)) revenueGoals = {};
-        let bbfData = Storage.loadSync('starPaperBBF', {});
-        if (!bbfData || typeof bbfData !== 'object' || Array.isArray(bbfData)) bbfData = {};
+        let users = [];
+        let artists = [];
+        let managerData = {};
+        let credentials = {};
+        let revenueGoals = {};
+        let bbfData = {};
         let bbfViewState = Storage.loadSync('starPaperBBFViewState', {});
         if (!bbfViewState || typeof bbfViewState !== 'object' || Array.isArray(bbfViewState)) bbfViewState = {};
-        let audienceMetricsStore = Storage.loadSync('starPaperAudienceMetrics', {});
-        if (!audienceMetricsStore || typeof audienceMetricsStore !== 'object' || Array.isArray(audienceMetricsStore)) audienceMetricsStore = {};
+        let audienceMetricsStore = {};
         let audienceMetrics = [];
         let currentUser = null;
         let currentManagerId = null;
@@ -407,6 +573,9 @@ function getSectionIconMarkup(iconKey) {
         }
 
         function refreshDataStoresFromStorage() {
+            if (window.__spCloudOnly) {
+                return;
+            }
             const loadedUsers = Storage.loadSync('starPaperUsers', []);
             users = Array.isArray(loadedUsers) ? loadedUsers : [];
             const loadedArtists = Storage.loadSync('starPaperArtists', []);
@@ -426,6 +595,9 @@ function getSectionIconMarkup(iconKey) {
         }
 
         function saveIdentityStores() {
+            if (window.__spCloudOnly) {
+                return;
+            }
             Storage.saveSync('starPaperUsers', users);
             Storage.saveSync('starPaperArtists', artists);
             Storage.saveSync('starPaperCredentials', credentials);
@@ -599,7 +771,30 @@ function getSectionIconMarkup(iconKey) {
         }
 
         function getCurrentUserRecord() {
-            return findUserByUsername(currentUser);
+            const profile = typeof window.SP?.getProfileState === 'function'
+                ? (window.SP.getProfileState() || null)
+                : null;
+            if (window.__spCloudOnly) {
+                return {
+                    id: profile?.id || window.SP?.getOwnerId?.() || null,
+                    username: profile?.username || currentUser || '',
+                    email: profile?.email || '',
+                    phone: profile?.phone || '',
+                    bio: profile?.bio || '',
+                    avatar: profile?.avatar || profile?.avatar_url || ''
+                };
+            }
+            const localRecord = findUserByUsername(currentUser);
+            if (!profile) return localRecord;
+            return {
+                ...localRecord,
+                id: profile.id || localRecord?.id || null,
+                username: profile.username || localRecord?.username || currentUser || '',
+                email: profile.email || localRecord?.email || '',
+                phone: profile.phone || localRecord?.phone || '',
+                bio: profile.bio || localRecord?.bio || '',
+                avatar: profile.avatar_url || profile.avatar || localRecord?.avatar || ''
+            };
         }
 
         function avatarDataUriFromSymbol(symbol) {
@@ -623,11 +818,34 @@ function getSectionIconMarkup(iconKey) {
 
         function resolveDisplayAvatar(user) {
             const raw = String(user?.avatar || '').trim();
-            if (!raw) return './logo.png';
+            if (!raw) return './logo-ui.png?v=21';
             if (raw.startsWith('data:image/') || raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('./') || raw.startsWith('/')) {
                 return raw;
             }
             return avatarDataUriFromSymbol(raw);
+        }
+
+        function isBrandLogoAsset(src) {
+            const value = String(src || '').trim().toLowerCase();
+            if (!value) return false;
+            return [
+                'logo-ui.png',
+                'logo-report.png',
+                'logo-192.png',
+                'logo-32.png',
+                'logo.png'
+            ].some((token) => value.includes(token));
+        }
+
+        function syncBrandMarkPresentation(img, src) {
+            if (!img) return;
+            const activeSrc = String(src || img.getAttribute('src') || img.src || '').trim();
+            const isBrandMark = isBrandLogoAsset(activeSrc);
+            img.classList.toggle('avatar-img--brand-mark', isBrandMark);
+            const frame = img.closest('.sidebar-avatar');
+            if (frame) {
+                frame.classList.toggle('sidebar-avatar--brand-mark', isBrandMark);
+            }
         }
 
         function resolveDisplayArtistAvatar(artist) {
@@ -668,12 +886,14 @@ function getSectionIconMarkup(iconKey) {
         function updateHeaderGreeting() {
             const userNameEl = document.getElementById('userName');
             if (!userNameEl) return;
-            if (!currentUser) {
+            const user = getCurrentUserRecord();
+            const displayName = String(user?.username || currentUser || '').trim();
+            if (!displayName) {
                 userNameEl.textContent = '';
                 userNameEl.style.display = 'none';
                 return;
             }
-            userNameEl.textContent = `Hi, ${currentUser}`;
+            userNameEl.textContent = `Hi, ${displayName}`;
             userNameEl.style.display = 'inline';
         }
 
@@ -687,10 +907,13 @@ function getSectionIconMarkup(iconKey) {
             const sidebarAvatar = document.getElementById('sidebarAvatarImg');
             if (sidebarAvatar) {
                 sidebarAvatar.src = avatarSrc;
+                syncBrandMarkPresentation(sidebarAvatar, avatarSrc);
             }
             const profilePreview = document.getElementById('profileAvatarPreview');
             if (profilePreview) {
-                profilePreview.src = pendingProfileAvatarValue || avatarSrc;
+                const previewSrc = pendingProfileAvatarValue || avatarSrc;
+                profilePreview.src = previewSrc;
+                syncBrandMarkPresentation(profilePreview, previewSrc);
             }
             updateHeaderGreeting();
         }
@@ -711,7 +934,11 @@ function getSectionIconMarkup(iconKey) {
             if (emailInput) emailInput.value = user.email || '';
             if (phoneInput) phoneInput.value = user.phone || '';
             if (bioInput) bioInput.value = user.bio || '';
-            if (avatarPreview) avatarPreview.src = resolveDisplayAvatar(user);
+            if (avatarPreview) {
+                const previewSrc = resolveDisplayAvatar(user);
+                avatarPreview.src = previewSrc;
+                syncBrandMarkPresentation(avatarPreview, previewSrc);
+            }
             profileModal.style.display = 'flex';
         }
 
@@ -740,7 +967,10 @@ function getSectionIconMarkup(iconKey) {
                 if (!result) return;
                 pendingProfileAvatarValue = result;
                 const preview = document.getElementById('profileAvatarPreview');
-                if (preview) preview.src = result;
+                if (preview) {
+                    preview.src = result;
+                    syncBrandMarkPresentation(preview, result);
+                }
             };
             reader.readAsDataURL(file);
         }
@@ -755,7 +985,10 @@ function getSectionIconMarkup(iconKey) {
             if (!avatarUri) return;
             pendingProfileAvatarValue = avatarUri;
             const preview = document.getElementById('profileAvatarPreview');
-            if (preview) preview.src = avatarUri;
+            if (preview) {
+                preview.src = avatarUri;
+                syncBrandMarkPresentation(preview, avatarUri);
+            }
         }
 
         async function saveProfileChanges() {
@@ -774,62 +1007,45 @@ function getSectionIconMarkup(iconKey) {
                     toastError('Username is required.');
                     return;
                 }
-                const conflictingUser = findUserByUsername(nextUsername) || findUserByUsernameInsensitive(nextUsername);
-                if (nextUsername !== oldUsername && conflictingUser && conflictingUser.username !== oldUsername) {
-                    toastError('That username is already in use.');
+                const nextAvatar = pendingProfileAvatarValue || user.avatar || '';
+                const saveBridge = window.SP?.saveAccountProfile;
+                if (typeof saveBridge !== 'function') {
+                    toastError('Profile sync is not ready yet. Please try again in a moment.');
                     return;
                 }
 
-                user.username = nextUsername;
-                user.email = nextEmail;
-                user.phone = nextPhone;
-                user.bio = nextBio;
-                if (pendingProfileAvatarValue) {
-                    user.avatar = pendingProfileAvatarValue;
+                const result = await saveBridge({
+                    username: nextUsername,
+                    email: nextEmail,
+                    phone: nextPhone,
+                    bio: nextBio,
+                    avatar: nextAvatar,
+                    password: nextPassword
+                });
+
+                if (!result?.profile) {
+                    toastError(result?.message || 'Could not save profile changes.');
+                    return;
                 }
 
-                const existingCred = (credentials[oldUsername] && typeof credentials[oldUsername] === 'object')
-                    ? credentials[oldUsername]
-                    : { createdAt: new Date().toISOString() };
-
-                let nextCredential = existingCred;
-                if (nextPassword) {
-                    if (!hasSecureCredentialCrypto()) {
-                        toastError('Secure password storage is not available in this browser.');
-                        return;
-                    }
-                    nextCredential = await createHashedCredentialRecord(nextPassword, existingCred);
-                } else if (!isHashedCredentialRecord(existingCred) && typeof existingCred.password === 'string' && existingCred.password) {
-                    if (hasSecureCredentialCrypto()) {
-                        try {
-                            nextCredential = await createHashedCredentialRecord(existingCred.password, existingCred);
-                        } catch (rehashError) {
-                            console.warn('Profile credential hardening skipped:', rehashError);
-                        }
-                    }
-                }
-
-                if (nextUsername !== oldUsername) {
-                    delete credentials[oldUsername];
-                }
-                credentials[nextUsername] = nextCredential;
-
-                if (nextUsername !== oldUsername) {
-                    currentUser = nextUsername;
-                    Storage.saveSync('starPaperSessionUser', currentUser);
-                    const remember = Storage.loadSync('starPaperRemember', false);
-                    Storage.saveSync('starPaperCurrentUser', remember ? currentUser : null);
-                }
-
-                saveIdentityStores();
+                currentUser = result.profile.username || nextUsername || currentUser;
+                window.currentUser = currentUser;
                 updateCurrentManagerContext();
                 markSearchIndexDirty();
                 refreshProfileUI();
+                const passwordInput = document.getElementById('profilePassword');
+                if (passwordInput) {
+                    passwordInput.value = '';
+                }
                 closeProfileModal();
-                toastSuccess('Profile updated');
+                if (result?.emailConfirmationPending) {
+                    toastSuccess(result.message || 'Profile updated. Confirm your new email to finish the email change.');
+                } else {
+                    toastSuccess(result?.message || 'Profile updated.');
+                }
             } catch (error) {
                 console.error('Profile save failed:', error);
-                toastError('Could not save profile changes.');
+                toastError(error?.message || 'Could not save profile changes.');
             }
         }
 
@@ -897,32 +1113,6 @@ function getSectionIconMarkup(iconKey) {
             return `${prefix}_${sanitizeIdChunk(seed, prefix)}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
         }
 
-        function getManagerData(managerId) {
-            const key = String(managerId || getActiveDataScopeKey() || '');
-            if (!key) {
-                return { bookings: [], expenses: [], otherIncome: [] };
-            }
-            if (!managerData[key] || typeof managerData[key] !== 'object') {
-                managerData[key] = { bookings: [], expenses: [], otherIncome: [] };
-            }
-            managerData[key].bookings = Array.isArray(managerData[key].bookings) ? managerData[key].bookings : [];
-            managerData[key].expenses = Array.isArray(managerData[key].expenses) ? managerData[key].expenses : [];
-            managerData[key].otherIncome = Array.isArray(managerData[key].otherIncome) ? managerData[key].otherIncome : [];
-            return managerData[key];
-        }
-
-        function saveManagerData(managerId, payload) {
-            const key = String(managerId || getActiveDataScopeKey() || '');
-            if (!key) return;
-            const normalized = {
-                bookings: Array.isArray(payload?.bookings) ? payload.bookings : [],
-                expenses: Array.isArray(payload?.expenses) ? payload.expenses : [],
-                otherIncome: Array.isArray(payload?.otherIncome) ? payload.otherIncome : []
-            };
-            managerData[key] = normalized;
-            Storage.saveSync('starPaperManagerData', managerData);
-        }
-
         function getAudienceMetricsForScope(scopeKey) {
             if (!scopeKey) return [];
             if (!audienceMetricsStore || typeof audienceMetricsStore !== 'object' || Array.isArray(audienceMetricsStore)) {
@@ -987,6 +1177,11 @@ function getSectionIconMarkup(iconKey) {
         }
 
         function updateCurrentManagerContext() {
+            const ownerId = typeof window.SP?.getOwnerId === 'function' ? window.SP.getOwnerId() : null;
+            if (ownerId) {
+                currentManagerId = ownerId;
+                return;
+            }
             const manager = findUserByUsername(currentUser);
             currentManagerId = manager?.id || null;
         }
@@ -1156,7 +1351,7 @@ function getSectionIconMarkup(iconKey) {
             saveRevenueGoalFromInput('financialsMonthlyGoalInput', 'financialsMonthlyGoalEditor');
         }
 
-        // â”€â”€ Balance Brought Forward (BBF) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Balance Brought Forward (BBF) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         const BBF_ARTIST_MARKER = '::artist::';
 
         function formatBBFMonthKey(date) {
@@ -1499,19 +1694,11 @@ function getSectionIconMarkup(iconKey) {
             syncCloudExtras();
             toastSuccess(`BBF saved for ${artist?.name || 'Roster'} (${formatBBFPeriodLabel(period)}).`);
         }
-        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
         function normalizeAllManagerBookingReferences() {
-            Object.keys(managerData || {}).forEach((managerId) => {
-                const data = getManagerData(managerId);
-                const managerHint = String(managerId || '').startsWith('team:') ? currentManagerId : managerId;
-                const normalizedBookings = ensureBookingArtistRefs(data.bookings, managerHint);
-                saveManagerData(managerId, {
-                    bookings: normalizedBookings,
-                    expenses: data.expenses,
-                    otherIncome: data.otherIncome
-                });
-            });
+            bookings = ensureBookingArtistRefs(bookings, currentManagerId);
+            window.bookings = bookings;
         }
 
         function getRecordSortTimestamp(item) {
@@ -1557,7 +1744,7 @@ function getSectionIconMarkup(iconKey) {
             if (window.__starPaperMainEventsBound) return;
             window.__starPaperMainEventsBound = true;
 
-            // â”€â”€ In-app navigation history stack â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ In-app navigation history stack Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             window._spNavStack = [];   // array of section names
             window._spNavIndex = -1;  // current position in stack
             window._spNavSkip = false; // flag: popstate-driven navigation, don't push
@@ -1577,7 +1764,7 @@ function getSectionIconMarkup(iconKey) {
             document.getElementById('hamburgerBtn')?.addEventListener('click', () => toggleSidebar());
             document.getElementById('sidebarOverlay')?.addEventListener('click', () => closeSidebar());
 
-            // â”€â”€ Back / Forward navigation buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Back / Forward navigation buttons Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             document.getElementById('navBackBtn')?.addEventListener('click', () => {
                 if (window._spNavIndex > 0) {
                     window._spNavIndex--;
@@ -1595,7 +1782,7 @@ function getSectionIconMarkup(iconKey) {
                 }
             });
 
-            // â”€â”€ Scroll-to-top FAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Scroll-to-top FAB Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             const scrollFab = document.getElementById('scrollTopFab');
             const mainContent = document.querySelector('.main-content');
             const showFab = () => {
@@ -1609,15 +1796,22 @@ function getSectionIconMarkup(iconKey) {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             });
 
-            // â”€â”€ Landing: sticky mini-nav on scroll â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Landing: sticky mini-nav on scroll Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             const landingEl = document.getElementById('landingScreen');
             const miniNav   = document.getElementById('landingMiniNav');
             if (landingEl && miniNav) {
-                landingEl.addEventListener('scroll', () => {
-                    const show = landingEl.scrollTop > 260;
+                const heroStage = document.getElementById('landingHeroStage');
+                const updateMiniNav = () => {
+                    const threshold = heroStage
+                        ? Math.max(220, Math.round(heroStage.offsetHeight * 0.45))
+                        : 260;
+                    const show = landingEl.scrollTop > threshold;
                     miniNav.classList.toggle('visible', show);
                     miniNav.setAttribute('aria-hidden', String(!show));
-                }, { passive: true });
+                };
+                landingEl.addEventListener('scroll', updateMiniNav, { passive: true });
+                window.addEventListener('resize', updateMiniNav, { passive: true });
+                updateMiniNav();
             }
             document.getElementById('landingThemeToggle')?.addEventListener('click', toggleTheme);
             document.getElementById('sidebarLightBtn')?.addEventListener('click', () => setTheme('light'));
@@ -1771,7 +1965,7 @@ function getSectionIconMarkup(iconKey) {
             // Supabase v2 uses the Web Locks API internally to coordinate auth token
             // refresh across tabs. When a new tab steals the lock, every other tab
             // gets an AbortError: "Lock broken by another request with the 'steal' option".
-            // This is non-fatal â€” the auth state self-heals â€” but without this handler
+            // This is non-fatal Ã¢â‚¬â€ the auth state self-heals Ã¢â‚¬â€ but without this handler
             // it surfaces as a red toast. We silence it here and log quietly instead.
             window.addEventListener('unhandledrejection', (event) => {
                 const err = event.reason;
@@ -1801,19 +1995,11 @@ function getSectionIconMarkup(iconKey) {
 
         // Seed demo data only when explicitly enabled and storage is empty.
         function initializeData() {
-            if (Object.keys(users).length > 0) return;
-            const shouldSeedDemo = localStorage.getItem('starPaperSeedDemo') === 'true';
-            if (!shouldSeedDemo) {
-                users = [];
-                artists = [];
-                managerData = {};
-                credentials = {};
-                Storage.saveSync('starPaperUsers', users);
-                Storage.saveSync('starPaperArtists', artists);
-                Storage.saveSync('starPaperManagerData', managerData);
-                Storage.saveSync('starPaperCredentials', credentials);
-                return;
-            }
+            users = [];
+            artists = [];
+            managerData = {};
+            credentials = {};
+            return;
             users = {
                     'Admin': {
                         password: 'admin123',
@@ -2333,20 +2519,10 @@ function getSectionIconMarkup(iconKey) {
                 Storage.saveSync('starPaperUsers', users);
         }
 
-        initializeData();
-        const usersShape = Storage.loadSync('starPaperUsers', []);
-        if (!Array.isArray(usersShape)) {
-            localStorage.setItem('starPaperSchemaVersion', '1');
-            if (typeof window.runStarPaperMigrations === 'function') {
-                window.runStarPaperMigrations();
-            }
-        }
-        refreshDataStoresFromStorage();
-        hardenCredentialStore().catch((error) => {
-            console.warn('Credential hardening failed:', error);
-        });
-        normalizeAllManagerBookingReferences();
-        checkAuth();
+        window.__spAppBooted = false;
+        window.currentUser = null;
+        window.currentManagerId = null;
+        setBootState('booting-auth');
 
         // Populate location dropdowns on page load
         function populateLocationDropdowns() {
@@ -2993,6 +3169,8 @@ function getSectionIconMarkup(iconKey) {
         }
 
 function showLoginForm() {
+            setBootState('auth-required');
+            hideBootLoaderElement();
             setActiveScreen('loginScreen');
             document.getElementById('loginForm').style.display = 'block';
             document.getElementById('signupForm').style.display = 'none';
@@ -3003,13 +3181,15 @@ function showLoginForm() {
             if (s) s.textContent = 'Sign in to continue to your dashboard.';
             const rememberMe = document.getElementById('rememberMe');
             if (rememberMe) {
-                rememberMe.checked = Storage.loadSync('starPaperRemember', false);
+                rememberMe.checked = false;
             }
             clearLoginValidation();
             setLoginLoading(false);
         }
 
         function showSignupForm() {
+            setBootState('auth-required');
+            hideBootLoaderElement();
             setActiveScreen('loginScreen');
             document.getElementById('signupForm').style.display = 'block';
             document.getElementById('loginForm').style.display = 'none';
@@ -3023,6 +3203,7 @@ function showLoginForm() {
         }
 
         function showLanding() {
+            hideBootLoaderElement();
             setActiveScreen('landingScreen');
             clearForms();
         }
@@ -3053,11 +3234,22 @@ function showLoginForm() {
         function ensureSessionUserExists(username, profile = {}) {
             const normalized = String(username || '').trim();
             if (!normalized) return null;
+            if (window.__spCloudOnly) {
+                return {
+                    id: profile.id || profile.user_id || window.SP?.getOwnerId?.() || null,
+                    username: normalized,
+                    email: profile.email || '',
+                    phone: profile.phone || '',
+                    bio: profile.bio || '',
+                    avatar: profile.avatar || profile.avatar_url || '',
+                    createdAt: new Date().toISOString()
+                };
+            }
             const existing = findUserByUsername(normalized) || findUserByUsernameInsensitive(normalized);
             if (existing) return existing;
 
             const user = {
-                id: createRuntimeId('mgr', normalized),
+                id: profile.id || profile.user_id || window.SP?.getOwnerId?.() || createRuntimeId('mgr', normalized),
                 username: normalized,
                 email: profile.email || '',
                 phone: profile.phone || '',
@@ -3076,17 +3268,6 @@ function showLoginForm() {
             ensureSessionUserExists(normalized, options.profile || {});
             currentUser = normalized;
             updateCurrentManagerContext();
-            const remember = Boolean(options.remember);
-            const cloudMode = Boolean(window.__spSupabaseConfigured) && !window.__spAllowLocalFallback;
-            Storage.saveSync('starPaperRemember', remember);
-            Storage.saveSync('starPaperCurrentUser', remember ? currentUser : null);
-            if (cloudMode) {
-                localStorage.removeItem('starPaper_session');
-                localStorage.removeItem('starPaperSessionUser');
-            } else {
-                Storage.saveSync('starPaper_session', 'active');
-                Storage.saveSync('starPaperSessionUser', currentUser);
-            }
             window.currentUser = currentUser;
             window.currentManagerId = currentManagerId;
             return true;
@@ -3095,12 +3276,9 @@ function showLoginForm() {
         function clearAuthSessionState() {
             currentUser = null;
             currentManagerId = null;
-            Storage.saveSync('starPaperCurrentUser', null);
-            Storage.saveSync('starPaperRemember', false);
-            localStorage.removeItem('starPaper_session');
-            localStorage.removeItem('starPaperSessionUser');
             window.currentUser = null;
             window.currentManagerId = null;
+            clearAppShellBootContext();
             // Reset boot flag so a same-tab re-login boots the full app cleanly.
             window.__spAppBooted = false;
         }
@@ -3111,57 +3289,19 @@ function showLoginForm() {
         window.addEventListener('storage', (event) => {
             const key = event?.key || '';
             if (!key) return;
-            const shouldSync =
-                key.startsWith('starPaper') ||
-                key.startsWith('sp_') ||
-                key.startsWith('sb-');
-            if (!shouldSync) return;
-            const authKeyChanged =
-                key.startsWith('sb-') ||
-                key === 'sp_logged_out' ||
-                key === 'starPaper_session' ||
-                key === 'starPaperSessionUser' ||
-                key === 'starPaperRemember' ||
-                key === 'starPaperCurrentUser';
-            if (authKeyChanged && typeof checkAuth === 'function') {
-                checkAuth();
-                if (!window.__spAppBooted) return;
-            }
-            if (
-                key === 'sp_active_team' &&
-                typeof window.SP?.reloadForResolvedWorkspace === 'function' &&
-                typeof window.SP?.getOwnerId === 'function' &&
-                window.SP.getOwnerId()
-            ) {
-                window.SP.reloadForResolvedWorkspace({
-                    forceShowApp: false,
-                    runMigration: false,
-                    silent: true
-                }).catch((err) => {
-                    console.warn('[StarPaper] workspace sync failed:', err);
-                });
-                return;
-            }
-            if (typeof loadUserData === 'function') {
-                loadUserData();
-            }
-            if (window.__spAppBooted) {
-                if (typeof updateDashboard === 'function') updateDashboard();
-                if (typeof renderBookings === 'function') renderBookings();
-                if (typeof renderExpenses === 'function') renderExpenses();
-                if (typeof renderOtherIncome === 'function') renderOtherIncome();
-                if (typeof renderArtists === 'function') renderArtists();
-                if (typeof renderAudienceMetrics === 'function') renderAudienceMetrics();
-                if (typeof updateTodayBoard === 'function') updateTodayBoard();
-                if (typeof window.renderTasks === 'function') window.renderTasks();
+            if (key === 'sp_logged_out' && event.newValue === '1') {
+                clearAuthSessionState();
+                if (typeof showLoginForm === 'function') {
+                    showLoginForm();
+                }
             }
         });
 
-        // â”€â”€ SAFE WINDOW EXPOSURE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ SAFE WINDOW EXPOSURE Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         // All functions below are global declarations (depth-0) and are already
         // on window automatically in browsers. We use ||= so app.actions.js (which
         // loads first) always wins if it defines its own version. We never override
-        // what another module already set â€” this prevents regression on every deploy.
+        // what another module already set Ã¢â‚¬â€ this prevents regression on every deploy.
 
         // Form show/open
         window.showAddExpense         ||= showAddExpense;
@@ -3287,11 +3427,11 @@ function showLoginForm() {
 
         window.exportAllData ||= function() {
             const data = {
-                bookings:    JSON.parse(localStorage.getItem('starPaperBookings')    || '[]'),
-                expenses:    JSON.parse(localStorage.getItem('starPaperExpenses')    || '[]'),
-                otherIncome: JSON.parse(localStorage.getItem('starPaperOtherIncome') || '[]'),
-                artists:     JSON.parse(localStorage.getItem('starPaperArtists')     || '[]'),
-                tasks:       JSON.parse(localStorage.getItem('sp_tasks')             || '[]'),
+                bookings: Array.isArray(bookings) ? bookings : [],
+                expenses: Array.isArray(expenses) ? expenses : [],
+                otherIncome: Array.isArray(otherIncome) ? otherIncome : [],
+                artists: Array.isArray(artists) ? artists : [],
+                tasks: typeof window.loadTasks === 'function' ? window.loadTasks() : [],
             };
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url  = URL.createObjectURL(blob);
@@ -3303,13 +3443,14 @@ function showLoginForm() {
         };
 
         window.clearAllData ||= function() {
-            if (!confirm('Delete ALL local data? This cannot be undone.')) return;
-            ['starPaperBookings','starPaperExpenses','starPaperOtherIncome',
-             'starPaperArtists','starPaperManagerData','sp_tasks',
-             'starPaperUsers','starPaperCredentials'
-            ].forEach(k => localStorage.removeItem(k));
-            if (typeof window.loadUserData === 'function') window.loadUserData();
-            if (typeof window.toastSuccess === 'function') window.toastSuccess('All local data cleared.');
+            if (!confirm('Clear legacy local cache and drafts on this device?')) return;
+            if (typeof window.clearLegacyCloudDataKeys === 'function') {
+                window.clearLegacyCloudDataKeys();
+            }
+            sessionStorage.removeItem('sp_dismissed_nudges');
+            if (typeof window.toastSuccess === 'function') {
+                window.toastSuccess('Local cache cleared.');
+            }
         };
 
         // Login System
@@ -3319,6 +3460,10 @@ function showLoginForm() {
         // all cloud auth. This function is only invoked when Supabase is unavailable
         // (offline, not configured, or network error). Do NOT add Supabase calls here.
         async function login() {
+            if (window.__spCloudOnly) {
+                toastError('Cloud login is managed by Supabase. Please try again in a moment.');
+                return;
+            }
             clearLoginValidation();
             const name = getInput('loginName');
             const password = getInput('loginPassword');
@@ -3340,7 +3485,7 @@ function showLoginForm() {
             try {
                 const remember = document.getElementById('rememberMe')?.checked;
 
-                // ── LOCAL FALLBACK (offline / Supabase not configured) ────────────────
+                // â”€â”€ LOCAL FALLBACK (offline / Supabase not configured) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 const user = findUserByUsername(name) || findUserByUsernameInsensitive(name);
                 const credMatch = (user ? findCredentialByUsername(user.username) : null) || findCredentialByUsername(name);
                 const cred = credMatch?.record;
@@ -3374,6 +3519,10 @@ function showLoginForm() {
         }
 
         async function signup() {
+            if (window.__spCloudOnly) {
+                toastError('Cloud signup is managed by Supabase. Please try again in a moment.');
+                return;
+            }
             try {
                 const name = document.getElementById('signupName').value.trim();
                 const password = document.getElementById('signupPassword').value;
@@ -3389,7 +3538,7 @@ function showLoginForm() {
                     return;
                 }
 
-                // ── SUPABASE PATH (primary) ───────────────────────────────────────────
+                // â”€â”€ SUPABASE PATH (primary) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 if (window.SP?.signup) {
                     try {
                         const data = await window.SP.signup(name, email, password, phone);
@@ -3398,7 +3547,7 @@ function showLoginForm() {
                             toastSuccess('Account created! Check your email to confirm before logging in.');
                         } else if (data?.session) {
                             toastSuccess('Account created! Welcome to Star Paper.');
-                            // Session is live — bootstrap will fire via onAuthStateChange.
+                            // Session is live â€” bootstrap will fire via onAuthStateChange.
                         } else {
                             toastSuccess('Account created! You can now log in.');
                         }
@@ -3415,7 +3564,7 @@ function showLoginForm() {
                     }
                 }
 
-                // ── LOCAL FALLBACK (offline / no Supabase) ────────────────────────────
+                // â”€â”€ LOCAL FALLBACK (offline / no Supabase) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 if (!hasSecureCredentialCrypto()) {
                     toastError('Secure password storage is not available in this browser.');
                     return;
@@ -3694,6 +3843,26 @@ function showLoginForm() {
             }
         }
 
+        function restorePostBootUiState() {
+            const allowedSections = new Set(['dashboard', 'money', 'schedule', 'artists', 'tasks', 'financials', 'expenses', 'otherIncome', 'reports', 'bookings', 'calendar']);
+            const lastSectionRaw = Storage.loadSync('starPaperLastSection', 'dashboard');
+            const lastMoneyTab = Storage.loadSync('starPaperLastMoneyTab', 'financials');
+            const lastScheduleTab = Storage.loadSync('starPaperLastScheduleTab', 'bookings');
+
+            let targetSection = allowedSections.has(lastSectionRaw) ? lastSectionRaw : 'dashboard';
+            if (targetSection === 'money') {
+                targetSection = allowedSections.has(lastMoneyTab) ? lastMoneyTab : 'financials';
+            } else if (targetSection === 'schedule') {
+                targetSection = allowedSections.has(lastScheduleTab) ? lastScheduleTab : 'bookings';
+            }
+
+            if (typeof showSection === 'function') {
+                showSection(targetSection);
+            }
+            restoreDrafts();
+        }
+        window.restorePostBootUiState = restorePostBootUiState;
+
         function toggleAdminOnlyUI() {
             const isAdmin = currentUser === 'Admin';
             document.querySelectorAll('.admin-only').forEach(el => {
@@ -3701,179 +3870,112 @@ function showLoginForm() {
             });
         }
 
+        function hasAuthenticatedCloudSession() {
+            return Boolean(window.__spSupabaseConfigured) &&
+                !window.__spAllowLocalFallback &&
+                Boolean(window.SP?.getOwnerId?.());
+        }
+
+        function syncWindowState() {
+            markSearchIndexDirty();
+            window.bookings = bookings;
+            window.expenses = expenses;
+            window.otherIncome = otherIncome;
+            window.artists = artists;
+            window.audienceMetrics = audienceMetrics;
+            window.revenueGoals = revenueGoals;
+            window.bbfData = bbfData;
+            window.currentManagerId = currentManagerId;
+            window.currentUser = currentUser;
+        }
+
+        function applyCloudSnapshotToRuntime(cloudData, activeScopeKey) {
+            if (!cloudData) {
+                syncWindowState();
+                return;
+            }
+
+            bookings = Array.isArray(cloudData.bookings)
+                ? ensureBookingArtistRefs(cloudData.bookings, currentManagerId)
+                : [];
+            expenses = Array.isArray(cloudData.expenses) ? cloudData.expenses : [];
+            otherIncome = Array.isArray(cloudData.otherIncome) ? cloudData.otherIncome : [];
+            artists = Array.isArray(cloudData.artists) ? cloudData.artists : [];
+
+            if (cloudData.revenueGoal && typeof cloudData.revenueGoal === 'object') {
+                const goalKey = getCurrentRevenueGoalKey();
+                const amount = Number(cloudData.revenueGoal.amount || 0);
+                revenueGoals[goalKey] = Number.isFinite(amount) ? amount : 0;
+                Storage.saveSync('starPaperRevenueGoals', revenueGoals);
+            }
+
+            if (Array.isArray(cloudData.bbfEntries)) {
+                Object.keys(bbfData).forEach((key) => {
+                    if (key.startsWith(`${activeScopeKey}_`)) delete bbfData[key];
+                });
+                cloudData.bbfEntries.forEach((entry) => {
+                    if (!entry?.period) return;
+                    bbfData[`${activeScopeKey}_${entry.period}`] = Number(entry.amount) || 0;
+                });
+                Storage.saveSync('starPaperBBF', bbfData);
+            }
+
+            if (Array.isArray(cloudData.closingThoughts)) {
+                const scopeKey = activeScopeKey || 'default';
+                const store = getClosingThoughtsStore();
+                const nextStore = {};
+                cloudData.closingThoughts.forEach((entry) => {
+                    if (!entry?.period) return;
+                    nextStore[entry.period] = String(entry.content || '');
+                });
+                store[scopeKey] = nextStore;
+                Storage.saveSync(CLOSING_THOUGHTS_STORAGE_KEY, store);
+            }
+
+            if (Array.isArray(cloudData.tasks) && typeof window.applyTaskSync === 'function') {
+                window.applyTaskSync(cloudData.tasks, { source: 'cloud', render: false });
+            }
+
+            audienceMetrics = Array.isArray(cloudData.audienceMetrics)
+                ? cloudData.audienceMetrics
+                : [];
+            saveAudienceMetricsForScope(activeScopeKey, audienceMetrics);
+
+            if (cloudData.theme && typeof applyTheme === 'function') {
+                applyTheme(cloudData.theme, { persist: false, syncRemote: false });
+            }
+
+            syncWindowState();
+        }
+
         function loadUserData(options = {}) {
             updateCurrentManagerContext();
             const activeScopeKey = getActiveDataScopeKey();
-            const authenticatedCloudSession =
-                Boolean(window.__spSupabaseConfigured) &&
-                !window.__spAllowLocalFallback &&
-                Boolean(window.SP?.getOwnerId?.());
-            const allowLocalFallback =
-                Boolean(options.allowLocalFallback) ||
-                !authenticatedCloudSession ||
-                !navigator.onLine;
-
-            // â”€â”€ SUPABASE: if cloud data was injected by supabase.js, use it â”€â”€â”€â”€â”€â”€â”€â”€
-            const cloudData = window._SP_cloudData;
-            if (cloudData) {
-                window._SP_cloudData = null; // consume it
-                const localFallback = getManagerData(activeScopeKey);
-                const fallbackBookings = ensureBookingArtistRefs(localFallback.bookings || [], currentManagerId);
-                const fallbackExpenses = Array.isArray(localFallback.expenses) ? localFallback.expenses : [];
-                const fallbackOtherIncome = Array.isArray(localFallback.otherIncome) ? localFallback.otherIncome : [];
-
-                bookings = Array.isArray(cloudData.bookings)
-                    ? cloudData.bookings
-                    : (allowLocalFallback ? fallbackBookings : []);
-                expenses = Array.isArray(cloudData.expenses)
-                    ? cloudData.expenses
-                    : (allowLocalFallback ? fallbackExpenses : []);
-                otherIncome = Array.isArray(cloudData.otherIncome)
-                    ? cloudData.otherIncome
-                    : (allowLocalFallback ? fallbackOtherIncome : []);
-                if (Array.isArray(cloudData.artists)) {
-                    artists = cloudData.artists;
-                    Storage.saveSync('starPaperArtists', artists);
-                }
-                if (cloudData.revenueGoal && typeof cloudData.revenueGoal === 'object') {
-                    const goalKey = getCurrentRevenueGoalKey();
-                    const amount = Number(cloudData.revenueGoal.amount || 0);
-                    revenueGoals[goalKey] = Number.isFinite(amount) ? amount : 0;
-                    Storage.saveSync('starPaperRevenueGoals', revenueGoals);
-                }
-                if (Array.isArray(cloudData.bbfEntries)) {
-                    const scopeKey = activeScopeKey;
-                    Object.keys(bbfData).forEach((key) => {
-                        if (key.startsWith(`${scopeKey}_`)) delete bbfData[key];
-                    });
-                    cloudData.bbfEntries.forEach((entry) => {
-                        if (!entry?.period) return;
-                        const amount = Number(entry.amount) || 0;
-                        bbfData[`${scopeKey}_${entry.period}`] = amount;
-                    });
-                    Storage.saveSync('starPaperBBF', bbfData);
-                }
-                if (Array.isArray(cloudData.closingThoughts)) {
-                    const scopeKey = activeScopeKey || 'default';
-                    const store = getClosingThoughtsStore();
-                    const nextStore = {};
-                    cloudData.closingThoughts.forEach((entry) => {
-                        if (!entry?.period || !entry?.content) return;
-                        nextStore[entry.period] = String(entry.content);
-                    });
-                    store[scopeKey] = nextStore;
-                    Storage.saveSync(CLOSING_THOUGHTS_STORAGE_KEY, store);
-                }
-                if (Array.isArray(cloudData.tasks) && typeof window.applyTaskSync === 'function') {
-                    window.applyTaskSync(cloudData.tasks, { source: 'cloud' });
-                }
-                if (Array.isArray(cloudData.audienceMetrics)) {
-                    audienceMetrics = cloudData.audienceMetrics;
-                    saveAudienceMetricsForScope(activeScopeKey, audienceMetrics);
-                } else {
-                    audienceMetrics = getAudienceMetricsForScope(activeScopeKey);
-                }
-                if (cloudData.theme && typeof applyTheme === 'function') {
-                    applyTheme(cloudData.theme, { persist: false });
-                }
-                // Also persist to localStorage as offline cache
-                saveManagerData(activeScopeKey, { bookings, expenses, otherIncome });
-            } else {
-                const cloudBootPending = Boolean(window.__spCloudBootstrapPending);
-                const shouldUseLocalFallback = allowLocalFallback && (!authenticatedCloudSession || !cloudBootPending);
-                if (shouldUseLocalFallback) {
-                // â”€â”€ FALLBACK: local storage (offline or pre-migration) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-                const data = getManagerData(activeScopeKey);
-                bookings    = ensureBookingArtistRefs(data.bookings, currentManagerId);
-                expenses    = Array.isArray(data.expenses)    ? data.expenses    : [];
-                otherIncome = Array.isArray(data.otherIncome) ? data.otherIncome : [];
-                audienceMetrics = getAudienceMetricsForScope(activeScopeKey);
-                purgeRetiredArtistsForCurrentManager();
-                saveManagerData(activeScopeKey, { bookings, expenses, otherIncome });
-                }
-            }
-
-            markSearchIndexDirty();
-            // Expose to window for other modules and for supabase.js
-            window.bookings     = bookings;
-            window.expenses     = expenses;
-            window.otherIncome  = otherIncome;
-            window.artists      = artists;
-            window.audienceMetrics = audienceMetrics;
-            window.revenueGoals = revenueGoals;
-            window.bbfData      = bbfData;
-            window.currentManagerId = currentManagerId;
-            window.currentUser  = currentUser;
-
-            // â”€â”€ Sync bridge: lets supabase.js inject fresh cloud data any time â”€â”€â”€â”€
+            const initialSnapshot = options.snapshot || window._SP_cloudData || null;
+            window._SP_cloudData = null;
+            applyCloudSnapshotToRuntime(initialSnapshot, activeScopeKey);
             window._SP_syncFromCloud = function(data) {
-                window._SP_cloudData = null;
-                if (Array.isArray(data.bookings))    { bookings    = data.bookings;    window.bookings    = bookings; }
-                if (Array.isArray(data.expenses))    { expenses    = data.expenses;    window.expenses    = expenses; }
-                if (Array.isArray(data.otherIncome)) { otherIncome = data.otherIncome; window.otherIncome = otherIncome; }
-                if (Array.isArray(data.artists))     { artists     = data.artists;     window.artists     = artists; }
-                if (data.revenueGoal && typeof data.revenueGoal === 'object') {
-                    const goalKey = getCurrentRevenueGoalKey();
-                    const amount = Number(data.revenueGoal.amount || 0);
-                    revenueGoals[goalKey] = Number.isFinite(amount) ? amount : 0;
-                    Storage.saveSync('starPaperRevenueGoals', revenueGoals);
-                }
-                if (Array.isArray(data.bbfEntries)) {
-                    const scopeKey = getActiveDataScopeKey();
-                    Object.keys(bbfData).forEach((key) => {
-                        if (key.startsWith(`${scopeKey}_`)) delete bbfData[key];
-                    });
-                    data.bbfEntries.forEach((entry) => {
-                        if (!entry?.period) return;
-                        const amount = Number(entry.amount) || 0;
-                        bbfData[`${scopeKey}_${entry.period}`] = amount;
-                    });
-                    Storage.saveSync('starPaperBBF', bbfData);
-                }
-                if (Array.isArray(data.closingThoughts)) {
-                    const scopeKey = getActiveDataScopeKey() || 'default';
-                    const store = getClosingThoughtsStore();
-                    const nextStore = {};
-                    data.closingThoughts.forEach((entry) => {
-                        if (!entry?.period || !entry?.content) return;
-                        nextStore[entry.period] = String(entry.content);
-                    });
-                    store[scopeKey] = nextStore;
-                    Storage.saveSync(CLOSING_THOUGHTS_STORAGE_KEY, store);
-                }
-                if (Array.isArray(data.tasks) && typeof window.applyTaskSync === 'function') {
-                    window.applyTaskSync(data.tasks, { source: 'cloud' });
-                }
-                if (Array.isArray(data.audienceMetrics)) {
-                    audienceMetrics = data.audienceMetrics;
-                    window.audienceMetrics = audienceMetrics;
-                    saveAudienceMetricsForScope(getActiveDataScopeKey(), audienceMetrics);
-                }
-                if (data.theme && typeof applyTheme === 'function') {
-                    applyTheme(data.theme, { persist: false });
-                }
-                saveManagerData(getActiveDataScopeKey(), { bookings, expenses, otherIncome });
-                markSearchIndexDirty();
+                applyCloudSnapshotToRuntime(data, getActiveDataScopeKey());
             };
         }
 
-        function saveUserData() {
-            if (currentUser && currentManagerId) {
-                bookings = ensureBookingArtistRefs(bookings, currentManagerId);
-                saveManagerData(getActiveDataScopeKey(), { bookings, expenses, otherIncome });
-                markSearchIndexDirty();
-                // Update window references
-                window.bookings    = bookings;
-                window.expenses    = expenses;
-                window.otherIncome = otherIncome;
-                window.artists     = artists;
-                window.audienceMetrics = audienceMetrics;
-                window.revenueGoals = revenueGoals;
-                window.bbfData      = bbfData;
-                // Cloud sync: push all data (bookings, expenses, income, artists,
-                // tasks, goals, BBF, closing thoughts) to Supabase in the background.
-                syncCloudExtras();
+        async function saveUserData() {
+            if (!(currentUser && currentManagerId)) {
+                return { cloudSynced: false, skipped: true, queued: false };
             }
+            bookings = ensureBookingArtistRefs(bookings, currentManagerId);
+            markSearchIndexDirty();
+            // Update window references
+            window.bookings    = bookings;
+            window.expenses    = expenses;
+            window.otherIncome = otherIncome;
+            window.artists     = artists;
+            window.audienceMetrics = audienceMetrics;
+            window.revenueGoals = revenueGoals;
+            window.bbfData      = bbfData;
+            // Cloud sync: push all data (bookings, expenses, income, artists,
+            // tasks, goals, BBF, closing thoughts) to Supabase.
+            return await syncCloudExtras();
         }
 
         window.SP_collectAllData = function collectAllData() {
@@ -3923,17 +4025,79 @@ function showLoginForm() {
         };
 
         function syncCloudExtras() {
-            if (typeof window.SP?.queueCloudSync !== 'function' && typeof window.SP?.saveAllData !== 'function') return;
-            if (typeof window.SP_collectAllData !== 'function') return;
+            if (!hasAuthenticatedCloudSession()) {
+                window.__spLastCloudSyncPromise = Promise.resolve({
+                    cloudSynced: false,
+                    skipped: true,
+                    queued: false,
+                    reason: 'no-cloud-session'
+                });
+                return window.__spLastCloudSyncPromise;
+            }
+            if (typeof window.SP?.queueCloudSync !== 'function' && typeof window.SP?.saveAllData !== 'function') {
+                window.__spLastCloudSyncPromise = Promise.resolve({
+                    cloudSynced: false,
+                    skipped: true,
+                    queued: false,
+                    reason: 'no-save-function'
+                });
+                return window.__spLastCloudSyncPromise;
+            }
+            if (typeof window.SP_collectAllData !== 'function') {
+                window.__spLastCloudSyncPromise = Promise.resolve({
+                    cloudSynced: false,
+                    skipped: true,
+                    queued: false,
+                    reason: 'no-payload-collector'
+                });
+                return window.__spLastCloudSyncPromise;
+            }
             const payload = window.SP_collectAllData();
             const saveFn = window.SP.queueCloudSync || window.SP.saveAllData;
-            window.__spLastCloudSyncPromise = Promise.resolve(saveFn(payload)).catch((err) => {
+            window.__spLastCloudSyncPromise = Promise.resolve(saveFn(payload)).then(() => ({
+                cloudSynced: true,
+                skipped: false,
+                queued: false,
+                payload
+            })).catch((err) => {
                 console.warn('Cloud sync failed:', err);
-                if (typeof window.SP?.enqueueSave === 'function') {
-                    window.SP.enqueueSave(payload);
-                }
-                return null;
+                return {
+                    cloudSynced: false,
+                    skipped: false,
+                    queued: false,
+                    error: err,
+                    payload
+                };
             });
+            return window.__spLastCloudSyncPromise;
+        }
+
+        function getCloudFailureMessage(result, fallback) {
+            if (!result) return fallback || 'Cloud save failed.';
+            return result.message || result.error?.message || fallback || 'Cloud save failed.';
+        }
+
+        async function persistMutationWithCloudFeedback(operation, options = {}) {
+            let result = null;
+            if (typeof operation === 'function') {
+                result = await operation();
+            } else if (operation && typeof operation.then === 'function') {
+                result = await operation;
+            } else {
+                result = await saveUserData();
+            }
+
+            if (result?.ok || result?.cloudSynced) {
+                if (!options.suppressSuccessToast) {
+                    toastSuccess(options.successMessage || 'Saved to cloud!');
+                }
+                return result;
+            }
+
+            const message = getCloudFailureMessage(result, options.failureMessage);
+            const error = result?.error instanceof Error ? result.error : new Error(message);
+            error.syncResult = result || null;
+            throw error;
         }
 
         function getNextNumericRecordId(records) {
@@ -4538,6 +4702,16 @@ function showLoginForm() {
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.getElementById(parentSection)?.classList.add('active');
             Storage.saveSync('starPaperLastSection', section);
+            if (['financials', 'expenses', 'otherIncome', 'reports'].includes(section)) {
+                Storage.saveSync('starPaperLastMoneyTab', section);
+            } else if (section === 'money') {
+                Storage.saveSync('starPaperLastMoneyTab', Storage.loadSync('starPaperLastMoneyTab', 'financials'));
+            }
+            if (['bookings', 'calendar'].includes(section)) {
+                Storage.saveSync('starPaperLastScheduleTab', section);
+            } else if (section === 'schedule') {
+                Storage.saveSync('starPaperLastScheduleTab', Storage.loadSync('starPaperLastScheduleTab', 'bookings'));
+            }
 
             // Scroll to top on every section change
             window.scrollTo({ top: 0, behavior: 'instant' });
@@ -4548,7 +4722,7 @@ function showLoginForm() {
             const target = el || null;
             target?.classList.add('active');
 
-            // â”€â”€ Push to in-app navigation history stack â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Push to in-app navigation history stack Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             if (!window._spNavSkip) {
                 if (window._spNavStack) {
                     window._spNavStack = window._spNavStack.slice(0, window._spNavIndex + 1);
@@ -4559,13 +4733,13 @@ function showLoginForm() {
             }
             window._spNavSkip = false;
 
-            // â”€â”€ Sync bottom nav (map sub-sections to parent nav entry) â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Sync bottom nav (map sub-sections to parent nav entry) Ã¢â€â‚¬Ã¢â€â‚¬
             const navKey = NAV_SECTION_MAP[section] || section;
             document.querySelectorAll('.bottom-nav-item').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.section === navKey);
             });
 
-            // â”€â”€ Sync sidebar nav active state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Sync sidebar nav active state Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             document.querySelectorAll('.nav-item[data-section]').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.section === navKey);
             });
@@ -4588,13 +4762,13 @@ function showLoginForm() {
             const titles = {
                 'dashboard':  'Dashboard',
                 'money':      'Money',
-                'financials': 'Money â€” Overview',
+                'financials': 'Money - Overview',
                 'artists':    'Artists',
                 'schedule':   'Schedule',
-                'bookings':   'Schedule â€” Bookings',
-                'expenses':   'Money â€” Expenses',
-                'otherIncome':'Money â€” Other Income',
-                'calendar':   'Schedule â€” Calendar',
+                'bookings':   'Schedule - Bookings',
+                'expenses':   'Money - Expenses',
+                'otherIncome':'Money - Other Income',
+                'calendar':   'Schedule - Calendar',
                 'reports':    'Reports',
                 'tasks':      'Tasks',
             };
@@ -4651,131 +4825,14 @@ function showLoginForm() {
         }
 
         function checkAuth() {
-            // Guard: if the user explicitly clicked logout, respect that choice.
-            // Even if localStorage still has remember=true or a session key, we
-            // must NOT auto-boot the app. The user will need to log in again.
-            // This flag is set by supabaseLogout() and cleared by bootstrapFromSupabaseSession()
-            // on the next successful login.
-            if (localStorage.getItem('sp_logged_out') === '1') {
-                // Still show landing — not the login form, not the app.
-                if (typeof setActiveScreen === 'function') setActiveScreen('landingScreen');
-                return;
+            if (window.__spCloudBootstrapPending || window.__spSupabaseBootPromise || window.__spAuthRedirectInProgress) {
+                setBootState('booting-auth');
             }
-
-            const sessionActive = Storage.loadSync('starPaper_session', null) === 'active';
-            const sessionUser = Storage.loadSync('starPaperSessionUser', null);
-            const remember = Storage.loadSync('starPaperRemember', false);
-            const rememberedUser = Storage.loadSync('starPaperCurrentUser', null);
-
-            let savedUser = sessionActive ? sessionUser : (remember ? rememberedUser : null);
-            let savedRecord = savedUser ? (findUserByUsername(savedUser) || findUserByUsernameInsensitive(savedUser)) : null;
-
-            if (savedUser && !savedRecord) {
-                const profileHint = window.SP?.getProfileState?.() || {};
-                savedRecord = ensureSessionUserExists(savedUser, profileHint) || null;
-            }
-
-            const cloudMode = Boolean(window.__spSupabaseConfigured) && !window.__spAllowLocalFallback;
-            if (cloudMode) {
-                if (sessionActive) {
-                    localStorage.removeItem('starPaper_session');
-                    localStorage.removeItem('starPaperSessionUser');
-                }
-                savedUser = null;
-                savedRecord = null;
-            }
-
-            // â”€â”€ NO LOCAL SESSION: delegate entirely to Supabase â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            // The old approach used a 12-retry setTimeout loop, which could miss
-            // the sp-supabase-ready event if it fired before the listener was
-            // registered. This replacement uses a Promise that can never be missed:
-            // - If SP is already ready, it resolves immediately.
-            // - If SP is not ready yet, it waits on the sp-supabase-ready event
-            //   (which is dispatched exactly once and cannot be "missed" via a
-            //   Promise resolver the way an event listener can).
-            // - A hard 10-second timeout prevents infinite waiting on network fail.
-            if (!savedUser || !savedRecord) {
-                if (sessionActive) {
-                    localStorage.removeItem('starPaper_session');
-                    localStorage.removeItem('starPaperSessionUser');
-                }
-
-                // Fire-and-forget: don't block the synchronous call stack.
-                window.__spSupabaseBootPromise = window.__spSupabaseBootPromise || (async () => {
-                    if (window.__spAppBooted) return;
-
-                    // Step 1: Wait for window.SP to be fully initialised.
-                    // If the Supabase SDK was already in <head> (our fix), this
-                    // resolves synchronously on the very first microtask tick.
-                    if (!window.__spSupabaseReady) {
-                        await new Promise((resolve) => {
-                            // Already ready by the time we check?
-                            if (window.__spSupabaseReady) { resolve(); return; }
-                            const onReady = () => resolve();
-                            window.addEventListener('sp-supabase-ready', onReady, { once: true });
-                            // Hard cap: if Supabase never fires (CDN failure, etc.)
-                            // stop waiting after 10 s so the landing page isn't frozen.
-                            setTimeout(resolve, 10000);
-                        });
-                    }
-
-                    if (window.__spAppBooted) return;
-
-                    // Step 2: Ask Supabase for a live session. Because the SDK is
-                    // already loaded synchronously, getSession() always resolves â€”
-                    // even on the very first page load after an OAuth redirect.
-                    try {
-                        // Prefer the cached in-memory session (zero network round-trip).
-                        let session = window.SP?.getSessionState?.() || null;
-                        if (!session?.user && typeof window.SP?.getSession === 'function') {
-                            session = await window.SP.getSession();
-                        }
-
-                        if (session?.user && typeof window.SP?.bootstrap === 'function') {
-                            await window.SP.bootstrap(session, {
-                                remember: true,
-                                showWelcome: true,
-                                runMigration: true,
-                            });
-                        }
-                    } catch (err) {
-                        // Non-fatal: user stays on landing; they can log in manually.
-                        console.warn('[StarPaper] checkAuth Supabase fallback failed:', err);
-                    } finally {
-                        window.__spSupabaseBootPromise = null;
-                    }
-                })();
-
-                return;
-            }
-
-            // â”€â”€ VALID LOCAL SESSION: boot the app â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            currentUser = savedRecord.username;
-            updateCurrentManagerContext();
-            loadUserData();
-            showApp();
-            showWelcomeMessage();
-            const allowedSections = new Set(['dashboard','money','schedule','artists','tasks','financials','expenses','otherIncome','reports','bookings','calendar']);
-            const lastSectionRaw = Storage.loadSync('starPaperLastSection', 'dashboard');
-            const lastSection = allowedSections.has(lastSectionRaw) ? lastSectionRaw : 'dashboard';
-            showSection(lastSection);
-            restoreDrafts();
+            return;
         }
 
         function restoreSession() {
-            checkAuth();
-        }
-
-        // Keep the sp-supabase-ready listener as a secondary safety net for
-        // edge cases where checkAuth() ran before supabase.js finished (should
-        // not happen with the SDK pre-loaded in <head>, but belt-and-suspenders).
-        if (!window.__spSupabaseReadyListenerBound) {
-            window.__spSupabaseReadyListenerBound = true;
-            window.addEventListener('sp-supabase-ready', () => {
-                if (!window.__spAppBooted) {
-                    checkAuth();
-                }
-            });
+            return;
         }
 
         function cacheDrafts() {
@@ -5274,22 +5331,85 @@ function showLoginForm() {
         }
 
         function getReportPeriodData(period, options = {}) {
-            const { sortNewestFirst = false } = options;
+            const {
+                sortNewestFirst = false,
+                selectedArtist = '',
+                artist = null,
+                artistId = '',
+                artistName = '',
+                dateStart = '',
+                dateEnd = ''
+            } = options;
             const maybeSort = (items) => {
                 if (!sortNewestFirst) return items;
                 return [...items].sort((a, b) => new Date(b.date) - new Date(a.date));
             };
 
-            const filteredBookings = maybeSort(filterByPeriod(bookings, period));
-            const filteredExpenses = maybeSort(filterByPeriod(expenses, period));
-            const filteredOtherIncome = maybeSort(filterByPeriod(otherIncome, period));
+            const filterDateRange = (items, dateField = 'date') => {
+                if (!dateStart && !dateEnd) return items;
+                return items.filter((item) => {
+                    const value = String(item?.[dateField] || '').trim();
+                    if (!value) return false;
+                    if (dateStart && value < dateStart) return false;
+                    if (dateEnd && value > dateEnd) return false;
+                    return true;
+                });
+            };
+
+            let filteredBookings = filterByPeriod(bookings, period);
+            let filteredExpenses = filterByPeriod(expenses, period);
+            let filteredOtherIncome = filterByPeriod(otherIncome, period);
+
+            const selectedArtistName = String(
+                artistName ||
+                selectedArtist ||
+                artist?.name ||
+                ''
+            ).trim();
+            if (selectedArtistName) {
+                filteredBookings = filteredBookings.filter((booking) => String(booking?.artist || '').trim() === selectedArtistName);
+            }
+
+            filteredBookings = maybeSort(filterDateRange(filteredBookings, 'date'));
+            filteredExpenses = maybeSort(filterDateRange(filteredExpenses, 'date'));
+            filteredOtherIncome = maybeSort(filterDateRange(filteredOtherIncome, 'date'));
 
             const totalBookings = filteredBookings.length;
             const totalIncome = filteredBookings.reduce((sum, b) => sum + (Math.round(Number(b.fee) || 0)), 0);
             const totalExpenses = filteredExpenses.reduce((sum, e) => sum + (Math.round(Number(e.amount) || 0)), 0);
             const totalOtherIncome = filteredOtherIncome.reduce((sum, i) => sum + (Math.round(Number(i.amount) || 0)), 0);
-            const netProfit = (totalIncome + totalOtherIncome) - totalExpenses;
+            const periodNetProfit = (totalIncome + totalOtherIncome) - totalExpenses;
             const balancesDue = filteredBookings.reduce((sum, b) => sum + (Math.round(Number(b.balance) || 0)), 0);
+            const reportStartPeriod = typeof window.getReportStartPeriodKey === 'function'
+                ? window.getReportStartPeriodKey(period, dateStart, {
+                    filteredBookings,
+                    filteredExpenses,
+                    filteredOtherIncome
+                })
+                : (dateStart ? String(dateStart).slice(0, 7) : new Date().toISOString().slice(0, 7));
+            const resolvedArtist = artist
+                || (artistId ? findArtistById(artistId) : null)
+                || (selectedArtistName ? findArtistByName(selectedArtistName) : null);
+            const bbfContext = typeof getActiveBBFContext === 'function'
+                ? getActiveBBFContext({
+                    period: reportStartPeriod,
+                    artist: resolvedArtist,
+                    artistId: artistId || resolvedArtist?.id,
+                    artistName: selectedArtistName || resolvedArtist?.name,
+                    fallbackToGlobal: true
+                })
+                : null;
+            const bbf = bbfContext
+                ? Number(bbfContext.amount) || 0
+                : (typeof getCurrentBBF === 'function'
+                    ? Number(getCurrentBBF({
+                        period: reportStartPeriod,
+                        artistId: artistId || resolvedArtist?.id,
+                        artistName: selectedArtistName || resolvedArtist?.name,
+                        fallbackToGlobal: true
+                    })) || 0
+                    : 0);
+            const closingBalance = bbf + periodNetProfit;
 
             return {
                 filteredBookings,
@@ -5299,8 +5419,13 @@ function showLoginForm() {
                 totalIncome,
                 totalExpenses,
                 totalOtherIncome,
-                netProfit,
-                balancesDue
+                netProfit: periodNetProfit,
+                periodNetProfit,
+                balancesDue,
+                bbf,
+                closingBalance,
+                bbfPeriod: bbfContext?.period || reportStartPeriod,
+                bbfSourcePeriodLabel: bbfContext?.sourcePeriodLabel || ''
             };
         }
 
@@ -5896,18 +6021,18 @@ function showLoginForm() {
                         : '';
                     const withOrigin = (path) => origin ? `${origin}${path}` : path;
                     const logoCandidates = [
-                        withOrigin('/logo-report.png?v=11'),
-                        withOrigin('/logo.png?v=11'),
-                        withOrigin('/logo-192.png?v=11'),
+                        withOrigin('/logo-report.png?v=21'),
+                        withOrigin('/logo.png?v=21'),
+                        withOrigin('/logo-192.png?v=21'),
                         withOrigin('/logo-report.png'),
                         withOrigin('/logo.png'),
                         withOrigin('/logo-192.png'),
                         withOrigin('/log.jpg')
                     ];
                     const relativeFallbacks = [
-                        './logo-report.png?v=11',
-                        './logo.png?v=11',
-                        './logo-192.png?v=11',
+                        './logo-report.png?v=21',
+                        './logo.png?v=21',
+                        './logo-192.png?v=21',
                         './logo-report.png',
                         './logo.png',
                         './logo-192.png',
@@ -5952,7 +6077,7 @@ function showLoginForm() {
             return reportLogoDataUrlPromise;
         }
 
-        // ── CSV Export ──────────────────────────────────────────────────────
+        // â”€â”€ CSV Export â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function escapeCSVField(field) {
             const str = String(field ?? '');
             if (str.includes(',') || str.includes('"') || str.includes('\n')) {
@@ -6079,7 +6204,11 @@ function showLoginForm() {
                     totalExpenses,
                     totalOtherIncome,
                     netProfit,
-                    balancesDue
+                    periodNetProfit,
+                    balancesDue,
+                    bbf,
+                    closingBalance,
+                    bbfSourcePeriodLabel
                 } = getReportPeriodData(period, { sortNewestFirst: true });
     
                 const drawHeader = (subtitle = 'Activity Report') => {
@@ -6113,14 +6242,7 @@ function showLoginForm() {
                         const logoSize = isMobileReportLayout ? 14 : 16;
                         const logoX = pageWidth - margin - logoSize;
                         const logoY = isMobileReportLayout ? 5 : 4;
-                        const frameX = logoX - 0.8;
-                        const frameY = logoY - 0.8;
-                        const frameSize = logoSize + 1.6;
                         const imageFormat = /^data:image\/jpe?g/i.test(reportLogoDataUrl) ? 'JPEG' : 'PNG';
-                        pdf.setFillColor(245, 239, 226);
-                        pdf.setDrawColor(212, 170, 96);
-                        pdf.setLineWidth(0.35);
-                        pdf.roundedRect(frameX, frameY, frameSize, frameSize, 2, 2, 'FD');
                         pdf.addImage(reportLogoDataUrl, imageFormat, logoX, logoY, logoSize, logoSize);
                     } catch (err) {
                         console.warn('Report logo failed to render:', err);
@@ -6162,8 +6284,9 @@ function showLoginForm() {
                     { label: 'Show Income', value: formatMoney(totalIncome), color: palette.income },
                     { label: 'Other Income', value: formatMoney(totalOtherIncome), color: palette.income },
                     { label: 'Total Expenses', value: formatMoney(totalExpenses), color: palette.expense },
-                    { label: 'Balance Brought Forward', value: formatMoney(getCurrentBBF()), color: palette.neutral },
-                    { label: 'Net Profit', value: formatMoney(netProfit), color: netProfit >= 0 ? palette.income : palette.expense }
+                    { label: 'Opening Balance (BBF)', value: formatMoney(bbf), color: palette.neutral },
+                    { label: 'Period Net Profit', value: formatMoney(periodNetProfit), color: periodNetProfit >= 0 ? palette.income : palette.expense },
+                    { label: 'Closing Balance', value: formatMoney(closingBalance), color: closingBalance >= 0 ? palette.income : palette.expense }
                 ];
     
                 const cardGap = 4;
@@ -6516,8 +6639,8 @@ function showLoginForm() {
                 pdf.setFont('helvetica', 'normal');
                 pdf.setFontSize(8.5);
                 pdf.setTextColor(...palette.muted);
-                pdf.text(`Balance brought forward: ${formatMoney(getCurrentBBF())}`, statusPanel.x + 1, statusY + 4);
-                pdf.text(`Net profit trend: ${netProfit >= 0 ? 'Positive' : 'Negative'} (${formatMoney(netProfit)})`, statusPanel.x + 1, statusY + 11);
+                pdf.text(`Opening balance (BBF): ${formatMoney(bbf)}${bbfSourcePeriodLabel ? ` from ${bbfSourcePeriodLabel}` : ''}`, statusPanel.x + 1, statusY + 4);
+                pdf.text(`Closing balance = BBF + income + other income - expenses = ${formatMoney(closingBalance)}`, statusPanel.x + 1, statusY + 11);
     
                 if (closingThoughts) {
                     const frameTop = 34;
@@ -6638,12 +6761,15 @@ function showLoginForm() {
             }
         }
 
-        function saveExpense() {
+        async function saveExpense() {
             if (guardReadOnly('save expenses')) return;
 
+            let previousExpenses = [];
             try {
+                previousExpenses = expenses.slice();
                 const receiptSrc = document.getElementById('receiptPreview').src || null;
                 const existingExpense = editingExpenseId ? expenses.find(e => e.id === editingExpenseId) : null;
+                const isEdit = Boolean(editingExpenseId);
                 const expense = {
                     id: editingExpenseId || Date.now(),
                     description: sanitizeTextInput(document.getElementById('expenseDesc').value),
@@ -6677,14 +6803,25 @@ function showLoginForm() {
                 // Optimistic UI: render immediately, then persist
                 renderExpenses();
                 cancelExpense();
-                toastSuccess(editingExpenseId === null ? 'Expense saved!' : 'Expense updated!');
-                saveUserData();
+                await persistMutationWithCloudFeedback(() => {
+                    if (typeof window.SP?.saveExpenses === 'function') {
+                        return window.SP.saveExpenses(expenses);
+                    }
+                    return saveUserData();
+                }, {
+                    successMessage: isEdit ? 'Expense updated in cloud.' : 'Expense saved to cloud.'
+                });
                 updateDashboard();
                 updateReportStatistics();
         
             } catch (err) {
                 console.error('[StarPaper] saveExpense failed:', err);
-                toastError('Something went wrong. Check the console for details.');
+                expenses = previousExpenses;
+                window.expenses = expenses;
+                renderExpenses();
+                updateDashboard();
+                updateReportStatistics();
+                toastError(getCloudFailureMessage(err?.syncResult, 'Expense could not be saved to the cloud. Your last change was undone.'));
             }
         }
 
@@ -6696,7 +6833,7 @@ function showLoginForm() {
                 tbody.innerHTML = `<tr><td colspan="5">${emptyState({
                     icon: 'ph-receipt',
                     title: 'No expenses yet',
-                    sub: 'Track your costs â€” travel, equipment, studio time, and more.',
+                    sub: 'Track your costs - travel, equipment, studio time, and more.',
                     ctaLabel: '+ Log Expense',
                     ctaAction: "showAddExpense()"
                 })}</td></tr>`;
@@ -6704,7 +6841,7 @@ function showLoginForm() {
                 if (cards) cards.innerHTML = emptyState({
                     icon: 'ph-receipt',
                     title: 'No expenses yet',
-                    sub: 'Track your costs â€” travel, equipment, studio time, and more.',
+                    sub: 'Track your costs - travel, equipment, studio time, and more.',
                     ctaLabel: '+ Log Expense',
                     ctaAction: "showAddExpense()"
                 });
@@ -6748,21 +6885,34 @@ function showLoginForm() {
             }
         }
 
-        function deleteExpense(id, silent = false) {
+        async function deleteExpense(id, silent = false) {
             if (!silent && guardReadOnly('delete expenses')) return;
             if (!silent && !confirm('Are you sure you want to delete this expense?')) {
                 return;
             }
+            const previousExpenses = expenses.slice();
             expenses = expenses.filter(e => e.id !== id);
-            if (window.SP?.deleteExpense) {
-                window.SP.deleteExpense(id).catch((err) => {
-                    console.warn('Cloud delete expense failed:', err);
-                });
-            }
-            saveUserData();
+            window.expenses = expenses;
             renderExpenses();
-            updateDashboard();
-            updateReportStatistics();
+            try {
+                await persistMutationWithCloudFeedback(() => {
+                    if (typeof window.SP?.deleteExpense === 'function') {
+                        return window.SP.deleteExpense(id);
+                    }
+                    return saveUserData();
+                }, {
+                    successMessage: 'Expense deleted from the cloud.'
+                });
+                updateDashboard();
+                updateReportStatistics();
+            } catch (err) {
+                expenses = previousExpenses;
+                window.expenses = expenses;
+                renderExpenses();
+                updateDashboard();
+                updateReportStatistics();
+                toastError(getCloudFailureMessage(err?.syncResult, 'Expense deletion failed in the cloud. Your last change was undone.'));
+            }
         }
 
         function editExpense(id) {
@@ -6865,12 +7015,15 @@ function showLoginForm() {
             }
         }
 
-        function saveOtherIncome() {
+        async function saveOtherIncome() {
             if (guardReadOnly('save other income')) return;
 
+            let previousOtherIncome = [];
             try {
+                previousOtherIncome = otherIncome.slice();
                 const proofSrc = document.getElementById('otherIncomeProofPreview').src || null;
                 const existingIncome = editingOtherIncomeId ? otherIncome.find(i => i.id === editingOtherIncomeId) : null;
+                const isEdit = Boolean(editingOtherIncomeId);
                 const incomeItem = {
                     id: editingOtherIncomeId || Date.now(),
                     source: sanitizeTextInput(document.getElementById('otherIncomeSource').value),
@@ -6906,15 +7059,27 @@ function showLoginForm() {
                 if (saveBtn) {
                     saveBtn.textContent = 'Save Other Income';
                 }
-                saveUserData();
                 renderOtherIncome();
                 cancelOtherIncome();
+                await persistMutationWithCloudFeedback(() => {
+                    if (typeof window.SP?.saveOtherIncome === 'function') {
+                        return window.SP.saveOtherIncome(otherIncome);
+                    }
+                    return saveUserData();
+                }, {
+                    successMessage: isEdit ? 'Other income updated in cloud.' : 'Other income saved to cloud.'
+                });
                 updateDashboard();
                 updateReportStatistics();
         
             } catch (err) {
                 console.error('[StarPaper] saveOtherIncome failed:', err);
-                toastError('Something went wrong. Check the console for details.');
+                otherIncome = previousOtherIncome;
+                window.otherIncome = otherIncome;
+                renderOtherIncome();
+                updateDashboard();
+                updateReportStatistics();
+                toastError(getCloudFailureMessage(err?.syncResult, 'Other income could not be saved to the cloud. Your last change was undone.'));
             }
         }
 
@@ -6991,21 +7156,34 @@ function showLoginForm() {
             }
         }
 
-        function deleteOtherIncome(id, silent = false) {
+        async function deleteOtherIncome(id, silent = false) {
             if (!silent && guardReadOnly('delete other income')) return;
             if (!silent && !confirm('Are you sure you want to delete this entry?')) {
                 return;
             }
+            const previousOtherIncome = otherIncome.slice();
             otherIncome = otherIncome.filter(i => i.id !== id);
-            if (window.SP?.deleteOtherIncome) {
-                window.SP.deleteOtherIncome(id).catch((err) => {
-                    console.warn('Cloud delete other income failed:', err);
-                });
-            }
-            saveUserData();
+            window.otherIncome = otherIncome;
             renderOtherIncome();
-            updateDashboard();
-            updateReportStatistics();
+            try {
+                await persistMutationWithCloudFeedback(() => {
+                    if (typeof window.SP?.deleteOtherIncome === 'function') {
+                        return window.SP.deleteOtherIncome(id);
+                    }
+                    return saveUserData();
+                }, {
+                    successMessage: 'Other income deleted from the cloud.'
+                });
+                updateDashboard();
+                updateReportStatistics();
+            } catch (err) {
+                otherIncome = previousOtherIncome;
+                window.otherIncome = otherIncome;
+                renderOtherIncome();
+                updateDashboard();
+                updateReportStatistics();
+                toastError(getCloudFailureMessage(err?.syncResult, 'Other income deletion failed in the cloud. Your last change was undone.'));
+            }
         }
 
         function editOtherIncome(id) {
@@ -7355,10 +7533,15 @@ function showLoginForm() {
             updateLocationDropdown();
         }
 
-        function saveBooking() {
+        async function saveBooking() {
             if (guardReadOnly('save bookings')) return;
 
+            let previousBookings = [];
+            let previousArtists = [];
+            let bookingSaved = false;
             try {
+                previousBookings = bookings.slice();
+                previousArtists = artists.slice();
                 const locationType = document.getElementById('bookingLocationType').value;
                 const location = locationType === 'uganda' 
                     ? document.getElementById('bookingUgandaLocation').value
@@ -7394,6 +7577,7 @@ function showLoginForm() {
 
                 const linkedArtist = ensureArtistForBookingName(booking.artist, currentManagerId);
                 booking.artistId = linkedArtist?.id || booking.artistId;
+                const artistsChanged = previousArtists.length !== artists.length || previousArtists.some((artist, index) => artist !== artists[index]);
 
                 const isEdit = !!editingBookingId; // capture before it gets nulled
                 if (editingBookingId) {
@@ -7415,10 +7599,36 @@ function showLoginForm() {
                 renderBookings();
                 cancelBooking();
                 showSection('schedule');
+                let artistSyncResult = { ok: true };
+                if (artistsChanged) {
+                    if (typeof window.SP?.saveArtists === 'function') {
+                        artistSyncResult = await window.SP.saveArtists(artists);
+                    } else {
+                        artistSyncResult = await saveUserData();
+                    }
+                    const syncedArtist = typeof findArtistByName === 'function' ? findArtistByName(booking.artist) : null;
+                    if (syncedArtist?.id) {
+                        booking.artistId = syncedArtist.id;
+                    }
+                }
+
+                await persistMutationWithCloudFeedback(() => {
+                    if (typeof window.SP?.saveBookings === 'function') {
+                        return window.SP.saveBookings(bookings);
+                    }
+                    return saveUserData();
+                }, {
+                    suppressSuccessToast: true,
+                    successMessage: isEdit ? 'Booking updated in cloud.' : 'Booking saved to cloud.'
+                });
+                bookingSaved = true;
+
+                if (artistSyncResult && !(artistSyncResult.ok || artistSyncResult.cloudSynced)) {
+                    toastWarn(`Booking saved to cloud, but artist sync needs attention. ${getCloudFailureMessage(artistSyncResult, 'Please retry artist sync.')}`);
+                } else {
+                    toastSuccess(isEdit ? 'Booking updated in cloud.' : 'Booking saved to cloud.');
+                }
                 if (booking.status === 'confirmed') triggerGoldDust();
-                toastSuccess(isEdit ? 'Booking updated!' : 'ðŸŽ‰ Booking saved!');
-                // Persist and refresh remaining views
-                saveUserData();
                 updateDashboard();
                 renderCalendar();
                 renderPerformanceMap();
@@ -7426,7 +7636,21 @@ function showLoginForm() {
         
             } catch (err) {
                 console.error('[StarPaper] saveBooking failed:', err);
-                toastError('Something went wrong. Check the console for details.');
+                if (!bookingSaved) {
+                    bookings = previousBookings;
+                    artists = previousArtists;
+                    window.bookings = bookings;
+                    window.artists = artists;
+                    renderBookings();
+                    if (typeof window.renderArtists === 'function') {
+                        window.renderArtists();
+                    }
+                    updateDashboard();
+                    renderCalendar();
+                    renderPerformanceMap();
+                    updateReportStatistics();
+                    toastError(getCloudFailureMessage(err?.syncResult, 'Booking could not be saved to the cloud. Your last change was undone.'));
+                }
             }
         }
 
@@ -7767,10 +7991,7 @@ function showLoginForm() {
         }
 
         function getAllBookings() {
-            return Object.values(managerData || {}).reduce((acc, record) => {
-                const managerBookings = Array.isArray(record?.bookings) ? record.bookings : [];
-                return acc.concat(managerBookings);
-            }, []);
+            return Array.isArray(bookings) ? bookings.slice() : [];
         }
 
         function updateAvailabilityArtists() {
@@ -7865,7 +8086,7 @@ function showLoginForm() {
             showAddBooking();
         }
 
-        // Custom delete confirmation â€” avoids browser confirm() dialog
+        // Custom delete confirmation Ã¢â‚¬â€ avoids browser confirm() dialog
         function confirmDeleteBooking(id) {
             const modal = document.getElementById('confirmDeleteModal');
             const body  = document.getElementById('confirmDeleteBody');
@@ -7883,21 +8104,34 @@ function showLoginForm() {
             };
         }
 
-        function deleteBooking(id, silent = false) {
+        async function deleteBooking(id, silent = false) {
             if (guardReadOnly('delete bookings')) return;
             if (!silent && !confirm('Are you sure you want to delete this booking?')) return;
-            
+            const previousBookings = bookings.slice();
             bookings = bookings.filter(b => b.id !== id);
-            if (window.SP?.deleteBooking) {
-                window.SP.deleteBooking(id).catch((err) => {
-                    console.warn('Cloud delete booking failed:', err);
-                });
-            }
-            saveUserData();
+            window.bookings = bookings;
             renderBookings();
-            updateDashboard();
-            renderCalendar();
-            updateReportStatistics();
+            try {
+                await persistMutationWithCloudFeedback(() => {
+                    if (typeof window.SP?.deleteBooking === 'function') {
+                        return window.SP.deleteBooking(id);
+                    }
+                    return saveUserData();
+                }, {
+                    successMessage: 'Booking deleted from the cloud.'
+                });
+                updateDashboard();
+                renderCalendar();
+                updateReportStatistics();
+            } catch (err) {
+                bookings = previousBookings;
+                window.bookings = bookings;
+                renderBookings();
+                updateDashboard();
+                renderCalendar();
+                updateReportStatistics();
+                toastError(getCloudFailureMessage(err?.syncResult, 'Booking deletion failed in the cloud. Your last change was undone.'));
+            }
         }
 
         function getCurrentMonthData() {
@@ -8861,6 +9095,13 @@ function showLoginForm() {
             if (activeScreenId === 'landingScreen') {
                 document.title = 'Star Paper';
             }
+            if (activeScreenId === 'appContainer') {
+                setAppShellBootContext();
+                window.__spBootContext = 'app-refresh';
+            } else {
+                clearAppShellBootContext();
+                window.__spBootContext = 'cold-start';
+            }
             updateLandingTopControlsVisibility();
         }
 
@@ -8869,6 +9110,10 @@ function showLoginForm() {
             const landingScreen = document.getElementById('landingScreen');
             if (!controls || !landingScreen) return;
             const landingVisible = landingScreen.style.display !== 'none';
+            if (controls.dataset.inline === '1') {
+                controls.classList.toggle('is-hidden', !landingVisible);
+                return;
+            }
             controls.classList.toggle('is-hidden', !landingVisible || window.scrollY > 18);
         }
 
@@ -8916,7 +9161,7 @@ function showLoginForm() {
             }
         });
 
-        // â”€â”€ Premium Toast System â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Premium Toast System Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         function showToast(message, type = 'info', opts = {}) {
             const stack = document.getElementById('spToastStack');
             if (!stack) return;
@@ -8934,7 +9179,7 @@ function showLoginForm() {
                     <div class="sp-toast__title">${opts.title || ''}</div>
                     <div class="sp-toast__msg">${message}</div>
                 </div>
-                <button class="sp-toast__close" aria-label="Dismiss">âœ•</button>
+                <button class="sp-toast__close" aria-label="Dismiss"><i class="ph ph-x" aria-hidden="true"></i></button>
                 <div class="sp-toast__bar" style="--sp-toast-dur:${durSec}"></div>
             `;
             // If no title set, promote message to title
@@ -8963,7 +9208,7 @@ function showLoginForm() {
         function toastInfo(msg, title)    { showToast(msg, 'info',    { title }); }
         function toastWarn(msg, title)    { showToast(msg, 'warning', { title }); }
 
-        // â”€â”€ Relative timestamps â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Relative timestamps Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         function timeAgo(dateInput) {
             if (!dateInput) return '';
             const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
@@ -8982,7 +9227,7 @@ function showLoginForm() {
             return `${Math.floor(secs / 2592000)} months ago`;
         }
 
-        // â”€â”€ Empty state builder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Empty state builder Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         function emptyState({ icon, title, sub, ctaLabel, ctaAction }) {
             // icon = Phosphor class name e.g. 'ph-receipt' OR legacy emoji (renders as text fallback)
             const isPhosphor = typeof icon === 'string' && icon.startsWith('ph-');
@@ -8997,7 +9242,7 @@ function showLoginForm() {
             </div>`;
         }
 
-        // â”€â”€ Revenue Pulse â€” countUp animation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Revenue Pulse Ã¢â‚¬â€ countUp animation Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         function countUp(el, targetValue, prefix = null, duration = 900) {
             if (!el) return;
             const formatValue = (value) => {
@@ -9027,7 +9272,7 @@ function showLoginForm() {
             requestAnimationFrame(step);
         }
 
-        // â”€â”€ Tab switchers: Money â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Tab switchers: Money Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         function activateMoneyTab(tabId) {
             document.querySelectorAll('#moneyTabs .sp-tab').forEach(btn => {
                 btn.classList.toggle('sp-tab--active', btn.dataset.tab === tabId);
@@ -9040,6 +9285,8 @@ function showLoginForm() {
 
         function switchMoneyTab(tab) {
             if (!tab) return;
+            Storage.saveSync('starPaperLastMoneyTab', tab);
+            Storage.saveSync('starPaperLastSection', tab);
             activateMoneyTab(tab);
             if (tab === 'financials') { updateDashboard(); renderPerformanceMap(); }
             else if (tab === 'expenses') renderExpenses();
@@ -9048,7 +9295,7 @@ function showLoginForm() {
         }
         window.switchMoneyTab = switchMoneyTab;
 
-        // â”€â”€ Dedicated tab listener (bypasses all action dispatchers) â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Dedicated tab listener (bypasses all action dispatchers) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         // Runs at capture phase so it fires before any dispatcher can swallow it
         document.addEventListener('click', function spTabListener(e) {
             const btn = e.target.closest('[data-action="switchMoneyTab"],[data-action="switchScheduleTab"]');
@@ -9061,7 +9308,7 @@ function showLoginForm() {
             else if (action === 'switchScheduleTab') switchScheduleTab(tab);
         }, true); // capture phase = runs first
 
-        // â”€â”€ Tab switchers: Schedule â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Tab switchers: Schedule Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         function activateScheduleTab(tabId) {
             document.querySelectorAll('#scheduleTabs .sp-tab').forEach(btn => {
                 btn.classList.toggle('sp-tab--active', btn.dataset.tab === tabId);
@@ -9074,13 +9321,15 @@ function showLoginForm() {
 
         function switchScheduleTab(tab) {
             if (!tab) return;
+            Storage.saveSync('starPaperLastScheduleTab', tab);
+            Storage.saveSync('starPaperLastSection', tab);
             activateScheduleTab(tab);
             if (tab === 'bookings') renderBookings();
             else if (tab === 'calendar') renderCalendar();
         }
         window.switchScheduleTab = switchScheduleTab;
 
-        // â”€â”€ About Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ About Modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         function showAboutModal() {
             const modal = document.getElementById('spAboutModal');
             if (!modal) return;
@@ -9094,7 +9343,7 @@ function showLoginForm() {
             document.getElementById('spAboutBackdrop')?.addEventListener('click', close, { once: true });
         }
 
-        // â”€â”€ Admin Settings Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Admin Settings Modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         function showAdminSettings() {
             const modal = document.getElementById('spAdminModal');
             if (!modal) return;
@@ -9118,8 +9367,8 @@ function showLoginForm() {
                             <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Actions</th></tr></thead>
                             <tbody>${allUsers.map(u => `
                                 <tr>
-                                    <td>${u.name || u.email || 'â€”'}</td>
-                                    <td style="color:var(--text-muted)">${u.email || 'â€”'}</td>
+                                    <td>${u.name || u.email || '-'}</td>
+                                    <td style="color:var(--text-muted)">${u.email || '-'}</td>
                                     <td><span class="sp-admin-pill sp-admin-pill--${u.status}">${u.status}</span></td>
                                     <td><div class="sp-admin-actions">
                                         ${u.status === 'pending' ? `<button class="sp-admin-btn sp-admin-btn--approve" onclick="adminApproveUser('${u.id || u.email}')">Approve</button>` : ''}
@@ -9162,7 +9411,7 @@ function showLoginForm() {
         window.adminApproveUser = adminApproveUser;
         window.adminDeleteUser = adminDeleteUser;
 
-        // â”€â”€ Booking Velocity Gauge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Booking Velocity Gauge Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         function updateVelocityGauge() {
             const fillEl   = document.getElementById('velocityGaugeFill');
             const needleEl = document.getElementById('velocityGaugeNeedle');
@@ -9188,8 +9437,8 @@ function showLoginForm() {
                 return d.getMonth() === lm && d.getFullYear() === ly;
             }).length;
 
-            // Arc: 0â€“180 degrees mapped to 0â€“max shows
-            // Arc total length â‰ˆ 251px (Ï€ * 80)
+            // Arc: 0Ã¢â‚¬â€œ180 degrees mapped to 0Ã¢â‚¬â€œmax shows
+            // Arc total length Ã¢â€°Ë† 251px (Ãâ‚¬ * 80)
             const ARC_LEN = 251;
             const maxShows = Math.max(thisCount, lastCount, 1);
             const ratio = Math.min(thisCount / maxShows, 1);
@@ -9206,19 +9455,19 @@ function showLoginForm() {
             if (deltaEl) {
                 const diff = thisCount - lastCount;
                 if (diff > 0) {
-                    deltaEl.textContent = `â–² ${diff} more`;
+                    deltaEl.textContent = `+ ${diff} more`;
                     deltaEl.className = 'velocity-gauge__delta velocity-gauge__delta--up';
                 } else if (diff < 0) {
-                    deltaEl.textContent = `â–¼ ${Math.abs(diff)} fewer`;
+                    deltaEl.textContent = `- ${Math.abs(diff)} fewer`;
                     deltaEl.className = 'velocity-gauge__delta velocity-gauge__delta--down';
                 } else {
-                    deltaEl.textContent = 'â€” same pace';
+                    deltaEl.textContent = 'Same pace';
                     deltaEl.className = 'velocity-gauge__delta velocity-gauge__delta--flat';
                 }
             }
         }
 
-        // â”€â”€ Today Board + Nudge Engine â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Today Board + Nudge Engine Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         window.updateTodayBoard = function updateTodayBoard() {
             const now = new Date();
             const hour = now.getHours();
@@ -9239,7 +9488,7 @@ function showLoginForm() {
             const todayStr = now.toISOString().slice(0, 10);
             const nudges = [];
 
-            // â”€â”€ Midnight Whisper (9 PM â€“ 4 AM) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Midnight Whisper (9 PM Ã¢â‚¬â€œ 4 AM) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             if (hour >= 21 || hour < 4) {
                 const liveCount = allBookings.filter(b => b.status === 'confirmed' && b.date === todayStr).length;
                 nudges.push({
@@ -9250,7 +9499,7 @@ function showLoginForm() {
                 });
             }
 
-            // â”€â”€ Collection Nudge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Collection Nudge Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             const unpaid = allBookings.filter(b => (Math.round(Number(b.balance) || 0)) > 0);
             if (unpaid.length > 0) {
                 const total = unpaid.reduce((s, b) => s + (Math.round(Number(b.balance) || 0)), 0);
@@ -9262,7 +9511,7 @@ function showLoginForm() {
                 });
             }
 
-            // â”€â”€ Show Nudge â€” show in â‰¤5 days with balance due â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Show Nudge Ã¢â‚¬â€ show in Ã¢â€°Â¤5 days with balance due Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             allBookings.filter(b => {
                 if (!b.date || (Math.round(Number(b.balance) || 0)) <= 0) return false;
                 const diff = (new Date(b.date) - now) / 86400000;
@@ -9277,7 +9526,7 @@ function showLoginForm() {
                 });
             });
 
-            // â”€â”€ Momentum Nudge â€” 3+ confirmed bookings in 3 months â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Momentum Nudge Ã¢â‚¬â€ 3+ confirmed bookings in 3 months Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             const cutoff = new Date(now); cutoff.setMonth(cutoff.getMonth() - 3);
             const recent = allBookings.filter(b => b.status === 'confirmed' && b.date && new Date(b.date) >= cutoff);
             if (recent.length >= 3) {
@@ -9290,7 +9539,7 @@ function showLoginForm() {
                 });
             }
 
-            // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Render Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             if (!alertsEl) return;
             const dismissed = JSON.parse(sessionStorage.getItem('sp_dismissed_nudges') || '[]');
             const visible = nudges.filter(n => !dismissed.includes(n.id));
@@ -9308,7 +9557,7 @@ function showLoginForm() {
             if (visible.length === 0) {
                 alertsEl.innerHTML = `<div class="nudge-item nudge-item--clear">
                     <span class="nudge-icon"><i class="ph ph-check-circle" aria-hidden="true"></i></span>
-                    <span class="nudge-text">All Clear â€” No urgent items require your attention today.</span>
+                    <span class="nudge-text">All Clear - No urgent items require your attention today.</span>
                 </div>`;
                 return;
             }
@@ -9411,7 +9660,7 @@ function showLoginForm() {
             }
         });
 
-        // â”€â”€ In-app navigation history button state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ In-app navigation history button state Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         function updateNavHistButtons() {
             const back = document.getElementById('navBackBtn');
             const fwd  = document.getElementById('navFwdBtn');
@@ -9420,96 +9669,33 @@ function showLoginForm() {
             fwd.disabled  = !window._spNavStack || window._spNavIndex >= window._spNavStack.length - 1;
         }
 
-        // â”€â”€ Falling Gold Coins canvas animation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        (function initCoinRain() {
-            const canvas = document.getElementById('coinRainCanvas');
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            let W = 0, H = 0;
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Falling Gold Coins canvas animation Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+        function drawCoinDollarMark(ctx, radius, scaleX) {
+            if (radius < 4.8) return;
+            const safeScaleX = Math.max(scaleX, 0.08);
+            const markScaleX = Math.max(0.72, Math.min(1.02, 0.78 + (safeScaleX * 0.42)));
+            ctx.save();
+            ctx.scale(1 / safeScaleX, 1);
+            ctx.scale(markScaleX, 1);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = `900 ${Math.max(9, Math.round(radius * 1.34))}px Georgia, serif`;
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = Math.max(1.1, radius * 0.12);
+            ctx.strokeStyle = 'rgba(255, 247, 184, 0.92)';
+            ctx.shadowColor = 'rgba(78, 46, 0, 0.42)';
+            ctx.shadowBlur = Math.max(1.3, radius * 0.18);
+            ctx.strokeText('$', 0, -0.1);
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = 'rgba(94, 56, 0, 0.98)';
+            ctx.fillText('$', 0, 0.16);
+            ctx.lineWidth = Math.max(0.6, radius * 0.05);
+            ctx.strokeStyle = 'rgba(255, 222, 118, 0.40)';
+            ctx.strokeText('$', 0, -0.18);
+            ctx.restore();
+        }
 
-            function resize() {
-                W = canvas.width  = window.innerWidth;
-                H = canvas.height = window.innerHeight;
-            }
-            window.addEventListener('resize', resize, { passive: true });
-            resize();
-
-            const COIN_COUNT = 30;
-            const GOLD_STOPS = [
-                { pos: 0,    color: '#fff8a0' },
-                { pos: 0.28, color: '#ffd700' },
-                { pos: 0.55, color: '#c9920a' },
-                { pos: 0.80, color: '#d4a820' },
-                { pos: 1,    color: '#7a5500' },
-            ];
-
-            function makeCoin(seedY) {
-                const r     = 7  + Math.random() * 11;
-                const x     = Math.random() * (W + 40) - 20;
-                const y     = seedY !== undefined ? seedY : (-r - Math.random() * 80);
-                const spd   = 0.65 + Math.random() * 1.0;
-                const spin  = (Math.random() - 0.5) * 0.07;
-                const tilt  = Math.random() * Math.PI;
-                const drift = (Math.random() - 0.5) * 0.30;
-                const opacity = 0.50 + Math.random() * 0.45;
-                return { x, y, r, spd, spin, tilt, drift, opacity };
-            }
-
-            function drawCoin(c) {
-                ctx.save();
-                ctx.translate(c.x, c.y);
-                ctx.globalAlpha = c.opacity;
-                const scaleX = Math.abs(Math.cos(c.tilt)) || 0.04;
-                const grad = ctx.createRadialGradient(
-                    -c.r * 0.3 * scaleX, -c.r * 0.3, 0,
-                     c.r * 0.1 * scaleX,  c.r * 0.1, c.r * 1.1
-                );
-                GOLD_STOPS.forEach(s => grad.addColorStop(s.pos, s.color));
-                ctx.scale(scaleX, 1);
-                ctx.beginPath();
-                ctx.ellipse(0, 0, c.r, c.r, 0, 0, Math.PI * 2);
-                ctx.fillStyle = grad;
-                ctx.fill();
-                ctx.strokeStyle = 'rgba(255,210,60,0.50)';
-                ctx.lineWidth = 1.2 / scaleX;
-                ctx.stroke();
-                if (scaleX > 0.35) {
-                    ctx.scale(1 / scaleX, 1);
-                    ctx.fillStyle = 'rgba(80,50,0,0.65)';
-                    ctx.font = `bold ${Math.round(c.r * 0.92)}px Georgia,serif`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText('$', 0, 0);
-                }
-                ctx.restore();
-            }
-
-            // Seed coins already on screen
-            const coins = [];
-            for (let i = 0; i < COIN_COUNT; i++) {
-                coins.push(makeCoin(Math.random() * H));
-            }
-
-            function tick() {
-                const landing = document.getElementById('landingScreen');
-                if (!landing || landing.style.display === 'none') {
-                    requestAnimationFrame(tick);
-                    return;
-                }
-                ctx.clearRect(0, 0, W, H);
-                for (const c of coins) {
-                    c.y    += c.spd;
-                    c.x    += c.drift;
-                    c.tilt += c.spin;
-                    if (c.y - c.r > H || c.x < -40 || c.x > W + 40) {
-                        Object.assign(c, makeCoin());
-                    }
-                    drawCoin(c);
-                }
-                requestAnimationFrame(tick);
-            }
-            tick();
-        })();
+        // Landing coin rain intentionally removed to reduce visual noise.
 
         (function initMainstageCoinRain() {
             const canvas = document.getElementById('mainstageCoinRainCanvas');
@@ -9571,14 +9757,7 @@ function showLoginForm() {
                 ctx.strokeStyle = 'rgba(255,210,60,0.36)';
                 ctx.lineWidth = 1 / scaleX;
                 ctx.stroke();
-                if (scaleX > 0.38) {
-                    ctx.scale(1 / scaleX, 1);
-                    ctx.fillStyle = 'rgba(80,50,0,0.62)';
-                    ctx.font = `bold ${Math.round(coin.r * 0.86)}px Georgia,serif`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText('$', 0, 0);
-                }
+                drawCoinDollarMark(ctx, coin.r, scaleX);
                 ctx.restore();
             }
 
@@ -9712,10 +9891,85 @@ function showLoginForm() {
             updateControls();
         })();
 
-        // â”€â”€ Gold Dust burst â€” triggered on booking confirmed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        (function initLandingMobileSliders() {
+            const sliders = Array.from(document.querySelectorAll('.landing-mobile-slider'));
+            if (!sliders.length) return;
+
+            const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+            const isMobile = () => window.innerWidth < 768;
+
+            sliders.forEach((slider) => {
+                const track = slider.querySelector('.landing-mobile-slider-track');
+                const prevBtn = slider.querySelector('[data-action="landingSliderPrev"]');
+                const nextBtn = slider.querySelector('[data-action="landingSliderNext"]');
+                const cards = Array.from(track?.children || []);
+                if (!track || !prevBtn || !nextBtn || !cards.length) return;
+
+                const getGap = () => {
+                    const styles = window.getComputedStyle(track);
+                    const gap = parseFloat(styles.columnGap || styles.gap || '0');
+                    return Number.isFinite(gap) ? gap : 0;
+                };
+
+                const getStepWidth = () => {
+                    const firstCard = cards[0];
+                    if (!firstCard) return Math.max(track.clientWidth || 1, 1);
+                    return Math.max(firstCard.getBoundingClientRect().width + getGap(), 1);
+                };
+
+                const getActiveIndex = () => {
+                    if (!isMobile()) return 0;
+                    return clamp(Math.round(track.scrollLeft / getStepWidth()), 0, cards.length - 1);
+                };
+
+                const updateButtons = (forcedIndex) => {
+                    const activeIndex = typeof forcedIndex === 'number' ? forcedIndex : getActiveIndex();
+                    const mobile = isMobile();
+                    prevBtn.disabled = !mobile || activeIndex <= 0;
+                    nextBtn.disabled = !mobile || activeIndex >= cards.length - 1;
+                    if (!mobile) {
+                        track.scrollLeft = 0;
+                    }
+                };
+
+                const scrollToIndex = (index) => {
+                    const targetIndex = clamp(index, 0, cards.length - 1);
+                    track.scrollTo({
+                        left: targetIndex * getStepWidth(),
+                        behavior: 'smooth'
+                    });
+                    updateButtons(targetIndex);
+                };
+
+                prevBtn.addEventListener('click', () => {
+                    scrollToIndex(getActiveIndex() - 1);
+                });
+
+                nextBtn.addEventListener('click', () => {
+                    scrollToIndex(getActiveIndex() + 1);
+                });
+
+                let scrollTimer = null;
+                track.addEventListener('scroll', () => {
+                    if (!isMobile()) return;
+                    if (scrollTimer) clearTimeout(scrollTimer);
+                    scrollTimer = setTimeout(() => updateButtons(), 60);
+                }, { passive: true });
+
+                window.addEventListener('resize', updateButtons, { passive: true });
+                updateButtons();
+            });
+        })();
+
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Gold Dust burst Ã¢â‚¬â€ triggered on booking confirmed Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         function triggerGoldDust() {
-            const canvas = document.getElementById('coinRainCanvas');
-            if (!canvas) return;
+            if (!document.body) return;
+            document.querySelector('.sp-gold-dust-canvas')?.remove();
+            const canvas = document.createElement('canvas');
+            canvas.className = 'sp-gold-dust-canvas';
+            canvas.setAttribute('aria-hidden', 'true');
+            canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9999;';
+            document.body.appendChild(canvas);
             const ctx = canvas.getContext('2d');
             const W = canvas.width  = window.innerWidth;
             const H = canvas.height = window.innerHeight;
@@ -9745,7 +9999,11 @@ function showLoginForm() {
 
             function burstTick() {
                 const elapsed = Date.now() - startTime;
-                if (elapsed > duration) { ctx.clearRect(0, 0, W, H); return; }
+                if (elapsed > duration) {
+                    ctx.clearRect(0, 0, W, H);
+                    canvas.remove();
+                    return;
+                }
                 ctx.clearRect(0, 0, W, H);
                 const fade = Math.max(0, 1 - elapsed / duration);
                 for (const p of particles) {
@@ -9766,6 +10024,10 @@ function showLoginForm() {
                     ctx.ellipse(0, 0, p.r, p.r, 0, 0, Math.PI * 2);
                     ctx.fillStyle = grad;
                     ctx.fill();
+                    ctx.strokeStyle = 'rgba(255,210,60,0.58)';
+                    ctx.lineWidth = 1.2 / scaleX;
+                    ctx.stroke();
+                    drawCoinDollarMark(ctx, p.r, scaleX);
                     ctx.restore();
                 }
                 requestAnimationFrame(burstTick);
@@ -9773,13 +10035,13 @@ function showLoginForm() {
             requestAnimationFrame(burstTick);
         }
 
-        // â•â• COMMAND PALETTE & KEYBOARD SHORTCUTS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+        // Ã¢â€¢ÂÃ¢â€¢Â COMMAND PALETTE & KEYBOARD SHORTCUTS Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
         (function initCommandPalette() {
 
-            // â”€â”€ Section registry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Section registry Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             const SECTIONS = [
-                { id: 'dashboard',   label: 'Dashboard',    icon: '<i class="ph ph-squares-four"></i>',              sub: 'Overview & KPIs',                key: 'D' },
+                { id: 'dashboard',   label: 'Dashboard',    icon: '<i class="ph ph-house"></i>',                     sub: 'Overview & KPIs',                key: 'D' },
                 { id: 'money',       label: 'Money',        icon: '<i class="ph ph-currency-circle-dollar"></i>',   sub: 'Financials, Expenses & Reports', key: 'M' },
                 { id: 'schedule',    label: 'Schedule',     icon: '<i class="ph ph-calendar-blank"></i>',           sub: 'Bookings & Calendar',            key: 'S' },
                 { id: 'artists',     label: 'Artists',      icon: 'ph-microphone-stage', sub: 'Roster & profiles',              key: 'A' },
@@ -9794,7 +10056,7 @@ function showLoginForm() {
                 { label: 'Open Palette',   icon: '<i class="ph ph-command"></i>', sub: 'Cmd/Ctrl+K',           action: () => openPalette() },
             ];
 
-            // â”€â”€ DOM refs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ DOM refs Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             const palette   = document.getElementById('spPalette');
             const backdrop  = document.getElementById('spPaletteBackdrop');
             const input     = document.getElementById('spPaletteInput');
@@ -9806,7 +10068,7 @@ function showLoginForm() {
             let selectedIdx = -1;
             let currentResults = [];
 
-            // â”€â”€ Open / close â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Open / close Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             function isAppActive() {
                 const app = document.getElementById('appContainer');
                 return app && app.style.display !== 'none' && currentUser;
@@ -9835,7 +10097,7 @@ function showLoginForm() {
                 }, { once: true });
             }
 
-            // â”€â”€ Search & render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Search & render Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             function highlight(text, query) {
                 if (!query) return text;
                 const idx = text.toLowerCase().indexOf(query.toLowerCase());
@@ -9899,7 +10161,7 @@ function showLoginForm() {
                     items.push({ type: 'group', label: 'Bookings' });
                     matchBookings.forEach(b => items.push({
                         type: 'booking', label: b.event, icon: 'ph-calendar-check',
-                        sub: `${b.artist} Â· ${b.date || ''}`, query: q,
+                        sub: `${b.artist} - ${b.date || ''}`, query: q,
                         action: () => { showSection('schedule'); }
                     }));
                 }
@@ -9926,10 +10188,17 @@ function showLoginForm() {
                     const isSelected = resultIdx === selectedIdx;
                     const kbdHtml = item.key
                         ? `<span class="sp-palette__result-kbd">G+${item.key}</span>` : '';
+                    const iconHtml = !item.icon
+                        ? '<i class="ph ph-dot-outline" aria-hidden="true"></i>'
+                        : item.icon.includes('<')
+                            ? item.icon
+                            : item.icon.startsWith('ph-')
+                                ? `<i class="ph ${item.icon}" aria-hidden="true"></i>`
+                                : escapeHtml(item.icon);
                     return `<li class="sp-palette__result" role="option"
                         aria-selected="${isSelected}"
                         data-result-idx="${resultIdx}">
-                        <div class="sp-palette__result-icon">${item.icon || 'â–¸'}</div>
+                        <div class="sp-palette__result-icon">${iconHtml}</div>
                         <div class="sp-palette__result-body">
                             <div class="sp-palette__result-title">${highlight(item.label, item.query)}</div>
                             <div class="sp-palette__result-sub">${item.sub || ''}</div>
@@ -9969,13 +10238,13 @@ function showLoginForm() {
                 }
             }
 
-            // â”€â”€ Input handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Input handler Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             input.addEventListener('input', () => {
                 selectedIdx = -1;
                 renderResults(input.value);
             });
 
-            // â”€â”€ Keyboard navigation inside palette â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Keyboard navigation inside palette Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             input.addEventListener('keydown', e => {
                 if (e.key === 'ArrowDown') {
                     e.preventDefault();
@@ -9996,7 +10265,7 @@ function showLoginForm() {
             // Close on backdrop click
             backdrop.addEventListener('click', closePalette);
 
-            // â”€â”€ Global keyboard shortcuts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Global keyboard shortcuts Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             let gPressed = false;
             let gTimer = null;
 
@@ -10005,7 +10274,7 @@ function showLoginForm() {
                 const inInput = ['input','textarea','select'].includes(tag) ||
                     document.activeElement?.isContentEditable;
 
-                // Cmd/Ctrl+K â€” open palette
+                // Cmd/Ctrl+K Ã¢â‚¬â€ open palette
                 if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
                     e.preventDefault();
                     if (isOpen) closePalette(); else openPalette();
@@ -10038,13 +10307,13 @@ function showLoginForm() {
                         clearTimeout(gTimer);
                         const section = SECTIONS.find(s => s.id === target);
                         showSection(target);
-                        showKbdHint(`â†’ ${section?.label || target}`);
+                        showKbdHint(`-> ${section?.label || target}`);
                         return;
                     }
                 }
             });
 
-            // â”€â”€ Keyboard hint display â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Keyboard hint display Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             let hintTimer = null;
             function showKbdHint(text) {
                 if (!kbdHint) return;
@@ -10059,7 +10328,7 @@ function showLoginForm() {
 
         })();
 
-        // â•â• PHASE 5: DENSITY TOGGLE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+        // Ã¢â€¢ÂÃ¢â€¢Â PHASE 5: DENSITY TOGGLE Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
         (function initDensityToggle() {
             const STORAGE_KEY = 'sp_density';
@@ -10083,7 +10352,7 @@ function showLoginForm() {
             compactBtn.addEventListener('click',  () => applyDensity('compact'));
         })();
 
-        // â•â• PHASE 5: GOAL PROGRESS PULSE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+        // Ã¢â€¢ÂÃ¢â€¢Â PHASE 5: GOAL PROGRESS PULSE Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
         // Wrap goal progress bar updates to add pulse animation
         (function patchGoalProgressPulse() {
@@ -10101,7 +10370,7 @@ function showLoginForm() {
             });
         })();
 
-        // â•â• PHASE 5: KEYBOARD CHEAT SHEET â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+        // Ã¢â€¢ÂÃ¢â€¢Â PHASE 5: KEYBOARD CHEAT SHEET Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
         (function initCheatSheet() {
             const sheet    = document.getElementById('spCheatsheet');
@@ -10132,7 +10401,7 @@ function showLoginForm() {
             closeBtn?.addEventListener('click', closeSheet);
             backdrop.addEventListener('click', closeSheet);
 
-            // ? key opens cheat sheet â€” only when not in input and app is active
+            // ? key opens cheat sheet Ã¢â‚¬â€ only when not in input and app is active
             document.addEventListener('keydown', e => {
                 const tag = document.activeElement?.tagName?.toLowerCase();
                 const inInput = ['input','textarea','select'].includes(tag) ||
@@ -10152,7 +10421,7 @@ function showLoginForm() {
             });
         })();
 
-        // â”€â”€ Typewriter headline animation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Typewriter headline animation Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         (function normalizeNavOrder() {
             const sidebarNav = document.querySelector('.sidebar-nav');
             if (sidebarNav) {
@@ -10175,7 +10444,7 @@ function showLoginForm() {
 
         (function initTypewriter() {
             const heading = document.querySelector('#landingScreen .landing-hero-heading');
-            if (heading && !heading.dataset.twDone) {
+            if (heading && !heading.dataset.twDone && heading.dataset.twStatic !== '1') {
                 heading.dataset.twDone = '1';
                 const words = heading.textContent.trim().split(/\s+/);
                 heading.innerHTML = words.map((word, index) =>
@@ -10184,7 +10453,7 @@ function showLoginForm() {
             }
 
             const subtitle = document.querySelector('#landingScreen .landing-hero-subtitle');
-            if (!subtitle || subtitle.dataset.twRotatorDone) return;
+            if (!subtitle || subtitle.dataset.twRotatorDone || subtitle.dataset.twStatic === '1') return;
             subtitle.dataset.twRotatorDone = '1';
 
             const originalText = subtitle.textContent.trim();
@@ -10210,7 +10479,7 @@ function showLoginForm() {
                 return;
             }
 
-            // â”€â”€ Cursor-safe structure: text lives in a <span>, cursor is a sibling <i>
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Cursor-safe structure: text lives in a <span>, cursor is a sibling <i>
             // We NEVER overwrite subtitle.innerHTML so the cursor element persists.
             subtitle.classList.add('landing-hero-subtitle--typing');
             subtitle.innerHTML = '<span class="tw-text"></span><i class="ph ph-cursor-text tw-cursor" aria-hidden="true"></i>';
@@ -10261,11 +10530,11 @@ function showLoginForm() {
                 schedule(DELETE_SPEED);
             }
 
-            // charIndex starts at 0 â€” tick() will type from empty naturally
+            // charIndex starts at 0 Ã¢â‚¬â€ tick() will type from empty naturally
             tick();
         })();
 
-        // â”€â”€ Collapsible sidebar (desktop â‰¥1025px) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Collapsible sidebar (desktop Ã¢â€°Â¥1025px) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         (function initSidebarCollapse() {
             const STORAGE_KEY = 'sp_sidebar_collapsed';
             const btn = document.getElementById('sidebarCollapseBtn');
@@ -10296,7 +10565,7 @@ function showLoginForm() {
                 try { localStorage.setItem(STORAGE_KEY, val ? '1' : '0'); } catch(e) {}
             };
 
-            // Restore saved state â€” set position without transition
+            // Restore saved state Ã¢â‚¬â€ set position without transition
             if (isDesktop()) {
                 let saved = '0';
                 try { saved = localStorage.getItem(STORAGE_KEY) || '0'; } catch(e) {}
@@ -10326,7 +10595,7 @@ function showLoginForm() {
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=38').then((registration) => {
+                navigator.serviceWorker.register('sw.js?v=70').then((registration) => {
                     registration.update().catch(() => {});
                 }).catch((error) => {
                     console.warn('Service worker registration failed:', error);

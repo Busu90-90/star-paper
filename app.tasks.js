@@ -4,7 +4,8 @@
  */
 (function () {
     let tasks = [];
-    let currentStorageKey = null;
+    let currentScopeKey = null;
+    const tasksByScope = Object.create(null);
 
     function getScopeKey() {
         if (typeof window.getActiveDataScopeKey === "function") {
@@ -12,10 +13,6 @@
             if (key) return key;
         }
         return String(window.currentManagerId || window.currentUser || "global");
-    }
-
-    function getStorageKey() {
-        return `starPaperTasks:${getScopeKey()}`;
     }
 
     function getActiveRole() {
@@ -51,20 +48,11 @@
     }
 
     function ensureLoadedForCurrentUser() {
-        const nextKey = getStorageKey();
-        if (currentStorageKey === nextKey) return;
-        currentStorageKey = nextKey;
-        loadTasks();
-    }
-
-    function parseStoredTasks(raw) {
-        if (!raw) return [];
-        try {
-            const parsed = JSON.parse(raw);
-            return Array.isArray(parsed) ? parsed : [];
-        } catch {
-            return [];
-        }
+        const nextKey = getScopeKey();
+        if (currentScopeKey === nextKey) return;
+        currentScopeKey = nextKey;
+        const scoped = tasksByScope[currentScopeKey];
+        tasks = Array.isArray(scoped) ? scoped.map(normalizeTask).filter((task) => task.text) : [];
     }
 
     function normalizeTask(task) {
@@ -79,22 +67,13 @@
     }
 
     function loadTasks() {
-        const scoped = parseStoredTasks(localStorage.getItem(currentStorageKey || getStorageKey()));
-        if (scoped.length > 0) {
-            tasks = scoped.map(normalizeTask).filter((task) => task.text);
-            return tasks;
-        }
-
-        // One-time legacy fallback for older installs using non-scoped key.
-        const legacy = parseStoredTasks(localStorage.getItem("starPaperTasks"));
-        tasks = legacy.map(normalizeTask).filter((task) => task.text);
-        saveTasks();
+        ensureLoadedForCurrentUser();
         return tasks;
     }
 
     function saveTasks() {
-        if (!currentStorageKey) currentStorageKey = getStorageKey();
-        localStorage.setItem(currentStorageKey, JSON.stringify(tasks));
+        if (!currentScopeKey) currentScopeKey = getScopeKey();
+        tasksByScope[currentScopeKey] = tasks.map(normalizeTask).filter((task) => task.text);
     }
 
     function commitTasks(options = {}) {

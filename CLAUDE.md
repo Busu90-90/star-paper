@@ -12,7 +12,7 @@ This is the authoritative reference for the Star Paper codebase — architecture
 
 ## 1. Project Identity
 
-**Star Paper** is a PWA for music managers across East and West Africa — bookings, expenses, income, artist rosters, financial reporting, and team collaboration in one offline-capable, mobile-first interface.
+**Star Paper** is a PWA for music managers across East and West Africa — bookings, expenses, income, artist rosters, financial reporting, and team collaboration in one cloud-first, mobile-first interface.
 
 | Key | Value |
 |-----|-------|
@@ -70,6 +70,8 @@ When editing JS files:
 
 Four critical bugs were diagnosed and fixed in previous sessions: (1) auto-login after logout — resolved with `sp_logged_out` persistent flag and explicit SDK token clearing; (2) cloud data timeout — resolved by correcting a single-character URL typo in `supabase.js`; (3) team panel timeout — resolved by URL fix + `get_my_team_ids()` SECURITY DEFINER function; (4) cross-browser sync — resolved as downstream of bug 2. All fixes are verified present in the current codebase.
 
+A later refactor **removed the legacy dual-auth and dual-data-flow paths**. The app is now cloud-first: Supabase is the single source of truth for both identity and data. See Sections 6 and 7 for the current architecture.
+
 ---
 
 ## 3. Immutable Architectural Constraints
@@ -94,7 +96,7 @@ Scripts must load in this exact sequence. Changing the order causes silent, hard
 **Why this order:**
 - **Supabase SDK** in `<head>` without `defer` — guarantees `window.supabase` exists before any app scripts run. Deferred loading would cause `supabase.js` to execute before the SDK is available.
 - **supabase.js first** — patches `window.login`, `window.signup`, `window.logout`, `window.saveUserData`. `app.js` uses `||=` assignment so whichever script sets these first wins. `supabase.js` must win.
-- **app.migrations.js second** — ensures localStorage schema is current before any code reads from it.
+- **app.migrations.js second** — runs the one-time legacy→cloud migration if local data from an older install is still present.
 - **app.actions.js third** — sets `window.__starPaperActionsBound = true`. `app.js` checks this flag before registering its fallback dispatcher.
 - **app.js last** — consumes all globals set by prior scripts.
 
@@ -103,7 +105,8 @@ Scripts must load in this exact sequence. Changing the order causes silent, hard
 ### Other Immutable Rules
 
 - **`window.SP` is the only cloud interface.** All Supabase interaction goes through the `SP.*` API exposed by `supabase.js`. Never call `db.from()` directly outside `supabase.js`.
-- **localStorage is cache, Supabase is source of truth.** Writes go to localStorage first (synchronous, cannot fail), then cloud (async, best-effort). Cloud failure never causes data loss.
+- **Supabase is the single source of truth.** All business data (bookings, expenses, income, artists, tasks, goals, BBF, thoughts) reads from and writes to Supabase. localStorage is used only for user preferences, session guards, a retry queue for offline-durable writes, and a one-time legacy migration snapshot. Never treat localStorage as authoritative for business data.
+- **Writes are cloud-first with a retry queue.** `saveUserData()` pushes through `syncCloudExtras()` to Supabase. If the network fails, the payload is persisted into `sp_retry_queue` and replayed on the next successful sync. No business data is written to localStorage directly.
 - **Atomic RPCs — do not decompose.** `create_team_with_member()` and `join_team_by_code()` are single Supabase RPC calls. Splitting them into two sequential queries causes `AbortError: Lock broken by steal` from the Supabase SDK's Web Lock mechanism.
 - **Hash-based routing.** Navigation uses `#bookings`, `#expenses`, etc. All routing goes through `showSection()`.
 - **UGX integers only.** All money values are `Math.round(Number(value) || 0)`. Balance is always re-derived as `fee - deposit`. Currency conversion is display-only via `SP_formatCurrencyFull()`.
@@ -120,14 +123,14 @@ Scripts must load in this exact sequence. Changing the order causes silent, hard
 |-------|-----------|-------|
 | **Frontend** | Vanilla JS ES6+ | No React, No Vue, No bundler, No npm for frontend |
 | **HTML** | HTML5 | ~1,665 lines in `index.html`. Zero logic. |
-| **Styling** | Custom CSS3 | ~6,500 lines in `styles.css`. Single file. No preprocessor. Glassmorphism design. |
-| **Icons** | Phosphor Icons v2.1.1 | CDN-loaded, duotone + regular styles |
+| **Styling** | Custom CSS3 | ~7,000 lines in `styles.css` + `styles.premium.css` polish layer. Glassmorphism design. |
+| **Icons** | Phosphor Icons v2.1.1 | CDN-loaded, duotone + regular + fill styles |
 | **Charts** | Chart.js | CDN with `defer` |
 | **PDF Reports** | jsPDF 2.5.1 + html2canvas 1.4.1 | CDN with `defer` |
-| **Auth & DB** | Supabase JS SDK v2 | PostgreSQL + GoTrue Auth + Realtime |
+| **Auth & DB** | Supabase JS SDK v2 | PostgreSQL + GoTrue Auth + Realtime. Single source of truth. |
 | **Offline** | Service Worker | Stale-While-Revalidate caching, `star-paper-shell-vN` |
 | **PWA** | `manifest.json` | Standalone display, portrait-primary, installable |
-| **Backend** | Express 4.21.2 + TypeScript 5.7.2 | Minimal — health check + local auth endpoint |
+| **Backend** | Express 4.21.2 + TypeScript 5.7.2 | Minimal — health check + legacy/test auth endpoint |
 | **Error Tracking** | Sentry | Region: `de.sentry.io` |
 
 **Explicit negations:** No React, No Vue, No Angular, No bundler (Webpack/Vite/Rollup), No npm/node on frontend, No TypeScript on frontend, No CSS preprocessor, No build step for frontend.
@@ -139,23 +142,25 @@ Scripts must load in this exact sequence. Changing the order causes silent, hard
 Each file has a single non-negotiable responsibility. Never mix concerns across files.
 
 ```
-index.html          — App shell. All HTML (~1,665 lines). Zero logic.
-styles.css          — All CSS (~6,500 lines). Single file. No imports.
-supabase.js         — Cloud layer ONLY. Auth, DB sync, teams, currency.
-app.migrations.js   — localStorage schema migrations. Runs once on boot.
-app.actions.js      — Declarative action dispatcher for data-action clicks.
-app.todayboard.js   — Today Board widget, alert calculation and rendering.
-app.tasks.js        — Task board module, scoped per user, cloud-synced.
-app.js              — Core engine. 300+ functions. All business logic.
-sw.js               — Service Worker. Cache management. Offline fallback.
-manifest.json       — PWA manifest. Icons and shortcuts.
-schema.sql          — Supabase schema. Idempotent. Run in SQL Editor.
+index.html           — App shell. All HTML (~1,665 lines). Zero logic.
+styles.css           — Core CSS (~7,000 lines). Single file. No imports.
+styles.premium.css   — Additive premium polish layer (glass depth, radials, reveals). sp-prem-* prefixed.
+supabase.js          — Cloud layer ONLY. Auth, DB sync, teams, currency, retry queue.
+app.migrations.js    — One-time legacy→cloud migration. Runs once per user on boot.
+app.actions.js       — Declarative action dispatcher for data-action clicks.
+app.todayboard.js    — Today Board widget, alert calculation and rendering.
+app.tasks.js         — Task board module, scoped per user, cloud-synced.
+app.js               — Core engine. 300+ functions. All business logic.
+app.premium.js       — Additive premium polish (radial ring, sparklines, parallax, etc.). SP_PREMIUM namespace.
+sw.js                — Service Worker. Cache management. Offline fallback.
+manifest.json        — PWA manifest. Icons and shortcuts.
+schema.sql           — Supabase schema. Idempotent. Run in SQL Editor.
 ```
 
 **Backend files:**
 ```
-backend/src/server.ts  — Express app (port 3000). Health + auth endpoints.
-backend/src/auth.ts    — Local authentication logic.
+backend/src/server.ts  — Express app (port 3000). Health endpoint + legacy/test auth.
+backend/src/auth.ts    — Legacy local authentication (kept only for the test-mode endpoint).
 backend/src/types.ts   — TypeScript type definitions.
 ```
 
@@ -169,36 +174,65 @@ tasks/todo.md          — Redesign implementation plan.
 tasks/lessons.md       — Lessons learned from previous sessions.
 ```
 
-Satellite modules (`app.migrations.js`, `app.actions.js`, `app.todayboard.js`, `app.tasks.js`) communicate with `app.js` exclusively through `window.*` globals. They must never import or require each other.
+Satellite modules (`app.migrations.js`, `app.actions.js`, `app.todayboard.js`, `app.tasks.js`, `app.premium.js`) communicate with `app.js` exclusively through `window.*` globals. They must never import or require each other.
 
 ---
 
-## 6. Dual-Layer Authentication
+## 6. Cloud-First Authentication
 
-Star Paper runs two parallel auth systems simultaneously. Both can independently trigger `showApp()`.
+Star Paper has a **single** authentication system: Supabase Auth. The legacy local-session auth path has been removed.
 
-**Layer 1 — Local Auth** (`app.js`): On every page load, `checkAuth()` reads `starPaper_session` and `starPaperSessionUser` from localStorage. If a valid local session exists, it calls `loadUserData()` then `showApp()` immediately, with no network required. This is what makes the app feel instant for returning users.
+**The canonical flow:**
+1. Page loads. `supabase.js` IIFE runs, creates the Supabase client, sets `window.__spSupabaseReady = true`, and dispatches the `sp-supabase-ready` event.
+2. `bootstrapFromSupabaseSession()` calls `supabase.auth.getSession()`. If a valid JWT is present and `sp_logged_out !== '1'`, it proceeds to `loadAllData()`, populates `window._SP_cloudData`, then triggers `loadUserData()` in `app.js` which hydrates the in-memory arrays and calls `showApp()`.
+3. If no session is present (or `sp_logged_out === '1'`), the landing / login screen is shown. There is no local-session fallback and no offline-only boot path.
+4. `supabase.auth.onAuthStateChange` handles OAuth redirects and token refreshes. It refuses to bootstrap when the logout flag is set.
 
-**Layer 2 — Supabase Auth** (`supabase.js`): After the page loads, `getSession()` checks for a live Supabase JWT. If found, `bootstrapFromSupabaseSession()` fetches cloud data and updates the local session state. The `onAuthStateChange` listener handles OAuth redirects and token refreshes.
+**`checkAuth()` is now a stub.** It no longer reads `starPaper_session` or `starPaperSessionUser`. It only gates the boot loader state while the cloud bootstrap is in flight. `restoreSession()` is an empty no-op retained for legacy call-sites.
 
-**Guards:**
+**Guards that are still authoritative:**
 - `window.__spAppBooted` prevents double-rendering — once `true`, subsequent `showApp()` calls are no-ops. Reset to `false` during logout.
 - `window.__spSupabaseReady` is set at the end of the `supabase.js` IIFE. The `sp-supabase-ready` event fires simultaneously. Never call `window.SP.*` before this flag is set.
 - `sp_logged_out` localStorage flag prevents stale Supabase tokens from re-bootstrapping after explicit logout. Set synchronously in `signOut()`, cleared in `bootstrapFromSupabaseSession()` after confirming a real session.
 
+**On logout**, `signOut()` clears the Supabase SDK token (`sb-fxcyocdwvjiyatqnaahg-auth-token`) and also sweeps any historical local-auth keys (`starPaper_session`, `starPaperSessionUser`, `starPaperCurrentUser`, `starPaperCredentials`, …) out of localStorage. Those keys are **only ever cleared, never read** — their presence has no effect on who is considered logged in.
+
 ---
 
-## 7. Data Flow: Cloud and Offline Together
+## 7. Cloud-First Data Flow
 
-**Cloud boot path:** `bootstrapFromSupabaseSession()` → `loadAllData()` → sets `window._SP_cloudData` → `loadUserData()` in `app.js` consumes `_SP_cloudData`, populates in-memory arrays (`bookings`, `expenses`, `otherIncome`, `artists`), writes them to localStorage as offline cache.
+There is one boot path and one save path. Both go through Supabase.
 
-**Offline boot path:** `checkAuth()` finds valid local session → `loadUserData()` reads `getManagerData(getActiveDataScopeKey())` from localStorage → populates same arrays. No network involved.
+**Boot (read) path:**
+```
+bootstrapFromSupabaseSession()
+  └─> loadAllData()              // fetches every table scoped to the active owner/team
+       └─> window._SP_cloudData  // full snapshot payload
+            └─> loadUserData()   // reads _SP_cloudData, populates in-memory arrays
+                 └─> bookings, expenses, otherIncome, artists, tasks, goals, bbf, thoughts
+                      └─> showApp() + render
+```
 
-**Save flow:** `saveUserData()` writes to localStorage first (synchronous, cannot fail), then calls `window.SP.saveAllData()` asynchronously. Cloud failure never causes data loss.
+`loadUserData()` in `app.js` does **not** read from localStorage for business data. If `_SP_cloudData` is missing, the app shows a retry state, not a stale local snapshot.
 
-**ID strategy:** Local records use `Date.now()` as IDs. Cloud records use Supabase UUIDs. Every cloud table has a `legacy_id` column with a unique constraint `(legacy_id, owner_id)`. After every upsert, `patchIds()` in `supabase.js` back-fills the Supabase UUID into the live in-memory array so future saves update existing rows instead of creating duplicates. If you skip `patchIds()`, every save cycle creates duplicate rows.
+**Save (write) path:**
+```
+mutation in UI / action
+  └─> updates in-memory array
+       └─> saveUserData()
+            └─> syncCloudExtras()     // upsert via window.SP.*
+                 ├─> success          → patchIds() back-fills Supabase UUIDs into live arrays
+                 └─> failure          → enqueue payload into sp_retry_queue
+                                        (replayed on next successful sync or online event)
+```
 
-**Live re-injection:** `window._SP_syncFromCloud(data)` is the bridge. `supabase.js` can call it at any time to push fresh cloud data into the running app, updating all arrays and re-rendering. Used after team switches and delayed cloud responses.
+No business data is ever persisted to localStorage. Cloud failure is absorbed by the retry queue, not by a local write-through cache.
+
+**ID strategy:** New client-side records are created with `Date.now()` as the local `id`. Cloud records use Supabase UUIDs. Every cloud table has a `legacy_id` column with a unique constraint `(legacy_id, owner_id)`. After every upsert, `patchIds()` in `supabase.js` back-fills the Supabase UUID into the live in-memory array so subsequent saves update existing rows instead of creating duplicates. Skipping `patchIds()` produces duplicate rows on every save cycle.
+
+**Live re-injection:** `window._SP_syncFromCloud(data)` is the bridge. `supabase.js` calls it after team switches, realtime events, and delayed cloud responses to push fresh data into the running app, updating all arrays and triggering a re-render.
+
+**Legacy migration:** `supabase.js` runs a one-time migration per user (keyed by `sp_migrated_{userId}`). It reads the old `starPaperManagerData`, `starPaperArtists`, `starPaperBBF`, etc. keys, pushes their contents into Supabase, and marks the user migrated. After that, the legacy keys are no longer read and can safely be deleted. They are preserved only so that users upgrading from a very old build do not lose data on first login.
 
 ---
 
@@ -208,20 +242,22 @@ These live inside the `DOMContentLoaded` closure in `app.js` and are also expose
 
 | Variable | Type | Description |
 |----------|------|-------------|
-| `currentUser` | string or null | Display username of logged-in manager |
-| `currentManagerId` | string or null | Local ID with `mgr_` prefix. NOT the Supabase UUID |
+| `currentUser` | string or null | Display username of logged-in manager (derived from Supabase profile) |
+| `currentManagerId` | string or null | Supabase user UUID (prefixed `mgr_` in legacy code paths; treat as opaque) |
 | `currentTeamRole` | string or null | `owner`, `manager`, `viewer`, or null |
 | `bookings` | Array | In-memory booking records for current scope |
 | `expenses` | Array | In-memory expense records for current scope |
 | `otherIncome` | Array | In-memory other income records for current scope |
 | `artists` | Array | All artists for current scope |
-| `managerData` | Object | localStorage cache: `{ [scopeKey]: { bookings, expenses, otherIncome } }` |
-| `revenueGoals` | Object | `{ [scopeKey]: UGX integer }` |
-| `bbfData` | Object | `{ [scopeKey_YYYY-MM]: UGX integer }` |
+| `managerData` | Object | In-memory mirror of `{ [scopeKey]: { bookings, expenses, otherIncome } }` derived from `_SP_cloudData` |
+| `revenueGoals` | Object | `{ [scopeKey]: UGX integer }` (hydrated from cloud) |
+| `bbfData` | Object | `{ [scopeKey_YYYY-MM]: UGX integer }` (hydrated from cloud) |
+| `window._SP_cloudData` | Object | Full cloud snapshot payload. Authoritative source for `loadUserData()`. |
 | `window.__spAppBooted` | boolean | True after `showApp()`. Guards double-render. Reset on logout. |
 | `window.__spSupabaseReady` | boolean | True after `supabase.js` IIFE completes |
+| `window.SP_PREMIUM` | Object | `{ version, isEnabled(), enable(), disable(), forceRefresh() }` — premium polish layer handle |
 
-`getActiveDataScopeKey()` determines which data partition to read and write. Returns `team:{teamId}` if a team is active, otherwise `currentManagerId`. Always use this function — never hardcode a scope key.
+`getActiveDataScopeKey()` determines which data partition to read and work against in memory. Returns `team:{teamId}` if a team is active, otherwise `currentManagerId`. Always use this function — never hardcode a scope key.
 
 ---
 
@@ -255,7 +291,7 @@ These live inside the `DOMContentLoaded` closure in `app.js` and are also expose
 Adapted from the everything-claude-code framework for vanilla JS.
 
 ### File Size
-Existing monolithic files (`app.js` ~9,400 lines, `styles.css` ~6,500 lines) are intentional — debuggability is prioritised over modularity at this stage. **New modules should target 200-400 lines, max 800.** When suggesting a refactor of existing files, present it as optional future work, never as a prerequisite for the current task.
+Existing monolithic files (`app.js` ~9,400 lines, `styles.css` ~7,000 lines) are intentional — debuggability is prioritised over modularity at this stage. **New modules should target 200-400 lines, max 800.** When suggesting a refactor of existing files, present it as optional future work, never as a prerequisite for the current task.
 
 ### Immutability
 Create new objects — never mutate existing ones. Use spread operators for object updates. Use `.map()`, `.filter()`, `.reduce()` instead of in-place array mutation.
@@ -281,6 +317,7 @@ Create new objects — never mutate existing ones. Use spread operators for obje
 - Handle errors explicitly at every level
 - Use Sentry `captureException` or `captureMessage` — no `console.log` in production
 - Never silently swallow errors
+- Cloud-write failures route through the retry queue, not through silent catches
 
 ---
 
@@ -323,8 +360,8 @@ npm install -D vitest happy-dom
 
 ### Priority Test Targets (in order)
 1. **Financial calculations** — UGX arithmetic, fee/deposit/balance derivation, currency formatting
-2. **Auth flow** — login, logout, session persistence, `sp_logged_out` flag behaviour
-3. **Data sync** — localStorage write-first, cloud upsert, `patchIds()` deduplication
+2. **Auth flow** — Supabase sign-in, sign-out, `sp_logged_out` guard, `onAuthStateChange` refusing to rebootstrap when logged out
+3. **Data sync** — cloud-first upsert, `patchIds()` UUID back-fill / deduplication, retry queue durability across reloads
 4. **Scope filtering** — `getActiveDataScopeKey()`, `applyScopeFilter()`, team vs solo mode
 
 ### TDD Workflow (Mandatory for New Features)
@@ -362,11 +399,14 @@ Playwright for critical flows: login, add booking, switch team, generate report.
 - [ ] UGX integers only — `NUMERIC` type in Postgres, always whole numbers
 - [ ] Balance re-derived as `fee - deposit` before save
 - [ ] Currency conversion is display-only, never stored
+- [ ] No business data written to localStorage (cloud-first only)
 
 ### Auth Security
-- [ ] Supabase SDK token (`sb-*-auth-token`) explicitly cleared on logout
+- [ ] Supabase SDK token (`sb-fxcyocdwvjiyatqnaahg-auth-token`) explicitly cleared on logout
 - [ ] `sp_logged_out` flag set synchronously before any async logout operations
-- [ ] `onAuthStateChange` refuses to bootstrap when logout flag is set
+- [ ] `onAuthStateChange` refuses to bootstrap when the logout flag is set
+- [ ] Legacy local-auth keys are cleared on logout, never read for auth decisions
+- [ ] `bootstrapFromSupabaseSession()` is the **only** path that hydrates an authenticated app state
 
 ### Security Response Protocol
 If a security issue is found:
@@ -382,14 +422,15 @@ If a security issue is found:
 
 | Metric | Target |
 |--------|--------|
-| Dashboard load (3G) | < 500ms |
-| Time to interactive | < 1s on low-end Android |
+| Dashboard load (3G) | < 500ms after cloud snapshot arrives |
+| Time to interactive | < 1s on low-end Android (from cached shell) |
 | SW pre-cache | All APP_SHELL files |
 
 - CDN libraries loaded with `defer` (Chart.js, jsPDF, html2canvas) **except** Supabase SDK (synchronous in `<head>`)
 - Supabase calls use `withTimeout()` guard (8 seconds) to prevent indefinite hangs
 - No lazy-loading of core modules — all scripts are < 10KB individually except `app.js`
 - Minimize DOM queries in hot paths — cache element references
+- Premium polish layer (`app.premium.js`) is additive and guarded by `SP_PREMIUM.isEnabled()`; kill-switch via `localStorage.sp_prem_off = '1'`
 
 ---
 
@@ -397,33 +438,48 @@ If a security issue is found:
 
 Every key used in the app. Never invent new keys without adding them to this table.
 
+### Active keys (read and written by the running app)
+
 | Key | Owner | Description |
 |-----|-------|-------------|
-| `starPaper_session` | app.js | Active session marker. Value: `"active"` |
-| `starPaperSessionUser` | app.js | Username of the active session |
-| `starPaperCurrentUser` | app.js | Persisted username when Remember Me is checked |
-| `starPaperRemember` | app.js | Boolean, Remember Me state |
-| `starPaperUsers` | app.js | Array of manager profile objects |
-| `starPaperCredentials` | app.js | Map of username to hashed credential record |
-| `starPaperArtists` | app.js | Array of all artist objects |
-| `starPaperManagerData` | app.js | `{ [scopeKey]: { bookings, expenses, otherIncome } }` |
-| `starPaperRevenueGoals` | app.js | `{ [scopeKey]: UGX integer }` |
-| `starPaperBBF` | app.js | `{ [scopeKey_YYYY-MM]: UGX integer }` |
-| `starPaperClosingThoughtsByPeriod` | app.js | `{ [scopeKey]: { [period]: text } }` |
-| `starPaperAudienceMetrics` | app.js | `{ [scopeKey]: Array of audience metric entries }` |
-| `starPaperTasks:{scopeKey}` | app.tasks.js | Array of task objects per user or team |
-| `starPaperSchemaVersion` | app.migrations.js | Integer, currently `2` |
-| `starPaperTheme` | app.js | `"dark"` or `"light"` |
-| `starPaperSeedDemo` | app.js | `"true"` enables demo data seeding (dev only) |
+| `sp_logged_out` | supabase.js | Logout lock flag. Value `"1"`. Prevents stale Supabase tokens from re-bootstrapping after explicit logout. |
 | `sp_active_team` | supabase.js | Active team UUID or empty string |
 | `sp_currency` | supabase.js | Active currency code, e.g. `"UGX"` |
-| `sp_logged_out` | supabase.js | Logout lock flag. Value `"1"`. Prevents stale token re-bootstrap. |
-| `sp_migrated_{userId}` | supabase.js | Per-user cloud migration completion flag |
+| `sp_migrated_{userId}` | supabase.js | Per-user one-time cloud migration completion flag |
+| `sp_retry_queue` | supabase.js | JSON array of pending cloud saves that survived browser close. Replayed on successful sync, cleared on logout. |
+| `sp_last_save_toast` | supabase.js | Throttle timestamp for "Saved to cloud" toast (10s cooldown) |
 | `sp_density` | app.js | `"comfortable"` or `"compact"` |
 | `sp_sidebar_collapsed` | app.js | `"1"` if sidebar is collapsed on desktop |
+| `sp_tasks` | app.tasks.js | Task board UI preferences (view mode, filters) — UI state only, not task data |
+| `sp_prem_off` | app.premium.js | `"1"` disables the premium polish layer (kill-switch) |
+| `starPaperTheme` | app.js | `"dark"` or `"light"` |
+| `starPaperDrafts` | app.js | In-progress form drafts (bookings, expenses). UI-only, reconciled against cloud on save. |
+| `starPaperBBFViewState` | app.js | BBF panel view preferences (collapsed months, sort) |
+| `starPaperPushPublicKey` | app.js | Web Push VAPID public key cache |
+| `starPaperPushEndpoint` | app.js | Web Push subscription endpoint |
+| `starPaperPushSubscription` | app.js | Web Push subscription JSON |
+| `starPaperApiBaseUrl` | app.js | Backend API base URL override (dev only) |
+| `starPaperSchemaVersion` | app.migrations.js | Integer, currently `2`. Guards the legacy-data migration run. |
 | `sb-fxcyocdwvjiyatqnaahg-auth-token` | Supabase SDK | SDK's own JWT storage. Explicitly cleared on logout. |
-| `sp_last_save_toast` | supabase.js | Throttle timestamp for "Saved to cloud" toast (10s cooldown) |
-| `sp_retry_queue` | supabase.js | JSON array of pending cloud saves that survived browser close. Cleared on successful sync or logout. |
+
+### Legacy / migration-only keys (read once during migration, never written by the running app)
+
+These exist only so that users upgrading from an older build do not lose data on first login. After the per-user migration completes (`sp_migrated_{userId}` is set), these keys are no longer consulted and may be deleted. On logout they are swept out of localStorage for hygiene; none of them influence who is considered logged in.
+
+| Key | Historical Owner | Description |
+|-----|------------------|-------------|
+| `starPaper_session` | legacy app.js | Old local session marker |
+| `starPaperSessionUser` | legacy app.js | Old active-session username |
+| `starPaperCurrentUser` | legacy app.js | Old "Remember Me" username |
+| `starPaperRemember` | legacy app.js | Old Remember Me boolean |
+| `starPaperCredentials` | legacy app.js | Old hashed credential map — never read by current code |
+| `starPaperUsers` | legacy app.js | Old array of local manager profiles |
+| `starPaperArtists` | legacy app.js | Old artists array (migrated to cloud) |
+| `starPaperManagerData` | legacy app.js | Old `{ [scopeKey]: { bookings, expenses, otherIncome } }` (migrated) |
+| `starPaperRevenueGoals` | legacy app.js | Old revenue goals (migrated) |
+| `starPaperBBF` | legacy app.js | Old BBF balances (migrated) |
+| `starPaperClosingThoughtsByPeriod` | legacy app.js | Old closing thoughts (migrated) |
+| `starPaperAudienceMetrics` | legacy app.js | Old audience metrics (migrated) |
 
 ---
 
@@ -431,13 +487,13 @@ Every key used in the app. Never invent new keys without adding them to this tab
 
 Every new feature must satisfy this checklist before it is complete:
 
-- [ ] **Data storage?** Write to localStorage first (synchronous), then cloud (async, best-effort).
+- [ ] **Data storage?** Write to Supabase via `window.SP.*` or `syncCloudExtras()`. On failure, the retry queue (`sp_retry_queue`) persists the payload for the next successful sync. Do not write business data to localStorage.
 - [ ] **Money involved?** UGX integers only, `Math.round(Number(value) || 0)`, test with 0, 500M, and negative.
-- [ ] **UI change?** Test at 375px viewport width in both dark and light themes.
+- [ ] **UI change?** Test at 375px viewport width in both dark and light themes, with premium layer on and off (`localStorage.sp_prem_off`).
 - [ ] **New button?** Use `data-action="fnName"` plus inline `onclick="fnName()"` and `window.fnName ||= fnName`.
 - [ ] **Supabase query?** Must go through `applyScopeFilter()` or `applyUserScopeFilter()` — never without scope.
-- [ ] **New table?** Add to `schema.sql` with `CREATE TABLE IF NOT EXISTS` and RLS enabled. Re-run schema.
-- [ ] **New localStorage key?** Add it to the key registry in Section 15.
+- [ ] **New table?** Add to `schema.sql` with `CREATE TABLE IF NOT EXISTS` and RLS enabled. Add a `legacy_id` column + `(legacy_id, owner_id)` unique constraint if records are created client-side. Re-run schema.
+- [ ] **New localStorage key?** It must be UI state, a preference, or a durability aid (retry queue / migration flag). Add it to the active keys table in Section 15. If it would hold business data, stop and put it in Supabase instead.
 - [ ] **Test?** Write at minimum a unit test for the core logic.
 - [ ] **Plan written?** Non-trivial tasks require a plan in `tasks/todo.md` before implementation. (Lesson 8)
 
@@ -565,7 +621,8 @@ Claude verifies the fix didn't break anything:
 2. Deploy health — last deploy was GitHub auto-deploy with multiple files
 3. Data health — financial tables not suddenly empty
 4. Sentry — no new error spike in the last 30 minutes
-5. Auth guard — `sp_logged_out` check still present in `app.js` `checkAuth()`
+5. Auth guard — `sp_logged_out` check still present in `supabase.js` `bootstrapFromSupabaseSession()` / `onAuthStateChange`, and `checkAuth()` in `app.js` is still a stub (does not read legacy local-auth keys)
+6. Retry-queue guard — `sp_retry_queue` enqueue path still present in the `syncCloudExtras` failure branch
 
 Use after every bug fix before closing the session.
 
@@ -662,7 +719,7 @@ Recommended hooks for Star Paper development.
 
 ## 22. CSS Architecture
 
-All styles in `styles.css`, a single file with 39 numbered sections.
+Styles split across two files: the core in `styles.css` (39 numbered sections) and an additive premium polish layer in `styles.premium.css` (all selectors `sp-prem-*`-prefixed to avoid collisions).
 
 **Core Palette:**
 | Token | Value | Usage |
@@ -676,7 +733,10 @@ All styles in `styles.css`, a single file with 39 numbered sections.
 **Breakpoints:** 360px (baseline), 480px, 768px, 1025px
 **Design:** Glassmorphism — backdrop blur, low-alpha borders, layered transparency
 
-**Rule:** Never use `!important` outside designated density override sections.
+**Rules:**
+- Never use `!important` outside designated density override sections.
+- Never edit existing selectors in `styles.css` from the premium layer — only add new `sp-prem-*` classes and keyframes.
+- All premium animations must honour `prefers-reduced-motion`.
 
 ---
 
@@ -708,6 +768,7 @@ Full log in `tasks/lessons.md`. Top 5 for daily reference:
 4. Separate sections for output formats
 5. Dual data entry points
 6. Purely reactive data display
+7. **Dual persistence paths.** Writing business data to localStorage "just in case" re-introduces the drift that the cloud-first refactor removed. The retry queue is the sanctioned durability mechanism — don't reinvent it.
 
 ---
 
@@ -721,6 +782,8 @@ See `tasks/todo.md` for full implementation plan.
 - Phase 4 (Money Section Merge): Pending
 - Phase 5 (Calendar as Booking View): Pending
 - Phase 6 (Streaks Widget): Pending
+- Cloud-first migration: **Complete** (dual auth and dual data flow removed)
+- Premium polish layer (`styles.premium.css` + `app.premium.js`): Complete, shipped behind `sp_prem_off` kill-switch
 
 ### Local Development
 
@@ -729,14 +792,16 @@ See `tasks/todo.md` for full implementation plan.
 npx serve . -l 5000
 ```
 
-**Backend dev server:**
+**Backend dev server (optional):**
 ```bash
 cd backend && npm run dev
 ```
 
-**Google OAuth** requires `http://` or `https://` — does not work on `file://`. Add `http://localhost:3000` to Supabase Redirect URLs under Authentication → URL Configuration.
+The backend is optional for frontend work — the app speaks directly to Supabase. The backend exists for the `/api/health` probe and the legacy local test-auth endpoint.
 
-**Quick offline testing:** Click the "Local Test Mode" button on the login screen. Creates a `TestUser` session in localStorage and boots the full app with no cloud dependency. A visible `DEV MODE` badge appears. Safe to ship — the button has no effect on https deployments.
+**Google OAuth** requires `http://` or `https://` — does not work on `file://`. Add `http://localhost:5000` to Supabase Redirect URLs under Authentication → URL Configuration.
+
+**Offline / disconnected testing:** there is no local-session fallback. To exercise the offline-durability path, sign in normally against Supabase, then go offline in DevTools and make edits — they will accumulate in `sp_retry_queue` and flush on reconnect.
 
 ### Engineering Philosophy
 
