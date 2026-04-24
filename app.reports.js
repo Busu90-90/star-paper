@@ -1033,14 +1033,54 @@
           ctx.clip();
         }
 
+        let sourceX = 0;
+        let sourceY = 0;
+        let sourceW = img.width;
+        let sourceH = img.height;
+        if (!circular) {
+          const scanCanvas = document.createElement('canvas');
+          scanCanvas.width = img.width;
+          scanCanvas.height = img.height;
+          const scanCtx = scanCanvas.getContext('2d');
+          if (scanCtx) {
+            scanCtx.clearRect(0, 0, img.width, img.height);
+            scanCtx.drawImage(img, 0, 0);
+            try {
+              const { data } = scanCtx.getImageData(0, 0, img.width, img.height);
+              let minX = img.width;
+              let minY = img.height;
+              let maxX = -1;
+              let maxY = -1;
+              for (let y = 0; y < img.height; y += 1) {
+                for (let x = 0; x < img.width; x += 1) {
+                  const alphaIndex = ((y * img.width) + x) * 4 + 3;
+                  if (data[alphaIndex] < 18) continue;
+                  if (x < minX) minX = x;
+                  if (y < minY) minY = y;
+                  if (x > maxX) maxX = x;
+                  if (y > maxY) maxY = y;
+                }
+              }
+              if (maxX >= minX && maxY >= minY) {
+                sourceX = minX;
+                sourceY = minY;
+                sourceW = (maxX - minX) + 1;
+                sourceH = (maxY - minY) + 1;
+              }
+            } catch (_scanErr) {
+              // Fall back to the full image if pixel inspection is unavailable.
+            }
+          }
+        }
+
         const scale = mode === 'cover'
-          ? Math.max(size / img.width, size / img.height)
-          : Math.min(size / img.width, size / img.height);
-        const drawW = img.width * scale;
-        const drawH = img.height * scale;
+          ? Math.max(size / sourceW, size / sourceH)
+          : Math.min(size / sourceW, size / sourceH);
+        const drawW = sourceW * scale;
+        const drawH = sourceH * scale;
         const drawX = (size - drawW) / 2;
         const drawY = (size - drawH) / 2;
-        ctx.drawImage(img, drawX, drawY, drawW, drawH);
+        ctx.drawImage(img, sourceX, sourceY, sourceW, sourceH, drawX, drawY, drawW, drawH);
 
         if (circular) {
           ctx.restore();

@@ -191,7 +191,7 @@ function getSectionIconMarkup(iconKey) {
         const phClass = {
             money:      'ph-currency-circle-dollar',
             schedule:   'ph-calendar-blank',
-            dashboard:  'ph-squares-four',
+            dashboard:  'ph-house',
             artists:    'ph-microphone-stage',
             bookings:   'ph-calendar-check',
             financials: 'ph-chart-bar',
@@ -201,6 +201,7 @@ function getSectionIconMarkup(iconKey) {
             calendar:   'ph-calendar-blank',
             reports:    'ph-clipboard-text',
             tasks:      'ph-clipboard-text',
+            settings:   'ph-gear-six',
         };
         const cls = phClass[iconKey] || phClass.dashboard;
         return `<i class="ph ${cls}" aria-hidden="true"></i>`;
@@ -818,11 +819,34 @@ function getSectionIconMarkup(iconKey) {
 
         function resolveDisplayAvatar(user) {
             const raw = String(user?.avatar || '').trim();
-            if (!raw) return './logo.png';
+            if (!raw) return './logo-ui.png?v=21';
             if (raw.startsWith('data:image/') || raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('./') || raw.startsWith('/')) {
                 return raw;
             }
             return avatarDataUriFromSymbol(raw);
+        }
+
+        function isBrandLogoAsset(src) {
+            const value = String(src || '').trim().toLowerCase();
+            if (!value) return false;
+            return [
+                'logo-ui.png',
+                'logo-report.png',
+                'logo-192.png',
+                'logo-32.png',
+                'logo.png'
+            ].some((token) => value.includes(token));
+        }
+
+        function syncBrandMarkPresentation(img, src) {
+            if (!img) return;
+            const activeSrc = String(src || img.getAttribute('src') || img.src || '').trim();
+            const isBrandMark = isBrandLogoAsset(activeSrc);
+            img.classList.toggle('avatar-img--brand-mark', isBrandMark);
+            const frame = img.closest('.sidebar-avatar');
+            if (frame) {
+                frame.classList.toggle('sidebar-avatar--brand-mark', isBrandMark);
+            }
         }
 
         function resolveDisplayArtistAvatar(artist) {
@@ -876,18 +900,41 @@ function getSectionIconMarkup(iconKey) {
 
         function refreshProfileUI() {
             const user = getCurrentUserRecord();
+            const displayName = user?.username || currentUser || 'Manager';
+            const displayEmail = user?.email || 'Profile details';
+            const displayBio = user?.bio || 'Manage your identity, photo, contact details, and bio.';
             const sidebarName = document.getElementById('sidebarUserName');
             if (sidebarName) {
-                sidebarName.textContent = user?.username || currentUser || 'Manager';
+                sidebarName.textContent = displayName;
             }
             const avatarSrc = resolveDisplayAvatar(user);
             const sidebarAvatar = document.getElementById('sidebarAvatarImg');
             if (sidebarAvatar) {
                 sidebarAvatar.src = avatarSrc;
+                syncBrandMarkPresentation(sidebarAvatar, avatarSrc);
+            }
+            const settingsName = document.getElementById('settingsProfileName');
+            if (settingsName) {
+                settingsName.textContent = displayName;
+            }
+            const settingsEmail = document.getElementById('settingsProfileEmail');
+            if (settingsEmail) {
+                settingsEmail.textContent = displayEmail;
+            }
+            const settingsBio = document.getElementById('settingsProfileBio');
+            if (settingsBio) {
+                settingsBio.textContent = displayBio;
+            }
+            const settingsAvatar = document.getElementById('settingsAvatarImg');
+            if (settingsAvatar) {
+                settingsAvatar.src = avatarSrc;
+                syncBrandMarkPresentation(settingsAvatar, avatarSrc);
             }
             const profilePreview = document.getElementById('profileAvatarPreview');
             if (profilePreview) {
-                profilePreview.src = pendingProfileAvatarValue || avatarSrc;
+                const previewSrc = pendingProfileAvatarValue || avatarSrc;
+                profilePreview.src = previewSrc;
+                syncBrandMarkPresentation(profilePreview, previewSrc);
             }
             updateHeaderGreeting();
         }
@@ -908,7 +955,11 @@ function getSectionIconMarkup(iconKey) {
             if (emailInput) emailInput.value = user.email || '';
             if (phoneInput) phoneInput.value = user.phone || '';
             if (bioInput) bioInput.value = user.bio || '';
-            if (avatarPreview) avatarPreview.src = resolveDisplayAvatar(user);
+            if (avatarPreview) {
+                const previewSrc = resolveDisplayAvatar(user);
+                avatarPreview.src = previewSrc;
+                syncBrandMarkPresentation(avatarPreview, previewSrc);
+            }
             profileModal.style.display = 'flex';
         }
 
@@ -937,7 +988,10 @@ function getSectionIconMarkup(iconKey) {
                 if (!result) return;
                 pendingProfileAvatarValue = result;
                 const preview = document.getElementById('profileAvatarPreview');
-                if (preview) preview.src = result;
+                if (preview) {
+                    preview.src = result;
+                    syncBrandMarkPresentation(preview, result);
+                }
             };
             reader.readAsDataURL(file);
         }
@@ -952,7 +1006,10 @@ function getSectionIconMarkup(iconKey) {
             if (!avatarUri) return;
             pendingProfileAvatarValue = avatarUri;
             const preview = document.getElementById('profileAvatarPreview');
-            if (preview) preview.src = avatarUri;
+            if (preview) {
+                preview.src = avatarUri;
+                syncBrandMarkPresentation(preview, avatarUri);
+            }
         }
 
         async function saveProfileChanges() {
@@ -1764,11 +1821,18 @@ function getSectionIconMarkup(iconKey) {
             const landingEl = document.getElementById('landingScreen');
             const miniNav   = document.getElementById('landingMiniNav');
             if (landingEl && miniNav) {
-                landingEl.addEventListener('scroll', () => {
-                    const show = landingEl.scrollTop > 260;
+                const heroStage = document.getElementById('landingHeroStage');
+                const updateMiniNav = () => {
+                    const threshold = heroStage
+                        ? Math.max(220, Math.round(heroStage.offsetHeight * 0.45))
+                        : 260;
+                    const show = landingEl.scrollTop > threshold;
                     miniNav.classList.toggle('visible', show);
                     miniNav.setAttribute('aria-hidden', String(!show));
-                }, { passive: true });
+                };
+                landingEl.addEventListener('scroll', updateMiniNav, { passive: true });
+                window.addEventListener('resize', updateMiniNav, { passive: true });
+                updateMiniNav();
             }
             document.getElementById('landingThemeToggle')?.addEventListener('click', toggleTheme);
             document.getElementById('sidebarLightBtn')?.addEventListener('click', () => setTheme('light'));
@@ -3801,7 +3865,7 @@ function showLoginForm() {
         }
 
         function restorePostBootUiState() {
-            const allowedSections = new Set(['dashboard', 'money', 'schedule', 'artists', 'tasks', 'financials', 'expenses', 'otherIncome', 'reports', 'bookings', 'calendar']);
+            const allowedSections = new Set(['dashboard', 'money', 'schedule', 'artists', 'tasks', 'settings', 'financials', 'expenses', 'otherIncome', 'reports', 'bookings', 'calendar']);
             const lastSectionRaw = Storage.loadSync('starPaperLastSection', 'dashboard');
             const lastMoneyTab = Storage.loadSync('starPaperLastMoneyTab', 'financials');
             const lastScheduleTab = Storage.loadSync('starPaperLastScheduleTab', 'bookings');
@@ -4728,6 +4792,7 @@ function showLoginForm() {
                 'calendar':   'Schedule - Calendar',
                 'reports':    'Reports',
                 'tasks':      'Tasks',
+                'settings':   'Settings',
             };
 
             const titleEl = document.getElementById('pageTitle');
@@ -4772,6 +4837,8 @@ function showLoginForm() {
                 if (typeof window.renderTasks === 'function') {
                     window.renderTasks();
                 }
+            } else if (section === 'settings') {
+                refreshProfileUI();
             }
 
             if (window.innerWidth <= 1024) {
@@ -5978,18 +6045,18 @@ function showLoginForm() {
                         : '';
                     const withOrigin = (path) => origin ? `${origin}${path}` : path;
                     const logoCandidates = [
-                        withOrigin('/logo-report.png?v=11'),
-                        withOrigin('/logo.png?v=11'),
-                        withOrigin('/logo-192.png?v=11'),
+                        withOrigin('/logo-report.png?v=21'),
+                        withOrigin('/logo.png?v=21'),
+                        withOrigin('/logo-192.png?v=21'),
                         withOrigin('/logo-report.png'),
                         withOrigin('/logo.png'),
                         withOrigin('/logo-192.png'),
                         withOrigin('/log.jpg')
                     ];
                     const relativeFallbacks = [
-                        './logo-report.png?v=11',
-                        './logo.png?v=11',
-                        './logo-192.png?v=11',
+                        './logo-report.png?v=21',
+                        './logo.png?v=21',
+                        './logo-192.png?v=21',
                         './logo-report.png',
                         './logo.png',
                         './logo-192.png',
@@ -6199,14 +6266,7 @@ function showLoginForm() {
                         const logoSize = isMobileReportLayout ? 14 : 16;
                         const logoX = pageWidth - margin - logoSize;
                         const logoY = isMobileReportLayout ? 5 : 4;
-                        const frameX = logoX - 0.8;
-                        const frameY = logoY - 0.8;
-                        const frameSize = logoSize + 1.6;
                         const imageFormat = /^data:image\/jpe?g/i.test(reportLogoDataUrl) ? 'JPEG' : 'PNG';
-                        pdf.setFillColor(245, 239, 226);
-                        pdf.setDrawColor(212, 170, 96);
-                        pdf.setLineWidth(0.35);
-                        pdf.roundedRect(frameX, frameY, frameSize, frameSize, 2, 2, 'FD');
                         pdf.addImage(reportLogoDataUrl, imageFormat, logoX, logoY, logoSize, logoSize);
                     } catch (err) {
                         console.warn('Report logo failed to render:', err);
@@ -9074,6 +9134,10 @@ function showLoginForm() {
             const landingScreen = document.getElementById('landingScreen');
             if (!controls || !landingScreen) return;
             const landingVisible = landingScreen.style.display !== 'none';
+            if (controls.dataset.inline === '1') {
+                controls.classList.toggle('is-hidden', !landingVisible);
+                return;
+            }
             controls.classList.toggle('is-hidden', !landingVisible || window.scrollY > 18);
         }
 
@@ -9631,101 +9695,31 @@ function showLoginForm() {
 
         // Ã¢â€â‚¬Ã¢â€â‚¬ Falling Gold Coins canvas animation Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         function drawCoinDollarMark(ctx, radius, scaleX) {
-            if (radius < 7 || scaleX < 0.30) return;
-            ctx.scale(1 / scaleX, 1);
+            if (radius < 4.8) return;
+            const safeScaleX = Math.max(scaleX, 0.08);
+            const markScaleX = Math.max(0.72, Math.min(1.02, 0.78 + (safeScaleX * 0.42)));
+            ctx.save();
+            ctx.scale(1 / safeScaleX, 1);
+            ctx.scale(markScaleX, 1);
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.font = `700 ${Math.round(radius * 0.9)}px Georgia, serif`;
+            ctx.font = `900 ${Math.max(9, Math.round(radius * 1.34))}px Georgia, serif`;
             ctx.lineJoin = 'round';
-            ctx.lineWidth = Math.max(0.8, radius * 0.08);
-            ctx.strokeStyle = 'rgba(255, 244, 176, 0.32)';
-            ctx.strokeText('$', 0.25, -0.12);
-            ctx.fillStyle = 'rgba(78, 49, 0, 0.84)';
-            ctx.fillText('$', 0, 0.15);
+            ctx.lineWidth = Math.max(1.1, radius * 0.12);
+            ctx.strokeStyle = 'rgba(255, 247, 184, 0.92)';
+            ctx.shadowColor = 'rgba(78, 46, 0, 0.42)';
+            ctx.shadowBlur = Math.max(1.3, radius * 0.18);
+            ctx.strokeText('$', 0, -0.1);
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = 'rgba(94, 56, 0, 0.98)';
+            ctx.fillText('$', 0, 0.16);
+            ctx.lineWidth = Math.max(0.6, radius * 0.05);
+            ctx.strokeStyle = 'rgba(255, 222, 118, 0.40)';
+            ctx.strokeText('$', 0, -0.18);
+            ctx.restore();
         }
 
-        (function initCoinRain() {
-            const canvas = document.getElementById('coinRainCanvas');
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            let W = 0, H = 0;
-
-            function resize() {
-                W = canvas.width  = window.innerWidth;
-                H = canvas.height = window.innerHeight;
-            }
-            window.addEventListener('resize', resize, { passive: true });
-            resize();
-
-            const COIN_COUNT = 30;
-            const GOLD_STOPS = [
-                { pos: 0,    color: '#fff8a0' },
-                { pos: 0.28, color: '#ffd700' },
-                { pos: 0.55, color: '#c9920a' },
-                { pos: 0.80, color: '#d4a820' },
-                { pos: 1,    color: '#7a5500' },
-            ];
-
-            function makeCoin(seedY) {
-                const r     = 7  + Math.random() * 11;
-                const x     = Math.random() * (W + 40) - 20;
-                const y     = seedY !== undefined ? seedY : (-r - Math.random() * 80);
-                const spd   = 0.65 + Math.random() * 1.0;
-                const spin  = (Math.random() - 0.5) * 0.07;
-                const tilt  = Math.random() * Math.PI;
-                const drift = (Math.random() - 0.5) * 0.30;
-                const opacity = 0.50 + Math.random() * 0.45;
-                return { x, y, r, spd, spin, tilt, drift, opacity };
-            }
-
-            function drawCoin(c) {
-                ctx.save();
-                ctx.translate(c.x, c.y);
-                ctx.globalAlpha = c.opacity;
-                const scaleX = Math.abs(Math.cos(c.tilt)) || 0.04;
-                const grad = ctx.createRadialGradient(
-                    -c.r * 0.3 * scaleX, -c.r * 0.3, 0,
-                     c.r * 0.1 * scaleX,  c.r * 0.1, c.r * 1.1
-                );
-                GOLD_STOPS.forEach(s => grad.addColorStop(s.pos, s.color));
-                ctx.scale(scaleX, 1);
-                ctx.beginPath();
-                ctx.ellipse(0, 0, c.r, c.r, 0, 0, Math.PI * 2);
-                ctx.fillStyle = grad;
-                ctx.fill();
-                ctx.strokeStyle = 'rgba(255,210,60,0.50)';
-                ctx.lineWidth = 1.2 / scaleX;
-                ctx.stroke();
-                drawCoinDollarMark(ctx, c.r, scaleX);
-                ctx.restore();
-            }
-
-            // Seed coins already on screen
-            const coins = [];
-            for (let i = 0; i < COIN_COUNT; i++) {
-                coins.push(makeCoin(Math.random() * H));
-            }
-
-            function tick() {
-                const landing = document.getElementById('landingScreen');
-                if (!landing || landing.style.display === 'none') {
-                    requestAnimationFrame(tick);
-                    return;
-                }
-                ctx.clearRect(0, 0, W, H);
-                for (const c of coins) {
-                    c.y    += c.spd;
-                    c.x    += c.drift;
-                    c.tilt += c.spin;
-                    if (c.y - c.r > H || c.x < -40 || c.x > W + 40) {
-                        Object.assign(c, makeCoin());
-                    }
-                    drawCoin(c);
-                }
-                requestAnimationFrame(tick);
-            }
-            tick();
-        })();
+        // Landing coin rain intentionally removed to reduce visual noise.
 
         (function initMainstageCoinRain() {
             const canvas = document.getElementById('mainstageCoinRainCanvas');
@@ -9921,10 +9915,85 @@ function showLoginForm() {
             updateControls();
         })();
 
+        (function initLandingMobileSliders() {
+            const sliders = Array.from(document.querySelectorAll('.landing-mobile-slider'));
+            if (!sliders.length) return;
+
+            const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+            const isMobile = () => window.innerWidth < 768;
+
+            sliders.forEach((slider) => {
+                const track = slider.querySelector('.landing-mobile-slider-track');
+                const prevBtn = slider.querySelector('[data-action="landingSliderPrev"]');
+                const nextBtn = slider.querySelector('[data-action="landingSliderNext"]');
+                const cards = Array.from(track?.children || []);
+                if (!track || !prevBtn || !nextBtn || !cards.length) return;
+
+                const getGap = () => {
+                    const styles = window.getComputedStyle(track);
+                    const gap = parseFloat(styles.columnGap || styles.gap || '0');
+                    return Number.isFinite(gap) ? gap : 0;
+                };
+
+                const getStepWidth = () => {
+                    const firstCard = cards[0];
+                    if (!firstCard) return Math.max(track.clientWidth || 1, 1);
+                    return Math.max(firstCard.getBoundingClientRect().width + getGap(), 1);
+                };
+
+                const getActiveIndex = () => {
+                    if (!isMobile()) return 0;
+                    return clamp(Math.round(track.scrollLeft / getStepWidth()), 0, cards.length - 1);
+                };
+
+                const updateButtons = (forcedIndex) => {
+                    const activeIndex = typeof forcedIndex === 'number' ? forcedIndex : getActiveIndex();
+                    const mobile = isMobile();
+                    prevBtn.disabled = !mobile || activeIndex <= 0;
+                    nextBtn.disabled = !mobile || activeIndex >= cards.length - 1;
+                    if (!mobile) {
+                        track.scrollLeft = 0;
+                    }
+                };
+
+                const scrollToIndex = (index) => {
+                    const targetIndex = clamp(index, 0, cards.length - 1);
+                    track.scrollTo({
+                        left: targetIndex * getStepWidth(),
+                        behavior: 'smooth'
+                    });
+                    updateButtons(targetIndex);
+                };
+
+                prevBtn.addEventListener('click', () => {
+                    scrollToIndex(getActiveIndex() - 1);
+                });
+
+                nextBtn.addEventListener('click', () => {
+                    scrollToIndex(getActiveIndex() + 1);
+                });
+
+                let scrollTimer = null;
+                track.addEventListener('scroll', () => {
+                    if (!isMobile()) return;
+                    if (scrollTimer) clearTimeout(scrollTimer);
+                    scrollTimer = setTimeout(() => updateButtons(), 60);
+                }, { passive: true });
+
+                window.addEventListener('resize', updateButtons, { passive: true });
+                updateButtons();
+            });
+        })();
+
         // Ã¢â€â‚¬Ã¢â€â‚¬ Gold Dust burst Ã¢â‚¬â€ triggered on booking confirmed Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         function triggerGoldDust() {
-            const canvas = document.getElementById('coinRainCanvas');
-            if (!canvas) return;
+            if (!document.body) return;
+            document.querySelector('.sp-gold-dust-canvas')?.remove();
+            const canvas = document.createElement('canvas');
+            canvas.className = 'sp-gold-dust-canvas';
+            canvas.setAttribute('aria-hidden', 'true');
+            canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9999;';
+            document.body.appendChild(canvas);
             const ctx = canvas.getContext('2d');
             const W = canvas.width  = window.innerWidth;
             const H = canvas.height = window.innerHeight;
@@ -9954,7 +10023,11 @@ function showLoginForm() {
 
             function burstTick() {
                 const elapsed = Date.now() - startTime;
-                if (elapsed > duration) { ctx.clearRect(0, 0, W, H); return; }
+                if (elapsed > duration) {
+                    ctx.clearRect(0, 0, W, H);
+                    canvas.remove();
+                    return;
+                }
                 ctx.clearRect(0, 0, W, H);
                 const fade = Math.max(0, 1 - elapsed / duration);
                 for (const p of particles) {
@@ -9975,6 +10048,10 @@ function showLoginForm() {
                     ctx.ellipse(0, 0, p.r, p.r, 0, 0, Math.PI * 2);
                     ctx.fillStyle = grad;
                     ctx.fill();
+                    ctx.strokeStyle = 'rgba(255,210,60,0.58)';
+                    ctx.lineWidth = 1.2 / scaleX;
+                    ctx.stroke();
+                    drawCoinDollarMark(ctx, p.r, scaleX);
                     ctx.restore();
                 }
                 requestAnimationFrame(burstTick);
@@ -9988,11 +10065,12 @@ function showLoginForm() {
 
             // Ã¢â€â‚¬Ã¢â€â‚¬ Section registry Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             const SECTIONS = [
-                { id: 'dashboard',   label: 'Dashboard',    icon: '<i class="ph ph-squares-four"></i>',              sub: 'Overview & KPIs',                key: 'D' },
+                { id: 'dashboard',   label: 'Dashboard',    icon: '<i class="ph ph-house"></i>',                     sub: 'Overview & KPIs',                key: 'D' },
                 { id: 'money',       label: 'Money',        icon: '<i class="ph ph-currency-circle-dollar"></i>',   sub: 'Financials, Expenses & Reports', key: 'M' },
                 { id: 'schedule',    label: 'Schedule',     icon: '<i class="ph ph-calendar-blank"></i>',           sub: 'Bookings & Calendar',            key: 'S' },
                 { id: 'artists',     label: 'Artists',      icon: 'ph-microphone-stage', sub: 'Roster & profiles',              key: 'A' },
                 { id: 'tasks',       label: 'Tasks',        icon: '<i class="ph ph-clipboard-text"></i>', sub: 'To-dos & reminders',             key: 'T' },
+                { id: 'settings',    label: 'Settings',     icon: '<i class="ph ph-gear-six"></i>', sub: 'Profile, preferences & admin', key: 'P' },
             ];
 
             const ACTIONS = [
@@ -10244,7 +10322,7 @@ function showLoginForm() {
                         'd': 'dashboard', 'b': 'schedule', 'f': 'money',
                         'e': 'expenses',  'i': 'otherIncome', 'a': 'artists',
                         'c': 'calendar',  'r': 'reports',   't': 'tasks',
-                        'm': 'money',     's': 'schedule'
+                        'm': 'money',     's': 'schedule',  'p': 'settings'
                     };
                 if (gPressed) {
                     const target = keyMap[e.key.toLowerCase()];
@@ -10391,7 +10469,7 @@ function showLoginForm() {
 
         (function initTypewriter() {
             const heading = document.querySelector('#landingScreen .landing-hero-heading');
-            if (heading && !heading.dataset.twDone) {
+            if (heading && !heading.dataset.twDone && heading.dataset.twStatic !== '1') {
                 heading.dataset.twDone = '1';
                 const words = heading.textContent.trim().split(/\s+/);
                 heading.innerHTML = words.map((word, index) =>
@@ -10400,7 +10478,7 @@ function showLoginForm() {
             }
 
             const subtitle = document.querySelector('#landingScreen .landing-hero-subtitle');
-            if (!subtitle || subtitle.dataset.twRotatorDone) return;
+            if (!subtitle || subtitle.dataset.twRotatorDone || subtitle.dataset.twStatic === '1') return;
             subtitle.dataset.twRotatorDone = '1';
 
             const originalText = subtitle.textContent.trim();
@@ -10542,7 +10620,7 @@ function showLoginForm() {
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=46').then((registration) => {
+                navigator.serviceWorker.register('sw.js?v=71').then((registration) => {
                     registration.update().catch(() => {});
                 }).catch((error) => {
                     console.warn('Service worker registration failed:', error);

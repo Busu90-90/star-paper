@@ -3523,15 +3523,25 @@ const SP_CURRENCIES = {
   }
 
   // ── CURRENCY ─────────────────────────────────────────────────────────────────
+  function syncCurrencyPreferenceUI() {
+    const curr = SP_CURRENCIES[_currency] || SP_CURRENCIES.UGX;
+    const badge = document.getElementById('spCurrencyBadge');
+    if (badge) badge.textContent = curr.symbol;
+
+    const name = document.getElementById('spCurrencyName');
+    if (name) name.textContent = `${curr.name} (${_currency})`;
+
+    const btn = document.getElementById('spSettingsCurrencyBtn');
+    if (btn) btn.title = `Switch currency (${curr.name})`;
+  }
+
   function applyCurrency(code) {
     const curr = SP_CURRENCIES[code];
     if (!curr) return;
     _currency = code;
     localStorage.setItem('sp_currency', code);
 
-    // Update the displayed currency badge if it exists
-    const badge = document.getElementById('spCurrencyBadge');
-    if (badge) badge.textContent = curr.symbol;
+    syncCurrencyPreferenceUI();
 
     const toConverted = (ugxAmount) => (Number(ugxAmount) || 0) * curr.rate;
     const fractionDigits = curr.rate < 0.01 ? 2 : 0;
@@ -3997,31 +4007,7 @@ const SP_CURRENCIES = {
 
   // ── INJECT CURRENCY BUTTON INTO SIDEBAR ──────────────────────────────────────
   function injectDashboardCurrencyButton() {
-    const cardHead = document.querySelector('#dashboard .dashboard-at-glance-card .mainstage-strip__head');
-    if (!cardHead) return;
-
-    let actions = document.getElementById('spAtGlanceActions');
-    if (!actions) {
-      actions = document.createElement('div');
-      actions.id = 'spAtGlanceActions';
-      actions.className = 'sp-at-glance-actions';
-      const updatedEl = document.getElementById('mainstageLiveDate');
-      if (updatedEl && updatedEl.parentElement === cardHead) {
-        actions.appendChild(updatedEl);
-      }
-      cardHead.appendChild(actions);
-    }
-
-    if (!document.getElementById('spCurrencyBtnAtGlance')) {
-      const btn = document.createElement('button');
-      btn.id = 'spCurrencyBtnAtGlance';
-      btn.className = 'action-btn sp-currency-at-glance-btn';
-      btn.type = 'button';
-      btn.title = 'Switch currency';
-      btn.innerHTML = `<span id="spCurrencyBadge">${SP_CURRENCIES[_currency]?.symbol || 'UGX'}</span> Currency`;
-      btn.onclick = () => window.SP.showCurrencySwitcher();
-      actions.appendChild(btn);
-    }
+    syncCurrencyPreferenceUI();
   }
 
   function injectSidebarButtons() {
@@ -4047,7 +4033,7 @@ const SP_CURRENCIES = {
     if (!document.getElementById('spTeamBtn')) {
       const btn = document.createElement('button');
       btn.id = 'spTeamBtn';
-      btn.className = 'sidebar-currency-btn';
+      btn.className = 'sp-team-sidebar-btn';
       btn.title = 'Team workspace';
       btn.innerHTML = `<i class="ph ph-users-three" aria-hidden="true" style="font-size:16px;"></i> Team`;
       btn.onclick = () => window.SP.showTeamModal();
@@ -4583,71 +4569,26 @@ const SP_CURRENCIES = {
 (function injectTeamCurrencyStyles() {
   const style = document.createElement('style');
   style.textContent = `
-    .sidebar-currency-btn {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      width: 100%;
-      padding: 10px 16px;
-      background: transparent;
-      border: 1px solid var(--border, rgba(255,255,255,.1));
-      border-radius: 8px;
-      color: var(--text-secondary, #aaa);
-      font-size: 13px;
-      cursor: pointer;
-      margin-bottom: 6px;
-      transition: background .15s, color .15s;
-    }
-    .sidebar-currency-btn:hover {
-      background: var(--hover-bg, rgba(255,255,255,.06));
-      color: var(--text-primary, #fff);
-    }
     #spCurrencyBadge {
       font-weight: 700;
-      color: var(--gold, #FFB300);
+      color: var(--gold-amber, #d4a843);
       min-width: 28px;
     }
-    .sidebar-extra-actions {
-      padding: 8px 4px 0;
+    #spCurrencyModal .sp-modal-box {
+      border: 1px solid var(--sp-shell-border-strong, rgba(212,168,67,.3));
+      border-radius: 24px;
+      background: var(--sp-shell-panel, #14151c);
+      box-shadow: 0 28px 80px rgba(0,0,0,.48);
     }
-    body.sidebar--collapsed .sidebar-extra-actions {
-      display: none;
+    #spCurrencyList .action-btn {
+      border-radius: 16px;
+      border-color: var(--sp-shell-border, rgba(58,61,82,.84));
+      background: rgba(255,255,255,.035);
     }
-    body.sidebar--collapsed .sidebar:hover .sidebar-extra-actions {
-      display: block;
-    }
-    .sp-at-glance-actions {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-left: auto;
-    }
-    .sp-currency-at-glance-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      margin: 0;
-      min-height: 34px;
-      padding: 8px 12px;
-      font-size: 12px;
-      white-space: nowrap;
-    }
-    .sp-currency-at-glance-btn #spCurrencyBadge {
-      min-width: 0;
-    }
-    @media (max-width: 1024px) {
-      #dashboard .dashboard-at-glance-card .mainstage-strip__head {
-        flex-wrap: wrap;
-        align-items: flex-start;
-      }
-      .sp-at-glance-actions {
-        width: 100%;
-        justify-content: space-between;
-        margin-top: 6px;
-      }
-      .sp-currency-at-glance-btn {
-        margin-left: auto;
-      }
+    #spCurrencyList .action-btn--active,
+    #spCurrencyList .action-btn:hover {
+      border-color: var(--sp-shell-border-strong, rgba(212,168,67,.3));
+      background: rgba(212,168,67,.12);
     }
     /* Team panel */
     .sp-team-panel { display:flex; flex-direction:column; gap:16px; }

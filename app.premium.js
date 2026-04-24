@@ -534,6 +534,7 @@
       if (window.innerWidth < 900) return;
       var landing = qs('#landingScreen');
       if (!landing) return;
+      if (qs('.landing-walkthrough-section', landing)) return;
       var device = qs('.landing-dashboard-preview', landing) || qs('.feature-reel', landing);
       if (!device) return;
       device.classList.add('sp-prem-device-parallax', 'sp-prem-widget');
@@ -582,6 +583,7 @@
       if (isLowEndDevice()) return;
       var landing = qs('#landingScreen');
       if (!landing) return;
+      if (qs('.landing-walkthrough-section', landing)) return;
       if (qs('.sp-prem-landing-mesh', landing)) return;
       var mesh = createEl('div', { class: 'sp-prem-landing-mesh sp-prem-widget', 'aria-hidden': 'true' });
       mesh.appendChild(createEl('span', { class: 'sp-prem-orb sp-prem-orb-1' }));
@@ -663,6 +665,7 @@
     safeCall(function () {
       var landing = qs('#landingScreen');
       if (!landing) return;
+      if (qs('#landingTestimonials', landing)) return;
       var root = qs('.landing-testimonial', landing);
       if (!root || root.classList.contains('sp-prem-testimonials')) return;
 
@@ -740,125 +743,6 @@
   // ─────────────────────────────────────────────────────────
   // 14. Coin rain overlay (hero coins)
   // ─────────────────────────────────────────────────────────
-  function installCoinOverlay() {
-    safeCall(function () {
-      if (prefersReducedMotion()) return;
-      if (isLowEndDevice()) return;
-      var landing = qs('#landingScreen');
-      if (!landing) return;
-      var existing = qs('#coinRainCanvas', landing);
-      if (!existing) return;
-      if (qs('#sp-prem-coinCanvasOverlay', landing)) return;
-
-      var canvas = document.createElement('canvas');
-      canvas.id = 'sp-prem-coinCanvasOverlay';
-      canvas.className = 'sp-prem-widget';
-      canvas.setAttribute('aria-hidden', 'true');
-      canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;';
-      var parent = existing.parentNode;
-      parent.insertBefore(canvas, existing.nextSibling);
-
-      var ctx = canvas.getContext('2d');
-      var dpr = Math.min(global.devicePixelRatio || 1, 2);
-      var w, h;
-      function resize() {
-        var rect = canvas.getBoundingClientRect();
-        w = rect.width; h = rect.height;
-        canvas.width = Math.max(1, Math.floor(w * dpr));
-        canvas.height = Math.max(1, Math.floor(h * dpr));
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      }
-      resize();
-      global.addEventListener('resize', throttle(resize, 120));
-
-      var COUNT = 5;
-      var coins = [];
-      function makeCoin() {
-        return {
-          x: Math.random() * w,
-          y: -40 - Math.random() * 400,
-          r: 18 + Math.random() * 10,
-          vy: 0.5 + Math.random() * 0.9,
-          vx: (Math.random() - 0.5) * 0.3,
-          rot: Math.random() * Math.PI * 2,
-          vr: (Math.random() - 0.5) * 0.02,
-          squash: 0.7 + Math.random() * 0.3
-        };
-      }
-      for (var i = 0; i < COUNT; i++) coins.push(makeCoin());
-
-      function drawCoin(c) {
-        var sx = Math.abs(Math.cos(c.rot)) * c.squash + 0.3;
-        ctx.save();
-        ctx.translate(c.x, c.y);
-        ctx.scale(sx, 1);
-
-        var bevel = ctx.createRadialGradient(-c.r * 0.3, -c.r * 0.3, c.r * 0.1, 0, 0, c.r);
-        bevel.addColorStop(0, '#FFF8C0');
-        bevel.addColorStop(0.35, '#FFD700');
-        bevel.addColorStop(0.65, '#FFA500');
-        bevel.addColorStop(0.9, '#C9920A');
-        bevel.addColorStop(1, '#5A3E00');
-
-        ctx.shadowColor = 'rgba(255,179,0,0.55)';
-        ctx.shadowBlur = 18;
-        ctx.beginPath();
-        ctx.arc(0, 0, c.r, 0, Math.PI * 2);
-        ctx.fillStyle = bevel;
-        ctx.fill();
-
-        ctx.shadowColor = 'transparent';
-        ctx.lineWidth = 1.4;
-        ctx.strokeStyle = 'rgba(120,80,0,0.55)';
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.arc(0, 0, c.r * 0.7, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(255,240,180,0.35)';
-        ctx.lineWidth = 0.8;
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.arc(-c.r * 0.35, -c.r * 0.35, c.r * 0.18, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,220,0.5)';
-        ctx.fill();
-
-        ctx.restore();
-      }
-
-      var lastT = performance.now();
-      var rafId = null, running = true;
-
-      function loop(t) {
-        if (!running) return;
-        var dt = Math.min(50, t - lastT); lastT = t;
-        ctx.clearRect(0, 0, w, h);
-        coins.forEach(function (c) {
-          c.y += c.vy * dt * 0.06;
-          c.x += c.vx * dt * 0.06;
-          c.rot += c.vr * dt * 0.06;
-          if (c.y - c.r > h + 20) {
-            c.y = -40; c.x = Math.random() * w;
-            c.r = 18 + Math.random() * 10;
-            c.vy = 0.5 + Math.random() * 0.9;
-            c.vx = (Math.random() - 0.5) * 0.3;
-          }
-          drawCoin(c);
-        });
-        rafId = requestAnimationFrame(loop);
-      }
-      rafId = requestAnimationFrame(loop);
-
-      function onVis() {
-        if (document.hidden) { running = false; if (rafId) cancelAnimationFrame(rafId); }
-        else if (!running) { running = true; lastT = performance.now(); rafId = requestAnimationFrame(loop); }
-      }
-      document.addEventListener('visibilitychange', onVis);
-
-      PREM.coinOverlay = { canvas: canvas, stop: function () { running = false; if (rafId) cancelAnimationFrame(rafId); } };
-    }, 'installCoinOverlay');
-  }
-
   // ─────────────────────────────────────────────────────────
   // 15. PDF modal polish
   // ─────────────────────────────────────────────────────────
@@ -958,7 +842,6 @@
     safeCall(installReveal, 'boot:installReveal');
     safeCall(installTestimonials, 'boot:installTestimonials');
     safeCall(wireCtaPulse, 'boot:wireCtaPulse');
-    safeCall(installCoinOverlay, 'boot:installCoinOverlay');
     safeCall(polishPdfModal, 'boot:polishPdfModal');
     safeCall(installDashboardHook, 'boot:installDashboardHook');
 
