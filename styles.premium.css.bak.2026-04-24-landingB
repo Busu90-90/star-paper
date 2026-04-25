@@ -1183,13 +1183,11 @@ html:not(.sp-prem-off) #landingScreen.sp-prem-landing-refine .sp-prem-landing-fo
   margin: 22px auto 0;
   padding-top: 18px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-  display: grid; /* FIXED: symmetrical footer alignment after landing migration. */
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: 18px;
   pointer-events: auto;
-  text-align: center;
 }
 
 html:not(.sp-prem-off) #landingScreen.sp-prem-landing-refine #landingHeroStage + .sp-prem-landing-footer {
@@ -1234,9 +1232,7 @@ html:not(.sp-prem-off) #landingScreen.sp-prem-landing-refine .sp-prem-landing-fo
   pointer-events: auto;
   display: flex;
   align-items: center;
-  justify-self: start;
   gap: 12px;
-  text-align: left;
 }
 
 html:not(.sp-prem-off) #landingScreen.sp-prem-landing-refine .sp-prem-landing-footer__logo {
@@ -1262,13 +1258,11 @@ html:not(.sp-prem-off) #landingScreen.sp-prem-landing-refine .sp-prem-landing-fo
   position: relative;
   z-index: 1;
   pointer-events: auto;
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: max-content;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  justify-self: center;
-  gap: clamp(16px, 3vw, 28px);
+  justify-content: flex-end;
+  gap: 16px;
 }
 
 html:not(.sp-prem-off) #landingScreen.sp-prem-landing-refine .sp-prem-landing-footer__links a {
@@ -1390,15 +1384,12 @@ body.light-theme #landingScreen.sp-prem-landing-refine .sp-prem-landing-footer {
   }
 
   html:not(.sp-prem-off) #landingScreen.sp-prem-landing-refine .sp-prem-landing-footer {
-    grid-template-columns: 1fr;
-    justify-items: center;
-    align-items: center;
-    text-align: center;
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   html:not(.sp-prem-off) #landingScreen.sp-prem-landing-refine .sp-prem-landing-footer__links {
-    justify-content: center;
-    justify-self: center;
+    justify-content: flex-start;
   }
 }
 
@@ -1443,30 +1434,6 @@ body.light-theme #landingScreen.sp-prem-landing-refine .sp-prem-landing-footer {
   html:not(.sp-prem-off) #landingScreen.sp-prem-landing-refine .sp-prem-landing-footer {
     width: calc(100% - 24px);
     margin-top: 18px;
-    gap: 14px;
-  }
-
-  /* FIXED: mobile landing footer stacks into full-width touch targets. */
-  html:not(.sp-prem-off) #landingScreen.sp-prem-landing-refine .sp-prem-landing-footer__brand {
-    justify-self: center;
-    text-align: center;
-  }
-
-  html:not(.sp-prem-off) #landingScreen.sp-prem-landing-refine .sp-prem-landing-footer__links {
-    width: 100%;
-    grid-auto-flow: row;
-    grid-auto-columns: initial;
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-
-  html:not(.sp-prem-off) #landingScreen.sp-prem-landing-refine .sp-prem-landing-footer__links a {
-    min-height: 44px;
-    display: grid;
-    place-items: center;
-    border-radius: 12px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,179,0,0.1);
   }
 
   html:not(.sp-prem-off) #landingScreen.sp-prem-landing-refine #landingHeroStage + .sp-prem-landing-footer {
@@ -1575,45 +1542,6 @@ html.sp-prem-off .sp-prem-card-depth {
 
 html.sp-prem-off [data-sp-prem-pulse] {
   animation: none !important;
-}
-
-/* =========================================================================
-   B5 (2026-04-24): Landing footer + final-CTA + carousel → DS tokens
-   Only adjusts surface/border/text colours; structural rules above stay.
-   ========================================================================= */
-html:not(.sp-prem-off) #landingScreen.sp-prem-landing-refine .sp-prem-landing-footer {
-  border-top-color: var(--sp-ds-border, rgba(255, 255, 255, 0.08));
-}
-
-html:not(.sp-prem-off) #landingScreen.sp-prem-landing-refine .sp-prem-landing-footer__name {
-  color: var(--sp-ds-text-primary, var(--text-heading, #f7f3ea));
-}
-
-html:not(.sp-prem-off) #landingScreen.sp-prem-landing-refine .sp-prem-landing-footer__meta {
-  color: var(--sp-ds-text-secondary, rgba(227, 223, 213, 0.6));
-}
-
-html:not(.sp-prem-off) #landingScreen.sp-prem-landing-refine .sp-prem-landing-footer__links a {
-  color: color-mix(in srgb, var(--sp-ds-text-secondary, #e8e6e0) 86%, transparent);
-}
-html:not(.sp-prem-off) #landingScreen.sp-prem-landing-refine .sp-prem-landing-footer__links a:hover {
-  color: var(--sp-ds-accent, var(--gold-amber, #FFB300));
-}
-
-html:not(.sp-prem-off) #landingScreen.sp-prem-landing-refine .sp-prem-final-cta__inner {
-  border-color: var(--sp-ds-border-strong, rgba(212, 175, 55, 0.22));
-}
-
-html:not(.sp-prem-off) #landingScreen.sp-prem-landing-refine .sp-prem-final-cta__title {
-  color: var(--sp-ds-text-primary, var(--text-heading, #f7f3ea));
-}
-
-body.light-theme #landingScreen.sp-prem-landing-refine .sp-prem-landing-footer__name {
-  color: var(--sp-ds-text-primary, #3a2d1e);
-}
-body.light-theme #landingScreen.sp-prem-landing-refine .sp-prem-landing-footer__links a,
-body.light-theme #landingScreen.sp-prem-landing-refine .sp-prem-landing-footer__meta {
-  color: var(--sp-ds-text-secondary, rgba(61, 49, 27, 0.68));
 }
 
 /* =========================================================================

@@ -7621,38 +7621,24 @@ body.light-theme #landingScreen .landing-card {
   --notebook-spine: #c9a86b;
   --notebook-ink: #2a3a7a;
   --notebook-ink-soft: rgba(42, 58, 122, 0.62);
-  --notebook-ink-green: #1f7a4a;
-  --notebook-ink-red: #a8312a;
-  --notebook-ink-purple: #5a3a8a;
-  --notebook-ink-pencil: #5a5a5a;
-  --notebook-ink-yellow: #b8902a;
   --notebook-tape: rgba(212, 168, 67, 0.42);
   --notebook-tape-edge: rgba(212, 168, 67, 0.7);
   --notebook-card-bg: #fdfdfb;
   --notebook-card-text: #20242f;
   --notebook-card-meta: #6b6e7a;
   position: relative;
-  width: clamp(240px, 26vw, 340px);
-  max-width: min(340px, 50vh);
+  width: clamp(260px, 38vw, 460px);
   margin-inline: auto;
-  margin-top: clamp(60px, 10vh, 100px);
-  margin-bottom: clamp(60px, 10vh, 100px);
-  padding-block: clamp(4px, 0.8vw, 10px);
+  margin-top: clamp(8px, 2vw, 24px);
+  padding-block: clamp(8px, 1.6vw, 18px);
   isolation: isolate;
   font-family: var(--font-ui, 'Space Grotesk', system-ui, sans-serif);
-  /* B7+ Notebook tilted +45deg (facing right) — applied at the wrapper
-     level so pen, key, signature rotate together. Vertical margin reserves
-     layout space for the diagonal bounding box so it never crosses the
-     hero container edges. */
-  transform: rotate(45deg);
-  transform-origin: 50% 50%;
 }
 
 #landingScreen .landing-notebook__page {
   position: relative;
-  aspect-ratio: 5 / 6;
+  aspect-ratio: 4 / 5;
   width: 100%;
-  max-height: min(60vh, 480px);
   border-radius: var(--sp-radius-lg, 16px);
   background:
     linear-gradient(180deg,
@@ -7662,27 +7648,29 @@ body.light-theme #landingScreen .landing-card {
     0 1px 0 rgba(255, 255, 255, 0.6) inset,
     0 18px 40px -22px rgba(0, 0, 0, 0.55),
     0 32px 60px -36px rgba(0, 0, 0, 0.4);
-  /* Wrapper handles the +45deg rotation; page stays straight relative to wrapper. */
-  transform: none;
+  transform: rotate(-2.2deg);
+  transform-origin: 50% 60%;
   overflow: hidden;
   color: var(--notebook-ink);
 }
 
-/* B7a — Realistic SVG spiral coil binding (replaces flat repeating-radial spine) */
-#landingScreen .landing-notebook__coil {
+#landingScreen .landing-notebook__spine {
   position: absolute;
-  inset: 4% auto 4% 6px;
-  width: 24px;
-  height: 92%;
+  inset: 8% auto 8% 14px;
+  width: 18px;
+  background:
+    repeating-radial-gradient(
+      circle at 50% 0,
+      var(--notebook-spine) 0 6px,
+      transparent 6px 14px),
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--notebook-spine) 60%, transparent) 0%,
+      color-mix(in srgb, var(--notebook-spine) 30%, transparent) 100%);
+  background-size: 100% 24px, 100% 100%;
+  background-repeat: repeat-y, no-repeat;
+  border-radius: 12px;
+  opacity: 0.85;
   pointer-events: none;
-  filter:
-    drop-shadow(0 1px 0 rgba(255, 255, 255, 0.5))
-    drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35))
-    drop-shadow(0 0 1px rgba(0, 0, 0, 0.25));
-  z-index: 1;
-}
-#landingScreen .landing-notebook__coil ellipse {
-  filter: blur(0.3px);
 }
 
 #landingScreen .landing-notebook__rules {
@@ -7710,40 +7698,35 @@ body.light-theme #landingScreen .landing-card {
 
 #landingScreen .landing-notebook__entries {
   position: absolute;
-  top: clamp(36px, 9%, 56px);
-  left: clamp(40px, 13%, 58px);
-  right: clamp(14px, 5%, 26px);
-  bottom: clamp(8px, 2%, 16px);
+  top: clamp(48px, 12%, 64px);
+  left: clamp(46px, 14%, 60px);
+  right: clamp(20px, 7%, 32px);
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: clamp(2px, 0.4%, 5px);
+  gap: clamp(4px, 0.9%, 8px);
   font-family: var(--font-hand, 'Caveat', 'Segoe Script', cursive);
-  font-size: clamp(15px, 1.5vw, 19px);
-  line-height: 1.18;
+  font-size: clamp(18px, 2.4vw, 26px);
+  line-height: clamp(22px, 5.4%, 30px);
   color: var(--notebook-ink);
 }
 
 #landingScreen .landing-notebook__entry {
-  --n: 0;
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  gap: 8px;
   position: relative;
   opacity: 0;
-  transform: translateY(2px) rotate(calc((var(--n) * 0.85deg) - 4deg));
+  transform: translateY(2px);
   transition: opacity 360ms ease, transform 360ms ease;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 #landingScreen .landing-notebook__entry.is-inked,
 #landingScreen .landing-notebook.is-revealed-all .landing-notebook__entry {
   opacity: 1;
-  transform: translateY(0) rotate(calc((var(--n) * 0.85deg) - 4deg));
+  transform: translateY(0);
 }
 
 #landingScreen .landing-notebook__entry-text {
@@ -7798,180 +7781,18 @@ body.light-theme #landingScreen .landing-card {
 
 #landingScreen .landing-notebook__entry.is-pending .landing-notebook__entry-text {
   color: var(--notebook-ink-soft);
-  border-bottom: 1.5px dashed var(--notebook-ink-soft);
-  padding-bottom: 1px;
-}
-
-/* B7c — Multi-coloured ink variants for income/expense/balance/calc/phone */
-#landingScreen .landing-notebook__entry.is-income .landing-notebook__entry-text {
-  color: var(--notebook-ink-green);
-  font-weight: 600;
-}
-#landingScreen .landing-notebook__entry.is-expense .landing-notebook__entry-text {
-  color: var(--notebook-ink-red);
-  font-weight: 600;
-}
-#landingScreen .landing-notebook__entry.is-balance .landing-notebook__entry-text {
-  color: var(--notebook-ink-purple);
-  font-weight: 700;
-}
-#landingScreen .landing-notebook__entry.is-calc .landing-notebook__entry-text {
-  color: var(--notebook-ink-pencil);
-  font-family: var(--font-hand, 'Caveat', 'Segoe Script', cursive);
-  letter-spacing: 0.02em;
-  font-weight: 500;
-}
-#landingScreen .landing-notebook__entry.is-phone .landing-notebook__entry-text {
-  color: var(--notebook-ink-soft);
-  font-size: 0.86em;
-  letter-spacing: 0.04em;
-}
-#landingScreen .landing-notebook__entry.is-cancelled .landing-notebook__entry-text {
-  color: var(--notebook-ink-red);
-  text-decoration: line-through;
-  text-decoration-thickness: 2px;
-  text-decoration-skip-ink: none;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  font-weight: 700;
-  font-size: 0.92em;
-}
-
-/* Yellow highlighter circle (separate from red CONFIRMED circle) */
-#landingScreen .landing-notebook__entry.is-circled-yellow .landing-notebook__entry-text {
-  position: relative;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  padding: 1px 12px 3px;
-  color: #6b5210;
-  z-index: 1;
-}
-#landingScreen .landing-notebook__entry.is-circled-yellow .landing-notebook__entry-text::before {
-  content: "";
-  position: absolute;
-  inset: -2px -6px;
-  background: rgba(232, 196, 61, 0.36);
-  border-radius: 50%;
-  transform: rotate(-2deg) skewX(-3deg);
-  z-index: -1;
-}
-
-/* B7d — Quote (Berry Gordy) + signature (jobdatellem) styling */
-#landingScreen .landing-notebook__entry.is-quote .landing-notebook__entry-text {
-  font-style: italic;
-  font-size: 1.18em;
-  letter-spacing: 0.01em;
-  color: var(--notebook-ink);
-}
-#landingScreen .landing-notebook__entry.is-quote-attrib .landing-notebook__entry-text {
-  font-style: italic;
-  font-size: 0.92em;
-  color: var(--notebook-ink-soft);
-  margin-left: 1.6em;
-}
-#landingScreen .landing-notebook__entry.is-signature {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
-  font-weight: 600;
-  font-size: 1.55em;
-  color: var(--notebook-ink);
-  margin-top: clamp(2px, 0.6%, 6px);
-  white-space: nowrap;
-  overflow: visible;
-}
-#landingScreen .landing-notebook__signature-name {
-  font-family: var(--font-hand, 'Caveat', 'Segoe Script', cursive);
-  letter-spacing: 0.01em;
-  transform: rotate(-3deg);
-  display: inline-block;
-}
-#landingScreen .landing-notebook__signature-flourish {
-  width: clamp(70px, 16%, 110px);
-  height: auto;
-  color: currentColor;
-  margin-left: -10px;
-  transform: translateY(4px) rotate(-2deg);
-  display: inline-block;
-}
-
-/* B7+ Affirmation: "GET THE JOB DONE!!!" — bold scribbled headline with
-   inline horizontal key+keychain alongside it. */
-#landingScreen .landing-notebook__entry.is-affirmation {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0;
-  margin-bottom: clamp(2px, 0.6%, 5px);
-  white-space: normal;
-  overflow: visible;
-}
-#landingScreen .landing-notebook__affirm-row {
-  display: flex;
-  align-items: center;
-  gap: clamp(4px, 1%, 8px);
-  width: 100%;
-  flex-wrap: nowrap;
-}
-#landingScreen .landing-notebook__entry.is-affirmation .landing-notebook__entry-text {
-  font-weight: 700;
-  font-size: 1.18em;
-  letter-spacing: 0.02em;
-  color: var(--landing-accent, #d4a843);
-  text-shadow:
-    0 1px 0 rgba(0, 0, 0, 0.06),
-    0 0 1px color-mix(in srgb, var(--landing-accent, #d4a843) 30%, transparent);
-  font-family: var(--font-hand, 'Caveat', 'Segoe Script', cursive);
-  line-height: 1.05;
-  flex: 0 1 auto;
-  white-space: nowrap;
-}
-#landingScreen .landing-notebook__affirm-underline {
-  width: clamp(100px, 55%, 180px);
-  height: auto;
-  margin-top: 1px;
-  color: var(--notebook-ink-red);
-  display: block;
-  transform: translateX(2px) rotate(-1.2deg);
-}
-
-/* Inline horizontal key + keychain (sits in the affirmation row) */
-#landingScreen .landing-notebook__key {
-  width: clamp(48px, 18%, 70px);
-  height: auto;
-  flex: 0 0 auto;
-  display: inline-block;
-  filter:
-    drop-shadow(0 1.5px 2px rgba(0, 0, 0, 0.4))
-    drop-shadow(0 0 0.5px rgba(0, 0, 0, 0.3));
-  transform: rotate(-3deg);
-}
-
-/* Pen — laying diagonally across bottom of notebook page */
-#landingScreen .landing-notebook__pen {
-  position: absolute;
-  right: clamp(-14px, -4%, -6px);
-  bottom: clamp(6px, 3%, 16px);
-  width: clamp(90px, 44%, 140px);
-  height: auto;
-  pointer-events: none;
-  transform: rotate(-22deg);
-  filter:
-    drop-shadow(0 3px 4px rgba(0, 0, 0, 0.35))
-    drop-shadow(0 0 1px rgba(0, 0, 0, 0.4));
-  z-index: 3;
 }
 
 #landingScreen .landing-notebook__doodle {
   position: absolute;
-  right: clamp(8px, 3%, 16px);
-  top: clamp(8px, 2.5%, 14px);
-  width: clamp(36px, 9%, 56px);
+  left: clamp(46px, 14%, 60px);
+  bottom: clamp(12px, 3.5%, 18px);
+  width: clamp(64px, 14%, 96px);
   height: auto;
   color: var(--notebook-ink-soft);
-  opacity: 0.55;
+  opacity: 0.75;
   pointer-events: none;
-  transform: rotate(8deg);
-  z-index: 0;
+  transform: rotate(-2deg);
 }
 
 /* Polaroid / booking card taped on top — sits at the bottom-right
@@ -8070,134 +7891,63 @@ body.light-theme #landingScreen .landing-card {
   letter-spacing: 0.01em;
 }
 
-/* Light theme — warmer cream + darker ink (incl. multi-coloured ink overrides) */
+/* Light theme — warmer cream + darker ink */
 body.light-theme #landingScreen .landing-notebook {
   --notebook-page-bg: #fcf6e6;
   --notebook-page-bg-alt: #f3ead0;
   --notebook-rule: rgba(120, 100, 60, 0.22);
   --notebook-ink: #1a234a;
   --notebook-ink-soft: rgba(26, 35, 74, 0.62);
-  --notebook-ink-green: #14633b;
-  --notebook-ink-red: #8a221d;
-  --notebook-ink-purple: #432a6b;
-  --notebook-ink-pencil: #444444;
-  --notebook-ink-yellow: #8a6f12;
   --notebook-card-bg: #ffffff;
   --notebook-card-text: #1a1d28;
   --notebook-card-meta: #6b6e7a;
 }
 
-/* B7e — Desktop two-column grid for the entries (≥769px) so 22 scribbles fit */
-@media (min-width: 769px) {
-  #landingScreen .landing-notebook__entries {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    column-gap: clamp(8px, 1.4vw, 14px);
-    row-gap: clamp(2px, 0.4%, 5px);
-    align-content: start;
-  }
-  #landingScreen .landing-notebook__entry.is-wide,
-  #landingScreen .landing-notebook__entry.is-quote,
-  #landingScreen .landing-notebook__entry.is-quote-attrib,
-  #landingScreen .landing-notebook__entry.is-signature,
-  #landingScreen .landing-notebook__entry.is-balance {
-    grid-column: 1 / -1;
-  }
-}
-
-/* B7b — No-scroll home page (only #landingScreen with .landing-home-page on desktop ≥1024) */
-@media (min-width: 1024px) {
-  #landingScreen.landing-home-page {
-    height: 100vh;
-    max-height: 100vh;
-    overflow: hidden !important;
-    display: flex;
-    flex-direction: column;
-    padding-bottom: 0 !important;
-  }
-  #landingScreen.landing-home-page .landing-hero-stage {
-    flex: 1 1 auto;
-    min-height: 0;
-  }
-  #landingScreen.landing-home-page .sp-prem-landing-footer {
-    flex: 0 0 auto;
-    margin: 0;
-  }
-
-  /* Tighten CTAs + heading proportions so the hero never overruns the footer */
-  #landingScreen.landing-home-page .landing-buttons {
-    gap: 10px;
-    margin-top: clamp(6px, 0.9vw, 12px);
-  }
-  #landingScreen.landing-home-page .landing-buttons .landing-btn,
-  #landingScreen.landing-home-page.landing-container .landing-buttons .landing-btn,
-  #landingScreen.landing-home-page .landing-container .landing-buttons .landing-btn {
-    padding: 7px 22px;
-    font-size: 13px;
-    letter-spacing: 0.05em;
-    line-height: 1.2;
-    min-width: 158px;
-    min-height: 0;
-    border-radius: 999px;
-  }
-  #landingScreen.landing-home-page .landing-buttons .landing-btn--ghost,
-  #landingScreen.landing-home-page .landing-buttons .landing-btn--how {
-    font-size: 12.5px;
-    padding: 6px 18px;
-    line-height: 1.2;
-    min-width: 0;
-  }
-  #landingScreen.landing-home-page .landing-hero-heading {
-    font-size: clamp(1.5rem, 3.4vw, 2.4rem);
-    line-height: 1.1;
-    margin-bottom: 8px;
-  }
-  #landingScreen.landing-home-page .landing-hero-subtitle {
-    font-size: clamp(0.88rem, 1.4vw, 1rem);
-    line-height: 1.4;
-    margin-bottom: 4px;
-  }
-  #landingScreen.landing-home-page .landing-shell-kicker {
-    margin-bottom: clamp(2px, 0.5vw, 6px);
-  }
-}
-
-/* Tablet — keep +45deg tilt at slightly smaller width */
+/* Tablet — gentler tilts */
 @media (max-width: 768px) {
   #landingScreen .landing-notebook {
-    width: clamp(240px, 60vw, 320px);
-    margin-top: clamp(60px, 9vh, 90px);
-    margin-bottom: clamp(60px, 9vh, 90px);
-  }
-  #landingScreen .landing-notebook__entries {
-    font-size: clamp(15px, 2vw, 19px);
-  }
-}
-
-/* Mobile — keep +45deg tilt, ensure no horizontal overflow on 375px viewport */
-@media (max-width: 480px) {
-  #landingScreen .landing-notebook {
-    width: clamp(200px, 60vw, 260px);
-    margin-top: clamp(50px, 8vh, 70px);
-    margin-bottom: clamp(50px, 8vh, 70px);
-    padding-block: 6px;
+    width: clamp(240px, 70vw, 360px);
   }
   #landingScreen .landing-notebook__page {
-    aspect-ratio: 5 / 6;
+    transform: rotate(-1deg);
   }
-  #landingScreen .landing-notebook__entries {
-    font-size: clamp(14px, 4vw, 18px);
-  }
-  #landingScreen .landing-notebook__entry.is-phone {
-    font-size: 0.86em;
+  #landingScreen .landing-notebook__card {
+    width: clamp(150px, 52%, 200px);
+    transform: rotate(2deg) translate(0, 0);
   }
 }
 
-/* Reduced motion — skip the staggered ink reveal but keep per-entry rotation */
+/* Mobile — flatten tilts, single column, no horizontal overflow */
+@media (max-width: 480px) {
+  #landingScreen .landing-notebook {
+    width: min(92vw, 360px);
+    margin-top: 16px;
+    padding-block: 8px;
+  }
+  #landingScreen .landing-notebook__page {
+    transform: rotate(0deg);
+    aspect-ratio: 5 / 6;
+  }
+  #landingScreen .landing-notebook__card {
+    position: relative;
+    inset: auto;
+    width: 88%;
+    margin: -28px auto 0;
+    transform: rotate(-1.6deg);
+  }
+  #landingScreen .landing-notebook__entries {
+    font-size: clamp(17px, 5.2vw, 21px);
+  }
+  #landingScreen .landing-notebook__doodle {
+    display: none;
+  }
+}
+
+/* Reduced motion — skip the staggered ink reveal */
 @media (prefers-reduced-motion: reduce) {
   #landingScreen .landing-notebook__entry {
     opacity: 1;
-    transform: rotate(calc((var(--n) * 0.85deg) - 4deg));
+    transform: none;
     transition: none;
   }
 }

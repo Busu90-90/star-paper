@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Star Paper App Shell Preview</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #111218;
+      --panel: rgba(20, 21, 28, 0.94);
+      --panel-soft: rgba(255, 255, 255, 0.04);
+      --line: rgba(212, 168, 67, 0.22);
+      --line-soft: rgba(255, 255, 255, 0.08);
+      --text: #f4f3f0;
+      --muted: #9b99a3;
+      --gold: #d4a843;
+      --gold-2: #f2cf75;
+      --shadow: 0 24px 64px rgba(0, 0, 0, 0.42);
+      --radius-xl: 24px;
+      --radius-lg: 18px;
+      --radius-md: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+      background:
+        radial-gradient(circle at top right, rgba(212, 168, 67, 0.08), transparent 20%),
+        linear-gradient(180deg, #0b0b0b 0%, #111218 46%, #0f1016 100%);
+      color: var(--text);
+      padding: 18px;
+    }
+
+    .preview-shell {
+      display: grid;
+      gap: 16px;
+      width: min(100%, 1680px);
+      margin: 0 auto;
+    }
+
+    .preview-toolbar {
+      display: grid;
+      gap: 12px;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    .preview-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .preview-title {
+      display: grid;
+      gap: 4px;
+    }
+
+    .preview-title h1 {
+      margin: 0;
+      font-size: clamp(1.2rem, 2vw, 1.6rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+
+    .preview-title p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .preview-groups {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .preview-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      padding: 8px;
+      border-radius: var(--radius-lg);
+      background: var(--panel-soft);
+      border: 1px solid var(--line-soft);
+    }
+
+    .preview-group-label {
+      padding: 0 6px 0 2px;
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .preview-btn {
+      border: 1px solid var(--line-soft);
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+    }
+
+    .preview-btn:hover {
+      border-color: var(--line);
+      background: rgba(212, 168, 67, 0.08);
+      transform: translateY(-1px);
+    }
+
+    .preview-btn.is-active {
+      background: linear-gradient(135deg, rgba(242, 207, 117, 0.2), rgba(212, 168, 67, 0.12));
+      border-color: var(--line);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .preview-note {
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.5;
+    }
+
+    .preview-stage {
+      display: grid;
+      place-items: start center;
+      padding: 12px;
+      border-radius: 32px;
+      border: 1px solid var(--line);
+      background: rgba(12, 13, 18, 0.7);
+      box-shadow: var(--shadow);
+      min-height: 72vh;
+    }
+
+    .preview-frame-wrap {
+      width: min(100%, var(--preview-width, 1440px));
+      transition: width 220ms ease;
+    }
+
+    iframe {
+      width: 100%;
+      height: var(--preview-height, 1400px);
+      border: 0;
+      border-radius: 24px;
+      background: #111218;
+      box-shadow: 0 0 0 1px rgba(212, 168, 67, 0.08), 0 28px 60px rgba(0, 0, 0, 0.42);
+      transition: height 220ms ease;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+
+      .preview-toolbar,
+      .preview-stage {
+        border-radius: 20px;
+      }
+
+      .preview-stage {
+        padding: 8px;
+      }
+
+      iframe {
+        border-radius: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="preview-shell">
+    <div class="preview-toolbar">
+      <div class="preview-head">
+        <div class="preview-title">
+          <h1>Star Paper App Shell Preview</h1>
+          <p>Uses the real app shell markup and the new redesign stylesheet, with preview-only section/theme controls.</p>
+        </div>
+      </div>
+
+      <div class="preview-groups">
+        <div class="preview-group" data-group="section">
+          <span class="preview-group-label">Section</span>
+          <button class="preview-btn is-active" data-section="dashboard">Dashboard</button>
+          <button class="preview-btn" data-section="money">Money</button>
+          <button class="preview-btn" data-section="schedule">Schedule</button>
+          <button class="preview-btn" data-section="artists">Artists</button>
+          <button class="preview-btn" data-section="tasks">Tasks</button>
+        </div>
+
+        <div class="preview-group" data-group="theme">
+          <span class="preview-group-label">Theme</span>
+          <button class="preview-btn is-active" data-theme="dark">Dark</button>
+          <button class="preview-btn" data-theme="light">Light</button>
+        </div>
+
+        <div class="preview-group" data-group="viewport">
+          <span class="preview-group-label">Viewport</span>
+          <button class="preview-btn is-active" data-width="1440" data-height="1500">Desktop</button>
+          <button class="preview-btn" data-width="1024" data-height="1440">Tablet</button>
+          <button class="preview-btn" data-width="390" data-height="1180">Mobile</button>
+        </div>
+
+        <div class="preview-group" data-group="surface">
+          <span class="preview-group-label">Utility State</span>
+          <button class="preview-btn is-active" data-surface="standard">Standard</button>
+          <button class="preview-btn" data-surface="collapsed">Collapsed</button>
+          <button class="preview-btn" data-surface="drawer">Drawer</button>
+          <button class="preview-btn" data-surface="search">Search</button>
+          <button class="preview-btn" data-surface="palette">Palette</button>
+          <button class="preview-btn" data-surface="shortcuts">Shortcuts</button>
+        </div>
+      </div>
+
+      <div class="preview-note">
+        This is a visual harness only. It forces the signed-in shell visible and injects sample states for navigation, search, quick add, scroll, and keyboard utilities without touching auth or data logic.
+      </div>
+    </div>
+
+    <div class="preview-stage">
+      <div class="preview-frame-wrap" id="previewFrameWrap">
+        <iframe id="previewFrame" src="./index.html" title="Star Paper preview"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const frame = document.getElementById("previewFrame");
+    const frameWrap = document.getElementById("previewFrameWrap");
+
+    const state = {
+      section: "dashboard",
+      theme: "dark",
+      width: 1440,
+      height: 1500,
+      surface: "standard"
+    };
+
+    function setActiveButton(group, predicate) {
+      document.querySelectorAll(`[data-group="${group}"] .preview-btn`).forEach((button) => {
+        button.classList.toggle("is-active", predicate(button));
+      });
+    }
+
+    function applyViewport() {
+      frameWrap.style.setProperty("--preview-width", `${state.width}px`);
+      frame.style.setProperty("--preview-height", `${state.height}px`);
+      setActiveButton("viewport", (button) => Number(button.dataset.width) === state.width);
+    }
+
+    function seedDashboard(doc) {
+      const textMap = {
+        todayBoardDay: "Friday",
+        todayBoardDate: "April 24, 2026",
+        dashboardRevenueLabel: "April Revenue",
+        totalIncome: "UGX 58,400,000",
+        dashboardDepositsReceived: "UGX 24,600,000",
+        dashboardExpenses: "UGX 11,900,000",
+        dashboardCashAtHand: "UGX 46,500,000",
+        balancesOverdue: "UGX 6,700,000",
+        dashboardBBF: "UGX 4,800,000",
+        upcomingShows: "7",
+        monthlyGoalAmount: "UGX 60,000,000",
+        monthlyGoalCurrentRevenue: "UGX 58,400,000",
+        monthlyGoalPercent: "97%",
+        mainstageShows7d: "3",
+        mainstageDepositsPending: "2",
+        mainstageBalanceAlerts: "4",
+        mainstageBurnRate: "20%",
+        dashboardFinancialHeading: "April Financials",
+        financialsIncome: "UGX 58,400,000",
+        financialsOtherIncome: "UGX 3,200,000",
+        financialsExpenses: "UGX 11,900,000",
+        financialsProfit: "UGX 46,500,000",
+        financialsBalancesDue: "UGX 6,700,000",
+        reportBookings: "17",
+        reportIncome: "UGX 58,400,000",
+        reportOtherIncome: "UGX 3,200,000",
+        reportExpenses: "UGX 11,900,000",
+        reportProfit: "UGX 46,500,000",
+        reportBalancesDue: "UGX 6,700,000"
+      };
+
+      Object.entries(textMap).forEach(([id, value]) => {
+        const el = doc.getElementById(id);
+        if (el) el.textContent = value;
+      });
+
+      const progress = doc.getElementById("monthlyGoalProgressBar");
+      if (progress) progress.style.width = "97%";
+
+      const todayStatus = doc.getElementById("todayBoardStatus");
+      if (todayStatus) {
+        todayStatus.textContent = "2 follow-ups";
+        todayStatus.className = "today-board__status today-board__status--alerts";
+      }
+
+      const alerts = doc.getElementById("todayBoardAlerts");
+      if (alerts && !alerts.dataset.previewSeeded) {
+        alerts.dataset.previewSeeded = "1";
+        alerts.innerHTML = `
+          <div class="timeline-item dashboard-alert-item dashboard-alert-item--warning">
+            <div class="timeline-meta">
+              <div class="timeline-title"><span class="dashboard-alert-icon">!</span> Balance follow-up due</div>
+              <div class="timeline-sub">Kampala Arena still has UGX 3.2M outstanding on the confirmed booking.</div>
+            </div>
+          </div>
+          <div class="timeline-item dashboard-alert-item dashboard-alert-item--info">
+            <div class="timeline-meta">
+              <div class="timeline-title"><span class="dashboard-alert-icon">i</span> Schedule sync</div>
+              <div class="timeline-sub">Three confirmed shows this week, with logistics locked for two of them.</div>
+            </div>
+          </div>
+        `;
+      }
+
+      const upcoming = doc.getElementById("dashboardUpcomingList");
+      if (upcoming && !upcoming.dataset.previewSeeded) {
+        upcoming.dataset.previewSeeded = "1";
+        upcoming.innerHTML = `
+          <div class="timeline-item dashboard-stream-item dashboard-upcoming-item">
+            <div class="timeline-meta">
+              <div class="timeline-title">Kampala Arena Live</div>
+              <div class="timeline-sub">Apr 26, 2026 · Kampala · Cindy Sanyu</div>
+            </div>
+            <div class="timeline-amount">
+              <span class="booking-status-pill status-confirmed">Confirmed</span>
+              <span class="timeline-fee income-green">UGX 14,000,000</span>
+            </div>
+          </div>
+          <div class="timeline-item dashboard-stream-item dashboard-upcoming-item">
+            <div class="timeline-meta">
+              <div class="timeline-title">Festival Mainstage</div>
+              <div class="timeline-sub">Apr 29, 2026 · Jinja · Azawi</div>
+            </div>
+            <div class="timeline-amount">
+              <span class="booking-status-pill status-pending">Pending</span>
+              <span class="timeline-fee deposit-blue">UGX 9,500,000</span>
+            </div>
+          </div>
+        `;
+      }
+
+      const activity = doc.getElementById("dashboardActivityFeed");
+      if (activity && !activity.dataset.previewSeeded) {
+        activity.dataset.previewSeeded = "1";
+        activity.innerHTML = `
+          <div class="timeline-item dashboard-stream-item dashboard-activity-item booking">
+            <div class="timeline-meta">
+              <div class="timeline-title">Booking confirmed</div>
+              <div class="timeline-sub">Kampala Arena deposit logged for Cindy Sanyu</div>
+            </div>
+            <div class="timeline-amount income-green">UGX 6,000,000</div>
+          </div>
+          <div class="timeline-item dashboard-stream-item dashboard-activity-item expense">
+            <div class="timeline-meta">
+              <div class="timeline-title">Expense logged</div>
+              <div class="timeline-sub">Production advance approved for the April run</div>
+            </div>
+            <div class="timeline-amount expense-red">UGX 1,800,000</div>
+          </div>
+        `;
+      }
+    }
+
+    function seedArtists(doc) {
+      const grid = doc.getElementById("artistGrid");
+      if (grid && !grid.dataset.previewSeeded) {
+        grid.dataset.previewSeeded = "1";
+        grid.innerHTML = `
+          <div class="artist-card">
+            <div class="artist-avatar">C</div>
+            <h4>Cindy Sanyu</h4>
+            <div class="artist-specialty">Dancehall / Pop</div>
+            <div class="artist-bio">Premium live show, strong brand demand, and an active booking month.</div>
+          </div>
+          <div class="artist-card">
+            <div class="artist-avatar">A</div>
+            <h4>Azawi</h4>
+            <div class="artist-specialty">Afro-fusion</div>
+            <div class="artist-bio">Tour-focused roster slot with a clean upcoming-show pipeline.</div>
+          </div>
+        `;
+      }
+    }
+
+    function seedTasks(doc) {
+      const list = doc.getElementById("taskList");
+      if (list && !list.dataset.previewSeeded) {
+        list.dataset.previewSeeded = "1";
+        list.innerHTML = `
+          <div class="task-item">
+            <input class="task-checkbox" type="checkbox" />
+            <div class="task-content">
+              <div class="task-text">Confirm final production budget for Kampala Arena</div>
+              <div class="task-due">Due Apr 25</div>
+            </div>
+            <button class="task-delete" type="button">×</button>
+          </div>
+          <div class="task-item task-completed">
+            <input class="task-checkbox" type="checkbox" checked />
+            <div class="task-content">
+              <div class="task-text">Send revised deal memo to promoter</div>
+              <div class="task-due">Completed</div>
+            </div>
+            <button class="task-delete" type="button">×</button>
+          </div>
+        `;
+      }
+    }
+
+    function seedUtilitySurfaces(doc) {
+      const showDrawer = state.surface === "drawer";
+      const showSearch = state.surface === "search";
+      const showPalette = state.surface === "palette";
+      const showShortcuts = state.surface === "shortcuts";
+
+      doc.body.classList.toggle("sidebar--collapsed", state.surface === "collapsed");
+      doc.body.classList.toggle("sidebar-open", showDrawer);
+
+      const sidebar = doc.getElementById("sidebar");
+      const overlay = doc.getElementById("sidebarOverlay");
+      const hamburger = doc.getElementById("hamburgerBtn");
+      if (sidebar) sidebar.classList.toggle("active", showDrawer);
+      if (overlay) {
+        overlay.classList.toggle("active", showDrawer);
+        overlay.setAttribute("aria-hidden", String(!showDrawer));
+      }
+      if (hamburger) hamburger.setAttribute("aria-expanded", String(showDrawer));
+
+      const navBack = doc.getElementById("navBackBtn");
+      const navFwd = doc.getElementById("navFwdBtn");
+      if (navBack) navBack.disabled = false;
+      if (navFwd) navFwd.disabled = false;
+
+      const scrollFab = doc.getElementById("scrollTopFab");
+      if (scrollFab) scrollFab.classList.add("visible");
+
+      const taskBadge = doc.getElementById("taskBadgeNav");
+      if (taskBadge) {
+        taskBadge.textContent = "3";
+        taskBadge.style.display = "inline-flex";
+      }
+
+      const searchInput = doc.getElementById("dashboardSearch");
+      const searchResults = doc.getElementById("dashboardSearchResults");
+      const quickAddPanel = doc.getElementById("quickAddPanel");
+      if (searchInput) searchInput.value = showSearch ? "kampala" : "";
+      if (searchResults) {
+        searchResults.classList.toggle("active", showSearch);
+        searchResults.innerHTML = showSearch ? `
+          <div class="search-result-item" role="option" tabindex="0" data-section="schedule" data-type="Booking" data-id="preview">
+            <div class="search-result-type">Booking</div>
+            <div class="search-result-sub">Kampala Arena Live - Apr 26 - Cindy Sanyu</div>
+          </div>
+          <div class="search-result-item" role="option" tabindex="0" data-section="artists" data-type="Artist" data-id="preview">
+            <div class="search-result-type">Artist</div>
+            <div class="search-result-sub">Cindy Sanyu - confirmed show pipeline</div>
+          </div>
+        ` : "";
+      }
+      if (quickAddPanel) quickAddPanel.classList.toggle("active", showSearch);
+
+      const palette = doc.getElementById("spPalette");
+      const paletteBackdrop = doc.getElementById("spPaletteBackdrop");
+      const paletteInput = doc.getElementById("spPaletteInput");
+      const paletteResults = doc.getElementById("spPaletteResults");
+      if (palette) {
+        palette.style.display = showPalette ? "block" : "none";
+        palette.classList.toggle("sp-palette--visible", showPalette);
+      }
+      if (paletteBackdrop) paletteBackdrop.classList.toggle("sp-palette-backdrop--visible", showPalette);
+      if (paletteInput) paletteInput.value = showPalette ? "add booking" : "";
+      if (paletteResults) {
+        paletteResults.innerHTML = showPalette ? `
+          <li class="sp-palette__group-label" role="presentation">Quick Actions</li>
+          <li class="sp-palette__result" role="option" aria-selected="true">
+            <div class="sp-palette__result-icon"><i class="ph ph-calendar-plus" aria-hidden="true"></i></div>
+            <div class="sp-palette__result-body">
+              <div class="sp-palette__result-title">Add Booking</div>
+              <div class="sp-palette__result-sub">Open the current booking form</div>
+            </div>
+            <span class="sp-palette__result-kbd">G+B</span>
+          </li>
+          <li class="sp-palette__result" role="option" aria-selected="false">
+            <div class="sp-palette__result-icon"><i class="ph ph-receipt" aria-hidden="true"></i></div>
+            <div class="sp-palette__result-body">
+              <div class="sp-palette__result-title">Add Expense</div>
+              <div class="sp-palette__result-sub">Record a production or logistics cost</div>
+            </div>
+            <span class="sp-palette__result-kbd">G+E</span>
+          </li>
+        ` : "";
+      }
+
+      const shortcuts = doc.getElementById("spCheatsheet");
+      const shortcutsBackdrop = doc.getElementById("spCheatsheetBackdrop");
+      if (shortcuts) {
+        shortcuts.style.display = showShortcuts ? "block" : "none";
+        shortcuts.classList.toggle("sp-cheatsheet--visible", showShortcuts);
+      }
+      if (shortcutsBackdrop) shortcutsBackdrop.classList.toggle("sp-cheatsheet-backdrop--visible", showShortcuts);
+    }
+
+    function revealShell() {
+      const win = frame.contentWindow;
+      const doc = frame.contentDocument;
+      if (!win || !doc) return false;
+
+      const app = doc.getElementById("appContainer");
+      if (!app) return false;
+
+      doc.documentElement.classList.remove("sp-force-boot");
+      doc.body.classList.add("loaded", "layout-root-ready");
+      doc.body.classList.toggle("light-theme", state.theme === "light");
+
+      const loader = doc.getElementById("appBootLoader");
+      const landing = doc.getElementById("landingScreen");
+      const login = doc.getElementById("loginScreen");
+      const welcome = doc.getElementById("welcomeMessage");
+
+      if (loader) loader.style.display = "none";
+      if (landing) landing.style.display = "none";
+      if (login) login.style.display = "none";
+      app.style.display = "block";
+      app.classList.add("layout-ready", "screen-active");
+
+      if (typeof win.setActiveScreen === "function") {
+        win.setActiveScreen("appContainer");
+      }
+      if (typeof win.showSection === "function") {
+        win.showSection(state.section);
+      }
+
+      if (welcome) {
+        welcome.style.display = state.section === "dashboard" ? "block" : "none";
+      }
+
+      const pageTitle = doc.getElementById("pageTitle");
+      if (pageTitle) pageTitle.textContent = state.section.charAt(0).toUpperCase() + state.section.slice(1);
+
+      const sidebarUserName = doc.getElementById("sidebarUserName");
+      if (sidebarUserName) sidebarUserName.textContent = "Manager";
+
+      const welcomeUserName = doc.getElementById("welcomeUserName");
+      if (welcomeUserName) welcomeUserName.textContent = "STAR PAPER";
+
+      seedDashboard(doc);
+      seedArtists(doc);
+      seedTasks(doc);
+      seedUtilitySurfaces(doc);
+
+      return true;
+    }
+
+    function syncPreview() {
+      setActiveButton("section", (button) => button.dataset.section === state.section);
+      setActiveButton("theme", (button) => button.dataset.theme === state.theme);
+      setActiveButton("surface", (button) => button.dataset.surface === state.surface);
+      applyViewport();
+      revealShell();
+    }
+
+    document.querySelectorAll("[data-section]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.section = button.dataset.section;
+        syncPreview();
+      });
+    });
+
+    document.querySelectorAll("[data-theme]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.theme = button.dataset.theme;
+        syncPreview();
+      });
+    });
+
+    document.querySelectorAll("[data-width]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.width = Number(button.dataset.width);
+        state.height = Number(button.dataset.height);
+        syncPreview();
+      });
+    });
+
+    document.querySelectorAll("[data-surface]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.surface = button.dataset.surface;
+        if (state.surface === "search") {
+          state.section = "dashboard";
+        }
+        if (state.surface === "drawer") {
+          state.width = 390;
+          state.height = 1180;
+        }
+        if (state.surface === "collapsed") {
+          state.width = 1440;
+          state.height = 1500;
+        }
+        syncPreview();
+      });
+    });
+
+    frame.addEventListener("load", () => {
+      let attempts = 0;
+      const timer = setInterval(() => {
+        attempts += 1;
+        if (revealShell() || attempts > 8) {
+          clearInterval(timer);
+        }
+      }, 600);
+    });
+
+    applyViewport();
+  </script>
+</body>
+</html>

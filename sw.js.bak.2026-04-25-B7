@@ -1,8 +1,8 @@
-const CACHE_NAME = "star-paper-shell-v78";
+const CACHE_NAME = "star-paper-shell-v74";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=32",
+  "./styles.css?v=28",
   "./styles.premium.css?v=8",
   "./styles.shell.css?v=4",
   "./star-paper-tokens.css?v=21",
@@ -12,9 +12,9 @@ const APP_SHELL = [
   "./app.todayboard.js?v=1",
   "./app.tasks.js?v=4",
   "./app.reports.js?v=11",
-  "./app.js?v=66",
+  "./app.js?v=65",
   "./app.premium.js?v=4",
-  "./sw.js?v=75",
+  "./sw.js?v=74",
   "./manifest.json",
   "./manifest.json?v=21",
   "./logo.svg",

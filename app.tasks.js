@@ -93,6 +93,14 @@
             .replace(/'/g, "&#39;");
     }
 
+    function inlineEditAttrs(recordId, field, label) {
+        // FIXED: tasks participate in the shared app.js inline cloud editor.
+        const safeId = escapeHtml(String(recordId ?? ""));
+        const safeField = escapeHtml(field);
+        const safeLabel = escapeHtml(label || field);
+        return `data-record-type="task" data-record-id="${safeId}" data-field="${safeField}" data-label="${safeLabel}" tabindex="0" role="button" aria-label="Edit ${safeLabel}" title="Double-click to edit ${safeLabel}"`;
+    }
+
     function sortTasks(input) {
         return [...input].sort((a, b) => {
             if (a.completed !== b.completed) return a.completed ? 1 : -1;
@@ -187,8 +195,8 @@
                     <input type="checkbox" ${task.completed ? "checked" : ""} ${readOnly ? "disabled" : ""}
                            onchange="window.toggleTask('${escapeHtml(task.id)}')" class="task-checkbox" />
                     <div class="task-content">
-                        <div class="task-text">${escapeHtml(task.text)}</div>
-                        ${task.dueDate ? `<div class="task-due">${escapeHtml(formatTaskDate(task.dueDate))}</div>` : ""}
+                        <div class="task-text sp-inline-editable" ${inlineEditAttrs(task.id, "text", "Task")}>${escapeHtml(task.text)}</div>
+                        <div class="task-due sp-inline-editable" ${inlineEditAttrs(task.id, "dueDate", "Due Date")}>${task.dueDate ? escapeHtml(formatTaskDate(task.dueDate)) : "No due date"}</div>
                     </div>
                     <button class="task-edit" ${readOnly ? "disabled" : ""} onclick="window.startEditTask('${escapeHtml(task.id)}')" aria-label="Edit task">Edit</button>
                     <button class="task-delete" ${readOnly ? "disabled" : ""} onclick="window.deleteTask('${escapeHtml(task.id)}')" aria-label="Delete task">&times;</button>

@@ -11290,7 +11290,7 @@ function showLoginForm() {
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=75').then((registration) => { // FIXED: pair service worker update with bumped app assets.
+                navigator.serviceWorker.register('sw.js?v=74').then((registration) => { // FIXED: pair service worker update with bumped app assets.
                     registration.update().catch(() => {});
                 }).catch((error) => {
                     console.warn('Service worker registration failed:', error);
@@ -11304,17 +11304,7 @@ function showLoginForm() {
    and is a no-op if the notebook isn't on the page.
    ------------------------------------------------------------ */
 (function initNotebookMainstage() {
-    function flagHomePage() {
-        // B7b: tag #landingScreen as the home page so the no-scroll grid kicks in.
-        // Only the home (index.html) renders both the hero stage and #landingScreen.
-        var screen = document.getElementById('landingScreen');
-        var stage = document.querySelector('.landing-hero-stage');
-        if (screen && stage) {
-            screen.classList.add('landing-home-page');
-        }
-    }
     function reveal() {
-        flagHomePage();
         var notebook = document.querySelector('#landingScreen .landing-notebook');
         if (!notebook) return;
         var entries = notebook.querySelectorAll('.landing-notebook__entry');
@@ -11322,20 +11312,17 @@ function showLoginForm() {
         var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         if (prefersReducedMotion || typeof IntersectionObserver !== 'function') {
             notebook.classList.add('is-revealed-all');
-            // Tag entries inked synchronously so per-entry rotation transform applies.
-            Array.prototype.forEach.call(entries, function (entry) { entry.classList.add('is-inked'); });
             return;
         }
         var io = new IntersectionObserver(function (records) {
             records.forEach(function (record) {
                 if (!record.isIntersecting) return;
                 io.unobserve(record.target);
-                // Stagger reveal: 90ms each (faster for 22 entries vs original 140ms x 5).
                 Array.prototype.forEach.call(entries, function (entry, index) {
-                    setTimeout(function () { entry.classList.add('is-inked'); }, 90 * index);
+                    setTimeout(function () { entry.classList.add('is-inked'); }, 140 * index);
                 });
             });
-        }, { threshold: 0.2 });
+        }, { threshold: 0.25 });
         io.observe(notebook);
     }
     if (document.readyState === 'loading') {

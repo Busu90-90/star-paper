@@ -1,18 +1,18 @@
 /**
  * ============================================================
- * STAR PAPER — SUPABASE INTEGRATION LAYER
- * supabase.js — Load this BEFORE app.js in index.html
+ * STAR PAPER â€” SUPABASE INTEGRATION LAYER
+ * supabase.js â€” Load this BEFORE app.js in index.html
  *
  * <script src="supabase.js"></script>
  * <script src="app.js"></script>
  * ============================================================
  *
  * SETUP: Replace the two config values below with your own
- * from your Supabase project: Settings → API
+ * from your Supabase project: Settings â†’ API
  * ============================================================
  */
 
-// ── CONFIG: Replace these with your Supabase project values ──────────────────
+// â”€â”€ CONFIG: Replace these with your Supabase project values â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const SP_SUPABASE_URL  = 'https://fxcyocdwvjiyatqnaahg.supabase.co';
 const SP_SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4Y3lvY2R3dmppeWF0cW5hYWhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5Nzg4NDEsImV4cCI6MjA4ODU1NDg0MX0.OTtDpyfA69rbVOTJkBh51pwj3wEkR1L04x4ouDkeWZ0';
 const SP_SUPABASE_STORAGE_KEY = 'sp-starpaper-auth-v1';
@@ -34,21 +34,21 @@ const SP_CLOUD_ONLY_MODE = true;
 window.__spSupabaseConfigured = SP_SUPABASE_CONFIGURED;
 window.__spAllowLocalFallback = SP_ALLOW_LOCAL_FALLBACK;
 window.__spCloudOnly = SP_CLOUD_ONLY_MODE;
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// ── CURRENCY CONFIG ───────────────────────────────────────────────────────────
+// â”€â”€ CURRENCY CONFIG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const SP_CURRENCIES = {
   UGX: { symbol: 'UGX', name: 'Uganda Shilling',   rate: 1 },
   KES: { symbol: 'KES', name: 'Kenya Shilling',     rate: 0.033 },
   TZS: { symbol: 'TZS', name: 'Tanzania Shilling',  rate: 0.083 },
-  NGN: { symbol: '₦',   name: 'Nigerian Naira',     rate: 0.11  },
+  NGN: { symbol: 'â‚¦',   name: 'Nigerian Naira',     rate: 0.11  },
   ZAR: { symbol: 'R',   name: 'South African Rand', rate: 0.0006},
   USD: { symbol: '$',   name: 'US Dollar',          rate: 0.00026},
-  GBP: { symbol: '£',   name: 'British Pound',      rate: 0.0002 },
-  EUR: { symbol: '€',   name: 'Euro',               rate: 0.00023},
+  GBP: { symbol: 'Â£',   name: 'British Pound',      rate: 0.0002 },
+  EUR: { symbol: 'â‚¬',   name: 'Euro',               rate: 0.00023},
 };
 
-// ── BOOTSTRAP ─────────────────────────────────────────────────────────────────
+// â”€â”€ BOOTSTRAP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 (async function initStarPaperSupabase() {
   'use strict';
 
@@ -75,25 +75,25 @@ const SP_CURRENCIES = {
       autoRefreshToken:   true,
       flowType:           'pkce',
       detectSessionInUrl: true,
-      // Stable storage key — all tabs share the same lock namespace.
+      // Stable storage key â€” all tabs share the same lock namespace.
       storageKey: SP_SUPABASE_STORAGE_KEY,
       // Disable the Web Locks API for auth token refresh coordination.
       // The navigator.locks "steal" mechanism causes AbortError when multiple
       // Supabase requests fire in rapid succession (e.g. Create Team flow).
       // With this disabled, GoTrue falls back to a simple in-memory mutex
       // which is sufficient for a single-page app with one auth client.
-      // CRITICAL: must RETURN the promise from fn() — the SDK's internal
+      // CRITICAL: must RETURN the promise from fn() â€” the SDK's internal
       // initializePromise depends on it. Discarding it deadlocks the SDK.
       lock: (name, acquireTimeout, fn) => Promise.resolve().then(fn),
     }
   });
 
-  // ── STATE ───────────────────────────────────────────────────────────────────
+  // â”€â”€ STATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   let _session  = null;
   let _profile  = null;
   let _activeTeamId = null;
   let _activeTeamRole = null;
-  let _currency = localStorage.getItem('sp_currency') || 'UGX';
+  let _currency = 'UGX'; // FIXED: currency comes from Supabase/profile data, not app-owned localStorage.
   let _realtimeChannel = null;
   let _coreRealtimeChannel = null;
   let _coreRealtimeDebounce = null;
@@ -111,7 +111,7 @@ const SP_CURRENCIES = {
   let _workspaceRequiresSelection = false;
   let _workspaceResolutionPromise = null;
 
-  // ── SYNC RELIABILITY: Retry Queue + Status Indicator ────────────────────────
+  // â”€â”€ SYNC RELIABILITY: Retry Queue + Status Indicator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const RETRY_QUEUE_STORAGE_KEY = 'sp_retry_queue';
   const BOOT_CONTEXT_STORAGE_KEY = 'sp_boot_context';
   const APP_SHELL_BOOT_CONTEXT = 'app-shell';
@@ -126,18 +126,22 @@ const SP_CURRENCIES = {
   window.__spSuppressStoredSessionBootstrap = false;
 
   function persistRetryQueue() {
+    // FIXED: retry queue is memory-only in cloud-first mode; Supabase remains the source of truth.
+    return;
     try {
       if (_retryQueue.length === 0) {
         localStorage.removeItem(RETRY_QUEUE_STORAGE_KEY);
       } else {
-        localStorage.setItem(RETRY_QUEUE_STORAGE_KEY, JSON.stringify(_retryQueue));
+        void _retryQueue;
       }
-    } catch (_err) { /* quota exceeded or private browsing — non-fatal */ }
+    } catch (_err) { /* quota exceeded or private browsing â€” non-fatal */ }
   }
 
   function restoreRetryQueue() {
+    // FIXED: no app-owned localStorage restore path for pending business data.
+    return;
     try {
-      const stored = localStorage.getItem(RETRY_QUEUE_STORAGE_KEY);
+      const stored = null;
       if (!stored) return;
       const parsed = JSON.parse(stored);
       if (Array.isArray(parsed) && parsed.length > 0) {
@@ -146,7 +150,7 @@ const SP_CURRENCIES = {
         updateSyncIndicator('failed');
         scheduleRetryQueue();
       }
-    } catch (_err) { /* corrupted — start fresh */ }
+    } catch (_err) { /* corrupted â€” start fresh */ }
   }
 
   function legacyUpdateSyncIndicator(state) {
@@ -157,8 +161,8 @@ const SP_CURRENCIES = {
       idle:    { icon: 'ph-cloud',           color: '#888',    title: 'Cloud idle' },
       syncing: { icon: 'ph-cloud-arrow-up',  color: '#FFB300', title: 'Syncing to cloud...' },
       synced:  { icon: 'ph-cloud-check',     color: '#81c784', title: 'Saved to cloud' },
-      failed:  { icon: 'ph-cloud-slash',     color: '#ef9a9a', title: 'Cloud sync failed — retrying' },
-      offline: { icon: 'ph-cloud-x',         color: '#888',    title: 'Offline — changes saved locally' },
+      failed:  { icon: 'ph-cloud-slash',     color: '#ef9a9a', title: 'Cloud sync failed â€” retrying' },
+      offline: { icon: 'ph-cloud-x',         color: '#888',    title: 'Offline â€” changes saved locally' },
     };
     const cfg = map[_syncState] || map.idle;
     el.className = 'ph ' + cfg.icon + ' sp-sync-icon';
@@ -244,7 +248,7 @@ const SP_CURRENCIES = {
     }
   }
 
-  // ── SERIAL DB QUEUE ──────────────────────────────────────────────────────────
+  // â”€â”€ SERIAL DB QUEUE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Supabase JS v2 acquires a Web Lock for every auth-bearing request. Firing
   // multiple requests concurrently causes "AbortError: Lock broken by steal".
   // This queue serialises all DB calls so only ONE request is in-flight at a time.
@@ -257,7 +261,7 @@ const SP_CURRENCIES = {
       syncing: { icon: 'ph-cloud-arrow-up', color: '#FFB300', title: 'Syncing to cloud...' },
       synced:  { icon: 'ph-cloud-check',    color: '#81c784', title: 'Saved to cloud' },
       failed:  { icon: 'ph-cloud-slash',    color: '#ef9a9a', title: 'Cloud sync failed' },
-      offline: { icon: 'ph-cloud-x',        color: '#888',    title: 'Offline — reconnect to save and refresh cloud data' },
+      offline: { icon: 'ph-cloud-x',        color: '#888',    title: 'Offline â€” reconnect to save and refresh cloud data' },
     };
     const cfg = map[_syncState] || map.idle;
     el.className = 'ph ' + cfg.icon + ' sp-sync-icon';
@@ -285,13 +289,13 @@ const SP_CURRENCIES = {
   let _dbQueue = Promise.resolve();
   function dbSerial(fn) {
     _dbQueue = _dbQueue.then(() => fn()).catch(err => {
-      // Swallow AbortErrors inside the queue — they are lock-release noise
+      // Swallow AbortErrors inside the queue â€” they are lock-release noise
       if (err?.name !== 'AbortError') throw err;
     });
     return _dbQueue;
   }
 
-  // ── HELPERS ─────────────────────────────────────────────────────────────────
+  // â”€â”€ HELPERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function log(...args)  { console.log('[StarPaper Supabase]', ...args); }
   function warn(...args) { console.warn('[StarPaper Supabase]', ...args); }
 
@@ -389,11 +393,7 @@ const SP_CURRENCIES = {
       _syncBroadcast.postMessage({ type: 'sync', reason: reason || 'save', ts: Date.now() });
       return;
     }
-    try {
-      localStorage.setItem(SYNC_BROADCAST_KEY, String(Date.now()));
-    } catch (_err) {
-      // no-op
-    }
+    // FIXED: no localStorage broadcast fallback in cloud-first mode.
   }
 
   function scheduleRealtimeRefresh(reason) {
@@ -437,7 +437,7 @@ const SP_CURRENCIES = {
     });
     _coreRealtimeChannel = channel;
 
-    // ── Persistent team notifications: messages + team_members ──
+    // â”€â”€ Persistent team notifications: messages + team_members â”€â”€
     subscribeToTeamNotifications();
   }
 
@@ -720,6 +720,61 @@ const SP_CURRENCIES = {
     if (typeof window.setActiveScreen === 'function') {
       window.setActiveScreen('landingScreen');
     }
+  }
+
+  function routeAuthenticatedUserToDashboard(reason = 'auth') {
+    // FIXED: authenticated refresh/visibility returns to the dashboard hash instead of landing/blank states.
+    try {
+      if (window.location.hash !== '#dashboard') {
+        window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#dashboard`);
+      }
+    } catch (_err) {
+      try { window.location.hash = '#dashboard'; } catch (__err) {}
+    }
+    if (typeof window.showSection === 'function') {
+      setTimeout(() => {
+        try { window.showSection('dashboard'); } catch (err) { warn(`Dashboard route failed (${reason}):`, err); }
+      }, 0);
+    }
+  }
+
+  function renderAppDataViews(reason = 'cloud-sync') {
+    // FIXED: when data arrives after the fast dashboard shell, refresh visible cloud-backed views immediately.
+    try { if (typeof window.renderBookings === 'function') window.renderBookings(); } catch (err) { warn(`renderBookings failed (${reason}):`, err); }
+    try { if (typeof window.renderExpenses === 'function') window.renderExpenses(); } catch (err) { warn(`renderExpenses failed (${reason}):`, err); }
+    try { if (typeof window.renderOtherIncome === 'function') window.renderOtherIncome(); } catch (err) { warn(`renderOtherIncome failed (${reason}):`, err); }
+    try { if (typeof window.renderArtists === 'function') window.renderArtists(); } catch (err) { warn(`renderArtists failed (${reason}):`, err); }
+    try { if (typeof window.renderTasks === 'function') window.renderTasks(); } catch (err) { warn(`renderTasks failed (${reason}):`, err); }
+    try { if (typeof window.renderAudienceMetrics === 'function') window.renderAudienceMetrics(); } catch (err) { warn(`renderAudienceMetrics failed (${reason}):`, err); }
+    try { if (typeof window.updateDashboard === 'function') window.updateDashboard(); } catch (err) { warn(`updateDashboard failed (${reason}):`, err); }
+    try { if (typeof window.renderCalendar === 'function') window.renderCalendar(); } catch (err) { warn(`renderCalendar failed (${reason}):`, err); }
+    try { if (typeof window.updateReportStatistics === 'function') window.updateReportStatistics(); } catch (err) { warn(`updateReportStatistics failed (${reason}):`, err); }
+  }
+
+  function showAuthenticatedDashboardShell(reason = 'bootstrap-fast-shell') {
+    if (typeof window.loadUserData === 'function' && !window.__spAppBooted) {
+      window.loadUserData({
+        snapshot: {
+          bookings: [],
+          expenses: [],
+          otherIncome: [],
+          artists: [],
+          audienceMetrics: [],
+          tasks: [],
+        },
+      });
+    }
+    if (typeof window.showApp === 'function' && !window.__spAppBooted) {
+      window.showApp();
+      log('bootstrap.fastShellReady', { reason });
+    }
+    routeAuthenticatedUserToDashboard(reason);
+    if (typeof window.setAppShellBootContext === 'function') {
+      window.setAppShellBootContext();
+    } else {
+      try { sessionStorage.setItem(BOOT_CONTEXT_STORAGE_KEY, APP_SHELL_BOOT_CONTEXT); } catch (_err) {}
+    }
+    window.__spBootContext = 'app-refresh';
   }
 
   function showBootErrorState(message, detail) {
@@ -1107,240 +1162,11 @@ const SP_CURRENCIES = {
     return query.eq(userColumn, getOwnerId()).is('team_id', null);
   }
 
-  // ── MIGRATION: import existing localStorage data on first login ─────────────
+  // â”€â”€ MIGRATION: import existing localStorage data on first login â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async function migrateLocalStorageData() {
-    const migrationKey = 'sp_migrated_' + getOwnerId();
-    if (localStorage.getItem(migrationKey)) return;
-
-    if (SP_CLOUD_ONLY_MODE) {
-      localStorage.setItem(migrationKey, '1');
-      return;
-    }
-
-    try {
-      const managerData = JSON.parse(localStorage.getItem('starPaperManagerData') || '{}');
-      const localArtists = JSON.parse(localStorage.getItem('starPaperArtists') || '[]');
-      const localRevenueGoals = JSON.parse(localStorage.getItem('starPaperRevenueGoals') || '{}');
-      const localBBF = JSON.parse(localStorage.getItem('starPaperBBF') || '{}');
-      const localClosingThoughts = JSON.parse(localStorage.getItem('starPaperClosingThoughtsByPeriod') || '{}');
-      const localAudienceMetrics = JSON.parse(localStorage.getItem('starPaperAudienceMetrics') || '{}');
-
-      // Find current user's manager ID by matching username
-      const localUsers = JSON.parse(localStorage.getItem('starPaperUsers') || '[]');
-      const localUser = Array.isArray(localUsers)
-        ? localUsers.find(u => u.username === window.currentUser)
-        : null;
-      const managerId = localUser?.id || null;
-
-      if (!managerId || !managerData[managerId]) {
-        localStorage.setItem(migrationKey, '1');
-        return;
-      }
-
-      const data = managerData[managerId];
-      const ctx = getContext();
-      const goalConflict = ctx.team_id ? 'team_id,period' : 'user_id,period';
-      const tasksKey = `starPaperTasks:${managerId}`;
-      const fallbackTasksKey = `starPaperTasks:${window.currentUser || ''}`;
-      const localTasks = JSON.parse(
-        localStorage.getItem(tasksKey) ||
-        localStorage.getItem(fallbackTasksKey) ||
-        localStorage.getItem('starPaperTasks') ||
-        '[]'
-      );
-
-      // Migrate artists
-      const artistMap = {};
-      if (Array.isArray(localArtists)) {
-        for (const a of localArtists) {
-          if (!a || a.managerId !== managerId) continue;
-          const { data: inserted } = await db.from('artists').upsert({
-            legacy_id: String(a.id || ''),
-            owner_id: getOwnerId(),
-            team_id: ctx.team_id,
-            name: a.name || '',
-            email: a.email || '',
-            phone: a.phone || '',
-            specialty: a.specialty || '',
-            bio: a.bio || '',
-            strategic_goal: a.strategicGoal || '',
-          }, { onConflict: 'legacy_id,owner_id', ignoreDuplicates: true }).select('id,legacy_id');
-          if (inserted?.[0]) artistMap[a.id] = inserted[0].id;
-        }
-      }
-
-      // Migrate bookings
-      if (Array.isArray(data.bookings)) {
-        const rows = data.bookings.map(b => ({
-          legacy_id: String(b.id || ''),
-          owner_id: getOwnerId(),
-          team_id: ctx.team_id,
-          artist_id: b.artistId ? (artistMap[b.artistId] || null) : null,
-          artist_name: b.artist || '',
-          event: b.event || '',
-          date: b.date || null,
-          capacity: Number(b.capacity) || 0,
-          fee: Number(b.fee) || 0,
-          deposit: Number(b.deposit) || 0,
-          balance: Number(b.balance) || 0,
-          contact: b.contact || '',
-          status: b.status || 'pending',
-          notes: b.notes || '',
-          location_type: b.locationType || 'uganda',
-          location: b.location || '',
-          mock_key: b.mockKey || null,
-        }));
-        if (rows.length) {
-          await db.from('bookings').upsert(rows, { onConflict: 'legacy_id,owner_id', ignoreDuplicates: true });
-        }
-      }
-
-      // Migrate expenses
-      if (Array.isArray(data.expenses)) {
-        const rows = data.expenses.map(e => ({
-          legacy_id: String(e.id || ''),
-          owner_id: getOwnerId(),
-          team_id: ctx.team_id,
-          description: e.description || '',
-          amount: Number(e.amount) || 0,
-          date: e.date || null,
-          category: e.category || 'other',
-          receipt: e.receipt || '',
-          mock_key: e.mockKey || null,
-        }));
-        if (rows.length) {
-          await db.from('expenses').upsert(rows, { onConflict: 'legacy_id,owner_id', ignoreDuplicates: true });
-        }
-      }
-
-      // Migrate other income
-      if (Array.isArray(data.otherIncome)) {
-        const rows = data.otherIncome.map(i => ({
-          legacy_id: String(i.id || ''),
-          owner_id: getOwnerId(),
-          team_id: ctx.team_id,
-          source: i.source || '',
-          amount: Number(i.amount) || 0,
-          date: i.date || null,
-          type: i.type || 'tips',
-          payer: i.payer || '',
-          method: i.method || 'cash',
-          status: i.status || 'received',
-          notes: i.notes || '',
-          mock_key: i.mockKey || null,
-        }));
-        if (rows.length) {
-          await db.from('other_income').upsert(rows, { onConflict: 'legacy_id,owner_id', ignoreDuplicates: true });
-        }
-      }
-
-      // Migrate audience metrics
-      if (localAudienceMetrics && typeof localAudienceMetrics === 'object') {
-        const scopeCandidates = [
-          String(managerId || ''),
-          String(window.currentUser || ''),
-          String(getOwnerId() || '')
-        ].filter(Boolean);
-        let scopedMetrics = [];
-        scopeCandidates.some((key) => {
-          if (Array.isArray(localAudienceMetrics[key])) {
-            scopedMetrics = localAudienceMetrics[key];
-            return true;
-          }
-          return false;
-        });
-        if (Array.isArray(scopedMetrics) && scopedMetrics.length) {
-          const rows = scopedMetrics.map((m) => {
-            const artistId = m.artistId ? (artistMap[m.artistId] || (isCloudId(m.artistId) ? m.artistId : null)) : null;
-            return {
-              owner_id: getOwnerId(),
-              team_id: ctx.team_id,
-              artist_id: artistId,
-              artist_name: String(m.artist || ''),
-              period: String(m.period || ''),
-              social_followers: Number(m.socialFollowers) || 0,
-              spotify_listeners: Number(m.spotifyListeners) || 0,
-              youtube_listeners: Number(m.youtubeListeners) || 0,
-              updated_at: new Date().toISOString(),
-            };
-          }).filter(r => r.artist_id && r.period);
-          if (rows.length) {
-            await db.from('audience_metrics').upsert(rows, {
-              onConflict: ctx.team_id ? 'artist_id,team_id,period' : 'artist_id,owner_id,period',
-              ignoreDuplicates: true
-            });
-          }
-        }
-      }
-
-      // Migrate tasks
-      if (Array.isArray(localTasks) && localTasks.length) {
-        const rows = localTasks.map(t => ({
-          id: String(t.id || ''),
-          user_id: getOwnerId(),
-          team_id: ctx.team_id,
-          text: String(t.text || '').trim(),
-          due_date: t.dueDate || t.due || null,
-          completed: Boolean(t.completed || t.done),
-          created_at: t.createdAt || new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })).filter(r => r.id && r.text);
-        if (rows.length) {
-          await db.from('tasks').upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
-        }
-      }
-
-      // Migrate revenue goal
-      const goalKey = String(managerId || window.currentUser || '');
-      const goalValue = Number(localRevenueGoals?.[goalKey] || 0);
-      if (Number.isFinite(goalValue) && goalValue > 0) {
-        await db.from('revenue_goals').upsert([{
-          user_id: getOwnerId(),
-          team_id: ctx.team_id,
-          amount: goalValue,
-          period: 'monthly',
-          updated_at: new Date().toISOString(),
-        }], { onConflict: goalConflict, ignoreDuplicates: true });
-      }
-
-      // Migrate BBF entries
-      if (localBBF && typeof localBBF === 'object') {
-        const rows = Object.keys(localBBF).filter((key) => key.startsWith(`${goalKey}_`)).map((key) => ({
-          user_id: getOwnerId(),
-          team_id: ctx.team_id,
-          period: key.replace(`${goalKey}_`, ''),
-          amount: Number(localBBF[key]) || 0,
-          updated_at: new Date().toISOString(),
-        })).filter(r => r.period);
-        if (rows.length) {
-          await db.from('bbf_entries').upsert(rows, { onConflict: goalConflict, ignoreDuplicates: true });
-        }
-      }
-
-      // Migrate closing thoughts
-      const managerThoughts = localClosingThoughts?.[goalKey];
-      if (managerThoughts && typeof managerThoughts === 'object') {
-        const rows = Object.keys(managerThoughts).map((period) => ({
-          user_id: getOwnerId(),
-          team_id: ctx.team_id,
-          period,
-          content: String(managerThoughts[period] || ''),
-          updated_at: new Date().toISOString(),
-        })).filter(r => r.period && r.content);
-        if (rows.length) {
-          await db.from('closing_thoughts').upsert(rows, { onConflict: goalConflict, ignoreDuplicates: true });
-        }
-      }
-
-      localStorage.setItem(migrationKey, '1');
-      log('Local data migrated to Supabase successfully.');
-      toastSafe('Success', '✅ Your local data has been securely saved to the cloud!');
-    } catch (err) {
-      warn('Migration failed (non-critical):', err);
-    }
+    // FIXED: legacy browser-storage import is disabled; Supabase is the only business-data source of truth.
+    return { skipped: true, reason: 'cloud-first' };
   }
-
-  // ── ROW ↔ APP CONVERTERS ─────────────────────────────────────────────────────
   function rowToBooking(row) {
     return {
       id: row.id,
@@ -1543,7 +1369,7 @@ const SP_CURRENCIES = {
     }
   }
 
-  // â”€â”€ TASKS â€” rows â†” app â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ TASKS Ã¢â‚¬â€ rows Ã¢â€ â€ app Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   function rowToTask(row) {
     return {
       id: row.id,
@@ -1568,7 +1394,7 @@ const SP_CURRENCIES = {
     };
   }
 
-  // â”€â”€ REVENUE GOALS â€” rows â†” app â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ REVENUE GOALS Ã¢â‚¬â€ rows Ã¢â€ â€ app Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   function rowToRevenueGoal(row) {
     return {
       id: row.id,
@@ -1588,7 +1414,7 @@ const SP_CURRENCIES = {
     };
   }
 
-  // â”€â”€ BBF â€” rows â†” app â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ BBF Ã¢â‚¬â€ rows Ã¢â€ â€ app Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   function rowToBBF(row) {
     return {
       id: row.id,
@@ -1608,7 +1434,7 @@ const SP_CURRENCIES = {
     };
   }
 
-  // â”€â”€ Closing Thoughts â€” rows â†” app â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Closing Thoughts Ã¢â‚¬â€ rows Ã¢â€ â€ app Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   function rowToClosingThought(row) {
     return {
       id: row.id,
@@ -1628,7 +1454,7 @@ const SP_CURRENCIES = {
     };
   }
 
-  // ── ID HELPERS ────────────────────────────────────────────────────────────────
+  // â”€â”€ ID HELPERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // A "cloud UUID" is a 36-char string: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   function isCloudId(id) {
@@ -1645,7 +1471,7 @@ const SP_CURRENCIES = {
     return sanitized;
   }
 
-  // ── CORE DATA API ────────────────────────────────────────────────────────────
+  // â”€â”€ CORE DATA API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async function loadData() {
     const ownerId = getOwnerId();
     if (!ownerId) return null;
@@ -1678,8 +1504,8 @@ const SP_CURRENCIES = {
         }
       };
 
-      // Sequential queries wrapped in lambdas — Supabase SDK Web Locks deadlock
-      // on concurrent auth-bearing requests (see CLAUDE.md §12). Lambdas prevent
+      // Sequential queries wrapped in lambdas â€” Supabase SDK Web Locks deadlock
+      // on concurrent auth-bearing requests (see CLAUDE.md Â§12). Lambdas prevent
       // eager evaluation from starting all queries simultaneously.
       const bookingsRows = await timedQuery(
         'loadData.bookings',
@@ -1715,13 +1541,61 @@ const SP_CURRENCIES = {
     }
   }
 
+  // FIXED: fast dashboard bootstrap pulls only the critical list data within the auth loader budget.
+  async function loadCriticalDashboardDataFast(timeoutMs = 4500) {
+    const ownerId = getOwnerId();
+    if (!ownerId) return null;
+    if (!(await ensureWorkspaceReady({ promptOnSelection: false }))) return null;
+    const filter = (q) => applyScopeFilter(q, 'owner_id');
+    const started = nowMs();
+
+    try {
+      const settled = await withTimeout(
+        () => Promise.allSettled([
+          filter(db.from('bookings').select('*')).order('created_at', { ascending: false }),
+          filter(db.from('expenses').select('*')).order('date', { ascending: false }),
+          filter(db.from('other_income').select('*')).order('date', { ascending: false }),
+          filter(db.from('artists').select('*')).order('name'),
+        ]),
+        timeoutMs,
+        'loadCriticalDashboardDataFast'
+      );
+      const payload = {};
+      const [bookingsRes, expensesRes, incomeRes, artistsRes] = settled;
+      if (bookingsRes?.status === 'fulfilled' && !bookingsRes.value?.error) {
+        payload.bookings = (bookingsRes.value?.data || []).map(rowToBooking);
+      }
+      if (expensesRes?.status === 'fulfilled' && !expensesRes.value?.error) {
+        payload.expenses = (expensesRes.value?.data || []).map(rowToExpense);
+      }
+      if (incomeRes?.status === 'fulfilled' && !incomeRes.value?.error) {
+        payload.otherIncome = (incomeRes.value?.data || []).map(rowToOtherIncome);
+      }
+      if (artistsRes?.status === 'fulfilled' && !artistsRes.value?.error) {
+        payload.artists = (artistsRes.value?.data || []).map(rowToArtist);
+      }
+      log('bootstrap.fastData.done', {
+        ms: Math.round(nowMs() - started),
+        keys: Object.keys(payload),
+      });
+      return Object.keys(payload).length ? payload : null;
+    } catch (err) {
+      warn('Fast dashboard data load failed:', err);
+      log('bootstrap.fastData.failed', {
+        ms: Math.round(nowMs() - started),
+        error: err?.message || 'unknown',
+      });
+      return null;
+    }
+  }
+
   async function saveData({ bookings, expenses, otherIncome }) {
     const ownerId = getOwnerId();
     if (!ownerId) return;
     const ctx = getContext();
 
     // Helper: split records into those with cloud UUIDs vs. local legacy IDs
-    // UUID records → upsert on 'id'.  Legacy records → upsert on 'legacy_id,owner_id'
+    // UUID records â†’ upsert on 'id'.  Legacy records â†’ upsert on 'legacy_id,owner_id'
     async function smartUpsert(table, items, toRow) {
       if (!items || !items.length) return [];
       const rows = items.map(item => sanitizeUpsertRow(toRow(item, ownerId, ctx.team_id)));
@@ -1747,8 +1621,8 @@ const SP_CURRENCIES = {
     }
 
     try {
-      // Sequential upserts — Supabase SDK Web Locks cause AbortError when
-      // multiple auth-bearing requests run concurrently (see CLAUDE.md §12).
+      // Sequential upserts â€” Supabase SDK Web Locks cause AbortError when
+      // multiple auth-bearing requests run concurrently (see CLAUDE.md Â§12).
       const bRows = await smartUpsert('bookings',     bookings,    bookingToRow);
       const eRows = await smartUpsert('expenses',     expenses,    expenseToRow);
       const iRows = await smartUpsert('other_income', otherIncome, otherIncomeToRow);
@@ -2205,8 +2079,8 @@ const SP_CURRENCIES = {
         }
       };
 
-      // Sequential loads — Supabase SDK Web Locks deadlock on concurrent
-      // auth-bearing requests (see CLAUDE.md §12).
+      // Sequential loads â€” Supabase SDK Web Locks deadlock on concurrent
+      // auth-bearing requests (see CLAUDE.md Â§12).
       const core             = await timedLoad('loadData',            () => loadData(),            7000);
       const audienceMetrics  = await timedLoad('loadAudienceMetrics', () => loadAudienceMetrics(), 5000);
       const tasks            = await timedLoad('loadTasks',           () => loadTasks(),           5000);
@@ -2527,10 +2401,10 @@ const SP_CURRENCIES = {
     if (error) warn('Delete task error:', error);
   }
 
-  // ── AUTH ─────────────────────────────────────────────────────────────────────
+  // â”€â”€ AUTH â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   // Returns a valid http/https redirect URL regardless of environment.
-  // On file:// (local double-click), window.location.origin is "null" — Supabase
+  // On file:// (local double-click), window.location.origin is "null" â€” Supabase
   // cannot round-trip OAuth back into the file. We return the current http/https
   // origin when available, or the production URL as an explicit fallback for
   // email confirmation links only.
@@ -2547,10 +2421,10 @@ const SP_CURRENCIES = {
     return fallbackToProduction ? SP_PRODUCTION_URL : null;
   }
 
-  // Warn clearly when running on file:// — OAuth and email-confirm redirects need http(s).
+  // Warn clearly when running on file:// â€” OAuth and email-confirm redirects need http(s).
   if (window.location.protocol === 'file:') {
     console.warn(
-      '[StarPaper] Running on file:// — Google OAuth and email-confirm redirects will not work locally.\n' +
+      '[StarPaper] Running on file:// â€” Google OAuth and email-confirm redirects will not work locally.\n' +
       'Use a local server instead: run `npx serve .` or use VS Code Live Server.\n' +
       'Email/password sign-in works normally on http://localhost.'
     );
@@ -2580,7 +2454,7 @@ const SP_CURRENCIES = {
       ...overrides,
     });
 
-    // No OAuth params present — nothing to do.
+    // No OAuth params present â€” nothing to do.
     if (!hadAuthCallback) {
       window.__spAuthRedirectInProgress = false;
       return finishWith('none');
@@ -2648,9 +2522,9 @@ const SP_CURRENCIES = {
           shouldBootstrapStoredSession: false,
         });
       } else {
-        // Exchange failed AND no stored session — clear the loader and show login
+        // Exchange failed AND no stored session â€” clear the loader and show login
         // so the user isn't stranded on a blank page after a bad OAuth redirect.
-        warn('Auth redirect: no valid session recovered — showing login.');
+        warn('Auth redirect: no valid session recovered â€” showing login.');
         clearSupabaseAuthArtifacts();
         resetWorkspaceState();
         _session = null;
@@ -2776,7 +2650,7 @@ const SP_CURRENCIES = {
   async function ensureProfileRecord(user, usernameHint = '') {
     if (!user?.id) return null;
 
-    // ── Step 1: try to fetch existing profile ───────────────────────────────
+    // â”€â”€ Step 1: try to fetch existing profile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const { data: existing, error: existingError } = await db.from('profiles')
       .select('*')
       .eq('id', user.id)
@@ -2787,7 +2661,7 @@ const SP_CURRENCIES = {
       return existing;
     }
 
-    // A real RLS or network error on SELECT — build a minimal in-memory profile
+    // A real RLS or network error on SELECT â€” build a minimal in-memory profile
     // so downstream code (currency, theme) always has something to work with.
     if (existingError && existingError.code !== 'PGRST116') {
       warn('Profile SELECT error (non-fatal):', existingError);
@@ -2800,7 +2674,7 @@ const SP_CURRENCIES = {
       return _profile;
     }
 
-    // ── Step 2: profile doesn't exist yet — upsert (DB trigger may race us) ─
+    // â”€â”€ Step 2: profile doesn't exist yet â€” upsert (DB trigger may race us) â”€
     const username = deriveUsernameFromAuth(user, usernameHint);
     const upsertPayload = {
       id: user.id,
@@ -2819,10 +2693,10 @@ const SP_CURRENCIES = {
       return _profile;
     }
 
-    // ── Step 3: upsert failed (most likely the DB trigger beat us to it) ────
+    // â”€â”€ Step 3: upsert failed (most likely the DB trigger beat us to it) â”€â”€â”€â”€
     // Do one final SELECT to recover the trigger-created row.
     if (upsertError) {
-      warn('Profile upsert failed — attempting recovery SELECT:', upsertError);
+      warn('Profile upsert failed â€” attempting recovery SELECT:', upsertError);
       const { data: recovered } = await db.from('profiles')
         .select('*')
         .eq('id', user.id)
@@ -2833,7 +2707,7 @@ const SP_CURRENCIES = {
       }
     }
 
-    // ── Step 4: absolute fallback — keep an in-memory shape so nothing breaks ─
+    // â”€â”€ Step 4: absolute fallback â€” keep an in-memory shape so nothing breaks â”€
     _profile = _profile || upsertPayload;
     return _profile;
   }
@@ -2863,7 +2737,7 @@ const SP_CURRENCIES = {
     if (!activeSession?.user) return false;
     setBootStateSafe('booting-data');
 
-    // Step C: A real authenticated user exists — clear the "explicitly logged out"
+    // Step C: A real authenticated user exists â€” clear the "explicitly logged out"
     // flag so that onAuthStateChange and checkAuth() can bootstrap normally from
     // this point forward. This is the only place we clear it, ensuring it always
     // takes effect on the very next successful login.
@@ -2890,9 +2764,12 @@ const SP_CURRENCIES = {
       }
     }
 
-    const appReady = await waitForAppBootReady();
+    const appReady = await waitForAppBootReady(1200); // FIXED: auth shell no longer waits up to 5s before routing.
     if (!appReady) {
       warn('App boot helpers were not ready before Supabase bootstrap.');
+    }
+    if (appReady) {
+      showAuthenticatedDashboardShell('bootstrap-fast-shell'); // FIXED: dashboard appears immediately after session restore.
     }
 
     _refreshInFlight = true;
@@ -2900,11 +2777,12 @@ const SP_CURRENCIES = {
     let profile = null;
     let teams = [];
     let fresh = null;
+    let shouldRunBackgroundRefresh = false;
     try {
       try {
         profile = await withTimeout(
           () => ensureProfileRecord(activeSession.user, usernameHint),
-          4000,
+          1800,
           'ensureProfileRecord'
         );
         log('bootstrap.profile.done', { ok: Boolean(profile) });
@@ -2921,7 +2799,7 @@ const SP_CURRENCIES = {
       }
 
       try {
-        teams = await withTimeout(() => getMyTeams(), 5000, 'getMyTeams[bootstrap]');
+        teams = await withTimeout(() => getMyTeams(), 1800, 'getMyTeams[bootstrap]');
       } catch (teamErr) {
         warn('Team membership load failed during bootstrap:', teamErr);
         teams = [];
@@ -2936,26 +2814,21 @@ const SP_CURRENCIES = {
       subscribeToCoreRealtime();
 
       try {
-        fresh = await loadAllDataWithRetry({ timeoutMs: 30000, label: 'loadAllData', retries: 1 });
-        log('bootstrap.data.done', { ok: Boolean(fresh), source: workspace?.source || 'unknown' });
+        // FIXED: load critical dashboard records within the <5s auth target, then hydrate extras in the background.
+        fresh = await loadCriticalDashboardDataFast(4500);
+        shouldRunBackgroundRefresh = true;
+        log('bootstrap.data.fast.done', { ok: Boolean(fresh), source: workspace?.source || 'unknown' });
       } catch (dataError) {
-        warn('Cloud data bootstrap failed or timed out:', dataError);
-        log('bootstrap.data.timeout', { step: 'loadAllData', error: dataError?.message || 'unknown' });
-        if (dataError?.name === 'TimeoutError') {
-          toastSafe('Warn', 'Cloud data took too long. Retrying in the background.');
-          setTimeout(() => {
-            refreshCloudData({ silent: true, force: true, minIntervalMs: 0 });
-          }, 2500);
-        }
+        warn('Fast cloud data bootstrap failed:', dataError);
+        log('bootstrap.data.fast.timeout', { step: 'loadCriticalDashboardDataFast', error: dataError?.message || 'unknown' });
+        shouldRunBackgroundRefresh = true;
       }
 
       if (fresh) {
         const meta = fresh.__meta || null;
         if (meta?.allCriticalTimedOut) {
           toastSafe('Warn', 'Cloud data took too long. Retrying in the background.');
-          setTimeout(() => {
-            refreshCloudData({ silent: true, force: true, minIntervalMs: 0 });
-          }, 2500);
+          shouldRunBackgroundRefresh = true;
         }
         if (meta) delete fresh.__meta;
         if (window._SP_syncFromCloud) {
@@ -2964,8 +2837,9 @@ const SP_CURRENCIES = {
       }
 
       if (!fresh) {
-        showBootErrorState('Cloud data could not load', 'Retry to reconnect to Star Paper, or log out and sign in again.');
-        return false;
+        // FIXED: never strand an authenticated user on a blank loader; show an empty cloud shell and refresh.
+        fresh = { bookings: [], expenses: [], otherIncome: [], artists: [] };
+        toastSafe('Warn', 'Cloud data is still loading. Refreshing in the background.');
       }
 
       if (typeof window.loadUserData === 'function') {
@@ -2973,6 +2847,9 @@ const SP_CURRENCIES = {
           window.loadUserData({
             snapshot: fresh,
           });
+          if (window.__spAppBooted) {
+            renderAppDataViews('bootstrap-fast-data'); // FIXED: background data paints into the already-visible dashboard shell.
+          }
         } catch (err) {
           warn('loadUserData failed:', err);
         }
@@ -2989,6 +2866,7 @@ const SP_CURRENCIES = {
           warn('restorePostBootUiState failed:', err);
         }
       }
+      routeAuthenticatedUserToDashboard('bootstrap');
       if (options.showWelcome && typeof window.showWelcomeMessage === 'function') {
         window.showWelcomeMessage();
       }
@@ -3007,6 +2885,18 @@ const SP_CURRENCIES = {
       }
       if (typeof window.hideBootLoaderElement === 'function') {
         window.hideBootLoaderElement();
+      }
+
+      if (shouldRunBackgroundRefresh) {
+        setTimeout(() => {
+          refreshCloudData({
+            silent: true,
+            force: true,
+            minIntervalMs: 0,
+            timeoutMs: 30000,
+            reason: 'post-fast-bootstrap',
+          }).catch((err) => warn('Post-bootstrap cloud refresh failed:', err));
+        }, 300);
       }
 
       if (window.__spAppBooted) {
@@ -3032,6 +2922,11 @@ const SP_CURRENCIES = {
     localStorage.removeItem('sp_logged_out');
     window.__spSuppressStoredSessionBootstrap = false;
     window.__spAuthRedirectInProgress = false;
+    // FIXED: Google OAuth always shows a prominent loader before leaving/returning.
+    setBootStateSafe('booting-auth', {
+      text: 'Signing you in...',
+      subtext: 'Opening Google securely...'
+    });
     try {
       sessionStorage.setItem(BOOT_CONTEXT_STORAGE_KEY, AUTH_RETURN_BOOT_CONTEXT);
     } catch (_err) {}
@@ -3233,7 +3128,7 @@ const SP_CURRENCIES = {
       } else {
         _session = null;
         if (session) {
-          // A stale token survived — revoke it silently.
+          // A stale token survived â€” revoke it silently.
           db.auth.signOut().catch(() => {});
         }
         return;
@@ -3270,7 +3165,7 @@ const SP_CURRENCIES = {
     }
 
     // Always keep _profile warm on any session event.
-    if (session && !_profile) {
+    if (session && !_profile && window.__spAppBooted) {
       try {
         _profile = await ensureProfileRecord(session.user);
       } catch (err) {
@@ -3280,6 +3175,15 @@ const SP_CURRENCIES = {
         _currency = _profile.preferred_currency;
         applyCurrency(_currency);
       }
+    } else if (session && !_profile) {
+      // FIXED: cold auth events do not block the fast dashboard shell on profile I/O.
+      ensureProfileRecord(session.user).then((profile) => {
+        _profile = _profile || profile;
+        if (_profile?.preferred_currency) {
+          _currency = _profile.preferred_currency;
+          applyCurrency(_currency);
+        }
+      }).catch((err) => warn('onAuthStateChange: background profile warm failed:', err));
     }
 
     // Full bootstrap path: app not yet booted, not already in progress.
@@ -3299,7 +3203,7 @@ const SP_CURRENCIES = {
     }
 
     // App is already booted (returning user with localStorage session) but a fresh
-    // SIGNED_IN just fired — pull cloud data so the new-device scenario stays in sync.
+    // SIGNED_IN just fired â€” pull cloud data so the new-device scenario stays in sync.
     if (event === 'SIGNED_IN' && session && window.__spAppBooted && !_bootstrapping) {
       try {
         await resolveActiveWorkspace({ promptOnSelection: false });
@@ -3320,13 +3224,13 @@ const SP_CURRENCIES = {
     }
   });
 
-  // ── TEAMS ─────────────────────────────────────────────────────────────────────
+  // â”€â”€ TEAMS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async function createTeam(name) {
     const ownerId = getOwnerId();
     if (!ownerId) throw new Error('Not logged in');
 
     // Use a single RPC call that inserts teams + team_members atomically.
-    // This replaces two sequential db.from().insert() calls — halving the number
+    // This replaces two sequential db.from().insert() calls â€” halving the number
     // of Web Lock acquisitions and eliminating the "steal" race condition.
     const { data, error } = await db.rpc('create_team_with_member', {
       p_name:     name,
@@ -3353,7 +3257,7 @@ const SP_CURRENCIES = {
   }
 
   async function joinTeamByCode(inviteCode) {
-    // Single RPC replaces SELECT teams + INSERT team_members — one lock acquisition,
+    // Single RPC replaces SELECT teams + INSERT team_members â€” one lock acquisition,
     // one round-trip, atomic. Prevents the lock contention that caused the timeout.
     const { data, error } = await db.rpc('join_team_by_code', {
       p_invite_code: inviteCode.trim().toLowerCase(),
@@ -3477,7 +3381,7 @@ const SP_CURRENCIES = {
     }
   }
 
-  // ── TEAM CHAT ─────────────────────────────────────────────────────────────────
+  // â”€â”€ TEAM CHAT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async function loadMessages(teamId, limit = 50) {
     const { data, error } = await db.from('messages')
       .select('*')
@@ -3522,7 +3426,7 @@ const SP_CURRENCIES = {
     }
   }
 
-  // ── CURRENCY ─────────────────────────────────────────────────────────────────
+  // â”€â”€ CURRENCY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function syncCurrencyPreferenceUI() {
     const curr = SP_CURRENCIES[_currency] || SP_CURRENCIES.UGX;
     const badge = document.getElementById('spCurrencyBadge');
@@ -3539,7 +3443,7 @@ const SP_CURRENCIES = {
     const curr = SP_CURRENCIES[code];
     if (!curr) return;
     _currency = code;
-    localStorage.setItem('sp_currency', code);
+    // FIXED: currency is kept in memory/profile sync only; no app-owned localStorage preference.
 
     syncCurrencyPreferenceUI();
 
@@ -3572,7 +3476,7 @@ const SP_CURRENCIES = {
     toastSafe('Success', `Currency switched to ${SP_CURRENCIES[code].name}`);
   }
 
-  // ── APP RELOAD HELPER ─────────────────────────────────────────────────────────
+  // â”€â”€ APP RELOAD HELPER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async function reloadForResolvedWorkspace(options = {}) {
     if (!(await ensureWorkspaceReady({ promptOnSelection: options.promptOnSelection !== false }))) {
       return null;
@@ -3655,7 +3559,7 @@ const SP_CURRENCIES = {
     });
   }
 
-  // ── TEAM UI ─────────────────────────────────────────────────────────────────
+  // â”€â”€ TEAM UI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function buildTeamPanelHTML(teams, activeTeamId, members) {
     const membersHTML = members.map(m => `
       <div class="sp-team-member">
@@ -3707,7 +3611,7 @@ const SP_CURRENCIES = {
           <div class="sp-team-invite-code">
             <label>Invite Code</label>
             <div class="sp-team-code-row">
-              <code id="spTeamInviteCode">${teams.find(t => t.id === activeTeamId)?.invite_code || '—'}</code>
+              <code id="spTeamInviteCode">${teams.find(t => t.id === activeTeamId)?.invite_code || 'â€”'}</code>
               <button class="action-btn" onclick="window.SP.copyInviteCode()">Copy</button>
             </div>
             <p class="sp-muted">Share this code so others can join your team.</p>
@@ -3717,7 +3621,7 @@ const SP_CURRENCIES = {
           <h4>Team Chat</h4>
           <div id="spTeamChatMessages" class="sp-chat-messages"></div>
           <div class="sp-chat-input-row">
-            <input type="text" id="spChatInput" class="form-input" placeholder="Type a message…" 
+            <input type="text" id="spChatInput" class="form-input" placeholder="Type a messageâ€¦" 
                    onkeydown="if(event.key==='Enter')window.SP.sendChatMessage()">
             <button class="action-btn" onclick="window.SP.sendChatMessage()">Send</button>
           </div>
@@ -3838,7 +3742,7 @@ const SP_CURRENCIES = {
         <div class="sp-modal-backdrop" onclick="this.parentElement.style.display='none'"></div>
         <div class="sp-modal-box" style="max-width:560px;padding:0;">
           <div id="spTeamPanelContent" style="padding:24px;">
-            <div style="text-align:center;padding:24px;opacity:0.6;">Loading…</div>
+            <div style="text-align:center;padding:24px;opacity:0.6;">Loadingâ€¦</div>
           </div>
         </div>`;
       document.body.appendChild(modal);
@@ -3848,13 +3752,13 @@ const SP_CURRENCIES = {
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
 
-    // Hard 8-second timeout — if the DB query hangs (e.g. recursive RLS),
+    // Hard 8-second timeout â€” if the DB query hangs (e.g. recursive RLS),
     // we reject immediately so the user sees an error instead of infinite spin.
     const withTimeout = (promise, ms, label) =>
       Promise.race([
         promise,
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s — check Supabase RLS policies`)), ms)
+          setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s â€” check Supabase RLS policies`)), ms)
         ),
       ]);
 
@@ -3938,7 +3842,7 @@ const SP_CURRENCIES = {
     const name = prompt('Enter a name for your team:');
     if (!name?.trim()) return;
     try {
-      // Await createTeam fully — the RPC lock must be released before showTeamModal
+      // Await createTeam fully â€” the RPC lock must be released before showTeamModal
       // fires getMyTeams(), otherwise two lock acquisitions overlap and race.
       const team = await createTeam(name.trim());
       toastSafe('Success', `Team "${escapeHTML(team.name)}" created! Migrating your data...`);
@@ -3957,7 +3861,7 @@ const SP_CURRENCIES = {
     try {
       const team = await joinTeamByCode(code.trim());
       toastSafe('Success', `Joined team "${escapeHTML(team.name)}"!`);
-      // 500ms yield — lets Postgres fully commit the new team_members row
+      // 500ms yield â€” lets Postgres fully commit the new team_members row
       // before getMyTeams() reads it back inside showTeamModal.
       await new Promise(r => setTimeout(r, 500));
       await switchTeam(team.id);
@@ -3973,7 +3877,7 @@ const SP_CURRENCIES = {
     navigator.clipboard?.writeText(code).then(() => toastSafe('Success', 'Invite code copied!'));
   }
 
-  // ── CURRENCY SWITCHER UI ──────────────────────────────────────────────────────
+  // â”€â”€ CURRENCY SWITCHER UI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function showCurrencySwitcher() {
     let modal = document.getElementById('spCurrencyModal');
     if (!modal) {
@@ -3983,7 +3887,7 @@ const SP_CURRENCIES = {
       modal.innerHTML = `
         <div class="sp-modal-backdrop" onclick="this.parentElement.style.display='none'"></div>
         <div class="sp-modal-box" style="max-width:380px;">
-          <button class="sp-modal-close" onclick="document.getElementById('spCurrencyModal').style.display='none'">✕</button>
+          <button class="sp-modal-close" onclick="document.getElementById('spCurrencyModal').style.display='none'">âœ•</button>
           <div style="padding:8px 0 16px;">
             <div class="sp-modal-title">Currency</div>
             <div class="sp-modal-subtitle">All figures will convert in real-time</div>
@@ -4005,7 +3909,7 @@ const SP_CURRENCIES = {
     modal.style.display = 'flex';
   }
 
-  // ── INJECT CURRENCY BUTTON INTO SIDEBAR ──────────────────────────────────────
+  // â”€â”€ INJECT CURRENCY BUTTON INTO SIDEBAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function injectDashboardCurrencyButton() {
     syncCurrencyPreferenceUI();
   }
@@ -4041,7 +3945,7 @@ const SP_CURRENCIES = {
     }
   }
 
-  // ── PATCH APP LOGIN/SIGNUP TO SUPABASE ────────────────────────────────────────
+  // â”€â”€ PATCH APP LOGIN/SIGNUP TO SUPABASE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function patchAppAuth() {
     // Store reference to original functions as fallback
     const _origLogin = window.login;
@@ -4074,7 +3978,7 @@ const SP_CURRENCIES = {
       }
     };
 
-    // ── SUPABASE LOGIN ──────────────────────────────────────────────────────────
+    // â”€â”€ SUPABASE LOGIN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     window.login = async function supabaseLogin() {
       const nameOrEmail = document.getElementById('loginName')?.value?.trim() || '';
       const password    = document.getElementById('loginPassword')?.value || '';
@@ -4096,12 +4000,12 @@ const SP_CURRENCIES = {
           if (resolvedEmail) {
             email = resolvedEmail;
           }
-          // No match — fall through with nameOrEmail; signIn will reject with a clear error.
+          // No match â€” fall through with nameOrEmail; signIn will reject with a clear error.
         }
 
         const { data } = await signIn(email, password);
         // bootstrapFromSupabaseSession handles showApp + showWelcomeMessage internally.
-        // Do NOT call them again here — that causes a double-render.
+        // Do NOT call them again here â€” that causes a double-render.
         const booted = await bootstrapFromSupabaseSession(data?.session, {
           usernameHint: nameOrEmail,
           remember: Boolean(document.getElementById('rememberMe')?.checked),
@@ -4145,7 +4049,7 @@ const SP_CURRENCIES = {
       }
     };
 
-    // ── SUPABASE SIGNUP ─────────────────────────────────────────────────────────
+    // â”€â”€ SUPABASE SIGNUP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     window.signup = async function supabaseSignup() {
       const name  = document.getElementById('signupName')?.value?.trim() || '';
       const pw    = document.getElementById('signupPassword')?.value || '';
@@ -4217,14 +4121,14 @@ const SP_CURRENCIES = {
       }
     };
 
-    // ── SUPABASE LOGOUT ─────────────────────────────────────────────────────────
+    // â”€â”€ SUPABASE LOGOUT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     window.logout = async function supabaseLogout() {
-      // 1. Persist any unsaved work to localStorage first.
+      // FIXED: flush unsaved work through the cloud path before clearing the session.
       if (typeof window.saveUserData === 'function') {
         try { await window.saveUserData(); } catch (_err) {}
       }
 
-      // 2. CRITICAL — Directly delete the Supabase SDK's own auth token from
+      // 2. CRITICAL â€” Directly delete the Supabase SDK's own auth token from
       //    localStorage. The SDK stores it under a well-known key. This is
       //    synchronous and instant. Without this step, the SDK finds its own
       //    token on the next page load and fires onAuthStateChange('INITIAL_SESSION'),
@@ -4258,22 +4162,26 @@ const SP_CURRENCIES = {
       if (_retryTimer) { clearTimeout(_retryTimer); _retryTimer = null; }
       resetWorkspaceState();
 
-      // 6. Show landing page immediately — user doesn't wait for any network call.
+      // 6. Show landing page immediately â€” user doesn't wait for any network call.
       if (typeof window.clearLegacyCloudDataKeys === 'function') {
         window.clearLegacyCloudDataKeys();
       }
-      showLoginScreen();
+      try {
+        if (typeof window.clearAppShellBootContext === 'function') window.clearAppShellBootContext();
+        if (window.location.hash) window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+      } catch (_err) {}
+      showLandingScreen(); // FIXED: mobile/desktop logout returns to landing with Supabase artifacts cleared.
       if (typeof window.toastInfo === 'function') window.toastInfo('Logged out');
 
       // 7. Revoke the server-side token in the background (best-effort).
-      //    Even if this fails the user is fully logged out locally (steps 2–5 above).
+      //    Even if this fails the user is fully logged out locally (steps 2â€“5 above).
       signOut().catch(() => {});
     };
 
-    // ── PATCH saveUserData TO CLOUD-FIRST SYNC ──────────────────────────────────
+    // â”€â”€ PATCH saveUserData TO CLOUD-FIRST SYNC â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const _origSaveUserData = window.saveUserData;
     window.saveUserData = async function supabaseSaveUserData() {
-      // 1. Persist to localStorage immediately for offline resilience
+      // FIXED: no localStorage core-data fallback; saves wait for the cloud sync promise.
       let result = null;
       if (typeof _origSaveUserData === 'function') {
         result = await _origSaveUserData();
@@ -4290,13 +4198,13 @@ const SP_CURRENCIES = {
     log('App auth patched with Supabase');
   }
 
-  // ── SYNC BRIDGE: allows supabase.js to inject data into app's closure ─────────
+  // â”€â”€ SYNC BRIDGE: allows supabase.js to inject data into app's closure â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // app.js registers the full _SP_syncFromCloud function in loadUserData() which
   // updates both closure-scoped vars AND window globals. We only initialise the
   // data slot here; the real bridge is set by app.js.
   function setupSyncBridge() {
     window._SP_cloudData = null;
-    // Lightweight fallback — only used if bootstrapFromSupabaseSession fires
+    // Lightweight fallback â€” only used if bootstrapFromSupabaseSession fires
     // before app.js's loadUserData() has registered the full bridge.
     if (typeof window._SP_syncFromCloud !== 'function') {
       window._SP_syncFromCloud = function(data) {
@@ -4309,7 +4217,7 @@ const SP_CURRENCIES = {
     }
   }
 
-  // ── INIT ────────────────────────────────────────────────────────────────────────────
+  // â”€â”€ INIT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function bindAutoSync() {
     if (window.__spAutoSyncBound) return;
     window.__spAutoSyncBound = true;
@@ -4347,7 +4255,10 @@ const SP_CURRENCIES = {
 
     window.addEventListener('focus', () => triggerCloudRefresh('focus'));
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) triggerCloudRefresh('visibility');
+      if (!document.hidden) {
+        if (getOwnerId()) routeAuthenticatedUserToDashboard('visibility'); // FIXED: refresh/return keeps authenticated users in app shell.
+        triggerCloudRefresh('visibility');
+      }
     });
     if (!window.__spCloudRefreshInterval) {
       window.__spCloudRefreshInterval = setInterval(() => {
@@ -4380,7 +4291,7 @@ const SP_CURRENCIES = {
     try {
       session = await withTimeout(
         () => getSession(),
-        typeof options.sessionTimeoutMs === 'number' ? options.sessionTimeoutMs : 8000,
+        typeof options.sessionTimeoutMs === 'number' ? options.sessionTimeoutMs : 3000, // FIXED: auth restore + shell route stays under 5s.
         'getSession[initial]'
       );
     } catch (err) {
@@ -4425,7 +4336,7 @@ const SP_CURRENCIES = {
     bindAutoSync();
 
     // handleAuthRedirect() and bootstrapFromStoredSession() must only run AFTER
-    // app.js has fully executed — otherwise showApp/loadUserData don’t exist yet
+    // app.js has fully executed â€” otherwise showApp/loadUserData donâ€™t exist yet
     // and the OAuth callback lands on the landing page instead of the dashboard.
     // We defer everything that calls bootstrapFromSupabaseSession to DOMContentLoaded.
     const onAppReady = () => {
@@ -4467,7 +4378,7 @@ const SP_CURRENCIES = {
   }
 
 
-  // ── PUBLIC API ────────────────────────────────────────────────────────────────
+  // â”€â”€ PUBLIC API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   window.SP = {
     // Auth
     login:           (email, password) => signIn(email, password),
@@ -4561,11 +4472,11 @@ const SP_CURRENCIES = {
   } catch (err) {
     // no-op: event dispatch is best-effort
   }
-  log('Supabase integration loaded ✓');
+  log('Supabase integration loaded âœ“');
 
 })();
 
-// ── SIDEBAR BUTTON STYLES (injected dynamically) ──────────────────────────────
+// â”€â”€ SIDEBAR BUTTON STYLES (injected dynamically) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 (function injectTeamCurrencyStyles() {
   const style = document.createElement('style');
   style.textContent = `
