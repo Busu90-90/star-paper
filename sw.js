@@ -1,8 +1,8 @@
-const CACHE_NAME = "star-paper-shell-v78";
+const CACHE_NAME = "star-paper-shell-v79";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=32",
+  "./styles.css?v=33",
   "./styles.premium.css?v=8",
   "./styles.shell.css?v=4",
   "./star-paper-tokens.css?v=21",

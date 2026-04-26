@@ -7633,18 +7633,17 @@ body.light-theme #landingScreen .landing-card {
   --notebook-card-meta: #6b6e7a;
   position: relative;
   width: clamp(240px, 26vw, 340px);
-  max-width: min(340px, 50vh);
+  max-width: min(340px, 56vh);
   margin-inline: auto;
-  margin-top: clamp(60px, 10vh, 100px);
-  margin-bottom: clamp(60px, 10vh, 100px);
+  margin-top: clamp(8px, 1.4vw, 18px);
+  margin-bottom: clamp(8px, 1.4vw, 18px);
   padding-block: clamp(4px, 0.8vw, 10px);
   isolation: isolate;
   font-family: var(--font-ui, 'Space Grotesk', system-ui, sans-serif);
-  /* B7+ Notebook tilted +45deg (facing right) — applied at the wrapper
-     level so pen, key, signature rotate together. Vertical margin reserves
-     layout space for the diagonal bounding box so it never crosses the
-     hero container edges. */
-  transform: rotate(45deg);
+  /* B7+ Notebook stands upright (0deg) — no rotation, so its layout box
+     equals its visual box. Guarantees no overflow into the hero container
+     at any viewport. */
+  transform: none;
   transform-origin: 50% 50%;
 }
 
@@ -8162,31 +8161,31 @@ body.light-theme #landingScreen .landing-notebook {
   }
 }
 
-/* Tablet — keep +45deg tilt at slightly smaller width */
+/* Tablet — upright, slightly wider for legibility */
 @media (max-width: 768px) {
   #landingScreen .landing-notebook {
-    width: clamp(240px, 60vw, 320px);
-    margin-top: clamp(60px, 9vh, 90px);
-    margin-bottom: clamp(60px, 9vh, 90px);
+    width: clamp(260px, 60vw, 340px);
+    margin-top: clamp(8px, 1.4vw, 16px);
+    margin-bottom: clamp(8px, 1.4vw, 16px);
   }
   #landingScreen .landing-notebook__entries {
     font-size: clamp(15px, 2vw, 19px);
   }
 }
 
-/* Mobile — keep +45deg tilt, ensure no horizontal overflow on 375px viewport */
+/* Mobile — upright, full-width-ish, ensure no horizontal overflow on 375px viewport */
 @media (max-width: 480px) {
   #landingScreen .landing-notebook {
-    width: clamp(200px, 60vw, 260px);
-    margin-top: clamp(50px, 8vh, 70px);
-    margin-bottom: clamp(50px, 8vh, 70px);
+    width: min(86vw, 320px);
+    margin-top: 12px;
+    margin-bottom: 12px;
     padding-block: 6px;
   }
   #landingScreen .landing-notebook__page {
     aspect-ratio: 5 / 6;
   }
   #landingScreen .landing-notebook__entries {
-    font-size: clamp(14px, 4vw, 18px);
+    font-size: clamp(15px, 4.4vw, 19px);
   }
   #landingScreen .landing-notebook__entry.is-phone {
     font-size: 0.86em;
