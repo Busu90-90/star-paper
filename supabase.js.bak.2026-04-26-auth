@@ -2766,39 +2766,14 @@ const SP_CURRENCIES = {
 
     const appReady = await waitForAppBootReady(1200); // FIXED: auth shell no longer waits up to 5s before routing.
     if (!appReady) {
-      warn('App boot helpers were not ready before Supabase bootstrap; calling shell anyway.');
+      warn('App boot helpers were not ready before Supabase bootstrap.');
     }
-    // AUTH FIXPACK 2026-04-26 (Fix 2): always attempt the fast dashboard shell. The function
-    // self-guards each call with `typeof window.showApp === 'function'` etc., so a too-early
-    // call is a no-op rather than an error. Earliest reveal = safest reveal.
-    showAuthenticatedDashboardShell('bootstrap-fast-shell');
+    if (appReady) {
+      showAuthenticatedDashboardShell('bootstrap-fast-shell'); // FIXED: dashboard appears immediately after session restore.
+    }
 
     _refreshInFlight = true;
     window.__spCloudBootstrapPending = true;
-
-    // AUTH FIXPACK 2026-04-26 (Fix 3): hard 8s wallclock safety timer that always
-    // resolves the boot state. Eliminates the "stuck on boot loader" failure mode
-    // even if every Supabase call hangs simultaneously.
-    const safetyTimer = setTimeout(() => {
-      if (window.__spAppBooted) return; // happy path beat us — nothing to do.
-      warn('Bootstrap safety timeout fired — forcing boot resolution.');
-      if (typeof window.hideBootLoaderElement === 'function') {
-        window.hideBootLoaderElement();
-      }
-      try {
-        if (_session && typeof window.showApp === 'function') {
-          showAuthenticatedDashboardShell('safety-timeout');
-          showBootErrorState('Cloud sync took too long', 'Tap Retry to reload, or Log out.');
-        } else if (localStorage.getItem('sp_logged_out') === '1') {
-          showLandingScreen();
-        } else {
-          showLoginScreen();
-        }
-      } catch (recoveryErr) {
-        warn('Safety-timeout recovery UI failed:', recoveryErr);
-      }
-    }, 8000);
-
     let profile = null;
     let teams = [];
     let fresh = null;
@@ -2934,36 +2909,7 @@ const SP_CURRENCIES = {
         if (typeof window.renderTasks === 'function') window.renderTasks();
         if (typeof window.renderAudienceMetrics === 'function') window.renderAudienceMetrics();
       }
-    } catch (err) {
-      // AUTH FIXPACK 2026-04-26 (Fix 1): never strand the user on a loader if any await throws.
-      // Inner try/catches around individual awaits (profile, teams, data) absorb most failures,
-      // but resolveActiveWorkspace, subscribeToCoreRealtime, showApp, and routeAuthenticatedUserToDashboard
-      // are uncaught at the inner level — this outer catch is the safety net.
-      warn('bootstrapFromSupabaseSession failed:', err);
-      log('bootstrap.error', { error: err?.message || 'unknown' });
-      if (typeof window.Sentry?.captureException === 'function') {
-        try { window.Sentry.captureException(err, { tags: { source: 'bootstrap' } }); } catch (_e) {}
-      }
-      if (typeof window.hideBootLoaderElement === 'function') {
-        window.hideBootLoaderElement();
-      }
-      try {
-        if (_session) {
-          // We had a session — keep the user in an empty app shell with retry UI.
-          if (!window.__spAppBooted) showAuthenticatedDashboardShell('bootstrap-error');
-          showBootErrorState('Cloud sync needs attention', 'We couldn\'t fetch your data. Tap Retry to reload, or Log out.');
-        } else if (localStorage.getItem('sp_logged_out') === '1') {
-          showLandingScreen();
-        } else {
-          showLoginScreen();
-        }
-      } catch (recoveryErr) {
-        warn('Bootstrap recovery UI failed:', recoveryErr);
-      }
-      // Swallow — user-visible recovery is the contract. Caller treats this as a non-fatal completion.
-      return false;
     } finally {
-      clearTimeout(safetyTimer); // AUTH FIXPACK 2026-04-26 (Fix 3): clear the wallclock guard regardless of outcome.
       _refreshInFlight = false;
       window.__spCloudBootstrapPending = false;
     }
@@ -4226,29 +4172,6 @@ const SP_CURRENCIES = {
       } catch (_err) {}
       showLandingScreen(); // FIXED: mobile/desktop logout returns to landing with Supabase artifacts cleared.
       if (typeof window.toastInfo === 'function') window.toastInfo('Logged out');
-
-      // AUTH FIXPACK 2026-04-26 (Fix 4): logout integrity verification.
-      // 200ms after showLandingScreen, the landing screen MUST be visible AND the boot loader hidden.
-      // If for any reason a transient render race left us in an inconsistent state, force a hard reload.
-      // After reload, the boot context check sees sp_logged_out='1' and renders landing cleanly.
-      setTimeout(() => {
-        try {
-          const landing = document.getElementById('landingScreen');
-          const loader = document.getElementById('appBootLoader');
-          const landingCs = landing ? getComputedStyle(landing) : null;
-          const landingVisible = Boolean(landingCs &&
-            landingCs.display !== 'none' &&
-            landingCs.visibility !== 'hidden');
-          const loaderHidden = !loader || loader.classList.contains('hidden');
-          if (!landingVisible || !loaderHidden) {
-            warn('Logout integrity failed — landing not visible or loader still showing. Forcing hard reload.');
-            window.location.reload();
-          }
-        } catch (verifyErr) {
-          warn('Logout integrity check threw — forcing reload as last resort.', verifyErr);
-          try { window.location.reload(); } catch (_err) {}
-        }
-      }, 200);
 
       // 7. Revoke the server-side token in the background (best-effort).
       //    Even if this fails the user is fully logged out locally (steps 2â€“5 above).

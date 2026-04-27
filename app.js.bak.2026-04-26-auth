@@ -11289,19 +11289,8 @@ function showLoginForm() {
         })();
 
         if ('serviceWorker' in navigator) {
-            // AUTH FIXPACK 2026-04-26 (Fix 6): when a new service worker takes control
-            // (e.g. after a deploy bumps CACHE_NAME), reload the page exactly once so the
-            // running JS in memory matches the freshly-cached shell. Prevents the
-            // "stale shell + fresh JS" version-mismatch failure that can manifest as
-            // silent runtime errors during bootstrap → blank page.
-            let __spReloadingForNewSW = false;
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                if (__spReloadingForNewSW) return;
-                __spReloadingForNewSW = true;
-                try { window.location.reload(); } catch (_err) {}
-            });
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=80').then((registration) => { // FIXED: pair service worker update with bumped app assets.
+                navigator.serviceWorker.register('sw.js?v=75').then((registration) => { // FIXED: pair service worker update with bumped app assets.
                     registration.update().catch(() => {});
                 }).catch((error) => {
                     console.warn('Service worker registration failed:', error);

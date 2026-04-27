@@ -1611,13 +1611,13 @@
           loaded (synchronously, above in <head>), so this file now runs
           synchronously Ã¢â‚¬â€ window.SP is fully initialised before app.js executes.
         -->
-<script src="supabase.js?v=31"></script>
+<script src="supabase.js?v=30"></script>
         <script src="app.migrations.js?v=10"></script>
         <script src="app.actions.js?v=8"></script>
         <script src="app.todayboard.js?v=1"></script>
         <script src="app.tasks.js?v=4"></script>
     <script src="app.reports.js?v=11"></script>
-<script src="app.js?v=67"></script>
+<script src="app.js?v=66"></script>
         <!-- UPGRADE: Premium polish JS layer (loaded last, no mutation of existing state) -->
         <script src="app.premium.js?v=4"></script>
         <script>
