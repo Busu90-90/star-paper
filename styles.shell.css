@@ -1675,6 +1675,10 @@ html:not(.sp-prem-off) :is(.confirm-delete-modal-content, #profileModal .profile
     border-radius: 0 20px 20px 0;
   }
 
+  html:not(.sp-prem-off) body.sidebar--collapsed {
+    --sidebar-collapsed-rail-item: 48px;
+  }
+
   html:not(.sp-prem-off) body.sidebar--collapsed #appContainer .sidebar-profile,
   html:not(.sp-prem-off) body.sidebar--collapsed #appContainer .sidebar-theme-section,
   html:not(.sp-prem-off) body.sidebar--collapsed #appContainer .sidebar-logout-section {
@@ -1683,11 +1687,43 @@ html:not(.sp-prem-off) :is(.confirm-delete-modal-content, #profileModal .profile
     box-shadow: none;
   }
 
+  html:not(.sp-prem-off) body.sidebar--collapsed #appContainer .sidebar-profile {
+    width: var(--sidebar-collapsed-rail-item);
+    padding: 0;
+    margin: 0 auto 12px;
+  }
+
+  html:not(.sp-prem-off) body.sidebar--collapsed #appContainer .sidebar-profile-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  html:not(.sp-prem-off) body.sidebar--collapsed #appContainer .sidebar-avatar {
+    width: var(--sidebar-collapsed-rail-item);
+    height: var(--sidebar-collapsed-rail-item);
+    margin: 0 auto;
+    border-radius: 16px;
+  }
+
   html:not(.sp-prem-off) body.sidebar--collapsed #appContainer .nav-item,
   html:not(.sp-prem-off) body.sidebar--collapsed #appContainer .sidebar-util-btn {
+    width: var(--sidebar-collapsed-rail-item);
+    height: var(--sidebar-collapsed-rail-item);
+    min-height: var(--sidebar-collapsed-rail-item);
     justify-content: center;
     border-radius: 16px;
-    padding: 12px;
+    padding: 0;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  html:not(.sp-prem-off) body.sidebar--collapsed #appContainer .sidebar-util-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 8px;
+    padding: 0;
   }
 
   html:not(.sp-prem-off) body.sidebar--collapsed #appContainer .sidebar:hover {
@@ -1698,8 +1734,31 @@ html:not(.sp-prem-off) :is(.confirm-delete-modal-content, #profileModal .profile
 
   html:not(.sp-prem-off) body.sidebar--collapsed #appContainer .sidebar:hover .nav-item,
   html:not(.sp-prem-off) body.sidebar--collapsed #appContainer .sidebar:hover .sidebar-util-btn {
+    width: auto;
+    height: auto;
+    min-height: 48px;
     justify-content: flex-start;
     padding: 13px 15px;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  html:not(.sp-prem-off) body.sidebar--collapsed #appContainer .sidebar:hover .sidebar-profile {
+    width: auto;
+    padding: 14px;
+    margin: 0 0 14px;
+  }
+
+  html:not(.sp-prem-off) body.sidebar--collapsed #appContainer .sidebar:hover .sidebar-avatar {
+    width: 54px;
+    height: 54px;
+    margin: 0;
+  }
+
+  html:not(.sp-prem-off) body.sidebar--collapsed #appContainer .sidebar:hover .sidebar-util-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 0;
   }
 }
 

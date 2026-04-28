@@ -709,16 +709,22 @@ const SP_CURRENCIES = {
     }
   }
 
-  function showLandingScreen() {
-    if (typeof window.showLanding === 'function') {
+  function showLandingScreen(options = {}) {
+    const keepLoader = options.keepLoader === true;
+    if (!keepLoader && typeof window.showLanding === 'function') {
       window.showLanding();
       return;
     }
-    if (typeof window.hideBootLoaderElement === 'function') {
+    if (!keepLoader && typeof window.hideBootLoaderElement === 'function') {
       window.hideBootLoaderElement();
     }
     if (typeof window.setActiveScreen === 'function') {
       window.setActiveScreen('landingScreen');
+    }
+    if (keepLoader) {
+      try {
+        if (typeof window.clearForms === 'function') window.clearForms();
+      } catch (_err) {}
     }
   }
 
@@ -2490,7 +2496,7 @@ const SP_CURRENCIES = {
     }
 
     window.__spAuthRedirectInProgress = true;
-    setBootStateSafe('booting-auth');
+    setBootStateSafe('loading-session');
 
     // Explicit OAuth callback always clears the "logged out" guard.
     localStorage.removeItem('sp_logged_out');
@@ -2805,7 +2811,7 @@ const SP_CURRENCIES = {
     showAuthenticatedDashboardShell('bootstrap-fast-shell');
 
     // AUTH FIXPACK 2 2026-04-27 (Fix 8): explicit boot-state transition so the
-    // loader text updates from "Signing you in..." to "Syncing your workspace..."
+    // loader text updates from "Signing in..." to "Syncing your workspace..."
     // while data is being fetched. The loader element itself stays on top via
     // sp-force-boot until line 2912 calls hideBootLoaderElement().
     setBootStateSafe('booting-data');
@@ -2819,9 +2825,6 @@ const SP_CURRENCIES = {
     const safetyTimer = setTimeout(() => {
       if (window.__spAppBooted) return; // happy path beat us — nothing to do.
       warn('Bootstrap safety timeout fired — forcing boot resolution.');
-      if (typeof window.hideBootLoaderElement === 'function') {
-        window.hideBootLoaderElement();
-      }
       try {
         if (_session && typeof window.showApp === 'function') {
           showAuthenticatedDashboardShell('safety-timeout', { eager: true });
@@ -2950,8 +2953,10 @@ const SP_CURRENCIES = {
       if (typeof window.clearLegacyCloudDataKeys === 'function') {
         window.clearLegacyCloudDataKeys();
       }
-      if (typeof window.hideBootLoaderElement === 'function') {
-        window.hideBootLoaderElement();
+      if (typeof window.hideBootLoaderWhenUiPainted === 'function') {
+        window.hideBootLoaderWhenUiPainted({ requireAppReady: true, minDelayMs: 260 });
+      } else if (typeof window.hideBootLoaderElement === 'function') {
+        setTimeout(() => window.hideBootLoaderElement(), 260);
       }
 
       if (shouldRunBackgroundRefresh) {
@@ -2986,9 +2991,6 @@ const SP_CURRENCIES = {
       if (typeof window.Sentry?.captureException === 'function') {
         try { window.Sentry.captureException(err, { tags: { source: 'bootstrap' } }); } catch (_e) {}
       }
-      if (typeof window.hideBootLoaderElement === 'function') {
-        window.hideBootLoaderElement();
-      }
       try {
         if (_session) {
           // We had a session — keep the user in an empty app shell with retry UI.
@@ -3019,8 +3021,8 @@ const SP_CURRENCIES = {
     window.__spSuppressStoredSessionBootstrap = false;
     window.__spAuthRedirectInProgress = false;
     // FIXED: Google OAuth always shows a prominent loader before leaving/returning.
-    setBootStateSafe('booting-auth', {
-      text: 'Signing you in...',
+    setBootStateSafe('signing-in', {
+      text: 'Signing in...',
       subtext: 'Opening Google securely...'
     });
     try {
@@ -3065,6 +3067,7 @@ const SP_CURRENCIES = {
       if (typeof window.toastError === 'function') {
         window.toastError(err?.message || 'Google sign-in failed.');
       }
+      showLoginScreen();
     }
   };
 
@@ -4066,11 +4069,13 @@ const SP_CURRENCIES = {
           if (typeof window.toastError === 'function') {
             window.toastError('Google sign-in is not enabled in Supabase Authentication Providers yet.');
           }
+          showLoginScreen();
           return;
         }
         if (typeof window.toastError === 'function') {
           window.toastError(err?.message || 'Google sign-in failed.');
         }
+        showLoginScreen();
       }
     };
 
@@ -4086,6 +4091,7 @@ const SP_CURRENCIES = {
 
       const setLoading = window.setLoginLoading || (() => {});
       setLoading(true);
+      setBootStateSafe('signing-in');
 
       try {
         window.__spSuppressStoredSessionBootstrap = false;
@@ -4100,6 +4106,9 @@ const SP_CURRENCIES = {
         }
 
         const { data } = await signIn(email, password);
+        if (!data?.session?.user) {
+          throw new Error('Could not initialise session.');
+        }
         // bootstrapFromSupabaseSession handles showApp + showWelcomeMessage internally.
         // Do NOT call them again here â€” that causes a double-render.
         const booted = await bootstrapFromSupabaseSession(data?.session, {
@@ -4108,6 +4117,7 @@ const SP_CURRENCIES = {
           showWelcome: true,
         });
         if (!booted) {
+          if (!_session) showLoginScreen();
           return;
         }
       } catch (err) {
@@ -4124,11 +4134,15 @@ const SP_CURRENCIES = {
             if (typeof window.toastError === 'function') {
               window.toastError('Cloud login unavailable. Please check your connection and try again.');
             }
+            showLoginScreen();
             return;
           }
           warn('Supabase login unavailable. Falling back to local auth.', err);
           if (typeof window.toastWarn === 'function') {
             window.toastWarn('Cloud login unavailable. Using local login on this device.');
+          }
+          if (typeof window.hideBootLoaderElement === 'function') {
+            window.hideBootLoaderElement();
           }
           return _origLogin();
         }
@@ -4139,6 +4153,7 @@ const SP_CURRENCIES = {
           msg = 'Sign-in succeeded, but your cloud data could not load. Use Retry or log out.';
         }
         if (typeof window.toastError === 'function') window.toastError(msg);
+        showLoginScreen();
       } finally {
         // Guaranteed: spinner always stops, button always re-enables.
         setLoading(false);
@@ -4219,6 +4234,14 @@ const SP_CURRENCIES = {
 
     // â”€â”€ SUPABASE LOGOUT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     window.logout = async function supabaseLogout() {
+      setBootStateSafe('signing-out');
+      try {
+        document.getElementById('sidebar')?.classList.remove('active');
+        document.getElementById('sidebarOverlay')?.classList.remove('active');
+        document.body?.classList?.remove('sidebar-open');
+        document.getElementById('hamburgerBtn')?.setAttribute('aria-expanded', 'false');
+      } catch (_err) {}
+
       // FIXED: flush unsaved work through the cloud path before clearing the session.
       // AUTH FIXPACK 2 2026-04-27 (Fix 9): bounded saveUserData to 1.2s. If the
       // cloud is hung, the user gets logged out anyway — the retry queue
@@ -4284,7 +4307,12 @@ const SP_CURRENCIES = {
         if (typeof window.clearAppShellBootContext === 'function') window.clearAppShellBootContext();
         if (window.location.hash) window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
       } catch (_err) {}
-      showLandingScreen(); // FIXED: mobile/desktop logout returns to landing with Supabase artifacts cleared.
+      showLandingScreen({ keepLoader: true }); // FIXED: mobile/desktop logout returns to landing with Supabase artifacts cleared.
+      if (typeof window.hideBootLoaderWhenUiPainted === 'function') {
+        window.hideBootLoaderWhenUiPainted({ minDelayMs: 350 });
+      } else if (typeof window.hideBootLoaderElement === 'function') {
+        setTimeout(() => window.hideBootLoaderElement(), 350);
+      }
       if (typeof window.toastInfo === 'function') window.toastInfo('Logged out');
 
       // AUTH FIXPACK 2 2026-04-27 (Fix 10): more lenient integrity check.
@@ -4421,7 +4449,7 @@ const SP_CURRENCIES = {
     const quietIfNoSession = options.quietIfNoSession === true;
     const loggedOutScreen = options.loggedOutScreen || 'login';
     if (!quietIfNoSession) {
-      setBootStateSafe('booting-auth');
+      setBootStateSafe('loading-session');
     }
     let session = null;
     try {
@@ -4447,7 +4475,7 @@ const SP_CURRENCIES = {
       }
       return false;
     }
-    setBootStateSafe('booting-auth');
+    setBootStateSafe('loading-session');
     return runBootstrapTask(() => bootstrapFromSupabaseSession(session, {
       remember: true,
       showWelcome: false,

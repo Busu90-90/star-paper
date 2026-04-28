@@ -817,7 +817,10 @@ body.light-theme .sidebar {
 
 /* ── Collapsed state ─────────────────────────────────────────────────────────*/
 @media (min-width: 1025px) {
-    body.sidebar--collapsed { --layout-sidebar-offset: 64px; }
+    body.sidebar--collapsed {
+        --layout-sidebar-offset: 64px;
+        --sidebar-collapsed-rail-item: 48px;
+    }
 
     body.sidebar--collapsed .sidebar {
         width: 64px;
@@ -851,18 +854,25 @@ body.light-theme .sidebar {
     /* Strip all flex from profile — use block + margin auto to center avatar */
     body.sidebar--collapsed .sidebar-profile {
         display: block;
-        padding: 4px 0;
+        width: var(--sidebar-collapsed-rail-item);
+        padding: 0;
         margin-bottom: 8px;
+        margin-left: auto;
+        margin-right: auto;
         background: transparent;
         border: none;
         box-shadow: none;
         text-align: center;
     }
     body.sidebar--collapsed .sidebar-profile-content {
-        display: block;
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
     body.sidebar--collapsed .sidebar-avatar {
-        display: block;
+        display: flex;
+        width: var(--sidebar-collapsed-rail-item);
+        height: var(--sidebar-collapsed-rail-item);
         margin: 0 auto;
     }
 
@@ -874,13 +884,18 @@ body.light-theme .sidebar {
 
     /* Center nav icons */
     body.sidebar--collapsed .nav-item {
+        width: var(--sidebar-collapsed-rail-item);
+        height: var(--sidebar-collapsed-rail-item);
+        min-height: var(--sidebar-collapsed-rail-item);
         justify-content: center;
-        padding: 11px 0;
+        padding: 0;
+        margin-left: auto;
+        margin-right: auto;
         position: relative;
     }
     body.sidebar--collapsed .sidebar-logout-section .nav-item {
         justify-content: center;
-        padding: 11px 0;
+        padding: 0;
     }
 
     /* Tooltips */
@@ -953,6 +968,7 @@ body.light-theme .sidebar {
     }
     body.sidebar--collapsed .sidebar:hover .sidebar-profile {
         display: flex;
+        width: auto;
         justify-content: space-between;
         align-items: center;
         padding: 14px;
@@ -970,14 +986,27 @@ body.light-theme .sidebar {
     }
     body.sidebar--collapsed .sidebar:hover .sidebar-avatar {
         display: flex;
+        width: 48px;
+        height: 48px;
         margin: 0;
     }
     body.sidebar--collapsed .sidebar:hover .sidebar-nav {
         padding-left: 4px;
         padding-right: 4px;
     }
-    body.sidebar--collapsed .sidebar:hover .nav-item { justify-content: flex-start; padding: 12px 16px; }
-    body.sidebar--collapsed .sidebar:hover .sidebar-logout-section .nav-item { justify-content: flex-start; padding: 12px 16px; }
+    body.sidebar--collapsed .sidebar:hover .nav-item {
+        width: 100%;
+        height: auto;
+        min-height: 44px;
+        justify-content: flex-start;
+        padding: 12px 16px;
+        margin-left: 0;
+        margin-right: 0;
+    }
+    body.sidebar--collapsed .sidebar:hover .sidebar-logout-section .nav-item {
+        justify-content: flex-start;
+        padding: 12px 16px;
+    }
     body.sidebar--collapsed .sidebar:hover .nav-item::after { display: none; }
 }
 
@@ -6544,8 +6573,33 @@ body.light-theme .sidebar-util-row { border-top-color: rgba(138,109,26,0.12); }
 }
 
 /* Collapsed sidebar: stack icons only */
-body.sidebar--collapsed .sidebar-util-row { flex-direction: column; padding: 4px 2px 0; }
-body.sidebar--collapsed .sidebar:hover .sidebar-util-row { flex-direction: row; padding: 8px 4px 0; }
+body.sidebar--collapsed .sidebar-util-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 8px;
+    padding: 4px 0 0;
+}
+body.sidebar--collapsed .sidebar-util-btn {
+    width: var(--sidebar-collapsed-rail-item, 48px);
+    height: var(--sidebar-collapsed-rail-item, 48px);
+    min-height: var(--sidebar-collapsed-rail-item, 48px);
+    flex: none;
+    padding: 0;
+}
+body.sidebar--collapsed .sidebar:hover .sidebar-util-row {
+    display: flex;
+    flex-direction: row;
+    justify-items: stretch;
+    padding: 8px 4px 0;
+}
+body.sidebar--collapsed .sidebar:hover .sidebar-util-btn {
+    width: auto;
+    height: auto;
+    min-height: 44px;
+    flex: 1;
+    padding: 8px 4px;
+}
 
 /* ── About Modal ─────────────────────────────────────────────────────────── */
 .sp-about-modal, .sp-admin-modal {

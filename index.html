@@ -111,11 +111,11 @@
         } catch (_err) {}
       })();
     </script>
-    <div class="app-boot-loader hidden sp-prem-reveal" id="appBootLoader" aria-live="polite" aria-hidden="true" data-state="booting-auth">
+    <div class="app-boot-loader hidden sp-prem-reveal" id="appBootLoader" aria-live="polite" aria-hidden="true" data-state="loading-session">
         <div class="app-boot-loader__inner">
             <img src="./logo-ui.png?v=21" alt="Star Paper" class="app-boot-loader__logo" />
             <div class="app-boot-loader__spinner" aria-hidden="true"></div>
-            <div class="app-boot-loader__text" id="appBootLoaderText">Signing you in...</div>
+            <div class="app-boot-loader__text" id="appBootLoaderText">Loading session...</div>
             <div class="app-boot-loader__subtext" id="appBootLoaderSubtext">Checking your secure cloud session...</div>
             <div class="app-boot-loader__actions" id="appBootLoaderActions" hidden>
                 <button class="app-boot-loader__button" type="button" onclick="window.retryInitialCloudBootstrap?.()">Retry</button>
@@ -1616,13 +1616,13 @@
           loaded (synchronously, above in <head>), so this file now runs
           synchronously Ã¢â‚¬â€ window.SP is fully initialised before app.js executes.
         -->
-<script src="supabase.js?v=33"></script>
+<script src="supabase.js?v=34"></script>
         <script src="app.migrations.js?v=10"></script>
         <script src="app.actions.js?v=8"></script>
         <script src="app.todayboard.js?v=1"></script>
         <script src="app.tasks.js?v=4"></script>
     <script src="app.reports.js?v=11"></script>
-<script src="app.js?v=71"></script>
+<script src="app.js?v=73"></script>
         <!-- UPGRADE: Premium polish JS layer (loaded last, no mutation of existing state) -->
         <script src="app.premium.js?v=4"></script>
         <script>

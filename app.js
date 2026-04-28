@@ -45,6 +45,34 @@ function hideBootLoaderElement() {
     loader.setAttribute('aria-hidden', 'true');
 }
 
+function hideBootLoaderWhenUiPainted(options = {}) {
+    const minDelayMs = Number.isFinite(options.minDelayMs)
+        ? Math.max(0, Number(options.minDelayMs))
+        : 180;
+    const requireAppReady = options.requireAppReady === true;
+    const startedAt = Date.now();
+
+    const hideWhenReady = () => {
+        const appReady = !requireAppReady || Boolean(window.__spAppBooted);
+        const elapsed = Date.now() - startedAt;
+        if (appReady && elapsed >= minDelayMs) {
+            hideBootLoaderElement();
+            return;
+        }
+        setTimeout(hideWhenReady, appReady ? Math.max(0, minDelayMs - elapsed) : 80);
+    };
+
+    const waitForPaint = () => {
+        if (typeof requestAnimationFrame !== 'function') {
+            setTimeout(hideWhenReady, 50);
+            return;
+        }
+        requestAnimationFrame(() => requestAnimationFrame(hideWhenReady));
+    };
+
+    waitForPaint();
+}
+
 function showBootLoaderElement() {
     document.documentElement.classList.add('sp-force-boot');
     const loader = document.getElementById('appBootLoader');
@@ -52,6 +80,10 @@ function showBootLoaderElement() {
     loader.classList.remove('hidden');
     loader.setAttribute('aria-hidden', 'false');
 }
+
+window.hideBootLoaderElement = hideBootLoaderElement;
+window.hideBootLoaderWhenUiPainted = hideBootLoaderWhenUiPainted;
+window.showBootLoaderElement = showBootLoaderElement;
 
 const APP_BOOT_CONTEXT_STORAGE_KEY = 'sp_boot_context';
 const APP_BOOT_CONTEXT_APP_SHELL = 'app-shell';
@@ -129,12 +161,28 @@ function getStartupBootContext() {
 
 const BOOT_STATE_MESSAGES = {
     'booting-auth': {
-        text: 'Signing you in...', // FIXED: prominent auth/redirect loader copy.
+        text: 'Loading session...',
         subtext: 'Checking your secure cloud session...'
+    },
+    'loading-session': {
+        text: 'Loading session...',
+        subtext: 'Checking your secure cloud session...'
+    },
+    'signing-in': {
+        text: 'Signing in...',
+        subtext: 'Opening your workspace securely...'
     },
     'booting-data': {
         text: 'Syncing your workspace...',
         subtext: 'Fetching your latest cloud data.'
+    },
+    'loading-app': {
+        text: 'Loading Star Paper...',
+        subtext: 'Preparing your dashboard...'
+    },
+    'signing-out': {
+        text: 'Signing out...',
+        subtext: 'Taking you back to Star Paper.'
     },
     'auth-required': {
         text: 'Sign in to continue',
@@ -172,6 +220,7 @@ function setBootState(state, options = {}) {
         actionsEl.hidden = !showActions;
     }
 }
+window.setBootState = setBootState;
 
 function markRootLayoutReady() {
     document.body.classList.add('loaded', 'layout-root-ready');
@@ -184,7 +233,7 @@ function initializeBootSequence() {
     window.__spBootContext = bootContext;
 
     if (bootContext === 'auth-callback' || bootContext === 'app-refresh') {
-        setBootState('booting-auth');
+        setBootState('loading-session');
         return;
     }
 
@@ -2611,7 +2660,7 @@ function getSectionIconMarkup(iconKey) {
         window.__spAppBooted = false;
         window.currentUser = null;
         window.currentManagerId = null;
-        setBootState('booting-auth');
+        setBootState('loading-session');
 
         // Populate location dropdowns on page load
         function populateLocationDropdowns() {
@@ -4453,6 +4502,10 @@ function showLoginForm() {
         }
 
         function showApp() {
+            const ownsBootLoader = !window.__spCloudBootstrapPending &&
+                !window.__spSupabaseBootPromise &&
+                !window.__spAuthRedirectInProgress;
+            setBootState('loading-app');
             try {
                 console.log('=== SHOW APP STARTING ===');
                 console.log('Current user:', currentUser);
@@ -4461,6 +4514,15 @@ function showLoginForm() {
                 console.log('Expenses:', expenses);
                 
                 setActiveScreen('appContainer');
+                const sidebar = document.getElementById('sidebar');
+                const sidebarOverlay = document.getElementById('sidebarOverlay');
+                sidebar?.classList.remove('active');
+                sidebarOverlay?.classList.remove('active');
+                sidebarOverlay?.setAttribute('aria-hidden', 'true');
+                document.body.classList.remove('sidebar-open');
+                document.getElementById('hamburgerBtn')?.setAttribute('aria-expanded', 'false');
+                document.getElementById('quickAddPanel')?.classList.remove('active');
+                clearDashboardSearchResults();
                 const welcomeCard = document.getElementById('welcomeMessage');
                 if (welcomeCard) welcomeCard.style.display = 'block'; // FIXED: top search bar is visible after refresh bootstrap.
                 refreshProfileUI();
@@ -4522,11 +4584,19 @@ function showLoginForm() {
 
                 window.__spAppBooted = true;
                 applyReadOnlyMode();
+                if (ownsBootLoader) {
+                    hideBootLoaderWhenUiPainted({ requireAppReady: true, minDelayMs: 220 });
+                }
                 
                 console.log('=== SHOW APP COMPLETED ===');
             } catch (error) {
                 console.error('ERROR IN SHOWAPP:', error);
                 console.error('Error stack:', error.stack);
+                setBootState('boot-error', {
+                    text: 'Star Paper needs attention',
+                    subtext: 'The dashboard could not finish loading. Retry or log out.',
+                    showActions: true
+                });
                 toastError('Error loading app. Check console for details.');
             }
         }
@@ -5532,7 +5602,7 @@ function showLoginForm() {
 
         function checkAuth() {
             if (window.__spCloudBootstrapPending || window.__spSupabaseBootPromise || window.__spAuthRedirectInProgress) {
-                setBootState('booting-auth');
+                setBootState('loading-session');
             }
             return;
         }
@@ -11303,7 +11373,7 @@ function showLoginForm() {
             // regression risk. Reverted to the canonical CLAUDE.md §2 approach: users
             // get a fresh shell on next manual reload after the new SW activates.
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=85').then((registration) => {
+                navigator.serviceWorker.register('sw.js?v=87').then((registration) => {
                     registration.update().catch(() => {});
                 }).catch((error) => {
                     console.warn('Service worker registration failed:', error);
