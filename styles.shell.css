@@ -206,11 +206,22 @@ html:not(.sp-prem-off) #appContainer .nav-item:hover {
   color: var(--text-primary);
 }
 
-html:not(.sp-prem-off) #appContainer .nav-item.active {
+html:not(.sp-prem-off) #appContainer .nav-item.active,
+html:not(.sp-prem-off) #appContainer .nav-item[aria-current="page"] {
   background: var(--sp-shell-gold-fade);
   border-color: var(--sp-shell-border-strong);
   color: var(--text-primary);
   box-shadow: var(--sp-shell-shadow-card);
+}
+
+html:not(.sp-prem-off) #appContainer .nav-item.active i[class*="ph-"],
+html:not(.sp-prem-off) #appContainer .nav-item[aria-current="page"] i[class*="ph-"] {
+  color: #2dd4bf;
+}
+
+html:not(.sp-prem-off) #appContainer .nav-item:active {
+  transform: scale(0.97);
+  transition: transform 90ms ease;
 }
 
 html:not(.sp-prem-off) #appContainer .nav-item.active::before {
@@ -1381,11 +1392,13 @@ html:not(.sp-prem-off) #appContainer .sidebar-overlay {
   background: rgba(8, 9, 12, 0.72);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
+  pointer-events: none;
 }
 
 html:not(.sp-prem-off) #appContainer .sidebar-overlay.active {
   opacity: 1;
   visibility: visible;
+  pointer-events: auto;
 }
 
 html:not(.sp-prem-off) #appContainer .sidebar-collapse-btn {

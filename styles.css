@@ -1212,13 +1212,18 @@ body.light-theme .theme-btn.active { background: #FFB300; color: #0B0B0B; }
     transform: none;
     box-shadow: none;
 }
-.nav-item.active {
+.nav-item.active,
+.nav-item[aria-current="page"] {
     background: rgba(255, 179, 0, 0.15);
     border-left-color: #FFB300;
     color: var(--gold-amber);
     box-shadow: 0 2px 8px rgba(255, 179, 0, 0.2);
 }
-.nav-item:active { transform: none; }
+.nav-item.active i[class*="ph-"],
+.nav-item[aria-current="page"] i[class*="ph-"] {
+    color: #2dd4bf;
+}
+.nav-item:active { transform: scale(0.97); transition: transform 90ms ease; }
 body.light-theme .nav-item { color: #1b1b1b; }
 body.light-theme .nav-item:hover { background: rgba(138, 109, 26, 0.08); color: #8a6d1a; }
 body.light-theme .nav-item.active { background: rgba(255, 179, 0, 0.15); color: #8a6d1a; box-shadow: 0 2px 8px rgba(212, 175, 55, 0.2); }
@@ -1309,12 +1314,13 @@ body.light-theme .sidebar-logout-section .nav-item:hover { background: rgba(220,
     background: rgba(0, 0, 0, 0.6);
     opacity: 0;
     visibility: hidden;
+    pointer-events: none;
     transition: opacity 0.2s ease, visibility 0.2s ease;
     z-index: 998;
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
 }
-.sidebar-overlay.active { opacity: 1; visibility: visible; }
+.sidebar-overlay.active { opacity: 1; visibility: visible; pointer-events: auto; }
 
 /* Accessibility */
 @media (prefers-reduced-motion: reduce) {

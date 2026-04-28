@@ -751,7 +751,13 @@ const SP_CURRENCIES = {
     try { if (typeof window.updateReportStatistics === 'function') window.updateReportStatistics(); } catch (err) { warn(`updateReportStatistics failed (${reason}):`, err); }
   }
 
-  function showAuthenticatedDashboardShell(reason = 'bootstrap-fast-shell') {
+  function showAuthenticatedDashboardShell(reason = 'bootstrap-fast-shell', options = {}) {
+    // 2026-04-28 fix: by default we no longer reveal the empty shell synchronously.
+    // The boot loader stays on top (via sp-force-boot or setBootStateSafe('booting-data'))
+    // until real data is hydrated and the main bootstrap code path explicitly calls
+    // window.showApp() at line ~2919. The eager:true escape hatch is used by the
+    // safety-timeout recovery path so a stranded user always sees *something*.
+    const eager = options.eager === true;
     if (typeof window.loadUserData === 'function' && !window.__spAppBooted) {
       window.loadUserData({
         snapshot: {
@@ -764,9 +770,9 @@ const SP_CURRENCIES = {
         },
       });
     }
-    if (typeof window.showApp === 'function' && !window.__spAppBooted) {
+    if (eager && typeof window.showApp === 'function' && !window.__spAppBooted) {
       window.showApp();
-      log('bootstrap.fastShellReady', { reason });
+      log('bootstrap.fastShellReady', { reason, eager: true });
     }
     routeAuthenticatedUserToDashboard(reason);
     if (typeof window.setAppShellBootContext === 'function') {
@@ -877,6 +883,29 @@ const SP_CURRENCIES = {
   }
 
   function resetWorkspaceState() {
+    // Explicit purge of in-memory business state to close the data-leak window
+    // between supabase.auth.signOut() and location.reload(). Mutating the live
+    // arrays in-place (.length = 0) preserves any references currently captured
+    // by render closures so they read empty data, not stale prior-user data.
+    try {
+      ['bookings', 'expenses', 'otherIncome', 'artists', 'tasks'].forEach((key) => {
+        if (Array.isArray(window[key])) {
+          window[key].length = 0;
+        } else {
+          window[key] = [];
+        }
+      });
+      window.revenueGoals = {};
+      window.bbfData = {};
+      window.managerData = {};
+      window._SP_cloudData = null;
+      window.currentUser = null;
+      window.currentManagerId = null;
+      window.currentTeamRole = null;
+      window.__spDataLoaded = false;
+    } catch (err) {
+      try { window.Sentry && window.Sentry.captureException && window.Sentry.captureException(err); } catch (_e) {}
+    }
     _activeTeamId = null;
     _workspaceResolved = false;
     _workspaceRequiresSelection = false;
@@ -2795,7 +2824,7 @@ const SP_CURRENCIES = {
       }
       try {
         if (_session && typeof window.showApp === 'function') {
-          showAuthenticatedDashboardShell('safety-timeout');
+          showAuthenticatedDashboardShell('safety-timeout', { eager: true });
           showBootErrorState('Cloud sync took too long', 'Tap Retry to reload, or Log out.');
         } else if (localStorage.getItem('sp_logged_out') === '1') {
           showLandingScreen();
@@ -2894,6 +2923,7 @@ const SP_CURRENCIES = {
 
       if (typeof window.showApp === 'function' && !window.__spAppBooted) {
         window.showApp();
+        window.__spDataLoaded = true;
         log('bootstrap.uiReady');
       }
       if (typeof window.restorePostBootUiState === 'function') {
@@ -2962,7 +2992,7 @@ const SP_CURRENCIES = {
       try {
         if (_session) {
           // We had a session — keep the user in an empty app shell with retry UI.
-          if (!window.__spAppBooted) showAuthenticatedDashboardShell('bootstrap-error');
+          if (!window.__spAppBooted) showAuthenticatedDashboardShell('bootstrap-error', { eager: true });
           showBootErrorState('Cloud sync needs attention', 'We couldn\'t fetch your data. Tap Retry to reload, or Log out.');
         } else if (localStorage.getItem('sp_logged_out') === '1') {
           showLandingScreen();
@@ -4201,7 +4231,18 @@ const SP_CURRENCIES = {
         }
       }
 
-      // 2. CRITICAL â€” Directly delete the Supabase SDK's own auth token from
+      // 2a. Tell the SDK to sign out (local scope so we don't wait on the network)
+      //     so its in-memory state matches what we are about to do to localStorage.
+      try {
+        if (db && db.auth && typeof db.auth.signOut === 'function') {
+          await withTimeout(() => db.auth.signOut({ scope: 'local' }), 800, 'logout-signOut');
+        }
+      } catch (_err) {
+        // Best-effort: even if signOut hangs/fails, the artifact wipe below is the
+        // authoritative step that prevents re-bootstrap.
+      }
+
+      // 2b. CRITICAL â€” Directly delete the Supabase SDK's own auth token from
       //    localStorage. The SDK stores it under a well-known key. This is
       //    synchronous and instant. Without this step, the SDK finds its own
       //    token on the next page load and fires onAuthStateChange('INITIAL_SESSION'),

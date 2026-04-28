@@ -3788,7 +3788,7 @@ function getSectionIconMarkup(iconKey) {
         }
 
         function closeSidebar() {
-            toggleSidebar(false);
+            requestAnimationFrame(() => toggleSidebar(false));
         }
 
         function applyTheme(theme, options = {}) {
@@ -5386,9 +5386,19 @@ function showLoginForm() {
 
             const parentSection = PARENT_MAP[section] || section;
 
-            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            document.getElementById(parentSection)?.classList.add('active');
+            // Idempotency guard: triple-dispatch (data-action + onclick + capture-phase) can
+            // fire showSection twice for the same click. Skip the heavy DOM work if we're
+            // already on this section, but still allow the renderers below to refresh data.
+            const _spSameSection = window._spCurrentSection === section;
+            window._spCurrentSection = section;
+
+            if (!_spSameSection) {
+                // Batch class toggles in a single frame to keep clicks feeling instant on
+                // mid-range hardware (i5-8250U / 8GB target).
+                requestAnimationFrame(() => {
+                    document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.id === parentSection));
+                });
+            }
             Storage.saveSync('starPaperLastSection', section);
             if (['financials', 'expenses', 'otherIncome', 'reports'].includes(section)) {
                 Storage.saveSync('starPaperLastMoneyTab', section);
@@ -5423,15 +5433,20 @@ function showLoginForm() {
 
             // Ã¢â€â‚¬Ã¢â€â‚¬ Sync bottom nav (map sub-sections to parent nav entry) Ã¢â€â‚¬Ã¢â€â‚¬
             const navKey = NAV_SECTION_MAP[section] || section;
-            document.querySelectorAll('.bottom-nav-item').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.section === navKey);
+            requestAnimationFrame(() => {
+                document.querySelectorAll('.bottom-nav-item').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.section === navKey);
+                });
+                document.querySelectorAll('.nav-item[data-section]').forEach(btn => {
+                    const isActive = btn.dataset.section === navKey;
+                    btn.classList.toggle('active', isActive);
+                    btn.setAttribute('aria-current', isActive ? 'page' : 'false');
+                });
             });
+            // Legacy active-class loop (now merged into the rAF above) intentionally removed below.
+            (function _spLegacyNoop(){})(); // keep line count stable for downstream patches
 
             // Ã¢â€â‚¬Ã¢â€â‚¬ Sync sidebar nav active state Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-            document.querySelectorAll('.nav-item[data-section]').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.section === navKey);
-            });
-
             // Always show lists when navigating to sections
             if (section === 'bookings') {
                 document.getElementById('addBookingForm')?.style.setProperty('display', 'none');
@@ -11296,7 +11311,7 @@ function showLoginForm() {
             // regression risk. Reverted to the canonical CLAUDE.md §2 approach: users
             // get a fresh shell on next manual reload after the new SW activates.
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=81').then((registration) => {
+                navigator.serviceWorker.register('sw.js?v=82').then((registration) => {
                     registration.update().catch(() => {});
                 }).catch((error) => {
                     console.warn('Service worker registration failed:', error);
