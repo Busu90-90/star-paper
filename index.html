@@ -73,12 +73,12 @@
       html.sp-prem-off .sp-prem-widget { display: none !important; }
     </style>
 
-    <link rel="stylesheet" href="styles.css?v=34">
+    <link rel="stylesheet" href="styles.css?v=35">
     <!-- UPGRADE: Final premium relayering token layer (additive, kill-switchable via localStorage.sp_prem_off) -->
     <link rel="stylesheet" href="star-paper-tokens.css?v=21">
     <!-- UPGRADE: Premium polish layer (additive, kill-switchable via localStorage.sp_prem_off) -->
     <link rel="stylesheet" href="styles.premium.css?v=8">
-    <link rel="stylesheet" href="styles.shell.css?v=6">
+    <link rel="stylesheet" href="styles.shell.css?v=8">
     <!-- Phosphor Icons Ã¢â‚¬â€ unified icon system -->
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
@@ -536,15 +536,6 @@
             <button class="bottom-nav-item" data-action="showSection" onclick="showSection('settings')" data-section="settings" data-tooltip="Settings" aria-label="Settings">
                 <i class="ph ph-gear-six" aria-hidden="true" style="font-size:22px;"></i>
                 <span>Settings</span>
-            </button>
-            <!-- FIXED: persistent mobile utility actions stay visible without opening the sidebar. -->
-            <button class="bottom-nav-item bottom-nav-item--utility" id="mobileAboutBtn" type="button" data-tooltip="About" aria-label="About Star Paper">
-                <i class="ph ph-info" aria-hidden="true" style="font-size:22px;"></i>
-                <span>About</span>
-            </button>
-            <button class="bottom-nav-item bottom-nav-item--utility bottom-nav-item--logout" id="mobileLogoutBtn" type="button" data-tooltip="Logout" aria-label="Logout">
-                <i class="ph ph-sign-out" aria-hidden="true" style="font-size:22px;"></i>
-                <span>Logout</span>
             </button>
         </nav>
 
@@ -1455,6 +1446,20 @@
                                 </button>
                             </div>
                         </div>
+
+                        <div class="settings-panel settings-account-card">
+                            <div class="settings-panel-label">Account</div>
+                            <div class="settings-account-actions">
+                                <button type="button" class="action-btn" id="settingsAboutBtn" data-action="showAboutModal" onclick="showAboutModal()" title="About Star Paper">
+                                    <i class="ph ph-info" aria-hidden="true"></i>
+                                    About Star Paper
+                                </button>
+                                <button type="button" class="action-btn action-btn--danger" id="settingsLogoutBtn" title="Logout">
+                                    <i class="ph ph-sign-out" aria-hidden="true"></i>
+                                    Logout
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1617,7 +1622,7 @@
         <script src="app.todayboard.js?v=1"></script>
         <script src="app.tasks.js?v=4"></script>
     <script src="app.reports.js?v=11"></script>
-<script src="app.js?v=69"></script>
+<script src="app.js?v=71"></script>
         <!-- UPGRADE: Premium polish JS layer (loaded last, no mutation of existing state) -->
         <script src="app.premium.js?v=4"></script>
         <script>

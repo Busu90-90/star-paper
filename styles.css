@@ -5510,7 +5510,7 @@ body.light-theme #landingScreen .landing-feature-nav {
 @media (max-width: 1024px) {
     .bottom-nav {
         display: grid;
-        grid-template-columns: repeat(7, minmax(0, 1fr)); /* FIXED: seven touch targets fit at 320px. */
+        grid-template-columns: repeat(5, minmax(0, 1fr));
     }
     /* Pad main content so content isn't hidden behind bottom nav */
     .main-content {
@@ -8165,10 +8165,26 @@ body.light-theme #landingScreen .landing-notebook {
   #landingScreen.landing-home-page .landing-shell-kicker {
     margin-bottom: clamp(2px, 0.5vw, 6px);
   }
+  #landingScreen.landing-home-page .sp-prem-hero-product {
+    transform: translateY(-40px);
+  }
+  #landingScreen.landing-home-page .landing-notebook {
+    width: clamp(232px, 24vw, 320px);
+    margin-bottom: 0;
+  }
 }
 
 /* Tablet — upright, slightly wider for legibility */
+@media (max-width: 1023px) {
+  #landingScreen.landing-home-page .sp-prem-hero-product {
+    transform: translateY(-24px);
+  }
+}
+
 @media (max-width: 768px) {
+  #landingScreen.landing-home-page .sp-prem-hero-product {
+    transform: translateY(-14px);
+  }
   #landingScreen .landing-notebook {
     width: clamp(260px, 60vw, 340px);
     margin-top: clamp(8px, 1.4vw, 16px);
@@ -8181,6 +8197,9 @@ body.light-theme #landingScreen .landing-notebook {
 
 /* Mobile — upright, full-width-ish, ensure no horizontal overflow on 375px viewport */
 @media (max-width: 480px) {
+  #landingScreen.landing-home-page .sp-prem-hero-product {
+    transform: translateY(-8px);
+  }
   #landingScreen .landing-notebook {
     width: min(86vw, 320px);
     margin-top: 12px;

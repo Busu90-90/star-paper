@@ -3446,12 +3446,12 @@ function getSectionIconMarkup(iconKey) {
         function bindMobileUtilityActions() {
             if (window.__spMobileUtilityActionsBound) return;
             window.__spMobileUtilityActionsBound = true;
-            document.getElementById('mobileAboutBtn')?.addEventListener('click', (event) => {
+            document.getElementById('settingsAboutBtn')?.addEventListener('click', (event) => {
                 event.preventDefault();
                 if (typeof window.showAboutModal === 'function') window.showAboutModal();
                 else if (typeof showAboutModal === 'function') showAboutModal();
             });
-            document.getElementById('mobileLogoutBtn')?.addEventListener('click', (event) => {
+            document.getElementById('settingsLogoutBtn')?.addEventListener('click', (event) => {
                 event.preventDefault();
                 if (typeof window.logout === 'function') {
                     window.logout();
@@ -11144,14 +11144,6 @@ function showLoginForm() {
                 }
             }
 
-            const bottomNav = document.getElementById('bottomNav');
-            if (bottomNav) {
-                const moneyBtn = bottomNav.querySelector('.bottom-nav-item[data-section="money"]');
-                const scheduleBtn = bottomNav.querySelector('.bottom-nav-item[data-section="schedule"]');
-                if (moneyBtn && scheduleBtn) {
-                    bottomNav.insertBefore(moneyBtn, scheduleBtn);
-                }
-            }
         })();
 
         (function initTypewriter() {
@@ -11311,7 +11303,7 @@ function showLoginForm() {
             // regression risk. Reverted to the canonical CLAUDE.md §2 approach: users
             // get a fresh shell on next manual reload after the new SW activates.
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=82').then((registration) => {
+                navigator.serviceWorker.register('sw.js?v=85').then((registration) => {
                     registration.update().catch(() => {});
                 }).catch((error) => {
                     console.warn('Service worker registration failed:', error);
