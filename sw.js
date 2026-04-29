@@ -1,4 +1,54 @@
-const CACHE_NAME = "star-paper-shell-v106";
+const LEGACY_NETLIFY_HOST = "starpaper.netlify.app";
+const CANONICAL_NETLIFY_ORIGIN = "https://star-paper.netlify.app";
+const IS_LEGACY_NETLIFY_WORKER = self.location.hostname === LEGACY_NETLIFY_HOST;
+
+async function clearStarPaperCaches() {
+  const keys = await caches.keys();
+  await Promise.all(keys.map((key) => caches.delete(key)));
+}
+
+function toCanonicalUrl(urlLike) {
+  const url = new URL(urlLike, self.location.href);
+  url.protocol = "https:";
+  url.hostname = "star-paper.netlify.app";
+  return url.toString();
+}
+
+async function redirectLegacyClients() {
+  const windowClients = await self.clients.matchAll({
+    type: "window",
+    includeUncontrolled: true,
+  });
+  await Promise.all(
+    windowClients.map((client) =>
+      client.navigate(toCanonicalUrl(client.url)).catch(() => {})
+    )
+  );
+}
+
+if (IS_LEGACY_NETLIFY_WORKER) {
+  self.addEventListener("install", (event) => {
+    self.skipWaiting();
+    event.waitUntil(clearStarPaperCaches());
+  });
+
+  self.addEventListener("activate", (event) => {
+    event.waitUntil((async () => {
+      await clearStarPaperCaches();
+      await self.clients.claim();
+      await redirectLegacyClients();
+      await self.registration.unregister();
+    })());
+  });
+
+  self.addEventListener("fetch", (event) => {
+    if (event.request.method !== "GET") return;
+    const requestUrl = new URL(event.request.url);
+    if (requestUrl.origin !== self.location.origin) return;
+    event.respondWith(Response.redirect(toCanonicalUrl(event.request.url), 302));
+  });
+} else {
+const CACHE_NAME = "star-paper-shell-v107";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -6,15 +56,15 @@ const APP_SHELL = [
   "./styles.premium.css?v=8",
   "./styles.shell.css?v=10",
   "./star-paper-tokens.css?v=21",
-  "./supabase.js?v=40",
+  "./supabase.js?v=41",
   "./app.migrations.js?v=10",
   "./app.actions.js?v=8",
   "./app.todayboard.js?v=1",
   "./app.tasks.js?v=4",
   "./app.reports.js?v=11",
-  "./app.js?v=86",
+  "./app.js?v=87",
   "./app.premium.js?v=4",
-  "./sw.js?v=106",
+  "./sw.js?v=107",
   "./manifest.json",
   "./manifest.json?v=21",
   "./logo-ui.png",
@@ -138,3 +188,4 @@ self.addEventListener("fetch", (event) => {
       )
   );
 });
+}

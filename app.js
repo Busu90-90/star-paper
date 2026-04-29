@@ -279,7 +279,7 @@ function initializeBootSequence() {
         return;
     }
 
-    hideBootLoaderElement();
+    hideBootLoaderElement({ force: true });
     if (typeof setActiveScreen === 'function') {
         setActiveScreen('landingScreen');
     }
@@ -4007,7 +4007,7 @@ function getSectionIconMarkup(iconKey) {
 
 function showLoginForm() {
             setBootState('auth-required');
-            hideBootLoaderElement();
+            hideBootLoaderElement({ force: true });
             setActiveScreen('loginScreen');
             document.getElementById('loginForm').style.display = 'block';
             document.getElementById('signupForm').style.display = 'none';
@@ -4026,7 +4026,7 @@ function showLoginForm() {
 
         function showSignupForm() {
             setBootState('auth-required');
-            hideBootLoaderElement();
+            hideBootLoaderElement({ force: true });
             setActiveScreen('loginScreen');
             document.getElementById('signupForm').style.display = 'block';
             document.getElementById('loginForm').style.display = 'none';
@@ -4040,7 +4040,7 @@ function showLoginForm() {
         }
 
         function showLanding() {
-            hideBootLoaderElement();
+            hideBootLoaderElement({ force: true });
             setActiveScreen('landingScreen');
             clearForms();
         }
@@ -11508,8 +11508,8 @@ function showLoginForm() {
             // regression risk. Reverted to the canonical CLAUDE.md §2 approach: users
             // get a fresh shell on next manual reload after the new SW activates.
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=106').then((registration) => {
-                    registration.update().catch(() => {});
+                navigator.serviceWorker.register('sw.js?v=107').then((registration) => {
+                    registration?.update?.().catch(() => {});
                 }).catch((error) => {
                     console.warn('Service worker registration failed:', error);
                 });

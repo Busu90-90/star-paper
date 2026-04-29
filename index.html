@@ -11,7 +11,33 @@
         var canonicalUrl = new URL(window.location.href);
         canonicalUrl.protocol = 'https:';
         canonicalUrl.hostname = 'star-paper.netlify.app';
-        window.location.replace(canonicalUrl.toString());
+        var redirected = false;
+        function goCanonical() {
+          if (redirected) return;
+          redirected = true;
+          window.location.replace(canonicalUrl.toString());
+        }
+        var cleanupTasks = [];
+        if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+          cleanupTasks.push(
+            navigator.serviceWorker.getRegistrations()
+              .then(function(registrations) {
+                return Promise.all(registrations.map(function(registration) {
+                  return registration.unregister().catch(function() {});
+                }));
+              })
+          );
+        }
+        if (window.caches && caches.keys) {
+          cleanupTasks.push(
+            caches.keys().then(function(keys) {
+              return Promise.all(keys
+                .map(function(key) { return caches.delete(key).catch(function() {}); }));
+            })
+          );
+        }
+        Promise.allSettled(cleanupTasks).then(goCanonical).catch(goCanonical);
+        setTimeout(goCanonical, 1400);
       })();
     </script>
     <link rel="manifest" href="manifest.json?v=21">
@@ -1559,13 +1585,13 @@
           loaded (synchronously, above in <head>), so this file now runs
           synchronously Ã¢â‚¬â€ window.SP is fully initialised before app.js executes.
         -->
-<script src="supabase.js?v=40"></script>
+<script src="supabase.js?v=41"></script>
         <script src="app.migrations.js?v=10"></script>
         <script src="app.actions.js?v=8"></script>
         <script src="app.todayboard.js?v=1"></script>
         <script src="app.tasks.js?v=4"></script>
     <script src="app.reports.js?v=11"></script>
-<script src="app.js?v=86"></script>
+<script src="app.js?v=87"></script>
         <!-- UPGRADE: Premium polish JS layer (loaded last, no mutation of existing state) -->
         <script src="app.premium.js?v=4"></script>
         <script>

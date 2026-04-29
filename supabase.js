@@ -720,18 +720,28 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
   }
 
-  function scheduleLocalSessionRestoreFallback() {
-    if (!isLocalDevOrigin() || hasAuthCallbackInUrl()) return;
+  function scheduleLocalSessionRestoreFallback(options = {}) {
     clearLocalBootFallback();
+    const bootContext = options.bootContext || getStartupBootContext();
+    const isAuthCallback = bootContext === 'auth-callback' || hasAuthCallbackInUrl();
+    const timeoutMs = Number.isFinite(options.timeoutMs)
+      ? Math.max(3000, Number(options.timeoutMs))
+      : (isAuthCallback ? 14000 : 9000);
     _localBootFallbackTimer = setTimeout(() => {
       _localBootFallbackTimer = null;
       const loader = document.getElementById('appBootLoader');
-      if (window.__spAppBooted || loader?.dataset.state !== 'loading-session') return;
-      warn('Local session restore stalled; falling back to landing for localhost testing.');
-      window.__spSuppressStoredSessionBootstrap = true;
+      const state = loader?.dataset.state || '';
+      const blockingStates = new Set(['booting-auth', 'loading-session', 'signing-in', 'booting-data', 'loading-app']);
+      if (window.__spAppBooted || !blockingStates.has(state)) return;
+      warn('Session restore stalled; resolving boot UI safely.', { bootContext, state });
       window.__spAuthRedirectInProgress = false;
-      showLandingScreen();
-    }, 8000);
+      if (bootContext === 'cold-start' && !hasStoredSupabaseSessionHint()) {
+        window.__spSuppressStoredSessionBootstrap = true;
+        showLandingScreen();
+        return;
+      }
+      showBootErrorState('Session restore stalled', 'Retry to reconnect to Star Paper, or log out and sign in again.');
+    }, timeoutMs);
   }
 
   function hasLocalThemePreference() {
@@ -744,6 +754,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   }
 
   function showLoginScreen(options = {}) {
+    clearLocalBootFallback();
     setBootStateSafe('auth-required', { text: options.text, subtext: options.subtext });
     if (typeof window.showLoginForm === 'function') {
       window.showLoginForm();
@@ -753,18 +764,21 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       window.setActiveScreen('loginScreen');
     }
     if (typeof window.hideBootLoaderElement === 'function') {
-      window.hideBootLoaderElement();
+      window.hideBootLoaderElement({ force: true });
     }
   }
 
   function showLandingScreen(options = {}) {
     const keepLoader = options.keepLoader === true;
+    if (!keepLoader) {
+      clearLocalBootFallback();
+    }
     if (!keepLoader && typeof window.showLanding === 'function') {
       window.showLanding();
       return;
     }
     if (!keepLoader && typeof window.hideBootLoaderElement === 'function') {
-      window.hideBootLoaderElement();
+      window.hideBootLoaderElement({ force: true });
     }
     if (typeof window.setActiveScreen === 'function') {
       window.setActiveScreen('landingScreen');
@@ -838,6 +852,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   }
 
   function showBootErrorState(message, detail) {
+    clearLocalBootFallback();
     setBootStateSafe('boot-error', {
       text: message || 'Cloud sync needs attention',
       subtext: detail || 'We could not load your workspace. Retry or log out.',
@@ -4653,6 +4668,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   }
 
   async function bootstrapInitialSession(options = {}) {
+    const bootContext = options.bootContext || getStartupBootContext();
     if (_bootstrapPromise) {
       try {
         return await withTimeout(
@@ -4671,7 +4687,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     const loggedOutScreen = options.loggedOutScreen || 'login';
     if (!quietIfNoSession) {
       setBootStateSafe('loading-session');
-      scheduleLocalSessionRestoreFallback();
+      scheduleLocalSessionRestoreFallback({ bootContext });
     }
     let session = null;
     try {
@@ -4691,7 +4707,9 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
     if (!session?.user) {
       clearLocalBootFallback();
-      if (loggedOutScreen === 'landing') {
+      if (bootContext === 'app-refresh' && hasStoredSupabaseSessionHint()) {
+        showBootErrorState('Session restore needs attention', 'Retry to reconnect to Star Paper, or log out and sign in again.');
+      } else if (loggedOutScreen === 'landing') {
         showLandingScreen();
       } else {
         showLoginScreen();
@@ -4699,7 +4717,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       return false;
     }
     setBootStateSafe('loading-session');
-    scheduleLocalSessionRestoreFallback();
+    scheduleLocalSessionRestoreFallback({ bootContext });
     return runBootstrapTask(() => bootstrapFromSupabaseSession(session, {
       remember: true,
       showWelcome: false,
@@ -4743,13 +4761,26 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       // Order matters: exchange the OAuth code FIRST, then check for a stored session.
       // exchangeCodeForSession writes to Supabase internal storage;
       // the subsequent getSession() call reads it back.
-      handleAuthRedirect().then((result) => {
+      withTimeout(
+        () => handleAuthRedirect(),
+        bootContext === 'auth-callback' ? 14000 : 6000,
+        'handleAuthRedirect'
+      ).catch((err) => {
+        warn('Auth redirect handling timed out:', err);
+        window.__spAuthRedirectInProgress = false;
+        if (bootContext === 'auth-callback') {
+          showBootErrorState('Session restore stalled', 'Retry to reconnect to Star Paper, or log out and sign in again.');
+          return { status: 'timeout', shouldBootstrapStoredSession: false };
+        }
+        return { status: 'timeout', shouldBootstrapStoredSession: true };
+      }).then((result) => {
         if (result?.shouldBootstrapStoredSession === false) {
           return;
         }
         bootstrapInitialSession({
           quietIfNoSession: bootContext === 'cold-start',
           loggedOutScreen: bootContext === 'cold-start' ? 'landing' : 'login',
+          bootContext,
         });
       });
 
@@ -4758,8 +4789,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
       if (shouldShowBootLoader && typeof window.showBootLoaderElement === 'function') {
         window.showBootLoaderElement();
+        scheduleLocalSessionRestoreFallback({ bootContext });
       }
-      scheduleLocalSessionRestoreFallback();
     };
 
     if (document.readyState === 'loading') {
