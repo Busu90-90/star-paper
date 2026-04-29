@@ -48,6 +48,18 @@ const SP_CURRENCIES = {
   EUR: { symbol: 'â‚¬',   name: 'Euro',               rate: 0.00023},
 };
 
+const SP_TEAM_ROLE_PRESETS = {
+  owner:   { label: 'Owner',   read: true, edit: true, finance: true, reports: true, admin: true },
+  admin:   { label: 'Admin',   read: true, edit: true, finance: true, reports: true, admin: true },
+  manager: { label: 'Editor',  read: true, edit: true, finance: false, reports: false, admin: false },
+  editor:  { label: 'Editor',  read: true, edit: true, finance: false, reports: false, admin: false },
+  finance: { label: 'Finance', read: true, edit: true, finance: true, reports: true, admin: false },
+  reports: { label: 'Reports', read: true, edit: false, finance: false, reports: true, admin: false },
+  viewer:  { label: 'Viewer',  read: true, edit: false, finance: false, reports: false, admin: false },
+};
+
+const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
+
 // â”€â”€ BOOTSTRAP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 (async function initStarPaperSupabase() {
   'use strict';
@@ -93,6 +105,7 @@ const SP_CURRENCIES = {
   let _profile  = null;
   let _activeTeamId = null;
   let _activeTeamRole = null;
+  let _activeTeamPermissions = null;
   let _currency = 'UGX'; // FIXED: currency comes from Supabase/profile data, not app-owned localStorage.
   let _realtimeChannel = null;
   let _coreRealtimeChannel = null;
@@ -110,6 +123,7 @@ const SP_CURRENCIES = {
   let _workspaceResolved = false;
   let _workspaceRequiresSelection = false;
   let _workspaceResolutionPromise = null;
+  let _localBootFallbackTimer = null;
 
   // â”€â”€ SYNC RELIABILITY: Retry Queue + Status Indicator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const RETRY_QUEUE_STORAGE_KEY = 'sp_retry_queue';
@@ -695,6 +709,40 @@ const SP_CURRENCIES = {
     }
   }
 
+  function isLocalDevOrigin() {
+    return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+  }
+
+  function clearLocalBootFallback() {
+    if (_localBootFallbackTimer) {
+      clearTimeout(_localBootFallbackTimer);
+      _localBootFallbackTimer = null;
+    }
+  }
+
+  function scheduleLocalSessionRestoreFallback() {
+    if (!isLocalDevOrigin() || hasAuthCallbackInUrl()) return;
+    clearLocalBootFallback();
+    _localBootFallbackTimer = setTimeout(() => {
+      _localBootFallbackTimer = null;
+      const loader = document.getElementById('appBootLoader');
+      if (window.__spAppBooted || loader?.dataset.state !== 'loading-session') return;
+      warn('Local session restore stalled; falling back to landing for localhost testing.');
+      window.__spSuppressStoredSessionBootstrap = true;
+      window.__spAuthRedirectInProgress = false;
+      showLandingScreen();
+    }, 8000);
+  }
+
+  function hasLocalThemePreference() {
+    try {
+      const value = localStorage.getItem('starPaperTheme');
+      return value === 'light' || value === 'dark';
+    } catch (_err) {
+      return false;
+    }
+  }
+
   function showLoginScreen(options = {}) {
     setBootStateSafe('auth-required', { text: options.text, subtext: options.subtext });
     if (typeof window.showLoginForm === 'function') {
@@ -1059,6 +1107,24 @@ const SP_CURRENCIES = {
     return null;
   }
 
+  async function ensureTeamActionSession() {
+    let session = await ensureSupabaseSession({ silent: true, clearIfMissing: false });
+    if (session?.user) return session;
+
+    try {
+      const { data, error } = await db.auth.getSession();
+      if (!error && data?.session?.user) {
+        _session = data.session;
+        try { localStorage.removeItem('sp_logged_out'); } catch (_err) {}
+        return data.session;
+      }
+    } catch (err) {
+      warn('Team session restore failed:', err);
+    }
+
+    return null;
+  }
+
   function getContext() {
     // If user has an active team, scope data to team. Otherwise solo mode.
     return _activeTeamId
@@ -1070,11 +1136,65 @@ const SP_CURRENCIES = {
     return _activeTeamRole;
   }
 
-  function setActiveTeamRole(role) {
-    _activeTeamRole = role || null;
-    if (typeof window.setTeamRole === 'function') {
+  function normalizeTeamRole(role) {
+    const normalized = String(role || 'viewer').trim().toLowerCase();
+    if (normalized === 'manager') return 'editor';
+    return SP_TEAM_ROLE_PRESETS[normalized] ? normalized : 'viewer';
+  }
+
+  function permissionsForRole(role, rawPermissions = null) {
+    const roleKey = normalizeTeamRole(role);
+    const legacyKey = String(role || '').trim().toLowerCase();
+    const preset = SP_TEAM_ROLE_PRESETS[legacyKey] || SP_TEAM_ROLE_PRESETS[roleKey] || SP_TEAM_ROLE_PRESETS.viewer;
+    const raw = rawPermissions && typeof rawPermissions === 'object' && !Array.isArray(rawPermissions)
+      ? rawPermissions
+      : {};
+    return {
+      read: raw.read !== undefined ? Boolean(raw.read) : Boolean(preset.read),
+      edit: raw.edit !== undefined ? Boolean(raw.edit) : Boolean(preset.edit),
+      finance: raw.finance !== undefined ? Boolean(raw.finance) : Boolean(preset.finance),
+      reports: raw.reports !== undefined ? Boolean(raw.reports) : Boolean(preset.reports),
+      admin: raw.admin !== undefined ? Boolean(raw.admin) : Boolean(preset.admin),
+    };
+  }
+
+  function roleLabel(role) {
+    const roleKey = normalizeTeamRole(role);
+    return (SP_TEAM_ROLE_PRESETS[role] || SP_TEAM_ROLE_PRESETS[roleKey] || SP_TEAM_ROLE_PRESETS.viewer).label;
+  }
+
+  function normalizeTeamMember(row) {
+    const profile = row?.profiles || {};
+    const role = normalizeTeamRole(row?.role);
+    const permissions = permissionsForRole(row?.role, row?.permissions);
+    return {
+      ...profile,
+      userId: row?.user_id,
+      role,
+      roleLabel: roleLabel(row?.role),
+      permissions,
+      joinedAt: row?.joined_at,
+    };
+  }
+
+  function getActiveTeamPermissions() {
+    return _activeTeamPermissions || permissionsForRole(_activeTeamRole);
+  }
+
+  function setActiveTeamAccess(role, permissions) {
+    const normalizedRole = role ? normalizeTeamRole(role) : null;
+    _activeTeamRole = normalizedRole;
+    _activeTeamPermissions = normalizedRole ? permissionsForRole(normalizedRole, permissions) : null;
+    if (typeof window.setTeamAccess === 'function') {
+      window.setTeamAccess(_activeTeamRole, _activeTeamPermissions);
+    } else if (typeof window.setTeamRole === 'function') {
       window.setTeamRole(_activeTeamRole);
     }
+  }
+
+  function setActiveTeamRole(role, permissions) {
+    _activeTeamRole = role || null;
+    setActiveTeamAccess(_activeTeamRole, permissions);
   }
 
   function normalizeTeamId(teamId) {
@@ -1095,7 +1215,7 @@ const SP_CURRENCIES = {
     } catch (_err) {}
 
     if (options.role !== undefined) {
-      setActiveTeamRole(options.role);
+      setActiveTeamRole(options.role, options.permissions || null);
     } else if (!normalizedTeamId) {
       setActiveTeamRole(null);
     }
@@ -1156,6 +1276,7 @@ const SP_CURRENCIES = {
       await persistActiveTeam(selectedTeamId, {
         persistRemote,
         role: activeTeam?.myRole || null,
+        permissions: activeTeam?.myPermissions || null,
         profile,
       });
 
@@ -2768,6 +2889,7 @@ const SP_CURRENCIES = {
 
   async function bootstrapFromSupabaseSession(session, options = {}) {
     log('bootstrap.start');
+    clearLocalBootFallback();
     const activeSession = session || _session || await getSession();
     if (!activeSession?.user) return false;
     setBootStateSafe('booting-data');
@@ -2860,8 +2982,8 @@ const SP_CURRENCIES = {
       if (profile?.preferred_currency) {
         applyCurrency(profile.preferred_currency);
       }
-      if (profile?.preferred_theme && typeof window.applyTheme === 'function') {
-        window.applyTheme(profile.preferred_theme, { persist: false });
+      if (profile?.preferred_theme && typeof window.applyTheme === 'function' && !hasLocalThemePreference()) {
+        window.applyTheme(profile.preferred_theme, { persist: true, syncRemote: false });
       }
 
       try {
@@ -3325,7 +3447,8 @@ const SP_CURRENCIES = {
 
   // â”€â”€ TEAMS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async function createTeam(name) {
-    const ownerId = getOwnerId();
+    const session = await ensureTeamActionSession();
+    const ownerId = session?.user?.id || getOwnerId();
     if (!ownerId) throw new Error('Not logged in');
 
     // Use a single RPC call that inserts teams + team_members atomically.
@@ -3343,40 +3466,54 @@ const SP_CURRENCIES = {
 
   async function getMyTeams() {
     if (!getOwnerId()) return [];
-    const { data, error } = await db.from('team_members')
-      .select('role, teams(id, name, invite_code, owner_id)')
+    let { data, error } = await db.from('team_members')
+      .select('role, permissions, teams(id, name, invite_code, owner_id)')
       .eq('user_id', getOwnerId());
+    if (error && /permissions/i.test(error.message || '')) {
+      ({ data, error } = await db.from('team_members')
+        .select('role, teams(id, name, invite_code, owner_id)')
+        .eq('user_id', getOwnerId()));
+    }
     if (error) { warn('getMyTeams error:', error); return []; }
-    const teams = (data || []).map(row => ({ ...row.teams, myRole: row.role }));
+    const teams = (data || []).map(row => ({
+      ...row.teams,
+      myRole: normalizeTeamRole(row.role),
+      myRoleLabel: roleLabel(row.role),
+      myPermissions: permissionsForRole(row.role, row.permissions),
+    }));
     if (_activeTeamId) {
       const active = teams.find(t => t.id === _activeTeamId);
-      setActiveTeamRole(active?.myRole || null);
+      setActiveTeamRole(active?.myRole || null, active?.myPermissions || null);
     }
     return teams;
   }
 
   async function joinTeamByCode(inviteCode) {
+    const session = await ensureTeamActionSession();
+    if (!session?.user) {
+      throw new Error('Your session is still loading. Please try again in a moment.');
+    }
     // Single RPC replaces SELECT teams + INSERT team_members â€” one lock acquisition,
     // one round-trip, atomic. Prevents the lock contention that caused the timeout.
     const { data, error } = await db.rpc('join_team_by_code', {
       p_invite_code: inviteCode.trim().toLowerCase(),
-      p_user_id:     getOwnerId(),
+      p_user_id:     session.user.id,
     });
     if (error) throw new Error(error.message?.includes('Invalid invite code') ? 'Invalid invite code' : error.message);
     return typeof data === 'string' ? JSON.parse(data) : data;
   }
 
   async function getTeamMembers(teamId) {
-    const { data, error } = await db.from('team_members')
-      .select('user_id, role, joined_at, profiles(id, username, email, avatar)')
+    let { data, error } = await db.from('team_members')
+      .select('user_id, role, permissions, joined_at, profiles(id, username, email, avatar)')
       .eq('team_id', teamId);
+    if (error && /permissions/i.test(error.message || '')) {
+      ({ data, error } = await db.from('team_members')
+        .select('user_id, role, joined_at, profiles(id, username, email, avatar)')
+        .eq('team_id', teamId));
+    }
     if (error) { warn('getTeamMembers error:', error); return []; }
-    return (data || []).map(row => ({
-      ...row.profiles,
-      userId: row.user_id,
-      role: row.role,
-      joinedAt: row.joined_at,
-    }));
+    return (data || []).map(normalizeTeamMember);
   }
 
   async function switchTeam(teamId) {
@@ -3391,6 +3528,7 @@ const SP_CURRENCIES = {
     await persistActiveTeam(normalizedTeamId, {
       persistRemote: true,
       role: active?.myRole || null,
+      permissions: active?.myPermissions || null,
     });
     unsubscribeFromTeamNotifications();
     subscribeToCoreRealtime();
@@ -3435,11 +3573,19 @@ const SP_CURRENCIES = {
 
   async function updateTeamMemberRole(teamId, userId, role) {
     if (!teamId || !userId || !role) return;
+    const nextRole = normalizeTeamRole(role);
+    const nextPermissions = permissionsForRole(nextRole);
     try {
-      const { error } = await db.from('team_members')
-        .update({ role })
+      let { error } = await db.from('team_members')
+        .update({ role: nextRole, permissions: nextPermissions })
         .eq('team_id', teamId)
         .eq('user_id', userId);
+      if (error && /permissions/i.test(error.message || '')) {
+        ({ error } = await db.from('team_members')
+          .update({ role: nextRole })
+          .eq('team_id', teamId)
+          .eq('user_id', userId));
+      }
       if (error) throw error;
       toastSafe('Success', 'Member role updated.');
       showTeamModal();
@@ -3470,7 +3616,7 @@ const SP_CURRENCIES = {
     const previousTeamId = _activeTeamId;
     _activeTeamId = null;
     const personalData = await loadAllData();
-    await persistActiveTeam(teamId, { persistRemote: true, role: 'owner' });
+    await persistActiveTeam(teamId, { persistRemote: true, role: 'owner', permissions: permissionsForRole('owner') });
     if (personalData) {
       await saveAllData(personalData);
     }
@@ -3730,10 +3876,41 @@ const SP_CURRENCIES = {
     `;
   }
 
-  // Override team panel builder to include role management controls.
+  function buildTeamPermissionChips(permissions = {}) {
+    const chips = [];
+    if (permissions.read) chips.push('Read');
+    if (permissions.edit) chips.push('Edit');
+    if (permissions.finance) chips.push('Finance');
+    if (permissions.reports) chips.push('Reports');
+    if (permissions.admin) chips.push('Admin');
+    return `<div class="sp-team-permissions">${chips.map(chip => `<span>${chip}</span>`).join('')}</div>`;
+  }
+
+  function buildTeamModalStateHTML(title, message, actions = '') {
+    return `
+      <div class="sp-team-panel">
+        <div class="sp-team-panel-header">
+          <h3>Team Workspace</h3>
+          <button class="sp-modal-close" onclick="window.SP.closeTeamModal()"><i class="ph ph-x" aria-hidden="true"></i></button>
+        </div>
+        <div class="sp-team-empty-state">
+          <div class="sp-team-empty-title">${escapeHTML(title)}</div>
+          <p>${escapeHTML(message)}</p>
+          ${actions}
+        </div>
+      </div>
+    `;
+  }
+
   function buildTeamPanelHTML(teams, activeTeamId, members) {
     const activeTeam = teams.find(t => t.id === activeTeamId);
-    const isOwner = activeTeam && activeTeam.owner_id === getOwnerId();
+    const activeAccess = activeTeam?.myPermissions || getActiveTeamPermissions();
+    const isAdmin = Boolean(activeTeam && (activeTeam.owner_id === getOwnerId() || activeAccess.admin));
+    const statusText = activeTeam
+      ? `Logged in as ${activeTeam.myRoleLabel || roleLabel(activeTeam.myRole)} for ${activeTeam.name}`
+      : teams.length
+        ? 'Logged in on your personal workspace'
+        : 'Logged in with no team yet';
     const personalWorkspaceHTML = `
       <div class="sp-team-item ${!activeTeamId ? 'sp-team-item--active' : ''}"
            onclick="window.SP.switchTeam('')">
@@ -3745,24 +3922,26 @@ const SP_CURRENCIES = {
     const membersHTML = members.length ? members.map(m => {
       const displayName = m.username || m.email || 'Member';
       const isSelf = m.userId && m.userId === getOwnerId();
-      const canManageMember = isOwner && !isSelf && m.role !== 'owner';
+      const canManageMember = isAdmin && !isSelf && m.role !== 'owner';
       const roleControl = canManageMember
         ? `
             <select class="sp-team-role-select" onchange="window.SP.updateTeamMemberRole('${activeTeamId}','${m.userId}', this.value)">
-              <option value="manager" ${m.role === 'manager' ? 'selected' : ''}>Manager</option>
-              <option value="viewer" ${m.role === 'viewer' ? 'selected' : ''}>Viewer</option>
+              ${SP_TEAM_ROLE_ORDER.map(role => `
+                <option value="${role}" ${m.role === role ? 'selected' : ''}>${roleLabel(role)}</option>
+              `).join('')}
             </select>
           `
-        : `<div class="sp-team-member-role">${m.role}</div>`;
+        : `<div class="sp-team-member-role">${m.roleLabel || roleLabel(m.role)}</div>`;
       const removeButton = canManageMember
         ? `<button class="action-btn action-btn--danger sp-team-remove-btn" onclick="window.SP.removeTeamMember('${activeTeamId}','${m.userId}')">Remove</button>`
         : '';
       return `
         <div class="sp-team-member">
-          <div class="sp-team-member-avatar">${displayName[0].toUpperCase()}</div>
+          <div class="sp-team-member-avatar">${escapeHTML(displayName[0].toUpperCase())}</div>
           <div class="sp-team-member-info">
-            <div class="sp-team-member-name">${displayName}</div>
+            <div class="sp-team-member-name">${escapeHTML(displayName)} ${isSelf ? '<span class="sp-team-self">(you)</span>' : ''}</div>
             ${roleControl}
+            ${buildTeamPermissionChips(m.permissions)}
           </div>
           ${removeButton}
         </div>
@@ -3772,8 +3951,11 @@ const SP_CURRENCIES = {
     const teamsHTML = teams.map(t => `
       <div class="sp-team-item ${t.id === activeTeamId ? 'sp-team-item--active' : ''}"
            onclick="window.SP.switchTeam('${t.id}')">
-        <div class="sp-team-name">${t.name}</div>
-        <div class="sp-team-role">${t.myRole}</div>
+        <div>
+          <div class="sp-team-name">${escapeHTML(t.name || 'Team')}</div>
+          ${t.id === activeTeamId ? buildTeamPermissionChips(t.myPermissions) : ''}
+        </div>
+        <div class="sp-team-role">${escapeHTML(t.myRoleLabel || roleLabel(t.myRole))}</div>
       </div>
     `).join('');
 
@@ -3781,7 +3963,13 @@ const SP_CURRENCIES = {
       <div class="sp-team-panel">
         <div class="sp-team-panel-header">
           <h3>Team Workspace</h3>
-          <button class="sp-modal-close" onclick="document.getElementById('spTeamModal').style.display='none'"><i class="ph ph-x" aria-hidden="true"></i></button>
+          <button class="sp-modal-close" onclick="window.SP.closeTeamModal()"><i class="ph ph-x" aria-hidden="true"></i></button>
+        </div>
+
+        <div class="sp-team-status-card">
+          <div class="sp-team-status-label">Current profile</div>
+          <div class="sp-team-status-title">${escapeHTML(statusText)}</div>
+          ${activeTeam ? buildTeamPermissionChips(activeAccess) : '<p class="sp-muted">Personal data stays private until you switch into a team.</p>'}
         </div>
 
         <div class="sp-team-section">
@@ -3802,9 +3990,9 @@ const SP_CURRENCIES = {
             <label>Invite Code</label>
             <div class="sp-team-code-row">
               <code id="spTeamInviteCode">${activeTeam?.invite_code || '-'}</code>
-              <button class="action-btn" onclick="window.SP.copyInviteCode()">Copy</button>
+              ${isAdmin ? '<button class="action-btn" onclick="window.SP.copyInviteCode()">Copy</button>' : ''}
             </div>
-            <p class="sp-muted">Share this code so others can join your team.</p>
+            <p class="sp-muted">${isAdmin ? 'Share this code so others can join as read-only members.' : 'Only admins can share invite codes.'}</p>
           </div>
         </div>
         <div class="sp-team-section">
@@ -3821,16 +4009,19 @@ const SP_CURRENCIES = {
     `;
   }
 
-  async function showTeamModal() {
-    // Guard: must be logged in (retry session fetch once)
-    if (!getOwnerId()) {
-      await ensureSupabaseSession({ silent: false, clearIfMissing: true });
-    }
-    if (!getOwnerId()) {
-      toastSafe('Info', 'Please log in to access Team features.');
-      return;
-    }
+  function closeTeamModal() {
+    const modal = document.getElementById('spTeamModal');
+    if (modal) modal.style.display = 'none';
+    document.body.style.overflow = '';
+    unsubscribeFromChat();
+  }
 
+  function showLoginPrompt() {
+    closeTeamModal();
+    showLoginScreen();
+  }
+
+  async function showTeamModal() {
     let modal = document.getElementById('spTeamModal');
     if (!modal) {
       modal = document.createElement('div');
@@ -3838,7 +4029,7 @@ const SP_CURRENCIES = {
       modal.className = 'sp-admin-modal';
       modal.style.display = 'none';
       modal.innerHTML = `
-        <div class="sp-modal-backdrop" onclick="this.parentElement.style.display='none'"></div>
+        <div class="sp-modal-backdrop" onclick="window.SP.closeTeamModal()"></div>
         <div class="sp-modal-box" style="max-width:560px;padding:0;">
           <div id="spTeamPanelContent" style="padding:24px;">
             <div style="text-align:center;padding:24px;opacity:0.6;">Loadingâ€¦</div>
@@ -3850,6 +4041,25 @@ const SP_CURRENCIES = {
     // Show modal immediately with loading state
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
+    const content = document.getElementById('spTeamPanelContent');
+    if (content) {
+      content.innerHTML = buildTeamModalStateHTML('Checking your session', 'One moment while Star Paper confirms your signed-in account.');
+    }
+
+    const session = getOwnerId()
+      ? (_session || await ensureTeamActionSession())
+      : await ensureTeamActionSession();
+
+    if (!session?.user && !getOwnerId()) {
+      if (content) {
+        content.innerHTML = buildTeamModalStateHTML(
+          'Sign in required',
+          'You need an active account session before creating or joining a team.',
+          '<div class="sp-team-actions"><button class="action-btn" onclick="window.SP.showLoginPrompt()">Log in</button></div>'
+        );
+      }
+      return;
+    }
 
     // Hard 8-second timeout â€” if the DB query hangs (e.g. recursive RLS),
     // we reject immediately so the user sees an error instead of infinite spin.
@@ -3864,7 +4074,7 @@ const SP_CURRENCIES = {
     try {
       const teams   = await withTimeout(getMyTeams(), 8000, 'getMyTeams');
       const active = teams.find(t => t.id === _activeTeamId);
-      setActiveTeamRole(active?.myRole || null);
+      setActiveTeamRole(active?.myRole || null, active?.myPermissions || null);
       const members = _activeTeamId
         ? await withTimeout(getTeamMembers(_activeTeamId), 8000, 'getTeamMembers')
         : [];
@@ -3940,12 +4150,23 @@ const SP_CURRENCIES = {
   async function showCreateTeamForm() {
     const name = prompt('Enter a name for your team:');
     if (!name?.trim()) return;
+    const copyPersonalData = confirm('Copy your current personal workspace data into this team?\n\nOK = copy personal data into the team.\nCancel = start this team empty.');
     try {
       // Await createTeam fully â€” the RPC lock must be released before showTeamModal
       // fires getMyTeams(), otherwise two lock acquisitions overlap and race.
       const team = await createTeam(name.trim());
-      toastSafe('Success', `Team "${escapeHTML(team.name)}" created! Migrating your data...`);
-      await migratePersonalDataToTeam(team.id);
+      if (copyPersonalData) {
+        toastSafe('Success', `Team "${escapeHTML(team.name)}" created. Copying your personal data...`);
+        await migratePersonalDataToTeam(team.id);
+      } else {
+        toastSafe('Success', `Team "${escapeHTML(team.name)}" created. Starting empty.`);
+        await persistActiveTeam(team.id, {
+          persistRemote: true,
+          role: 'owner',
+          permissions: permissionsForRole('owner'),
+        });
+        await reloadForResolvedWorkspace({ forceShowApp: true, runMigration: false });
+      }
       // Small yield so the JS event loop fully clears the previous lock state
       await new Promise(r => setTimeout(r, 80));
       showTeamModal();
@@ -4450,6 +4671,7 @@ const SP_CURRENCIES = {
     const loggedOutScreen = options.loggedOutScreen || 'login';
     if (!quietIfNoSession) {
       setBootStateSafe('loading-session');
+      scheduleLocalSessionRestoreFallback();
     }
     let session = null;
     try {
@@ -4468,6 +4690,7 @@ const SP_CURRENCIES = {
       return false;
     }
     if (!session?.user) {
+      clearLocalBootFallback();
       if (loggedOutScreen === 'landing') {
         showLandingScreen();
       } else {
@@ -4476,6 +4699,7 @@ const SP_CURRENCIES = {
       return false;
     }
     setBootStateSafe('loading-session');
+    scheduleLocalSessionRestoreFallback();
     return runBootstrapTask(() => bootstrapFromSupabaseSession(session, {
       remember: true,
       showWelcome: false,
@@ -4498,6 +4722,10 @@ const SP_CURRENCIES = {
     initLocalSyncBroadcast();
     restoreRetryQueue();
     bindAutoSync();
+    const localColdStart = isLocalDevOrigin() && !hasAuthCallbackInUrl();
+    if (localColdStart) {
+      window.__spSuppressStoredSessionBootstrap = true;
+    }
 
     // handleAuthRedirect() and bootstrapFromStoredSession() must only run AFTER
     // app.js has fully executed â€” otherwise showApp/loadUserData donâ€™t exist yet
@@ -4506,6 +4734,12 @@ const SP_CURRENCIES = {
     const onAppReady = () => {
       const bootContext = getStartupBootContext();
       const shouldShowBootLoader = bootContext === 'auth-callback' || bootContext === 'app-refresh';
+      if (localColdStart) {
+        setTimeout(showLandingScreen, 0);
+        setTimeout(patchAppAuth, 0);
+        setTimeout(injectSidebarButtons, 1200);
+        return;
+      }
       // Order matters: exchange the OAuth code FIRST, then check for a stored session.
       // exchangeCodeForSession writes to Supabase internal storage;
       // the subsequent getSession() call reads it back.
@@ -4525,6 +4759,7 @@ const SP_CURRENCIES = {
       if (shouldShowBootLoader && typeof window.showBootLoaderElement === 'function') {
         window.showBootLoaderElement();
       }
+      scheduleLocalSessionRestoreFallback();
     };
 
     if (document.readyState === 'loading') {
@@ -4594,9 +4829,12 @@ const SP_CURRENCIES = {
     removeTeamMember,
     migratePersonalDataToTeam,
     showTeamModal,
+    closeTeamModal,
+    showLoginPrompt,
     showCreateTeamForm,
     showJoinTeamForm,
     copyInviteCode,
+    teamRoles: SP_TEAM_ROLE_PRESETS,
 
     // Chat
     loadMessages,
@@ -4616,6 +4854,7 @@ const SP_CURRENCIES = {
     getOwnerId,
     getActiveTeamId: () => _activeTeamId,
     getActiveTeamRole,
+    getActiveTeamPermissions,
     getProfileState: () => _profile,
 
     // Raw client (for advanced use)
@@ -4653,17 +4892,33 @@ const SP_CURRENCIES = {
       border: 1px solid var(--sp-shell-border-strong, rgba(212,168,67,.3));
       border-radius: 24px;
       background: var(--sp-shell-panel, #14151c);
+      color: var(--text-primary, #f5f1e8);
       box-shadow: 0 28px 80px rgba(0,0,0,.48);
     }
     #spCurrencyList .action-btn {
       border-radius: 16px;
       border-color: var(--sp-shell-border, rgba(58,61,82,.84));
       background: rgba(255,255,255,.035);
+      color: var(--text-primary, #f5f1e8);
+      font-weight: 750;
+      justify-content: space-between;
+    }
+    #spCurrencyList .action-btn span {
+      color: var(--text-primary, #f5f1e8);
     }
     #spCurrencyList .action-btn--active,
     #spCurrencyList .action-btn:hover {
       border-color: var(--sp-shell-border-strong, rgba(212,168,67,.3));
       background: rgba(212,168,67,.12);
+      color: #ffe8a3;
+    }
+    body.light-theme #spCurrencyList .action-btn {
+      color: #20160a;
+      background: rgba(255,255,255,.92);
+      border-color: rgba(120,94,33,.32);
+    }
+    body.light-theme #spCurrencyList .action-btn span {
+      color: #20160a;
     }
     /* Team panel */
     .sp-team-panel { display:flex; flex-direction:column; gap:16px; }
@@ -4672,17 +4927,39 @@ const SP_CURRENCIES = {
     .sp-team-section h4 { font-size:12px; text-transform:uppercase; letter-spacing:.07em; color:var(--text-muted,#888); margin:0 0 10px; }
     .sp-team-item { display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-radius:8px; border:1px solid var(--border,rgba(255,255,255,.08)); cursor:pointer; margin-bottom:6px; }
     .sp-team-item--active { border-color:var(--gold,#FFB300); background:rgba(255,179,0,.05); }
-    .sp-team-name { font-size:14px; font-weight:600; }
-    .sp-team-role { font-size:11px; text-transform:uppercase; color:var(--text-muted,#888); }
+    .sp-team-name { font-size:14px; font-weight:700; color:var(--text-primary,#f5f1e8); }
+    .sp-team-role { font-size:11px; text-transform:uppercase; color:var(--gold,#FFB300); }
     .sp-team-member { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border,rgba(255,255,255,.05)); }
     .sp-team-member-avatar { width:32px; height:32px; border-radius:50%; background:var(--gold,#FFB300); color:#000; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex-shrink:0; }
-    .sp-team-member-name { font-size:13px; font-weight:600; }
+    .sp-team-member-name { font-size:13px; font-weight:700; color:var(--text-primary,#f5f1e8); }
     .sp-team-member-role { font-size:11px; color:var(--text-muted,#888); text-transform:uppercase; }
     .sp-team-invite-code { margin-top:10px; }
     .sp-team-invite-code label { font-size:12px; text-transform:uppercase; color:var(--text-muted,#888); display:block; margin-bottom:6px; }
     .sp-team-code-row { display:flex; align-items:center; gap:8px; }
     .sp-team-code-row code { background:var(--surface,rgba(255,255,255,.05)); padding:6px 12px; border-radius:6px; font-size:16px; letter-spacing:.1em; font-family:monospace; }
     .sp-team-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+    .sp-team-status-card,
+    .sp-team-empty-state {
+      border:1px solid var(--sp-shell-border,rgba(58,61,82,.84));
+      background:rgba(255,255,255,.045);
+      border-radius:14px;
+      padding:14px;
+    }
+    .sp-team-status-label { font-size:11px; text-transform:uppercase; color:var(--gold,#FFB300); letter-spacing:.07em; }
+    .sp-team-status-title,
+    .sp-team-empty-title { color:var(--text-primary,#f5f1e8); font-weight:800; margin-top:4px; }
+    .sp-team-empty-state p { color:var(--text-secondary,#d9d0be); line-height:1.5; }
+    .sp-team-permissions { display:flex; gap:5px; flex-wrap:wrap; margin-top:6px; }
+    .sp-team-permissions span {
+      border:1px solid rgba(212,168,67,.28);
+      background:rgba(212,168,67,.1);
+      color:#ffe8a3;
+      border-radius:999px;
+      padding:2px 7px;
+      font-size:10px;
+      font-weight:750;
+    }
+    .sp-team-self { color:var(--text-muted,#aaa); font-weight:600; }
     /* Chat */
     .sp-chat-messages { max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding:8px 0; border-top:1px solid var(--border,rgba(255,255,255,.08)); }
     .sp-chat-message { display:flex; flex-direction:column; gap:2px; max-width:88%; }

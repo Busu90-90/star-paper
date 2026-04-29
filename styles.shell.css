@@ -29,8 +29,12 @@ html:not(.sp-prem-off) #appContainer {
 }
 
 html:not(.sp-prem-off) body.light-theme #appContainer {
+  --text-primary: #17130b;
+  --text-secondary: #342816;
+  --text-muted: #5b4b32;
+  --text-dim: #6e5c3b;
   --sp-shell-border-soft: rgba(137, 117, 79, 0.1);
-  --sp-shell-border: rgba(187, 165, 122, 0.32);
+  --sp-shell-border: rgba(120, 94, 33, 0.34);
   --sp-shell-border-strong: rgba(184, 137, 47, 0.34);
   --sp-shell-panel:
     linear-gradient(180deg, rgba(255, 255, 255, 0.985) 0%, rgba(246, 239, 227, 0.98) 100%);
@@ -598,6 +602,8 @@ html:not(.sp-prem-off) body.light-theme #appContainer :is(
   .task-date-input
 ) {
   background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(120, 94, 33, 0.38);
+  color: var(--text-primary);
 }
 
 html:not(.sp-prem-off) #appContainer :is(
@@ -653,6 +659,28 @@ html:not(.sp-prem-off) #appContainer :is(.action-btn, .back-btn, .back-to-list) 
   box-shadow: none;
 }
 
+html:not(.sp-prem-off) body:not(.light-theme) #appContainer :is(.action-btn, .back-btn, .back-to-list, .settings-inline-action, .settings-currency-btn) {
+  color: #f4ecd8;
+  border-color: rgba(212, 168, 67, 0.24);
+}
+
+html:not(.sp-prem-off) body:not(.light-theme) #appContainer :is(.action-btn, .back-btn, .back-to-list, .settings-inline-action, .settings-currency-btn):hover {
+  color: #ffe7a1;
+  border-color: rgba(212, 168, 67, 0.42);
+  background: rgba(212, 168, 67, 0.1);
+}
+
+html:not(.sp-prem-off) body.light-theme #appContainer :is(.action-btn, .back-btn, .back-to-list, .profile-upload-btn, .settings-currency-btn, .settings-inline-action) {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(249, 242, 229, 0.9));
+  border-color: rgba(120, 94, 33, 0.38);
+  color: #1f1708;
+}
+
+html:not(.sp-prem-off) body.light-theme #appContainer :is(.action-btn, .back-btn, .back-to-list, .profile-upload-btn, .settings-currency-btn, .settings-inline-action) :is(.ph, svg) {
+  color: currentColor;
+  opacity: 1;
+}
+
 html:not(.sp-prem-off) #appContainer :is(
   .btn-primary,
   .add-btn,
@@ -680,6 +708,12 @@ html:not(.sp-prem-off) #appContainer :is(.action-btn, .back-btn, .back-to-list, 
   background: rgba(255, 255, 255, 0.06);
   border-color: var(--sp-shell-border-strong);
   color: var(--text-primary);
+}
+
+html:not(.sp-prem-off) body.light-theme #appContainer :is(.action-btn, .back-btn, .back-to-list, .profile-upload-btn):hover {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(244, 234, 214, 0.96));
+  border-color: rgba(122, 88, 13, 0.58);
+  color: #0f0a02;
 }
 
 html:not(.sp-prem-off) #appContainer .action-btn--danger {
@@ -719,6 +753,7 @@ html:not(.sp-prem-off) #appContainer .table-wrap {
 
 html:not(.sp-prem-off) body.light-theme #appContainer .table-wrap {
   background: rgba(255, 255, 255, 0.78);
+  border-color: rgba(120, 94, 33, 0.34);
 }
 
 html:not(.sp-prem-off) #appContainer table {
@@ -736,6 +771,11 @@ html:not(.sp-prem-off) #appContainer th {
 
 html:not(.sp-prem-off) body.light-theme #appContainer th {
   background: rgba(244, 237, 226, 0.96);
+  color: #42351f;
+}
+
+html:not(.sp-prem-off) body.light-theme #appContainer td {
+  color: #1f1a12;
 }
 
 html:not(.sp-prem-off) #appContainer td {
@@ -969,6 +1009,7 @@ html:not(.sp-prem-off) #appContainer .bottom-nav {
 
 html:not(.sp-prem-off) body.light-theme #appContainer .bottom-nav {
   background: rgba(255, 250, 240, 0.96);
+  border-top-color: rgba(120, 94, 33, 0.34);
 }
 
 html:not(.sp-prem-off) #appContainer .bottom-nav-item {
@@ -979,10 +1020,20 @@ html:not(.sp-prem-off) #appContainer .bottom-nav-item {
   color: var(--text-dim);
 }
 
+html:not(.sp-prem-off) body.light-theme #appContainer .bottom-nav-item {
+  color: #4d3f27;
+}
+
 html:not(.sp-prem-off) #appContainer .bottom-nav-item.active,
 html:not(.sp-prem-off) #appContainer .bottom-nav-item:hover {
   background: rgba(212, 168, 67, 0.12);
   color: var(--text-primary);
+}
+
+html:not(.sp-prem-off) body.light-theme #appContainer .bottom-nav-item.active,
+html:not(.sp-prem-off) body.light-theme #appContainer .bottom-nav-item:hover {
+  background: rgba(184, 137, 47, 0.16);
+  color: #7a580d;
 }
 
 html:not(.sp-prem-off) #appContainer .bottom-nav-item.active::after {
@@ -1562,6 +1613,7 @@ html:not(.sp-prem-off) :is(.sp-palette, .sp-cheatsheet) {
 }
 
 html:not(.sp-prem-off) body.light-theme :is(.sp-palette, .sp-cheatsheet) {
+  border-color: rgba(120, 94, 33, 0.34);
   box-shadow: 0 34px 80px rgba(52, 34, 7, 0.18);
 }
 
@@ -1598,6 +1650,12 @@ html:not(.sp-prem-off) .sp-palette__result[aria-selected="true"] {
   border-color: rgba(212, 168, 67, 0.26);
 }
 
+html:not(.sp-prem-off) body.light-theme .sp-palette__result:hover,
+html:not(.sp-prem-off) body.light-theme .sp-palette__result[aria-selected="true"] {
+  background: rgba(184, 137, 47, 0.14);
+  border-color: rgba(120, 94, 33, 0.32);
+}
+
 html:not(.sp-prem-off) .sp-palette__result-icon,
 html:not(.sp-prem-off) .sp-cheatsheet__row kbd,
 html:not(.sp-prem-off) .sp-palette__footer kbd,
@@ -1606,6 +1664,12 @@ html:not(.sp-prem-off) .sp-palette__esc {
   border-color: rgba(212, 168, 67, 0.24);
   color: var(--gold-amber);
   border-radius: 12px;
+}
+
+html:not(.sp-prem-off) body.light-theme :is(.sp-palette__result-icon, .sp-cheatsheet__row kbd, .sp-palette__footer kbd, .sp-palette__esc) {
+  background: rgba(184, 137, 47, 0.14);
+  border-color: rgba(120, 94, 33, 0.28);
+  color: #7a580d;
 }
 
 html:not(.sp-prem-off) .sp-palette__result-title,
@@ -2042,6 +2106,31 @@ html:not(.sp-prem-off) #appContainer .settings-currency-btn {
   margin: 0;
 }
 
+html:not(.sp-prem-off) #appContainer .settings-quick-launcher {
+  gap: 8px;
+  justify-content: center;
+}
+
+html:not(.sp-prem-off) #appContainer .settings-quick-launcher kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  padding: 2px 7px;
+  border: 1px solid rgba(212, 168, 67, 0.24);
+  border-radius: 8px;
+  background: rgba(212, 168, 67, 0.1);
+  color: var(--gold-amber);
+  font: 700 0.68rem/1 var(--font-ui);
+  letter-spacing: 0;
+}
+
+html:not(.sp-prem-off) body.light-theme #appContainer .settings-quick-launcher kbd {
+  border-color: rgba(120, 94, 33, 0.28);
+  background: rgba(184, 137, 47, 0.12);
+  color: #7a580d;
+}
+
 html:not(.sp-prem-off) #appContainer .settings-currency-btn {
   gap: 8px;
 }
@@ -2059,6 +2148,40 @@ html:not(.sp-prem-off) #appContainer #spCurrencyBadge {
   font-family: var(--font-mono);
   font-size: 0.72rem;
   letter-spacing: -0.03em;
+}
+
+html:not(.sp-prem-off) body:not(.light-theme) #appContainer .settings-currency-btn,
+html:not(.sp-prem-off) body:not(.light-theme) #appContainer .settings-currency-btn :is(.ph, svg) {
+  color: #f8edcf;
+}
+
+html:not(.sp-prem-off) body:not(.light-theme) #appContainer #spCurrencyBadge {
+  background: rgba(212, 168, 67, 0.18);
+  border-color: rgba(212, 168, 67, 0.42);
+  color: #ffe7a1;
+}
+
+html:not(.sp-prem-off) #spCurrencyModal .sp-modal-box {
+  color: var(--text-primary);
+}
+
+html:not(.sp-prem-off) #spCurrencyModal #spCurrencyList .action-btn {
+  color: var(--text-primary);
+  border-color: var(--sp-shell-border);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+html:not(.sp-prem-off) #spCurrencyModal #spCurrencyList .action-btn:hover,
+html:not(.sp-prem-off) #spCurrencyModal #spCurrencyList .action-btn--active {
+  color: #ffe7a1;
+  border-color: rgba(212, 168, 67, 0.44);
+  background: rgba(212, 168, 67, 0.14);
+}
+
+html:not(.sp-prem-off) body.light-theme #spCurrencyModal #spCurrencyList .action-btn {
+  color: #20160a;
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(120, 94, 33, 0.34);
 }
 
 html:not(.sp-prem-off) #appContainer .settings-admin-actions {

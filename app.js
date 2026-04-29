@@ -33,7 +33,28 @@ function initScrollAnimations() {
     document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
 }
 
-function hideBootLoaderElement() {
+function isBootRevealBlockingState(state) {
+    return ['booting-auth', 'loading-session', 'signing-in', 'booting-data', 'loading-app'].includes(state);
+}
+
+function isAppShellPaintReady() {
+    const app = document.getElementById('appContainer');
+    if (!app || !window.__spAppBooted) return false;
+    const style = window.getComputedStyle ? window.getComputedStyle(app) : null;
+    const isVisible = app.classList.contains('screen-active') &&
+        app.style.display !== 'none' &&
+        (!style || (style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0));
+    if (!isVisible) return false;
+    const rect = app.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+}
+
+function hideBootLoaderElement(options = {}) {
+    if (window.__spBootRevealPending && options.force !== true) {
+        hideBootLoaderWhenUiPainted({ requireAppReady: true, minDelayMs: 120 });
+        return;
+    }
+    window.__spBootRevealPending = false;
     document.documentElement.classList.remove('sp-force-boot');
     const loader = document.getElementById('appBootLoader');
     if (!loader) return;
@@ -53,10 +74,10 @@ function hideBootLoaderWhenUiPainted(options = {}) {
     const startedAt = Date.now();
 
     const hideWhenReady = () => {
-        const appReady = !requireAppReady || Boolean(window.__spAppBooted);
+        const appReady = !requireAppReady || isAppShellPaintReady();
         const elapsed = Date.now() - startedAt;
         if (appReady && elapsed >= minDelayMs) {
-            hideBootLoaderElement();
+            hideBootLoaderElement({ force: true });
             return;
         }
         setTimeout(hideWhenReady, appReady ? Math.max(0, minDelayMs - elapsed) : 80);
@@ -146,17 +167,36 @@ function getStartupBootContext() {
     }
     const marker = readBootContextMarker();
     if (marker === APP_BOOT_CONTEXT_AUTH_RETURN) {
-        return 'auth-callback';
+        clearAppShellBootContext();
     }
     // FIXED: treat persisted Supabase auth as an app refresh so landing never flashes for signed-in users.
     try {
-        if (window.__spSupabaseConfigured && localStorage.getItem('sp-starpaper-auth-v1') && localStorage.getItem('sp_logged_out') !== '1') {
+        if (!isLocalDevOrigin() && window.__spSupabaseConfigured && localStorage.getItem('sp-starpaper-auth-v1') && localStorage.getItem('sp_logged_out') !== '1') {
             return 'app-refresh';
         }
     } catch (_err) {
         // Ignore storage restrictions; Supabase bootstrap will decide the final screen.
     }
     return marker === APP_BOOT_CONTEXT_APP_SHELL ? 'app-refresh' : 'cold-start';
+}
+
+function isLocalDevOrigin() {
+    return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+}
+
+function scheduleLocalBootFallback(bootContext) {
+    if (!isLocalDevOrigin() || bootContext === 'auth-callback') return;
+    setTimeout(() => {
+        const loader = document.getElementById('appBootLoader');
+        if (window.__spAppBooted || loader?.dataset.state !== 'loading-session') return;
+        clearAppShellBootContext();
+        window.__spBootRevealPending = false;
+        document.documentElement.classList.remove('sp-force-boot');
+        if (typeof setActiveScreen === 'function') {
+            setActiveScreen('landingScreen');
+        }
+        hideBootLoaderElement({ force: true });
+    }, 8000);
 }
 
 const BOOT_STATE_MESSAGES = {
@@ -206,6 +246,7 @@ function setBootState(state, options = {}) {
     const nextSubtext = options.subtext ?? preset.subtext;
     const showActions = Boolean(options.showActions || state === 'boot-error');
     loader.dataset.state = state;
+    window.__spBootRevealPending = isBootRevealBlockingState(state);
     showBootLoaderElement();
 
     const textEl = document.getElementById('appBootLoaderText');
@@ -234,6 +275,7 @@ function initializeBootSequence() {
 
     if (bootContext === 'auth-callback' || bootContext === 'app-refresh') {
         setBootState('loading-session');
+        scheduleLocalBootFallback(bootContext);
         return;
     }
 
@@ -652,6 +694,7 @@ function getSectionIconMarkup(iconKey) {
         let currentUser = null;
         let currentManagerId = null;
         let currentTeamRole = null;
+        let currentTeamPermissions = null;
         let bookings = [];
         let expenses = [];
         let otherIncome = [];
@@ -1322,6 +1365,13 @@ function getSectionIconMarkup(iconKey) {
             return typeof window.SP?.getActiveTeamRole === 'function' ? window.SP.getActiveTeamRole() : null;
         }
 
+        function getActiveTeamPermissions() {
+            if (typeof window.SP?.getActiveTeamPermissions === 'function') {
+                return window.SP.getActiveTeamPermissions();
+            }
+            return currentTeamPermissions;
+        }
+
         function getActiveDataScopeKey() {
             const teamId = getActiveTeamId();
             if (teamId) return `team:${teamId}`;
@@ -1337,8 +1387,27 @@ function getSectionIconMarkup(iconKey) {
             return String(currentManagerId || currentUser || '');
         }
 
+        function hasTeamPermission(permission) {
+            const teamId = getActiveTeamId();
+            if (!teamId) return true;
+            const access = getActiveTeamPermissions() || {};
+            if (access.admin) return true;
+            return Boolean(access[permission]);
+        }
+
+        function fallbackTeamPermissions(role) {
+            const key = String(role || 'viewer').toLowerCase();
+            if (key === 'owner' || key === 'admin') return { read: true, edit: true, finance: true, reports: true, admin: true };
+            if (key === 'manager' || key === 'editor') return { read: true, edit: true, finance: false, reports: false, admin: false };
+            if (key === 'finance') return { read: true, edit: true, finance: true, reports: true, admin: false };
+            if (key === 'reports') return { read: true, edit: false, finance: false, reports: true, admin: false };
+            return { read: true, edit: false, finance: false, reports: false, admin: false };
+        }
+
         function isViewerRole() {
-            return currentTeamRole === 'viewer';
+            const teamId = getActiveTeamId();
+            if (!teamId) return false;
+            return !hasTeamPermission('edit');
         }
 
         function ensureReadOnlyBanner() {
@@ -1348,7 +1417,7 @@ function getSectionIconMarkup(iconKey) {
             banner = document.createElement('div');
             banner.id = 'spReadOnlyBanner';
             banner.className = 'sp-readonly-banner';
-            banner.textContent = 'Read-only access: viewer role cannot add, edit, or delete records.';
+            banner.textContent = 'Read-only access: this team role cannot add, edit, delete, or load mock records.';
             container.insertBefore(banner, container.firstChild);
             return banner;
         }
@@ -1356,6 +1425,8 @@ function getSectionIconMarkup(iconKey) {
         function applyReadOnlyMode() {
             const isViewer = isViewerRole();
             document.body.classList.toggle('sp-readonly', isViewer);
+            document.body.classList.toggle('sp-no-finance', Boolean(getActiveTeamId()) && !hasTeamPermission('finance'));
+            document.body.classList.toggle('sp-no-reports', Boolean(getActiveTeamId()) && !hasTeamPermission('reports'));
             const banner = ensureReadOnlyBanner();
             banner.style.display = isViewer ? 'block' : 'none';
             const appRoot = document.getElementById('appContainer') || document.body;
@@ -1382,11 +1453,20 @@ function getSectionIconMarkup(iconKey) {
         }
 
         function setTeamRole(role) {
-            currentTeamRole = role || null;
-            window.currentTeamRole = currentTeamRole;
-            applyReadOnlyMode();
+            setTeamAccess(role, null);
         }
         window.setTeamRole = setTeamRole;
+
+        function setTeamAccess(role, permissions) {
+            currentTeamRole = role || null;
+            currentTeamPermissions = permissions && typeof permissions === 'object'
+                ? { ...permissions }
+                : (currentTeamRole ? fallbackTeamPermissions(currentTeamRole) : null);
+            window.currentTeamRole = currentTeamRole;
+            window.currentTeamPermissions = currentTeamPermissions;
+            applyReadOnlyMode();
+        }
+        window.setTeamAccess = setTeamAccess;
 
         function guardReadOnly(actionLabel) {
             if (!isViewerRole()) return false;
@@ -1394,6 +1474,17 @@ function getSectionIconMarkup(iconKey) {
                 toastWarn(`Read-only access: you cannot ${actionLabel}.`);
             } else if (typeof toastInfo === 'function') {
                 toastInfo('Read-only access.');
+            }
+            return true;
+        }
+
+        function guardTeamPermission(permission, actionLabel) {
+            if (!getActiveTeamId() || hasTeamPermission(permission)) return false;
+            const permissionLabel = permission === 'finance' ? 'finance' : permission === 'reports' ? 'reports' : 'team';
+            if (typeof toastWarn === 'function') {
+                toastWarn(`This team role does not have ${permissionLabel} access to ${actionLabel}.`);
+            } else if (typeof toastInfo === 'function') {
+                toastInfo('Team permission required.');
             }
             return true;
         }
@@ -1447,7 +1538,7 @@ function getSectionIconMarkup(iconKey) {
         }
 
         function saveRevenueGoalFromInput(inputId, editorId) {
-            if (guardReadOnly('update revenue goals')) return;
+            if (guardTeamPermission('finance', 'update revenue goals')) return;
             const input = document.getElementById(inputId);
             if (!input) return;
             const value = Number(input.value);
@@ -1794,7 +1885,7 @@ function getSectionIconMarkup(iconKey) {
         }
 
         function saveBBF() {
-            if (guardReadOnly('update the balance brought forward')) return;
+            if (guardTeamPermission('finance', 'update the balance brought forward')) return;
             const select = document.getElementById('spBbfArtistSelect');
             const periodInput = document.getElementById('spBbfPeriodInput');
             const amountInput = document.getElementById('spBbfAmountInput');
@@ -2044,7 +2135,7 @@ function getSectionIconMarkup(iconKey) {
             document.getElementById('profileAvatarUpload')?.addEventListener('change', handleProfileAvatarUpload);
             document.getElementById('profileAvatarPresets')?.addEventListener('click', selectProfileAvatarPreset);
             document.getElementById('artistAvatarUpload')?.addEventListener('change', handleArtistAvatarUpload);
-            applyTheme(Storage.loadSync('starPaperTheme', 'dark'), { syncRemote: false });
+            applyTheme(getStoredThemePreference() || 'dark', { persist: false, syncRemote: false });
             document.addEventListener('input', cacheDrafts);
             window.addEventListener('beforeunload', cacheDrafts);
 
@@ -3840,14 +3931,39 @@ function getSectionIconMarkup(iconKey) {
             requestAnimationFrame(() => toggleSidebar(false));
         }
 
+        function normalizeThemeValue(theme) {
+            return theme === 'light' ? 'light' : 'dark';
+        }
+
+        function getStoredThemePreference() {
+            let stored = null;
+            try {
+                stored = localStorage.getItem('starPaperTheme');
+            } catch (_err) {
+                stored = null;
+            }
+            if (stored !== 'light' && stored !== 'dark') {
+                stored = Storage.loadSync('starPaperTheme', null);
+            }
+            return stored === 'light' || stored === 'dark' ? stored : null;
+        }
+
+        function hasStoredThemePreference() {
+            return Boolean(getStoredThemePreference());
+        }
+
         function applyTheme(theme, options = {}) {
             const opts = options && typeof options === 'object' ? options : {};
-            const isLight = theme === 'light';
+            const normalizedTheme = normalizeThemeValue(theme);
+            const isLight = normalizedTheme === 'light';
             const shouldPersist = opts.persist !== false;
             const shouldSync = shouldPersist && opts.syncRemote !== false;
             document.body.classList.toggle('light-theme', isLight);
             if (shouldPersist) {
-                Storage.saveSync('starPaperTheme', isLight ? 'light' : 'dark');
+                try {
+                    localStorage.setItem('starPaperTheme', normalizedTheme);
+                } catch (_err) {}
+                Storage.saveSync('starPaperTheme', normalizedTheme);
             }
             updateThemeIcons(isLight);
             syncSidebarThemeButtonState(isLight);
@@ -3855,7 +3971,7 @@ function getSectionIconMarkup(iconKey) {
                 updateDashboard();
             }
             if (shouldSync) {
-                syncCloudExtras();
+                syncCloudExtras({ includeTheme: true });
             }
         }
 
@@ -3868,6 +3984,9 @@ function getSectionIconMarkup(iconKey) {
             const nextTheme = isLight ? 'dark' : 'light';
             applyTheme(nextTheme);
         }
+
+        window.applyTheme = applyTheme;
+        window.hasStoredThemePreference = hasStoredThemePreference;
 
         function syncSidebarThemeButtonState(isLight) {
             const lightBtn = document.getElementById('sidebarLightBtn');
@@ -4699,8 +4818,8 @@ function showLoginForm() {
                 : [];
             saveAudienceMetricsForScope(activeScopeKey, audienceMetrics);
 
-            if (cloudData.theme && typeof applyTheme === 'function') {
-                applyTheme(cloudData.theme, { persist: false, syncRemote: false });
+            if (cloudData.theme && typeof applyTheme === 'function' && !window.__spAppBooted && !hasStoredThemePreference()) {
+                applyTheme(cloudData.theme, { persist: true, syncRemote: false });
             }
 
             syncWindowState();
@@ -4736,10 +4855,14 @@ function showLoginForm() {
             return await syncCloudExtras();
         }
 
-        window.SP_collectAllData = function collectAllData() {
+        window.SP_collectAllData = function collectAllData(options = {}) {
+            const opts = options && typeof options === 'object' ? options : {};
+            const includeTheme = opts.includeTheme === true;
             const scopeKey = getActiveDataScopeKey();
             const tasks = typeof window.loadTasks === 'function' ? window.loadTasks() : [];
-            const theme = document.body.classList.contains('light-theme') ? 'light' : 'dark';
+            const theme = includeTheme
+                ? (document.body.classList.contains('light-theme') ? 'light' : 'dark')
+                : null;
             const revenueAmount = scopeKey ? Number(revenueGoals[scopeKey] || 0) : 0;
             const revenueGoal = {
                 period: 'monthly',
@@ -4768,7 +4891,7 @@ function showLoginForm() {
                 });
             }
 
-            return {
+            const payload = {
                 bookings: Array.isArray(bookings) ? bookings : [],
                 expenses: Array.isArray(expenses) ? expenses : [],
                 otherIncome: Array.isArray(otherIncome) ? otherIncome : [],
@@ -4778,11 +4901,15 @@ function showLoginForm() {
                 revenueGoal,
                 bbfEntries,
                 closingThoughts,
-                theme,
             };
+            if (includeTheme) {
+                payload.theme = theme;
+            }
+            return payload;
         };
 
-        function syncCloudExtras() {
+        function syncCloudExtras(options = {}) {
+            const opts = options && typeof options === 'object' ? options : {};
             if (!hasAuthenticatedCloudSession()) {
                 window.__spLastCloudSyncPromise = Promise.resolve({
                     cloudSynced: false,
@@ -4810,7 +4937,7 @@ function showLoginForm() {
                 });
                 return window.__spLastCloudSyncPromise;
             }
-            const payload = window.SP_collectAllData();
+            const payload = window.SP_collectAllData({ includeTheme: opts.includeTheme === true });
             const saveFn = window.SP.queueCloudSync || window.SP.saveAllData;
             window.__spLastCloudSyncPromise = Promise.resolve(saveFn(payload)).then(() => ({
                 cloudSynced: true,
@@ -4877,8 +5004,12 @@ function showLoginForm() {
         }
 
         function loadMockPortfolioData() {
+            updateCurrentManagerContext();
             if (!currentManagerId) {
-                toastError('Please log in as a manager first.');
+                toastError('Please sign in first.');
+                return;
+            }
+            if (guardReadOnly('load mock data into this team')) {
                 return;
             }
 
@@ -5399,8 +5530,12 @@ function showLoginForm() {
         }
 
         function clearMockData() {
+            updateCurrentManagerContext();
             if (!currentManagerId) {
-                toastError('Please log in as a manager first.');
+                toastError('Please sign in first.');
+                return;
+            }
+            if (guardReadOnly('clear mock data from this team')) {
                 return;
             }
             const before = {
@@ -7491,7 +7626,7 @@ function showLoginForm() {
         }
 
         function showAddExpense() {
-            if (guardReadOnly('add expenses')) return;
+            if (guardTeamPermission('finance', 'add expenses')) return;
             // Ensure money section + expenses tab are active before showing form
             if (typeof showSection === 'function') showSection('expenses');
             if (typeof switchMoneyTab === 'function') switchMoneyTab('expenses');
@@ -7540,7 +7675,7 @@ function showLoginForm() {
         }
 
         async function saveExpense() {
-            if (guardReadOnly('save expenses')) return;
+            if (guardTeamPermission('finance', 'save expenses')) return;
 
             let previousExpenses = [];
             try {
@@ -7664,7 +7799,7 @@ function showLoginForm() {
         }
 
         async function deleteExpense(id, silent = false) {
-            if (!silent && guardReadOnly('delete expenses')) return;
+            if (!silent && guardTeamPermission('finance', 'delete expenses')) return;
             if (!silent && !confirm('Are you sure you want to delete this expense?')) {
                 return;
             }
@@ -7694,7 +7829,7 @@ function showLoginForm() {
         }
 
         function editExpense(id) {
-            if (guardReadOnly('edit expenses')) return;
+            if (guardTeamPermission('finance', 'edit expenses')) return;
             const expense = expenses.find(e => isSameRecordId(e.id, id)); // FIXED: edit works for UUID and legacy IDs.
             if (!expense) return;
 
@@ -7741,7 +7876,7 @@ function showLoginForm() {
 
         // Other Income Functions
         function showAddOtherIncome() {
-            if (guardReadOnly('add other income')) return;
+            if (guardTeamPermission('finance', 'add other income')) return;
             // Ensure money section + otherIncome tab are active before showing form
             if (typeof showSection === 'function') showSection('otherIncome');
             if (typeof switchMoneyTab === 'function') switchMoneyTab('otherIncome');
@@ -7794,7 +7929,7 @@ function showLoginForm() {
         }
 
         async function saveOtherIncome() {
-            if (guardReadOnly('save other income')) return;
+            if (guardTeamPermission('finance', 'save other income')) return;
 
             let previousOtherIncome = [];
             try {
@@ -7935,7 +8070,7 @@ function showLoginForm() {
         }
 
         async function deleteOtherIncome(id, silent = false) {
-            if (!silent && guardReadOnly('delete other income')) return;
+            if (!silent && guardTeamPermission('finance', 'delete other income')) return;
             if (!silent && !confirm('Are you sure you want to delete this entry?')) {
                 return;
             }
@@ -7965,7 +8100,7 @@ function showLoginForm() {
         }
 
         function editOtherIncome(id) {
-            if (guardReadOnly('edit other income')) return;
+            if (guardTeamPermission('finance', 'edit other income')) return;
             const item = otherIncome.find(i => isSameRecordId(i.id, id)); // FIXED: edit works for UUID and legacy IDs.
             if (!item) return;
 
@@ -8089,7 +8224,7 @@ function showLoginForm() {
                 }
 
                 if (!currentManagerId) {
-                    toastError('Please log in as a manager first.');
+                    toastError('Please sign in first.');
                     return;
                 }
 
@@ -10833,10 +10968,10 @@ function showLoginForm() {
 
             const ACTIONS = [
                 { label: 'Add Booking',    icon: '<i class="ph ph-calendar-plus"></i>', sub: 'Log a new show',       action: () => { showSection('schedule');    setTimeout(() => showAddBooking?.(), 80); } },
-                { label: 'Add Expense',    icon: '<i class="ph ph-receipt"></i>', sub: 'Log a cost or bill',   action: () => { showSection('expenses');    setTimeout(() => showAddExpense?.(), 80); } },
+                { label: 'Add Expense',    icon: '<i class="ph ph-receipt"></i>', sub: 'Log a cost or bill',   action: () => { if (guardTeamPermission('finance', 'add expenses')) return; showSection('expenses');    setTimeout(() => showAddExpense?.(), 80); } },
                 { label: 'Add Artist',     icon: '<i class="ph ph-microphone-stage"></i>', sub: 'Add to your roster',   action: () => { showSection('artists');     setTimeout(() => showAddArtistForm?.(), 80); } },
-                { label: 'Add Income',     icon: '<i class="ph ph-plus-circle"></i>', sub: 'Log other income',      action: () => { showSection('otherIncome'); } },
-                { label: 'Open Palette',   icon: '<i class="ph ph-command"></i>', sub: 'Cmd/Ctrl+K',           action: () => openPalette() },
+                { label: 'Add Income',     icon: '<i class="ph ph-plus-circle"></i>', sub: 'Log other income',      action: () => { if (guardTeamPermission('finance', 'add other income')) return; showSection('otherIncome'); } },
+                { label: 'Open Quick Launcher',   icon: '<i class="ph ph-command"></i>', sub: 'Cmd/Ctrl+K',           action: () => openPalette() },
             ];
 
             // Ã¢â€â‚¬Ã¢â€â‚¬ DOM refs Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
@@ -11373,7 +11508,7 @@ function showLoginForm() {
             // regression risk. Reverted to the canonical CLAUDE.md §2 approach: users
             // get a fresh shell on next manual reload after the new SW activates.
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=87').then((registration) => {
+                navigator.serviceWorker.register('sw.js?v=106').then((registration) => {
                     registration.update().catch(() => {});
                 }).catch((error) => {
                     console.warn('Service worker registration failed:', error);

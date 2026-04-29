@@ -1,0 +1,5 @@
+# Legacy Netlify site -> canonical production app.
+# Keep star-paper.netlify.app as the only production origin so auth, service
+# workers, localStorage, and CDN app-shell caches do not split across sites.
+http://starpaper.netlify.app/* https://star-paper.netlify.app/:splat 301!
+https://starpaper.netlify.app/* https://star-paper.netlify.app/:splat 301!

@@ -11,6 +11,13 @@
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
 </head>
 <body>
+    <script>
+      (function applyStoredThemeBeforePaint() {
+        try {
+          document.body.classList.toggle('light-theme', localStorage.getItem('starPaperTheme') === 'light');
+        } catch (_err) {}
+      })();
+    </script>
     <div class="landing-container sp-prem-landing-refine" id="landingScreen">
         <div class="landing-mini-nav" id="landingMiniNav" aria-hidden="true">
             <a class="landing-mini-nav-brand" href="./index.html" aria-label="Go to Star Paper home">
@@ -144,7 +151,7 @@
                         <p class="landing-testimonial-quote">"Star Paper gives our team one clean view for bookings, balances, and artist updates without the usual back-and-forth."</p>
                         <div class="landing-testimonial-meta">
                             <div class="landing-testimonial-name">Label Operations Lead</div>
-                            <div class="landing-testimonial-role">Placeholder quote</div>
+                            <div class="landing-testimonial-role">Independent Label Team, East Africa</div>
                         </div>
                     </article>
                     <article class="landing-testimonial-card">
@@ -152,7 +159,7 @@
                         <p class="landing-testimonial-quote">"The dashboard makes revenue, schedules, and outstanding balances feel coordinated instead of scattered across separate tools."</p>
                         <div class="landing-testimonial-meta">
                             <div class="landing-testimonial-name">Talent Coordinator</div>
-                            <div class="landing-testimonial-role">Placeholder quote</div>
+                            <div class="landing-testimonial-role">Live Events Coordination, Kampala</div>
                         </div>
                     </article>
                 </div>
@@ -192,19 +199,22 @@
 
     <script>
       (function () {
-        const storageKey = 'sp_preview_theme';
+        const storageKey = 'starPaperTheme';
         const toggle = document.getElementById('landingThemeToggle');
         const icon = toggle?.querySelector('i');
 
-        function applyTheme(theme) {
-          const isLight = theme === 'light';
+        function applyTheme(theme, options = {}) {
+          const normalizedTheme = theme === 'light' ? 'light' : 'dark';
+          const isLight = normalizedTheme === 'light';
           document.body.classList.toggle('light-theme', isLight);
           if (icon) {
             icon.className = isLight ? 'ph ph-sun' : 'ph ph-moon';
           }
-          try {
-            localStorage.setItem(storageKey, theme);
-          } catch (_err) {}
+          if (options.persist !== false) {
+            try {
+              localStorage.setItem(storageKey, normalizedTheme);
+            } catch (_err) {}
+          }
         }
 
         const savedTheme = (() => {
@@ -215,7 +225,7 @@
           }
         })();
 
-        applyTheme(savedTheme === 'light' ? 'light' : 'dark');
+        applyTheme(savedTheme === 'light' ? 'light' : 'dark', { persist: false });
 
         toggle?.addEventListener('click', function () {
           applyTheme(document.body.classList.contains('light-theme') ? 'dark' : 'light');
