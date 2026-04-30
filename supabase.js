@@ -126,6 +126,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   let _localBootFallbackTimer = null;
   let _bootstrapSafetyTimer = null;
   let _authEventWorkTimer = null;
+  let _pendingAuthRedirectSession = null;
   let _lastBootstrapOutcome = null;
   let _teamContextCache = [];
   let _teamContextCacheAt = 0;
@@ -611,6 +612,43 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     return _bootstrapPromise;
   }
 
+  function queueAuthRedirectSession(event, session, flowId) {
+    if (!session?.user) return;
+    _pendingAuthRedirectSession = {
+      event,
+      session,
+      flowId: flowId || null,
+      at: nowMs(),
+    };
+  }
+
+  async function consumePendingAuthRedirectSession(options = {}) {
+    const pending = _pendingAuthRedirectSession;
+    if (!pending?.session?.user || window.__spAppBooted) return false;
+    _pendingAuthRedirectSession = null;
+
+    let flowId = options.flowId || pending.flowId || getBootTransitionIdSafe();
+    if (flowId && !isBootTransitionCurrentSafe(flowId)) {
+      flowId = null;
+    }
+    if (!flowId) {
+      flowId = beginBootTransitionSafe(options.reason || 'auth-redirect-pending-session', 'loading-session');
+    }
+
+    window.__spSuppressStoredSessionBootstrap = false;
+    window.__spAuthRedirectInProgress = false;
+    scheduleLocalSessionRestoreFallback({
+      bootContext: options.bootContext || getStartupBootContext(),
+      flowId,
+    });
+
+    return runBootstrapTask(() => bootstrapFromSupabaseSession(pending.session, {
+      remember: true,
+      showWelcome: options.showWelcome ?? (pending.event === 'SIGNED_IN'),
+      flowId,
+    }));
+  }
+
   async function syncRealtimeAuthToken(session = _session) {
     try {
       if (session?.access_token && db?.realtime?.setAuth) {
@@ -941,6 +979,19 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   function showLoginScreen(options = {}) {
     clearLocalBootFallback();
     resetCloudSaveFlagsSafe('show-login');
+    const instantPublicReveal = !options.flowId &&
+      !window.__spAuthRedirectInProgress &&
+      !_session?.user &&
+      getStartupBootContext() === 'cold-start' &&
+      !hasStoredSupabaseSessionHint();
+    if (instantPublicReveal) {
+      if (typeof window.showLoginForm === 'function') {
+        window.showLoginForm({ instant: true });
+        return;
+      }
+      commitBootTransitionSafe('loginScreen', { minDelayMs: 0 });
+      return;
+    }
     const flowId = options.flowId || beginBootTransitionSafe(options.reason || 'show-login', 'auth-required', {
       text: options.text,
       subtext: options.subtext,
@@ -958,6 +1009,20 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       clearLocalBootFallback();
     }
     resetCloudSaveFlagsSafe('show-landing');
+    const instantPublicReveal = !options.flowId &&
+      !keepFallback &&
+      !window.__spAuthRedirectInProgress &&
+      !_session?.user &&
+      getStartupBootContext() === 'cold-start' &&
+      !hasStoredSupabaseSessionHint();
+    if (instantPublicReveal) {
+      if (typeof window.showLanding === 'function') {
+        window.showLanding({ instant: true, minDelayMs: 0 });
+        return;
+      }
+      commitBootTransitionSafe('landingScreen', { minDelayMs: 0 });
+      return;
+    }
     const flowId = options.flowId || beginBootTransitionSafe(options.reason || 'show-landing', options.state || 'loading-session', {
       text: options.text,
       subtext: options.subtext,
@@ -3394,6 +3459,17 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     // No OAuth params present — nothing to do.
     if (!hadAuthCallback) {
       window.__spAuthRedirectInProgress = false;
+      if (_pendingAuthRedirectSession?.session?.user) {
+        const booted = await consumePendingAuthRedirectSession({
+          reason: 'auth-redirect-pending-session',
+          bootContext: 'auth-callback',
+        });
+        if (booted) {
+          return finishWith('pending-session', {
+            shouldBootstrapStoredSession: false,
+          });
+        }
+      }
       return finishWith('none');
     }
 
@@ -3448,6 +3524,9 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         if (error) { warn('Auth redirect session fallback failed:', error); }
         else { session = data?.session || null; }
       }
+      if (!session && _pendingAuthRedirectSession?.session?.user) {
+        session = _pendingAuthRedirectSession.session;
+      }
 
       if (!isBootTransitionCurrentSafe(flowId)) {
         return finishWith('stale', {
@@ -3456,6 +3535,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       }
 
       if (session) {
+        _pendingAuthRedirectSession = null;
         window.__spSuppressStoredSessionBootstrap = false;
         await runBootstrapTask(() => bootstrapFromSupabaseSession(session, {
           remember: true,
@@ -4255,7 +4335,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     window.__spInitialAuthEventSeen = true;
     const authEventFlowId = getBootTransitionIdSafe();
     if (window.__spAuthRedirectInProgress && !window.__spAppBooted) {
-      log('Deferring auth state event until redirect handling completes', { event });
+      queueAuthRedirectSession(event, session, authEventFlowId);
+      log('Queueing auth state event until redirect handling completes', { event });
       return;
     }
 
@@ -5948,8 +6029,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       const bootContext = getStartupBootContext();
       const shouldShowBootLoader = bootContext === 'auth-callback' || bootContext === 'app-refresh';
       if (localColdStart) {
-        const flowId = beginBootTransitionSafe('local-cold-start', 'loading-session');
-        setTimeout(() => showLandingScreen({ flowId, reason: 'local-cold-start' }), 0);
+        setTimeout(() => showLandingScreen({ instant: true, reason: 'local-cold-start' }), 0);
         setTimeout(patchAppAuth, 0);
         setTimeout(injectSidebarButtons, 1200);
         return;
@@ -5975,8 +6055,12 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         }
         const fallbackFlowId = getBootTransitionIdSafe();
         setTimeout(() => {
+          const initialEventAlreadyHandled =
+            window.__spInitialAuthEventSeen &&
+            bootContext !== 'auth-callback' &&
+            !_pendingAuthRedirectSession?.session?.user;
           if (
-            window.__spInitialAuthEventSeen ||
+            initialEventAlreadyHandled ||
             _bootstrapPromise ||
             window.__spAppBooted ||
             window.__spAuthRedirectInProgress

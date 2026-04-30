@@ -185,7 +185,7 @@ function getStartupBootContext() {
     }
     const marker = readBootContextMarker();
     if (marker === APP_BOOT_CONTEXT_AUTH_RETURN) {
-        clearAppShellBootContext();
+        return 'auth-callback';
     }
     // Treat persisted Supabase auth as an app refresh on every origin, including
     // local testing. Logged-out users still fall through to the public landing.
@@ -214,6 +214,33 @@ function isSupabaseBootWorkActive() {
         window.__spSupabaseBootPromise ||
         window.__spAuthRedirectInProgress
     );
+}
+
+function shouldUseInstantPublicReveal(options = {}) {
+    if (options.keepLoader === true) return false;
+    if (options.instant === true || options.publicReveal === true || options.skipBoot === true) return true;
+    if (hasAuthCallbackParams() || hasStoredCloudSessionHint() || isSupabaseBootWorkActive()) return false;
+    const marker = readBootContextMarker();
+    return marker !== APP_BOOT_CONTEXT_APP_SHELL && marker !== APP_BOOT_CONTEXT_AUTH_RETURN;
+}
+
+function shouldSuppressBootLoaderForReason(reason = '', state = '', options = {}) {
+    if (!shouldUseInstantPublicReveal(options)) return false;
+    const bootReason = String(reason || '').toLowerCase();
+    const bootState = String(state || '').toLowerCase();
+    return bootReason.includes('cold-start') ||
+        bootReason === 'show-landing' ||
+        bootReason === 'show-login' ||
+        bootReason === 'show-signup' ||
+        bootState === 'auth-required';
+}
+
+function revealPublicScreenInstant(targetScreen = 'landingScreen') {
+    window.__spBootRevealPending = false;
+    if (typeof setActiveScreen === 'function') {
+        setActiveScreen(targetScreen);
+    }
+    hideBootLoaderElement({ force: true });
 }
 
 function resetCloudSaveInFlightFlags(reason = 'ui-not-app') {
@@ -355,6 +382,10 @@ function beginBootTransition(reason = 'boot', state = 'loading-session', options
     window.__spBootTransitionReason = reason;
     window.__spBootTransitionTarget = '';
     window.__spBootRevealPending = true;
+    if (shouldSuppressBootLoaderForReason(reason, state, options)) {
+        window.__spBootRevealPending = false;
+        return flowId;
+    }
     if (state) {
         setBootState(state, options);
     } else {
@@ -407,8 +438,7 @@ function initializeBootSequence() {
         return;
     }
 
-    const flowId = beginBootTransition('startup:cold-start', 'loading-session');
-    commitBootTransition('landingScreen', { flowId, minDelayMs: 80 });
+    revealPublicScreenInstant('landingScreen');
 }
 
 function getSectionIconMarkup(iconKey) {
@@ -2884,7 +2914,9 @@ function getSectionIconMarkup(iconKey) {
         window.__spAppBooted = false;
         window.currentUser = null;
         window.currentManagerId = null;
-        beginBootTransition('app-state-init', 'loading-session');
+        if (getStartupBootContext() !== 'cold-start') {
+            beginBootTransition('app-state-init', 'loading-session');
+        }
 
         // Populate location dropdowns on page load
         function populateLocationDropdowns() {
@@ -4144,7 +4176,10 @@ function getSectionIconMarkup(iconKey) {
 
 function showLoginForm(options = {}) {
             resetCloudSaveInFlightFlags('show-login');
-            const flowId = options.flowId || beginBootTransition('show-login', 'auth-required');
+            const instantPublicReveal = !options.flowId && shouldUseInstantPublicReveal(options);
+            const flowId = instantPublicReveal
+                ? null
+                : (options.flowId || beginBootTransition('show-login', 'auth-required'));
             document.getElementById('loginForm').style.display = 'block';
             document.getElementById('signupForm').style.display = 'none';
             document.getElementById('forgotPasswordForm').style.display = 'none';
@@ -4158,12 +4193,19 @@ function showLoginForm(options = {}) {
             }
             clearLoginValidation();
             setLoginLoading(false);
-            commitBootTransition('loginScreen', { flowId, minDelayMs: 120 });
+            if (instantPublicReveal) {
+                revealPublicScreenInstant('loginScreen');
+            } else {
+                commitBootTransition('loginScreen', { flowId, minDelayMs: 120 });
+            }
         }
 
         function showSignupForm(options = {}) {
             resetCloudSaveInFlightFlags('show-signup');
-            const flowId = options.flowId || beginBootTransition('show-signup', 'auth-required');
+            const instantPublicReveal = !options.flowId && shouldUseInstantPublicReveal(options);
+            const flowId = instantPublicReveal
+                ? null
+                : (options.flowId || beginBootTransition('show-signup', 'auth-required'));
             document.getElementById('signupForm').style.display = 'block';
             document.getElementById('loginForm').style.display = 'none';
             document.getElementById('forgotPasswordForm').style.display = 'none';
@@ -4173,17 +4215,28 @@ function showLoginForm(options = {}) {
             if (s) s.textContent = 'Create your account to get started.';
             clearLoginValidation();
             setLoginLoading(false);
-            commitBootTransition('loginScreen', { flowId, minDelayMs: 120 });
+            if (instantPublicReveal) {
+                revealPublicScreenInstant('loginScreen');
+            } else {
+                commitBootTransition('loginScreen', { flowId, minDelayMs: 120 });
+            }
         }
 
         function showLanding(options = {}) {
             resetCloudSaveInFlightFlags('show-landing');
-            const flowId = options.flowId || beginBootTransition('show-landing', options.state || 'loading-session', {
-                text: options.text,
-                subtext: options.subtext
-            });
+            const instantPublicReveal = !options.flowId && shouldUseInstantPublicReveal(options);
+            const flowId = instantPublicReveal
+                ? null
+                : (options.flowId || beginBootTransition('show-landing', options.state || 'loading-session', {
+                    text: options.text,
+                    subtext: options.subtext
+                }));
             clearForms();
-            commitBootTransition('landingScreen', { flowId, minDelayMs: options.minDelayMs ?? 120 });
+            if (instantPublicReveal) {
+                revealPublicScreenInstant('landingScreen');
+            } else {
+                commitBootTransition('landingScreen', { flowId, minDelayMs: options.minDelayMs ?? 120 });
+            }
         }
 
         function clearForms() {
@@ -6101,7 +6154,7 @@ function showLoginForm(options = {}) {
 
         function checkAuth() {
             if (window.__spCloudBootstrapPending || window.__spSupabaseBootPromise || window.__spAuthRedirectInProgress) {
-                beginBootTransition('check-auth', 'loading-session');
+                return;
             }
             return;
         }
