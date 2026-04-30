@@ -7,6 +7,23 @@
 -- Enable UUID extension (usually already enabled)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- New functions should not become publicly executable by default.
+ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname = 'rls_auto_enable'
+      AND pg_get_function_arguments(p.oid) = ''
+  ) THEN
+    REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM PUBLIC, anon, authenticated;
+  END IF;
+END $$;
+
 -- ============================================================
 -- PROFILES (extends auth.users — one row per user)
 -- ============================================================
@@ -93,6 +110,9 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
+-- Trigger-only function; it should not be callable through the public REST RPC API.
+REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated;
+
 -- ============================================================
 -- USERNAME HELPERS (signup + login)
 -- ============================================================
@@ -124,6 +144,9 @@ AS $$
   LIMIT 1;
 $$;
 
+-- These two helpers are intentionally anonymous because signup/username-login run before auth.
+REVOKE EXECUTE ON FUNCTION public.is_username_available(TEXT) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.get_email_for_username(TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.is_username_available(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_email_for_username(TEXT) TO anon, authenticated;
 
@@ -223,6 +246,8 @@ AS $$
   );
 $$;
 
+REVOKE EXECUTE ON FUNCTION public.team_role_permissions(TEXT) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.has_team_permission(UUID, TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.team_role_permissions(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.has_team_permission(UUID, TEXT) TO authenticated;
 
@@ -244,6 +269,7 @@ AS $$
 $$;
 
 -- Grant to authenticated users so the policy can call it
+REVOKE EXECUTE ON FUNCTION public.get_my_team_ids(UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.get_my_team_ids(UUID) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.getmyteamids(uid UUID)
@@ -256,12 +282,305 @@ AS $$
   SELECT * FROM public.get_my_team_ids(uid);
 $$;
 
+REVOKE EXECUTE ON FUNCTION public.getmyteamids(UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.getmyteamids(UUID) TO authenticated;
 
 -- ── ATOMIC TEAM CREATION ────────────────────────────────────────────────────────
 -- Creates a team AND adds the creator as owner in a single transaction.
 -- Using one RPC call = one Supabase auth-lock acquisition instead of two,
 -- which eliminates the "AbortError: Lock broken by steal" race condition.
+-- Fast team context for the app Team modal. This avoids recursive/slow RLS joins
+-- by returning the current user's teams and role metadata from one SECURITY DEFINER RPC.
+CREATE OR REPLACE FUNCTION public.get_my_team_context(uid UUID)
+RETURNS TABLE (
+  id UUID,
+  name TEXT,
+  invite_code TEXT,
+  owner_id UUID,
+  my_role TEXT,
+  my_permissions JSONB
+)
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT
+    t.id,
+    t.name,
+    t.invite_code,
+    t.owner_id,
+    tm.role AS my_role,
+    COALESCE(tm.permissions, public.team_role_permissions(tm.role)) AS my_permissions
+  FROM public.team_members tm
+  JOIN public.teams t ON t.id = tm.team_id
+  WHERE tm.user_id = auth.uid()
+    AND uid = auth.uid()
+  ORDER BY t.created_at ASC;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.get_my_team_context(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_my_team_context(UUID) TO authenticated;
+
+-- One-call authenticated bootstrap payload for fast refresh/OAuth return.
+-- This avoids the client doing profile -> teams -> every data table as separate
+-- auth-bearing requests during the loader path.
+CREATE OR REPLACE FUNCTION public.get_bootstrap_payload(uid UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+DECLARE
+  v_actor UUID := auth.uid();
+  v_profile JSONB := NULL;
+  v_profile_team_id UUID := NULL;
+  v_team_id UUID := NULL;
+  v_team_role TEXT := NULL;
+  v_team_permissions JSONB := NULL;
+  v_teams JSONB := '[]'::jsonb;
+  v_workspace JSONB;
+  v_can_read_finance BOOLEAN := FALSE;
+  v_bookings JSONB := '[]'::jsonb;
+  v_expenses JSONB := '[]'::jsonb;
+  v_other_income JSONB := '[]'::jsonb;
+  v_artists JSONB := '[]'::jsonb;
+  v_audience_metrics JSONB := '[]'::jsonb;
+  v_tasks JSONB := '[]'::jsonb;
+  v_revenue_goals JSONB := '[]'::jsonb;
+  v_bbf_entries JSONB := '[]'::jsonb;
+  v_closing_thoughts JSONB := '[]'::jsonb;
+BEGIN
+  IF v_actor IS NULL OR uid IS NULL OR uid <> v_actor THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+
+  SELECT to_jsonb(p), p.last_active_team_id
+  INTO v_profile, v_profile_team_id
+  FROM public.profiles p
+  WHERE p.id = v_actor;
+
+  SELECT COALESCE(jsonb_agg(
+    jsonb_build_object(
+      'id', t.id,
+      'name', t.name,
+      'invite_code', t.invite_code,
+      'owner_id', t.owner_id,
+      'my_role', tm.role,
+      'my_permissions', COALESCE(tm.permissions, public.team_role_permissions(tm.role))
+    )
+    ORDER BY t.created_at ASC
+  ), '[]'::jsonb)
+  INTO v_teams
+  FROM public.team_members tm
+  JOIN public.teams t ON t.id = tm.team_id
+  WHERE tm.user_id = v_actor;
+
+  IF v_profile_team_id IS NOT NULL THEN
+    SELECT tm.team_id, tm.role, COALESCE(tm.permissions, public.team_role_permissions(tm.role))
+    INTO v_team_id, v_team_role, v_team_permissions
+    FROM public.team_members tm
+    WHERE tm.user_id = v_actor
+      AND tm.team_id = v_profile_team_id
+    LIMIT 1;
+  END IF;
+
+  v_can_read_finance := v_team_id IS NULL
+    OR public.has_team_permission(v_team_id, 'finance')
+    OR public.has_team_permission(v_team_id, 'reports');
+
+  SELECT COALESCE(jsonb_agg(to_jsonb(b) ORDER BY b.created_at DESC), '[]'::jsonb)
+  INTO v_bookings
+  FROM public.bookings b
+  WHERE (
+    v_team_id IS NULL
+    AND b.owner_id = v_actor
+    AND b.team_id IS NULL
+  ) OR (
+    v_team_id IS NOT NULL
+    AND b.team_id = v_team_id
+  );
+
+  IF v_can_read_finance THEN
+    SELECT COALESCE(jsonb_agg(to_jsonb(e) ORDER BY e.date DESC NULLS LAST), '[]'::jsonb)
+    INTO v_expenses
+    FROM public.expenses e
+    WHERE (
+      v_team_id IS NULL
+      AND e.owner_id = v_actor
+      AND e.team_id IS NULL
+    ) OR (
+      v_team_id IS NOT NULL
+      AND e.team_id = v_team_id
+    );
+
+    SELECT COALESCE(jsonb_agg(to_jsonb(oi) ORDER BY oi.date DESC NULLS LAST), '[]'::jsonb)
+    INTO v_other_income
+    FROM public.other_income oi
+    WHERE (
+      v_team_id IS NULL
+      AND oi.owner_id = v_actor
+      AND oi.team_id IS NULL
+    ) OR (
+      v_team_id IS NOT NULL
+      AND oi.team_id = v_team_id
+    );
+
+    SELECT COALESCE(jsonb_agg(to_jsonb(rg)), '[]'::jsonb)
+    INTO v_revenue_goals
+    FROM public.revenue_goals rg
+    WHERE rg.period = 'monthly'
+      AND (
+        (
+          v_team_id IS NULL
+          AND rg.user_id = v_actor
+          AND rg.team_id IS NULL
+        ) OR (
+          v_team_id IS NOT NULL
+          AND rg.team_id = v_team_id
+        )
+      );
+
+    SELECT COALESCE(jsonb_agg(to_jsonb(bbf) ORDER BY bbf.period ASC), '[]'::jsonb)
+    INTO v_bbf_entries
+    FROM public.bbf_entries bbf
+    WHERE (
+      v_team_id IS NULL
+      AND bbf.user_id = v_actor
+      AND bbf.team_id IS NULL
+    ) OR (
+      v_team_id IS NOT NULL
+      AND bbf.team_id = v_team_id
+    );
+  END IF;
+
+  SELECT COALESCE(jsonb_agg(to_jsonb(a) ORDER BY a.name ASC), '[]'::jsonb)
+  INTO v_artists
+  FROM public.artists a
+  WHERE (
+    v_team_id IS NULL
+    AND a.owner_id = v_actor
+    AND a.team_id IS NULL
+  ) OR (
+    v_team_id IS NOT NULL
+    AND a.team_id = v_team_id
+  );
+
+  SELECT COALESCE(jsonb_agg(to_jsonb(am) ORDER BY am.period DESC), '[]'::jsonb)
+  INTO v_audience_metrics
+  FROM public.audience_metrics am
+  WHERE (
+    v_team_id IS NULL
+    AND am.owner_id = v_actor
+    AND am.team_id IS NULL
+  ) OR (
+    v_team_id IS NOT NULL
+    AND am.team_id = v_team_id
+  );
+
+  SELECT COALESCE(jsonb_agg(to_jsonb(tk) ORDER BY tk.created_at ASC), '[]'::jsonb)
+  INTO v_tasks
+  FROM public.tasks tk
+  WHERE (
+    v_team_id IS NULL
+    AND tk.user_id = v_actor
+    AND tk.team_id IS NULL
+  ) OR (
+    v_team_id IS NOT NULL
+    AND tk.team_id = v_team_id
+  );
+
+  SELECT COALESCE(jsonb_agg(to_jsonb(ct) ORDER BY ct.updated_at ASC), '[]'::jsonb)
+  INTO v_closing_thoughts
+  FROM public.closing_thoughts ct
+  WHERE (
+    v_team_id IS NULL
+    AND ct.user_id = v_actor
+    AND ct.team_id IS NULL
+  ) OR (
+    v_team_id IS NOT NULL
+    AND ct.team_id = v_team_id
+  );
+
+  v_workspace := jsonb_build_object(
+    'ownerId', v_actor,
+    'teamId', v_team_id,
+    'scopeKey', COALESCE('team:' || v_team_id::text, v_actor::text),
+    'source', CASE WHEN v_team_id IS NULL THEN 'personal' ELSE 'profile' END,
+    'role', v_team_role,
+    'permissions', v_team_permissions
+  );
+
+  RETURN jsonb_build_object(
+    'profile', v_profile,
+    'teams', v_teams,
+    'workspace', v_workspace,
+    'data', jsonb_build_object(
+      'bookings', v_bookings,
+      'expenses', v_expenses,
+      'otherIncome', v_other_income,
+      'artists', v_artists,
+      'audienceMetrics', v_audience_metrics,
+      'tasks', v_tasks,
+      'revenueGoal', COALESCE(v_revenue_goals->0, NULL),
+      'bbfEntries', v_bbf_entries,
+      'closingThoughts', v_closing_thoughts
+    ),
+    'meta', jsonb_build_object(
+      'complete', TRUE,
+      'missingKeys', '[]'::jsonb,
+      'generatedAt', now()
+    )
+  );
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.get_bootstrap_payload(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_bootstrap_payload(UUID) TO authenticated;
+
+-- Fast member roster for the active team. The caller only receives members for
+-- teams they belong to; admins can still manage members through the existing RLS policies.
+CREATE OR REPLACE FUNCTION public.get_team_members_context(p_team_id UUID)
+RETURNS TABLE (
+  user_id UUID,
+  role TEXT,
+  permissions JSONB,
+  joined_at TIMESTAMPTZ,
+  profile_id UUID,
+  username TEXT,
+  email TEXT,
+  avatar TEXT
+)
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT
+    tm.user_id,
+    tm.role,
+    COALESCE(tm.permissions, public.team_role_permissions(tm.role)) AS permissions,
+    tm.joined_at,
+    p.id AS profile_id,
+    p.username,
+    p.email,
+    p.avatar
+  FROM public.team_members tm
+  LEFT JOIN public.profiles p ON p.id = tm.user_id
+  WHERE tm.team_id = p_team_id
+    AND EXISTS (
+      SELECT 1
+      FROM public.team_members mine
+      WHERE mine.team_id = p_team_id
+        AND mine.user_id = auth.uid()
+    )
+  ORDER BY tm.joined_at ASC;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.get_team_members_context(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_team_members_context(UUID) TO authenticated;
+
 CREATE OR REPLACE FUNCTION public.create_team_with_member(
   p_name     TEXT,
   p_owner_id UUID
@@ -304,6 +623,7 @@ BEGIN
 END;
 $$;
 
+REVOKE EXECUTE ON FUNCTION public.create_team_with_member(TEXT, UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.create_team_with_member(TEXT, UUID) TO authenticated;
 
 -- ── ATOMIC TEAM JOIN ────────────────────────────────────────────────────────────
@@ -351,6 +671,7 @@ BEGIN
 END;
 $$;
 
+REVOKE EXECUTE ON FUNCTION public.join_team_by_code(TEXT, UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.join_team_by_code(TEXT, UUID) TO authenticated;
 
 DROP POLICY IF EXISTS "Team members can view other team members" ON public.team_members;
@@ -1077,6 +1398,8 @@ CREATE INDEX IF NOT EXISTS idx_closing_thoughts_team ON public.closing_thoughts(
 CREATE INDEX IF NOT EXISTS idx_messages_team    ON public.messages(team_id);
 CREATE INDEX IF NOT EXISTS idx_messages_created ON public.messages(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_team_members_user ON public.team_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_team_members_team ON public.team_members(team_id);
+CREATE INDEX IF NOT EXISTS idx_messages_team_created ON public.messages(team_id, created_at DESC);
 
 -- ============================================================
 -- UNIQUE CONSTRAINTS for legacy_id + owner_id

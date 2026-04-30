@@ -1,18 +1,18 @@
 /**
  * ============================================================
- * STAR PAPER â€” SUPABASE INTEGRATION LAYER
- * supabase.js â€” Load this BEFORE app.js in index.html
+ * STAR PAPER — SUPABASE INTEGRATION LAYER
+ * supabase.js — Load this BEFORE app.js in index.html
  *
  * <script src="supabase.js"></script>
  * <script src="app.js"></script>
  * ============================================================
  *
  * SETUP: Replace the two config values below with your own
- * from your Supabase project: Settings â†’ API
+ * from your Supabase project: Settings → API
  * ============================================================
  */
 
-// â”€â”€ CONFIG: Replace these with your Supabase project values â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── CONFIG: Replace these with your Supabase project values ──────────────────
 const SP_SUPABASE_URL  = 'https://fxcyocdwvjiyatqnaahg.supabase.co';
 const SP_SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4Y3lvY2R3dmppeWF0cW5hYWhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5Nzg4NDEsImV4cCI6MjA4ODU1NDg0MX0.OTtDpyfA69rbVOTJkBh51pwj3wEkR1L04x4ouDkeWZ0';
 const SP_SUPABASE_STORAGE_KEY = 'sp-starpaper-auth-v1';
@@ -34,18 +34,18 @@ const SP_CLOUD_ONLY_MODE = true;
 window.__spSupabaseConfigured = SP_SUPABASE_CONFIGURED;
 window.__spAllowLocalFallback = SP_ALLOW_LOCAL_FALLBACK;
 window.__spCloudOnly = SP_CLOUD_ONLY_MODE;
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 
-// â”€â”€ CURRENCY CONFIG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── CURRENCY CONFIG ───────────────────────────────────────────────────────────
 const SP_CURRENCIES = {
   UGX: { symbol: 'UGX', name: 'Uganda Shilling',   rate: 1 },
   KES: { symbol: 'KES', name: 'Kenya Shilling',     rate: 0.033 },
   TZS: { symbol: 'TZS', name: 'Tanzania Shilling',  rate: 0.083 },
-  NGN: { symbol: 'â‚¦',   name: 'Nigerian Naira',     rate: 0.11  },
+  NGN: { symbol: '₦',   name: 'Nigerian Naira',     rate: 0.11  },
   ZAR: { symbol: 'R',   name: 'South African Rand', rate: 0.0006},
   USD: { symbol: '$',   name: 'US Dollar',          rate: 0.00026},
-  GBP: { symbol: 'Â£',   name: 'British Pound',      rate: 0.0002 },
-  EUR: { symbol: 'â‚¬',   name: 'Euro',               rate: 0.00023},
+  GBP: { symbol: '£',   name: 'British Pound',      rate: 0.0002 },
+  EUR: { symbol: '€',   name: 'Euro',               rate: 0.00023},
 };
 
 const SP_TEAM_ROLE_PRESETS = {
@@ -60,7 +60,7 @@ const SP_TEAM_ROLE_PRESETS = {
 
 const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
-// â”€â”€ BOOTSTRAP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── BOOTSTRAP ─────────────────────────────────────────────────────────────────
 (async function initStarPaperSupabase() {
   'use strict';
 
@@ -87,20 +87,20 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       autoRefreshToken:   true,
       flowType:           'pkce',
       detectSessionInUrl: true,
-      // Stable storage key â€” all tabs share the same lock namespace.
+      // Stable storage key — all tabs share the same lock namespace.
       storageKey: SP_SUPABASE_STORAGE_KEY,
       // Disable the Web Locks API for auth token refresh coordination.
       // The navigator.locks "steal" mechanism causes AbortError when multiple
       // Supabase requests fire in rapid succession (e.g. Create Team flow).
       // With this disabled, GoTrue falls back to a simple in-memory mutex
       // which is sufficient for a single-page app with one auth client.
-      // CRITICAL: must RETURN the promise from fn() â€” the SDK's internal
+      // CRITICAL: must RETURN the promise from fn() — the SDK's internal
       // initializePromise depends on it. Discarding it deadlocks the SDK.
       lock: (name, acquireTimeout, fn) => Promise.resolve().then(fn),
     }
   });
 
-  // â”€â”€ STATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── STATE ───────────────────────────────────────────────────────────────────
   let _session  = null;
   let _profile  = null;
   let _activeTeamId = null;
@@ -124,8 +124,15 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   let _workspaceRequiresSelection = false;
   let _workspaceResolutionPromise = null;
   let _localBootFallbackTimer = null;
+  let _bootstrapSafetyTimer = null;
+  let _authEventWorkTimer = null;
+  let _lastBootstrapOutcome = null;
+  let _teamContextCache = [];
+  let _teamContextCacheAt = 0;
+  let _teamContextRefreshPromise = null;
+  let showTeamModal = null;
 
-  // â”€â”€ SYNC RELIABILITY: Retry Queue + Status Indicator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── SYNC RELIABILITY: Retry Queue + Status Indicator ────────────────────────
   const RETRY_QUEUE_STORAGE_KEY = 'sp_retry_queue';
   const BOOT_CONTEXT_STORAGE_KEY = 'sp_boot_context';
   const APP_SHELL_BOOT_CONTEXT = 'app-shell';
@@ -148,7 +155,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       } else {
         void _retryQueue;
       }
-    } catch (_err) { /* quota exceeded or private browsing â€” non-fatal */ }
+    } catch (_err) { /* quota exceeded or private browsing — non-fatal */ }
   }
 
   function restoreRetryQueue() {
@@ -164,7 +171,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         updateSyncIndicator('failed');
         scheduleRetryQueue();
       }
-    } catch (_err) { /* corrupted â€” start fresh */ }
+    } catch (_err) { /* corrupted — start fresh */ }
   }
 
   function legacyUpdateSyncIndicator(state) {
@@ -175,8 +182,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       idle:    { icon: 'ph-cloud',           color: '#888',    title: 'Cloud idle' },
       syncing: { icon: 'ph-cloud-arrow-up',  color: '#FFB300', title: 'Syncing to cloud...' },
       synced:  { icon: 'ph-cloud-check',     color: '#81c784', title: 'Saved to cloud' },
-      failed:  { icon: 'ph-cloud-slash',     color: '#ef9a9a', title: 'Cloud sync failed â€” retrying' },
-      offline: { icon: 'ph-cloud-x',         color: '#888',    title: 'Offline â€” changes saved locally' },
+      failed:  { icon: 'ph-cloud-slash',     color: '#ef9a9a', title: 'Cloud sync failed — retrying' },
+      offline: { icon: 'ph-cloud-x',         color: '#888',    title: 'Offline — changes saved locally' },
     };
     const cfg = map[_syncState] || map.idle;
     el.className = 'ph ' + cfg.icon + ' sp-sync-icon';
@@ -262,7 +269,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
   }
 
-  // â”€â”€ SERIAL DB QUEUE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── SERIAL DB QUEUE ──────────────────────────────────────────────────────────
   // Supabase JS v2 acquires a Web Lock for every auth-bearing request. Firing
   // multiple requests concurrently causes "AbortError: Lock broken by steal".
   // This queue serialises all DB calls so only ONE request is in-flight at a time.
@@ -275,7 +282,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       syncing: { icon: 'ph-cloud-arrow-up', color: '#FFB300', title: 'Syncing to cloud...' },
       synced:  { icon: 'ph-cloud-check',    color: '#81c784', title: 'Saved to cloud' },
       failed:  { icon: 'ph-cloud-slash',    color: '#ef9a9a', title: 'Cloud sync failed' },
-      offline: { icon: 'ph-cloud-x',        color: '#888',    title: 'Offline â€” reconnect to save and refresh cloud data' },
+      offline: { icon: 'ph-cloud-x',        color: '#888',    title: 'Offline — reconnect to save and refresh cloud data' },
     };
     const cfg = map[_syncState] || map.idle;
     el.className = 'ph ' + cfg.icon + ' sp-sync-icon';
@@ -303,13 +310,13 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   let _dbQueue = Promise.resolve();
   function dbSerial(fn) {
     _dbQueue = _dbQueue.then(() => fn()).catch(err => {
-      // Swallow AbortErrors inside the queue â€” they are lock-release noise
+      // Swallow AbortErrors inside the queue — they are lock-release noise
       if (err?.name !== 'AbortError') throw err;
     });
     return _dbQueue;
   }
 
-  // â”€â”€ HELPERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── HELPERS ─────────────────────────────────────────────────────────────────
   function log(...args)  { console.log('[StarPaper Supabase]', ...args); }
   function warn(...args) { console.warn('[StarPaper Supabase]', ...args); }
 
@@ -451,7 +458,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     });
     _coreRealtimeChannel = channel;
 
-    // â”€â”€ Persistent team notifications: messages + team_members â”€â”€
+    // ── Persistent team notifications: messages + team_members ──
     subscribeToTeamNotifications();
   }
 
@@ -590,12 +597,17 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   function runBootstrapTask(task) {
     if (_bootstrapPromise) return _bootstrapPromise;
     _bootstrapping = true;
-    _bootstrapPromise = Promise.resolve()
+    const promise = Promise.resolve()
       .then(task)
       .finally(() => {
-        _bootstrapping = false;
-        _bootstrapPromise = null;
+        if (_bootstrapPromise === promise) {
+          _bootstrapping = false;
+          _bootstrapPromise = null;
+          window.__spSupabaseBootPromise = null;
+        }
       });
+    _bootstrapPromise = promise;
+    window.__spSupabaseBootPromise = _bootstrapPromise;
     return _bootstrapPromise;
   }
 
@@ -709,6 +721,80 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
   }
 
+  function beginBootTransitionSafe(reason = 'supabase-auth', state = 'loading-session', options = {}) {
+    if (typeof window.beginBootTransition === 'function') {
+      return window.beginBootTransition(reason, state, options);
+    }
+    setBootStateSafe(state, options);
+    return typeof window.getBootTransitionId === 'function'
+      ? window.getBootTransitionId()
+      : null;
+  }
+
+  function getBootTransitionIdSafe() {
+    return typeof window.getBootTransitionId === 'function'
+      ? window.getBootTransitionId()
+      : null;
+  }
+
+  function isBootTransitionCurrentSafe(flowId) {
+    if (!flowId) return true;
+    return typeof window.isCurrentBootTransition === 'function'
+      ? window.isCurrentBootTransition(flowId)
+      : true;
+  }
+
+  function commitBootTransitionSafe(target, options = {}) {
+    if (options.flowId && !isBootTransitionCurrentSafe(options.flowId)) return false;
+    if (typeof window.commitBootTransition === 'function') {
+      return window.commitBootTransition(target, options);
+    }
+    if (typeof window.setActiveScreen === 'function') {
+      window.setActiveScreen(target);
+    }
+    if (typeof window.hideBootLoaderWhenUiPainted === 'function') {
+      window.hideBootLoaderWhenUiPainted({
+        flowId: options.flowId,
+        requireAppReady: target === 'appContainer',
+        minDelayMs: options.minDelayMs ?? 180,
+      });
+    } else if (typeof window.hideBootLoaderElement === 'function') {
+      window.hideBootLoaderElement({ force: true, flowId: options.flowId });
+    }
+    return true;
+  }
+
+  function isAppShellVisible() {
+    if (typeof window.isAppShellVisible === 'function') {
+      try { return Boolean(window.isAppShellVisible()); } catch (_err) {}
+    }
+    const app = document.getElementById('appContainer');
+    if (!app) return false;
+    const style = window.getComputedStyle ? window.getComputedStyle(app) : null;
+    const visible = app.classList.contains('screen-active') &&
+      app.style.display !== 'none' &&
+      (!style || (style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0));
+    if (!visible) return false;
+    const rect = app.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  }
+
+  function clearBootOverlayOverVisibleApp(reason = 'app-visible') {
+    if (!isAppShellVisible()) return false;
+    clearLocalBootFallback();
+    clearBootstrapSafetyTimer();
+    window.__spBootRevealPending = false;
+    window.__spAuthRedirectInProgress = false;
+    if (!window.__spAppBooted) window.__spAppBooted = true;
+    commitBootTransitionSafe('appContainer', {
+      flowId: getBootTransitionIdSafe(),
+      requireAppReady: true,
+      minDelayMs: 0,
+    });
+    log('boot.overlay.dismissed', { reason });
+    return true;
+  }
+
   function isLocalDevOrigin() {
     return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
   }
@@ -720,28 +806,115 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
   }
 
+  function clearBootstrapSafetyTimer() {
+    if (_bootstrapSafetyTimer) {
+      clearTimeout(_bootstrapSafetyTimer);
+      _bootstrapSafetyTimer = null;
+    }
+  }
+
+  function abandonActiveBootstrapWork(reason = 'bootstrap-stalled') {
+    clearLocalBootFallback();
+    clearBootstrapSafetyTimer();
+    _bootstrapping = false;
+    _bootstrapPromise = null;
+    _refreshInFlight = false;
+    window.__spCloudBootstrapPending = false;
+    window.__spSupabaseBootPromise = null;
+    window.__spAuthRedirectInProgress = false;
+    recordBootstrapTiming('bootstrap.abandoned', { reason });
+  }
+
+  function showStalledBootError(message, detail, reason = 'bootstrap-stalled') {
+    abandonActiveBootstrapWork(reason);
+    if (clearBootOverlayOverVisibleApp(reason)) return;
+    beginBootTransitionSafe(reason, 'boot-error', {
+      text: message || 'Session restore stalled',
+      subtext: detail || 'Retry to reconnect to Star Paper, or log out and sign in again.',
+      showActions: true,
+    });
+  }
+
+  function deferAuthEventWork(label, work) {
+    const timer = setTimeout(() => {
+      if (_authEventWorkTimer === timer) _authEventWorkTimer = null;
+      Promise.resolve()
+        .then(work)
+        .catch((err) => {
+          warn(`${label} failed:`, err);
+          captureSyncException(err, {
+            operation: 'authEventWork',
+            reason: label,
+          });
+          if (!window.__spAppBooted && !isAppShellVisible()) {
+            showBootErrorState('Session restore needs attention', 'Retry to reconnect to Star Paper, or log out and sign in again.');
+          }
+        });
+    }, 0);
+    _authEventWorkTimer = timer;
+  }
+
+  function hasActiveBootstrapWork() {
+    return Boolean(
+      _bootstrapping ||
+      _bootstrapPromise ||
+      _refreshInFlight ||
+      window.__spCloudBootstrapPending ||
+      window.__spAuthRedirectInProgress ||
+      window.__spSupabaseBootPromise
+    );
+  }
+
   function scheduleLocalSessionRestoreFallback(options = {}) {
     clearLocalBootFallback();
     const bootContext = options.bootContext || getStartupBootContext();
+    const flowId = options.flowId || getBootTransitionIdSafe();
     const isAuthCallback = bootContext === 'auth-callback' || hasAuthCallbackInUrl();
     const timeoutMs = Number.isFinite(options.timeoutMs)
       ? Math.max(3000, Number(options.timeoutMs))
       : (isAuthCallback ? 14000 : 9000);
-    _localBootFallbackTimer = setTimeout(() => {
+    const hardTimeoutMs = Number.isFinite(options.hardTimeoutMs)
+      ? Math.max(timeoutMs, Number(options.hardTimeoutMs))
+      : Math.max(timeoutMs + 6000, isAuthCallback ? 18000 : 15000);
+    const startedAt = nowMs();
+    const tick = () => {
       _localBootFallbackTimer = null;
+      if (flowId && !isBootTransitionCurrentSafe(flowId)) return;
       const loader = document.getElementById('appBootLoader');
       const state = loader?.dataset.state || '';
       const blockingStates = new Set(['booting-auth', 'loading-session', 'signing-in', 'booting-data', 'loading-app']);
       if (window.__spAppBooted || !blockingStates.has(state)) return;
+      if (clearBootOverlayOverVisibleApp('session-restore-fallback')) return;
+      if (hasActiveBootstrapWork()) {
+        const elapsed = nowMs() - startedAt;
+        if (elapsed < hardTimeoutMs) {
+          log('session restore fallback deferred; bootstrap still owns boot UI', {
+            bootContext,
+            state,
+            elapsed: Math.round(elapsed),
+            hardTimeoutMs,
+          });
+          _localBootFallbackTimer = setTimeout(tick, 1000);
+          return;
+        }
+        warn('Session restore hard timeout; abandoning stuck bootstrap owner.', {
+          bootContext,
+          state,
+          elapsed: Math.round(elapsed),
+        });
+        showStalledBootError('Session restore stalled', 'Retry to reconnect to Star Paper, or log out and sign in again.', 'session-restore-hard-timeout');
+        return;
+      }
       warn('Session restore stalled; resolving boot UI safely.', { bootContext, state });
       window.__spAuthRedirectInProgress = false;
       if (bootContext === 'cold-start' && !hasStoredSupabaseSessionHint()) {
         window.__spSuppressStoredSessionBootstrap = true;
-        showLandingScreen();
+        showLandingScreen({ flowId, reason: 'session-restore-cold-start' });
         return;
       }
       showBootErrorState('Session restore stalled', 'Retry to reconnect to Star Paper, or log out and sign in again.');
-    }, timeoutMs);
+    };
+    _localBootFallbackTimer = setTimeout(tick, timeoutMs);
   }
 
   function hasLocalThemePreference() {
@@ -753,55 +926,69 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
   }
 
+  function resetCloudSaveFlagsSafe(reason = 'supabase-screen') {
+    try {
+      if (typeof window.__spResetCloudSaveInFlightFlags === 'function') {
+        window.__spResetCloudSaveInFlightFlags(reason);
+        return;
+      }
+      window.__spCloudSaveInFlightCount = 0;
+      window.__spCloudSaveInFlight = false;
+      window.__spCloudSaveInFlightReason = reason;
+    } catch (_err) {}
+  }
+
   function showLoginScreen(options = {}) {
     clearLocalBootFallback();
-    setBootStateSafe('auth-required', { text: options.text, subtext: options.subtext });
+    resetCloudSaveFlagsSafe('show-login');
+    const flowId = options.flowId || beginBootTransitionSafe(options.reason || 'show-login', 'auth-required', {
+      text: options.text,
+      subtext: options.subtext,
+    });
     if (typeof window.showLoginForm === 'function') {
-      window.showLoginForm();
+      window.showLoginForm({ flowId });
       return;
     }
-    if (typeof window.setActiveScreen === 'function') {
-      window.setActiveScreen('loginScreen');
-    }
-    if (typeof window.hideBootLoaderElement === 'function') {
-      window.hideBootLoaderElement({ force: true });
-    }
+    commitBootTransitionSafe('loginScreen', { flowId, minDelayMs: 120 });
   }
 
   function showLandingScreen(options = {}) {
-    const keepLoader = options.keepLoader === true;
-    if (!keepLoader) {
+    const keepFallback = options.keepLoader === true;
+    if (!keepFallback) {
       clearLocalBootFallback();
     }
-    if (!keepLoader && typeof window.showLanding === 'function') {
-      window.showLanding();
+    resetCloudSaveFlagsSafe('show-landing');
+    const flowId = options.flowId || beginBootTransitionSafe(options.reason || 'show-landing', options.state || 'loading-session', {
+      text: options.text,
+      subtext: options.subtext,
+    });
+    if (typeof window.showLanding === 'function') {
+      window.showLanding({ flowId, minDelayMs: options.minDelayMs ?? 120 });
       return;
     }
-    if (!keepLoader && typeof window.hideBootLoaderElement === 'function') {
-      window.hideBootLoaderElement({ force: true });
-    }
-    if (typeof window.setActiveScreen === 'function') {
-      window.setActiveScreen('landingScreen');
-    }
-    if (keepLoader) {
-      try {
-        if (typeof window.clearForms === 'function') window.clearForms();
-      } catch (_err) {}
-    }
+    try {
+      if (typeof window.clearForms === 'function') window.clearForms();
+    } catch (_err) {}
+    commitBootTransitionSafe('landingScreen', { flowId, minDelayMs: options.minDelayMs ?? 120 });
   }
 
   function routeAuthenticatedUserToDashboard(reason = 'auth') {
-    // FIXED: authenticated refresh/visibility returns to the dashboard hash instead of landing/blank states.
-    try {
-      if (window.location.hash !== '#dashboard') {
-        window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#dashboard`);
-      }
-    } catch (_err) {
-      try { window.location.hash = '#dashboard'; } catch (__err) {}
+    // Keep the historical function name for old call sites, but restore the user's
+    // actual app view instead of forcing every authenticated return to Dashboard.
+    if (!window.__spAppBooted && !isAppShellVisible()) {
+      window.__spPendingPostBootRouteReason = reason;
+      return;
     }
-    if (typeof window.showSection === 'function') {
+    const restore = typeof window.restorePostBootUiState === 'function'
+      ? window.restorePostBootUiState
+      : null;
+    if (restore) {
       setTimeout(() => {
-        try { window.showSection('dashboard'); } catch (err) { warn(`Dashboard route failed (${reason}):`, err); }
+        try { restore(); } catch (err) { warn(`App route restore failed (${reason}):`, err); }
+      }, 0);
+    } else if (!window._spCurrentSection && typeof window.showSection === 'function') {
+      setTimeout(() => {
+        try { window.showSection('dashboard'); } catch (err) { warn(`Dashboard fallback route failed (${reason}):`, err); }
       }, 0);
     }
   }
@@ -817,30 +1004,15 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     try { if (typeof window.updateDashboard === 'function') window.updateDashboard(); } catch (err) { warn(`updateDashboard failed (${reason}):`, err); }
     try { if (typeof window.renderCalendar === 'function') window.renderCalendar(); } catch (err) { warn(`renderCalendar failed (${reason}):`, err); }
     try { if (typeof window.updateReportStatistics === 'function') window.updateReportStatistics(); } catch (err) { warn(`updateReportStatistics failed (${reason}):`, err); }
+    try { if (typeof window.renderPerformanceMap === 'function') window.renderPerformanceMap(); } catch (err) { warn(`renderPerformanceMap failed (${reason}):`, err); }
   }
 
   function showAuthenticatedDashboardShell(reason = 'bootstrap-fast-shell', options = {}) {
-    // 2026-04-28 fix: by default we no longer reveal the empty shell synchronously.
-    // The boot loader stays on top (via sp-force-boot or setBootStateSafe('booting-data'))
-    // until real data is hydrated and the main bootstrap code path explicitly calls
-    // window.showApp() at line ~2919. The eager:true escape hatch is used by the
-    // safety-timeout recovery path so a stranded user always sees *something*.
-    const eager = options.eager === true;
-    if (typeof window.loadUserData === 'function' && !window.__spAppBooted) {
-      window.loadUserData({
-        snapshot: {
-          bookings: [],
-          expenses: [],
-          otherIncome: [],
-          artists: [],
-          audienceMetrics: [],
-          tasks: [],
-        },
-      });
-    }
-    if (eager && typeof window.showApp === 'function' && !window.__spAppBooted) {
-      window.showApp();
-      log('bootstrap.fastShellReady', { reason, eager: true });
+    // Do not reveal an authenticated app shell with placeholder/empty data.
+    // A refresh should show real cloud data or an explicit boot-error, never a
+    // zero-data dashboard that looks like data loss.
+    if (options.eager === true) {
+      warn('Ignoring eager authenticated shell reveal until cloud data is confirmed.', { reason });
     }
     routeAuthenticatedUserToDashboard(reason);
     if (typeof window.setAppShellBootContext === 'function') {
@@ -853,6 +1025,20 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
   function showBootErrorState(message, detail) {
     clearLocalBootFallback();
+    const normalizedMessage = String(message || '').toLowerCase();
+    if (
+      (normalizedMessage.includes('cloud sync') ||
+        normalizedMessage.includes('session restore') ||
+        normalizedMessage.includes('workspace refresh')) &&
+      (clearBootOverlayOverVisibleApp('boot-error-suppressed') || window.__spAppBooted || isAppShellVisible())
+    ) {
+      commitBootTransitionSafe('appContainer', {
+        flowId: getBootTransitionIdSafe(),
+        requireAppReady: true,
+        minDelayMs: 0,
+      });
+      return;
+    }
     setBootStateSafe('boot-error', {
       text: message || 'Cloud sync needs attention',
       subtext: detail || 'We could not load your workspace. Retry or log out.',
@@ -951,6 +1137,39 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
   }
 
+  function recordBootstrapTiming(event, extra = {}) {
+    log(event, extra);
+    try {
+      const sentry = window.Sentry;
+      if (!sentry || typeof sentry.captureMessage !== 'function') return;
+      const payload = {
+        ownerId: getOwnerId(),
+        activeTeamId: _activeTeamId,
+        appBooted: Boolean(window.__spAppBooted),
+        bootstrapping: Boolean(_bootstrapping),
+        refreshInFlight: Boolean(_refreshInFlight),
+        ...(extra || {}),
+      };
+      if (typeof sentry.withScope === 'function') {
+        sentry.withScope((scope) => {
+          scope.setTag('sp.operation', 'bootstrap');
+          scope.setTag('sp.bootstrap_event', event);
+          if (payload.activeTeamId) scope.setTag('sp.team_id', payload.activeTeamId);
+          if (payload.ownerId) scope.setUser({ id: payload.ownerId });
+          Object.entries(payload).forEach(([key, value]) => {
+            if (typeof value === 'undefined') return;
+            scope.setExtra(key, value);
+          });
+          sentry.captureMessage(event, 'info');
+        });
+        return;
+      }
+      sentry.captureMessage(event);
+    } catch (_err) {
+      // Sentry timing is best-effort only.
+    }
+  }
+
   function resetWorkspaceState() {
     // Explicit purge of in-memory business state to close the data-leak window
     // between supabase.auth.signOut() and location.reload(). Mutating the live
@@ -972,9 +1191,13 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       window.currentManagerId = null;
       window.currentTeamRole = null;
       window.__spDataLoaded = false;
+      resetCloudSaveFlagsSafe('workspace-reset');
     } catch (err) {
       try { window.Sentry && window.Sentry.captureException && window.Sentry.captureException(err); } catch (_e) {}
     }
+    _teamContextCache = [];
+    _teamContextCacheAt = 0;
+    _teamContextRefreshPromise = null;
     _activeTeamId = null;
     _workspaceResolved = false;
     _workspaceRequiresSelection = false;
@@ -1003,6 +1226,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   }
 
   async function handleSignedOutSession(options = {}) {
+    const flowId = options.flowId || getBootTransitionIdSafe();
     const explicitLogout = localStorage.getItem('sp_logged_out') === '1';
     const reason = options.reason || (explicitLogout ? 'explicit-logout' : 'session-missing');
     const destination = options.destination === 'landing' ? 'landing' : 'login';
@@ -1044,10 +1268,14 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
     resetWorkspaceState();
     updateSyncIndicator(navigator.onLine ? 'idle' : 'offline');
+    if (flowId && !isBootTransitionCurrentSafe(flowId)) {
+      return { recovered: false, stale: true, reason };
+    }
+
     if (destination === 'landing') {
-      showLandingScreen();
+      showLandingScreen({ flowId, reason });
     } else {
-      showLoginScreen();
+      showLoginScreen({ flowId, reason });
     }
 
     if (!explicitLogout && !suppressDiagnostics) {
@@ -1147,6 +1375,45 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       : { team_id: null, owner_id: getOwnerId() };
   }
 
+  function normalizeWorkspaceMeta(meta = {}) {
+    const ownerId = meta.ownerId || meta.owner_id || getOwnerId() || null;
+    const teamId = normalizeTeamId(meta.teamId || meta.team_id || _activeTeamId || null);
+    return {
+      ownerId,
+      teamId,
+      scopeKey: teamId ? `team:${teamId}` : (ownerId || ''),
+      source: meta.source || 'runtime',
+      resolvedAt: meta.resolvedAt || Date.now(),
+    };
+  }
+
+  function getActiveWorkspaceMeta(source = 'runtime') {
+    return normalizeWorkspaceMeta({ source });
+  }
+
+  function attachWorkspaceMeta(payload, source = 'cloud', meta = null) {
+    if (!payload || typeof payload !== 'object') return payload;
+    payload.__workspace = normalizeWorkspaceMeta(meta || { source });
+    payload.__workspace.source = source;
+    return payload;
+  }
+
+  function applyScopeFilterForMeta(query, ownerColumn = 'owner_id', meta = null) {
+    const workspace = normalizeWorkspaceMeta(meta || {});
+    if (workspace.teamId) return query.eq('team_id', workspace.teamId);
+    return query.eq(ownerColumn, workspace.ownerId).is('team_id', null);
+  }
+
+  function logWorkspaceDiagnostics(label, meta = null, extra = {}) {
+    const workspace = normalizeWorkspaceMeta(meta || {});
+    log(label, {
+      ownerId: workspace.ownerId,
+      teamId: workspace.teamId,
+      scopeKey: workspace.scopeKey,
+      ...extra,
+    });
+  }
+
   function getActiveTeamRole() {
     return _activeTeamRole;
   }
@@ -1190,6 +1457,70 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       permissions,
       joinedAt: row?.joined_at,
     };
+  }
+
+  function isMissingRpcError(error, rpcName) {
+    const msg = String(`${error?.code || ''} ${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`).toLowerCase();
+    return msg.includes('could not find the function') ||
+      msg.includes('function public.' + String(rpcName || '').toLowerCase()) ||
+      msg.includes('pgrst202');
+  }
+
+  function normalizeTeamContextRow(row) {
+    const role = normalizeTeamRole(row?.my_role || row?.role);
+    const permissions = permissionsForRole(role, row?.my_permissions || row?.permissions);
+    return {
+      id: row?.id,
+      name: row?.name,
+      invite_code: row?.invite_code,
+      owner_id: row?.owner_id,
+      myRole: role,
+      myRoleLabel: roleLabel(role),
+      myPermissions: permissions,
+    };
+  }
+
+  function cacheTeamContext(teams, source = 'unknown') {
+    _teamContextCache = Array.isArray(teams)
+      ? teams.map((team) => ({ ...team })).filter((team) => team.id)
+      : [];
+    _teamContextCacheAt = Date.now();
+    log('team.context.cache', {
+      source,
+      count: _teamContextCache.length,
+      activeTeamId: _activeTeamId,
+    });
+    if (_activeTeamId) {
+      const active = _teamContextCache.find((team) => team.id === _activeTeamId);
+      setActiveTeamRole(active?.myRole || null, active?.myPermissions || null);
+    }
+    return _teamContextCache;
+  }
+
+  function getCachedTeamContext(maxAgeMs = 5 * 60 * 1000) {
+    if (!Array.isArray(_teamContextCache) || _teamContextCache.length === 0) return [];
+    if (maxAgeMs !== Infinity && Date.now() - _teamContextCacheAt > maxAgeMs) return [];
+    return _teamContextCache.map((team) => ({ ...team }));
+  }
+
+  function hasCachedTeamContext(maxAgeMs = 5 * 60 * 1000) {
+    if (!_teamContextCacheAt) return false;
+    return maxAgeMs === Infinity || Date.now() - _teamContextCacheAt <= maxAgeMs;
+  }
+
+  function normalizeTeamMemberContextRow(row) {
+    return normalizeTeamMember({
+      user_id: row?.user_id,
+      role: row?.role,
+      permissions: row?.permissions,
+      joined_at: row?.joined_at,
+      profiles: {
+        id: row?.profile_id || row?.user_id,
+        username: row?.username,
+        email: row?.email,
+        avatar: row?.avatar,
+      },
+    });
   }
 
   function getActiveTeamPermissions() {
@@ -1257,9 +1588,21 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         return { teamId: null, teams: [], profile: _profile, needsSelection: false, source: 'signed-out' };
       }
 
-      const profile = options.profile || _profile || await getProfile();
-      const teams = Array.isArray(options.teams) ? options.teams : await getMyTeams();
-      const validTeamIds = new Set((teams || []).map((team) => team.id));
+      let profile = options.profile || _profile || null;
+      if (!options.skipProfileFetch && (!profile || typeof profile.last_active_team_id === 'undefined')) {
+        const loadedProfile = await getProfile();
+        if (loadedProfile) profile = loadedProfile;
+      }
+      const hasProvidedTeams = Object.prototype.hasOwnProperty.call(options, 'teams');
+      const teams = hasProvidedTeams
+        ? (Array.isArray(options.teams) ? options.teams : null)
+        : await getMyTeams({ nullOnError: true });
+      const teamsResolved = Array.isArray(teams);
+      const teamList = teamsResolved ? teams : [];
+      if (teamsResolved) {
+        cacheTeamContext(teamList, options.source || 'workspace-resolution');
+      }
+      const validTeamIds = new Set(teamList.map((team) => team.id));
       const rememberedTeamId = normalizeTeamId(profile?.last_active_team_id);
       const runtimeTeamId = normalizeTeamId(_activeTeamId);
 
@@ -1267,17 +1610,13 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       let source = 'personal';
       let persistRemote = false;
 
-      if (rememberedTeamId && validTeamIds.has(rememberedTeamId)) {
+      if (rememberedTeamId && (!teamsResolved || validTeamIds.has(rememberedTeamId))) {
         selectedTeamId = rememberedTeamId;
-        source = 'profile';
-      } else if (runtimeTeamId && validTeamIds.has(runtimeTeamId)) {
+        source = teamsResolved ? 'profile' : 'profile-unverified';
+      } else if (runtimeTeamId && (!teamsResolved || validTeamIds.has(runtimeTeamId))) {
         selectedTeamId = runtimeTeamId;
-        source = 'runtime';
-      } else if ((teams || []).length === 1) {
-        selectedTeamId = teams[0].id;
-        source = 'single-team';
-        persistRemote = rememberedTeamId !== selectedTeamId;
-      } else if ((teams || []).length === 0) {
+        source = teamsResolved ? 'runtime' : 'runtime-unverified';
+      } else if (teamsResolved && teamList.length === 0) {
         selectedTeamId = null;
         source = 'personal';
         persistRemote = Boolean(rememberedTeamId);
@@ -1287,17 +1626,25 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         persistRemote = Boolean(rememberedTeamId);
       }
 
-      const activeTeam = selectedTeamId ? teams.find((team) => team.id === selectedTeamId) : null;
-      await persistActiveTeam(selectedTeamId, {
-        persistRemote,
-        role: activeTeam?.myRole || null,
-        permissions: activeTeam?.myPermissions || null,
-        profile,
-      });
+      const activeTeam = selectedTeamId ? teamList.find((team) => team.id === selectedTeamId) : null;
+      try {
+        await withTimeout(
+          () => persistActiveTeam(selectedTeamId, {
+            persistRemote: teamsResolved ? persistRemote : false,
+            role: activeTeam?.myRole || null,
+            permissions: activeTeam?.myPermissions || null,
+            profile,
+          }),
+          options.persistTimeoutMs || 1500,
+          'persistActiveTeam[bootstrap]'
+        );
+      } catch (err) {
+        warn('Active workspace persistence delayed; continuing with resolved scope.', err);
+      }
 
       return {
         teamId: selectedTeamId,
-        teams,
+        teams: teamList,
         profile,
         needsSelection: false,
         source,
@@ -1333,7 +1680,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     return query.eq(userColumn, getOwnerId()).is('team_id', null);
   }
 
-  // â”€â”€ MIGRATION: import existing localStorage data on first login â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── MIGRATION: import existing localStorage data on first login ─────────────
   async function migrateLocalStorageData() {
     // FIXED: legacy browser-storage import is disabled; Supabase is the only business-data source of truth.
     return { skipped: true, reason: 'cloud-first' };
@@ -1481,13 +1828,15 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     };
   }
 
-  async function loadAudienceMetrics() {
+  async function loadAudienceMetrics(options = {}) {
     const ownerId = getOwnerId();
     if (!ownerId) return null;
+    const workspaceMeta = normalizeWorkspaceMeta(options.workspaceMeta || {});
     try {
-      const { data, error } = await applyScopeFilter(
+      const { data, error } = await applyScopeFilterForMeta(
         db.from('audience_metrics').select('*').order('period', { ascending: false }),
-        'owner_id'
+        'owner_id',
+        workspaceMeta
       );
       if (error) { warn('Audience metrics load error:', error); return null; }
       return (data || []).map(rowToAudienceMetric);
@@ -1497,10 +1846,13 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
   }
 
-  async function saveAudienceMetrics(entries) {
+  async function saveAudienceMetrics(entries, options = {}) {
     const ownerId = getOwnerId();
     if (!ownerId || !Array.isArray(entries)) return;
-    const ctx = getContext();
+    const workspaceMeta = normalizeWorkspaceMeta(options.workspaceMeta || {});
+    const ctx = workspaceMeta.teamId
+      ? { team_id: workspaceMeta.teamId, owner_id: null }
+      : { team_id: null, owner_id: workspaceMeta.ownerId };
     const artistLookup = {};
     if (Array.isArray(window.artists)) {
       window.artists.forEach((a) => {
@@ -1531,16 +1883,16 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }).filter(row => row.artist_id && row.period);
     if (rows.length === 0) return;
     try {
-      const conflict = ctx.team_id ? 'artist_id,team_id,period' : 'artist_id,owner_id,period';
-      const { error } = await db.from('audience_metrics').upsert(rows, { onConflict: conflict });
-      throwIfSupabaseError('Audience metrics save', error);
+      await saveScopedRows('audience_metrics', rows, workspaceMeta, {
+        lookupFields: ['artist_id', 'period'],
+      });
     } catch (err) {
       warn('Audience metrics save failed:', err);
       throw err;
     }
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ TASKS Ã¢â‚¬â€ rows Ã¢â€ â€ app Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // ── TASKS — rows ↔ app ─────────────────────────────
   function rowToTask(row) {
     return {
       id: row.id,
@@ -1565,7 +1917,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     };
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ REVENUE GOALS Ã¢â‚¬â€ rows Ã¢â€ â€ app Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // ── REVENUE GOALS — rows ↔ app ────────────────────
   function rowToRevenueGoal(row) {
     return {
       id: row.id,
@@ -1585,7 +1937,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     };
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ BBF Ã¢â‚¬â€ rows Ã¢â€ â€ app Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // ── BBF — rows ↔ app ───────────────
   function rowToBBF(row) {
     return {
       id: row.id,
@@ -1605,7 +1957,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     };
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Closing Thoughts Ã¢â‚¬â€ rows Ã¢â€ â€ app Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // ── Closing Thoughts — rows ↔ app ───────
   function rowToClosingThought(row) {
     return {
       id: row.id,
@@ -1625,7 +1977,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     };
   }
 
-  // â”€â”€ ID HELPERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── ID HELPERS ────────────────────────────────────────────────────────────────
   // A "cloud UUID" is a 36-char string: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   function isCloudId(id) {
@@ -1642,13 +1994,81 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     return sanitized;
   }
 
-  // â”€â”€ CORE DATA API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  async function loadData() {
+  function scopeMutationQuery(query, workspaceMeta, ownerColumn = 'owner_id') {
+    const workspace = normalizeWorkspaceMeta(workspaceMeta || {});
+    if (workspace.teamId) return query.eq('team_id', workspace.teamId);
+    return query.eq(ownerColumn, workspace.ownerId).is('team_id', null);
+  }
+
+  async function findScopedRow(table, row, workspaceMeta, options = {}) {
+    const ownerColumn = options.ownerColumn || 'owner_id';
+    const lookupFields = Array.isArray(options.lookupFields) ? options.lookupFields : [];
+    const selectors = [];
+    const cloudId = isCloudId(row?.id) ? row.id : null;
+    const legacyId = row?.legacy_id ? String(row.legacy_id) : '';
+    if (cloudId) selectors.push({ id: cloudId });
+    if (legacyId) selectors.push({ legacy_id: legacyId });
+    if (lookupFields.length && lookupFields.every((field) => row?.[field] !== null && typeof row?.[field] !== 'undefined' && row?.[field] !== '')) {
+      selectors.push(lookupFields.reduce((memo, field) => {
+        memo[field] = row[field];
+        return memo;
+      }, {}));
+    }
+
+    for (const selector of selectors) {
+      let query = db.from(table).select('id,legacy_id').limit(1);
+      Object.entries(selector).forEach(([key, value]) => {
+        query = query.eq(key, value);
+      });
+      query = scopeMutationQuery(query, workspaceMeta, ownerColumn);
+      const { data, error } = await query.maybeSingle();
+      if (error && error.code !== 'PGRST116') throw error;
+      if (data?.id) return data;
+    }
+    return null;
+  }
+
+  async function saveScopedRows(table, rows, workspaceMeta, options = {}) {
+    const sanitizedRows = (Array.isArray(rows) ? rows : [])
+      .map(sanitizeUpsertRow)
+      .filter((row) => row && Object.keys(row).length > 0);
+    if (!sanitizedRows.length) return [];
+
+    const ownerColumn = options.ownerColumn || 'owner_id';
+    const results = [];
+    for (const row of sanitizedRows) {
+      const existing = await findScopedRow(table, row, workspaceMeta, options);
+      if (existing?.id) {
+        const { id: _ignoredId, ...updateRow } = row;
+        let query = db.from(table)
+          .update(updateRow)
+          .eq('id', existing.id)
+          .select('id,legacy_id');
+        query = scopeMutationQuery(query, workspaceMeta, ownerColumn);
+        const { data, error } = await query.maybeSingle();
+        throwIfSupabaseError(`${table} scoped update`, error);
+        if (data) results.push(data);
+      } else {
+        const { data, error } = await db.from(table)
+          .insert(row)
+          .select('id,legacy_id')
+          .maybeSingle();
+        throwIfSupabaseError(`${table} scoped insert`, error);
+        if (data) results.push(data);
+      }
+    }
+    return results;
+  }
+
+  // ── CORE DATA API ────────────────────────────────────────────────────────────
+  async function loadData(options = {}) {
     const ownerId = getOwnerId();
     if (!ownerId) return null;
     if (!(await ensureWorkspaceReady({ promptOnSelection: false }))) return null;
+    const workspaceMeta = normalizeWorkspaceMeta(options.workspaceMeta || {});
+    logWorkspaceDiagnostics('loadData.scope', workspaceMeta);
 
-    const filter = (q) => applyScopeFilter(q, 'owner_id');
+    const filter = (q) => applyScopeFilterForMeta(q, 'owner_id', workspaceMeta);
 
     try {
       const timedQuery = async (label, query, timeoutMs) => {
@@ -1675,8 +2095,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         }
       };
 
-      // Sequential queries wrapped in lambdas â€” Supabase SDK Web Locks deadlock
-      // on concurrent auth-bearing requests (see CLAUDE.md Â§12). Lambdas prevent
+      // Sequential queries wrapped in lambdas — Supabase SDK Web Locks deadlock
+      // on concurrent auth-bearing requests (see CLAUDE.md §12). Lambdas prevent
       // eager evaluation from starting all queries simultaneously.
       const bookingsRows = await timedQuery(
         'loadData.bookings',
@@ -1700,12 +2120,28 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       );
 
       const payload = {};
+      const missingKeys = [];
       if (Array.isArray(bookingsRows)) payload.bookings = bookingsRows.map(rowToBooking);
+      else missingKeys.push('bookings');
       if (Array.isArray(expensesRows)) payload.expenses = expensesRows.map(rowToExpense);
+      else missingKeys.push('expenses');
       if (Array.isArray(incomeRows)) payload.otherIncome = incomeRows.map(rowToOtherIncome);
+      else missingKeys.push('otherIncome');
       if (Array.isArray(artistsRows)) payload.artists = artistsRows.map(rowToArtist);
+      else missingKeys.push('artists');
 
-      return Object.keys(payload).length ? payload : null;
+      if (Object.keys(payload).length) {
+        if (missingKeys.length) {
+          payload.__meta = {
+            corePartial: true,
+            missingKeys,
+            source: 'loadData',
+          };
+        }
+        attachWorkspaceMeta(payload, 'loadData', workspaceMeta);
+        return payload;
+      }
+      return null;
     } catch (err) {
       warn('loadData failed:', err);
       return null;
@@ -1713,43 +2149,93 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   }
 
   // FIXED: fast dashboard bootstrap pulls only the critical list data within the auth loader budget.
-  async function loadCriticalDashboardDataFast(timeoutMs = 4500) {
+  async function loadCriticalDashboardDataFast(timeoutMs = 4500, options = {}) {
     const ownerId = getOwnerId();
     if (!ownerId) return null;
     if (!(await ensureWorkspaceReady({ promptOnSelection: false }))) return null;
-    const filter = (q) => applyScopeFilter(q, 'owner_id');
+    const workspaceMeta = normalizeWorkspaceMeta(options.workspaceMeta || {});
+    logWorkspaceDiagnostics('bootstrap.fastData.scope', workspaceMeta);
+    const filter = (q) => applyScopeFilterForMeta(q, 'owner_id', workspaceMeta);
     const started = nowMs();
+    const loaders = [
+      {
+        key: 'bookings',
+        label: 'loadCritical.bookings',
+        query: () => filter(db.from('bookings').select('*')).order('created_at', { ascending: false }),
+        map: (rows) => rows.map(rowToBooking),
+      },
+      {
+        key: 'expenses',
+        label: 'loadCritical.expenses',
+        query: () => filter(db.from('expenses').select('*')).order('date', { ascending: false }),
+        map: (rows) => rows.map(rowToExpense),
+      },
+      {
+        key: 'otherIncome',
+        label: 'loadCritical.other_income',
+        query: () => filter(db.from('other_income').select('*')).order('date', { ascending: false }),
+        map: (rows) => rows.map(rowToOtherIncome),
+      },
+      {
+        key: 'artists',
+        label: 'loadCritical.artists',
+        query: () => filter(db.from('artists').select('*')).order('name'),
+        map: (rows) => rows.map(rowToArtist),
+      },
+    ];
 
     try {
-      const settled = await withTimeout(
-        () => Promise.allSettled([
-          filter(db.from('bookings').select('*')).order('created_at', { ascending: false }),
-          filter(db.from('expenses').select('*')).order('date', { ascending: false }),
-          filter(db.from('other_income').select('*')).order('date', { ascending: false }),
-          filter(db.from('artists').select('*')).order('name'),
-        ]),
-        timeoutMs,
-        'loadCriticalDashboardDataFast'
-      );
       const payload = {};
-      const [bookingsRes, expensesRes, incomeRes, artistsRes] = settled;
-      if (bookingsRes?.status === 'fulfilled' && !bookingsRes.value?.error) {
-        payload.bookings = (bookingsRes.value?.data || []).map(rowToBooking);
+      const missingKeys = [];
+
+      for (const loader of loaders) {
+        const elapsed = nowMs() - started;
+        const remaining = timeoutMs - elapsed;
+        if (remaining < 350) {
+          missingKeys.push(loader.key);
+          log('bootstrap.fastData.skipped', {
+            key: loader.key,
+            remaining: Math.round(remaining),
+          });
+          continue;
+        }
+
+        const perQueryTimeout = Math.max(350, Math.min(1200, remaining));
+        try {
+          const res = await withTimeout(loader.query, perQueryTimeout, loader.label);
+          if (res?.error) {
+            warn(`${loader.label} load error:`, res.error);
+            missingKeys.push(loader.key);
+            continue;
+          }
+          const rows = Array.isArray(res?.data) ? res.data : [];
+          payload[loader.key] = loader.map(rows);
+          log('bootstrap.fastData.table', {
+            key: loader.key,
+            rows: rows.length,
+            ms: Math.round(nowMs() - started),
+          });
+        } catch (err) {
+          warn(`${loader.label} failed during fast bootstrap:`, err);
+          missingKeys.push(loader.key);
+        }
       }
-      if (expensesRes?.status === 'fulfilled' && !expensesRes.value?.error) {
-        payload.expenses = (expensesRes.value?.data || []).map(rowToExpense);
-      }
-      if (incomeRes?.status === 'fulfilled' && !incomeRes.value?.error) {
-        payload.otherIncome = (incomeRes.value?.data || []).map(rowToOtherIncome);
-      }
-      if (artistsRes?.status === 'fulfilled' && !artistsRes.value?.error) {
-        payload.artists = (artistsRes.value?.data || []).map(rowToArtist);
+
+      const returnedKeys = Object.keys(payload);
+      if (returnedKeys.length) {
+        payload.__meta = {
+          partial: missingKeys.length > 0,
+          missingKeys,
+          source: 'fast-bootstrap',
+        };
+        attachWorkspaceMeta(payload, 'fast-bootstrap', workspaceMeta);
       }
       log('bootstrap.fastData.done', {
         ms: Math.round(nowMs() - started),
-        keys: Object.keys(payload),
+        keys: returnedKeys,
+        missingKeys,
       });
-      return Object.keys(payload).length ? payload : null;
+      return returnedKeys.length ? payload : null;
     } catch (err) {
       warn('Fast dashboard data load failed:', err);
       log('bootstrap.fastData.failed', {
@@ -1760,40 +2246,30 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
   }
 
-  async function saveData({ bookings, expenses, otherIncome }) {
+  async function saveData({ bookings, expenses, otherIncome }, options = {}) {
     const ownerId = getOwnerId();
     if (!ownerId) return;
-    const ctx = getContext();
+    const workspaceMeta = normalizeWorkspaceMeta(options.workspaceMeta || {});
+    const ctx = workspaceMeta.teamId
+      ? { team_id: workspaceMeta.teamId, owner_id: null }
+      : { team_id: null, owner_id: workspaceMeta.ownerId };
+    logWorkspaceDiagnostics('saveData.scope', workspaceMeta, {
+      bookings: Array.isArray(bookings) ? bookings.length : null,
+      expenses: Array.isArray(expenses) ? expenses.length : null,
+      otherIncome: Array.isArray(otherIncome) ? otherIncome.length : null,
+    });
 
-    // Helper: split records into those with cloud UUIDs vs. local legacy IDs
-    // UUID records â†’ upsert on 'id'.  Legacy records â†’ upsert on 'legacy_id,owner_id'
+    // Explicit scoped save: select by id/legacy id in the resolved workspace,
+    // then update or insert. This avoids relying on optional DB constraints.
     async function smartUpsert(table, items, toRow) {
       if (!items || !items.length) return [];
       const rows = items.map(item => sanitizeUpsertRow(toRow(item, ownerId, ctx.team_id)));
-      const uuidRows    = rows.filter(r => isCloudId(r.id));
-      const legacyRows  = rows.filter(r => !isCloudId(r.id));
-      const results = [];
-
-      if (uuidRows.length) {
-        const { data, error } = await db.from(table)
-          .upsert(uuidRows, { onConflict: 'id', ignoreDuplicates: false })
-          .select('id,legacy_id');
-        throwIfSupabaseError(`${table} UUID upsert`, error);
-        if (data) results.push(...data);
-      }
-      if (legacyRows.length) {
-        const { data, error } = await db.from(table)
-          .upsert(legacyRows, { onConflict: 'legacy_id,owner_id', ignoreDuplicates: false })
-          .select('id,legacy_id');
-        throwIfSupabaseError(`${table} legacy upsert`, error);
-        if (data) results.push(...data);
-      }
-      return results;
+      return saveScopedRows(table, rows, workspaceMeta);
     }
 
     try {
-      // Sequential upserts â€” Supabase SDK Web Locks cause AbortError when
-      // multiple auth-bearing requests run concurrently (see CLAUDE.md Â§12).
+      // Sequential upserts — Supabase SDK Web Locks cause AbortError when
+      // multiple auth-bearing requests run concurrently (see CLAUDE.md §12).
       const bRows = await smartUpsert('bookings',     bookings,    bookingToRow);
       const eRows = await smartUpsert('expenses',     expenses,    expenseToRow);
       const iRows = await smartUpsert('other_income', otherIncome, otherIncomeToRow);
@@ -1826,10 +2302,13 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
   }
 
-  async function saveArtistsData(artists) {
+  async function saveArtistsData(artists, options = {}) {
     const ownerId = getOwnerId();
     if (!ownerId || !Array.isArray(artists)) return [];
-    const ctx = getContext();
+    const workspaceMeta = normalizeWorkspaceMeta(options.workspaceMeta || {});
+    const ctx = workspaceMeta.teamId
+      ? { team_id: workspaceMeta.teamId, owner_id: null }
+      : { team_id: null, owner_id: workspaceMeta.ownerId };
     try {
       const rows = artists.map(a => sanitizeUpsertRow({
         ...(isCloudId(a.id) ? { id: a.id } : {}),
@@ -1844,23 +2323,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         strategic_goal: a.strategicGoal || '',
         avatar: a.avatar || '',
       }));
-      const results = [];
-      const uuidRows   = rows.filter(r => isCloudId(r.id));
-      const legacyRows = rows.filter(r => !isCloudId(r.id));
-      if (uuidRows.length) {
-        const { data, error } = await db.from('artists')
-          .upsert(uuidRows, { onConflict: 'id' })
-          .select('id,legacy_id');
-        throwIfSupabaseError('Artists UUID save', error);
-        if (data) results.push(...data);
-      }
-      if (legacyRows.length) {
-        const { data, error } = await db.from('artists')
-          .upsert(legacyRows, { onConflict: 'legacy_id,owner_id' })
-          .select('id,legacy_id');
-        throwIfSupabaseError('Artists legacy save', error);
-        if (data) results.push(...data);
-      }
+      const results = await saveScopedRows('artists', rows, workspaceMeta);
 
       if (results.length) {
         const legacyMap = {};
@@ -1936,6 +2399,18 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     };
   }
 
+  function beginCloudSaveOperation() {
+    if (typeof window === 'undefined') return;
+    window.__spCloudSaveInFlightCount = (Number(window.__spCloudSaveInFlightCount) || 0) + 1;
+    window.__spCloudSaveInFlight = true;
+  }
+
+  function endCloudSaveOperation() {
+    if (typeof window === 'undefined') return;
+    window.__spCloudSaveInFlightCount = Math.max(0, (Number(window.__spCloudSaveInFlightCount) || 1) - 1);
+    window.__spCloudSaveInFlight = window.__spCloudSaveInFlightCount > 0;
+  }
+
   function createStructuredSyncError(step, err, options = {}) {
     const message = options.message || formatStructuredSyncMessage(step, err);
     const syncError = err instanceof Error ? err : new Error(message);
@@ -2002,6 +2477,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
 
     updateSyncIndicator('syncing');
+    beginCloudSaveOperation();
     try {
       await refreshSessionIfNeeded({ minTtlSeconds: 90 });
       await handler();
@@ -2027,68 +2503,57 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       });
       updateSyncIndicator(navigator.onLine ? 'failed' : 'offline');
       return syncError.syncResult;
+    } finally {
+      endCloudSaveOperation();
     }
   }
 
+  function collectClientSavePayload(overrides = {}) {
+    const base = typeof window.SP_collectAllData === 'function'
+      ? window.SP_collectAllData()
+      : {
+        bookings: Array.isArray(window.bookings) ? window.bookings : [],
+        expenses: Array.isArray(window.expenses) ? window.expenses : [],
+        otherIncome: Array.isArray(window.otherIncome) ? window.otherIncome : [],
+        artists: Array.isArray(window.artists) ? window.artists : [],
+        audienceMetrics: Array.isArray(window.audienceMetrics) ? window.audienceMetrics : [],
+      };
+    return { ...base, ...overrides };
+  }
+
   async function saveBookings(bookings) {
-    return runStructuredSyncOperation('saveBookings', () => saveData({
+    return saveAllData(collectClientSavePayload({
       bookings: Array.isArray(bookings) ? bookings : [],
-      expenses: [],
-      otherIncome: [],
-    }), {
-      showToast: false,
-      successMessage: 'Bookings saved to cloud.',
-      context: {
-        bookingCount: Array.isArray(bookings) ? bookings.length : 0,
-      },
-    });
+    }), { reason: 'saveBookings' });
   }
 
   async function saveExpenses(expenses) {
-    return runStructuredSyncOperation('saveExpenses', () => saveData({
-      bookings: [],
+    return saveAllData(collectClientSavePayload({
       expenses: Array.isArray(expenses) ? expenses : [],
-      otherIncome: [],
-    }), {
-      showToast: false,
-      successMessage: 'Expenses saved to cloud.',
-      context: {
-        expenseCount: Array.isArray(expenses) ? expenses.length : 0,
-      },
-    });
+    }), { reason: 'saveExpenses' });
   }
 
   async function saveOtherIncome(otherIncome) {
-    return runStructuredSyncOperation('saveOtherIncome', () => saveData({
-      bookings: [],
-      expenses: [],
+    return saveAllData(collectClientSavePayload({
       otherIncome: Array.isArray(otherIncome) ? otherIncome : [],
-    }), {
-      showToast: false,
-      successMessage: 'Other income saved to cloud.',
-      context: {
-        otherIncomeCount: Array.isArray(otherIncome) ? otherIncome.length : 0,
-      },
-    });
+    }), { reason: 'saveOtherIncome' });
   }
 
   async function saveArtists(artists) {
-    return runStructuredSyncOperation('saveArtists', () => saveArtistsData(artists), {
-      showToast: false,
-      successMessage: 'Artists saved to cloud.',
-      context: {
-        artistCount: Array.isArray(artists) ? artists.length : 0,
-      },
-    });
+    return saveAllData(collectClientSavePayload({
+      artists: Array.isArray(artists) ? artists : [],
+    }), { reason: 'saveArtists' });
   }
 
-  async function loadTasks() {
+  async function loadTasks(options = {}) {
     const ownerId = getOwnerId();
     if (!ownerId) return null;
+    const workspaceMeta = normalizeWorkspaceMeta(options.workspaceMeta || {});
     try {
-      const { data, error } = await applyUserScopeFilter(
+      const { data, error } = await applyScopeFilterForMeta(
         db.from('tasks').select('*').order('created_at', { ascending: true }),
-        'user_id'
+        'user_id',
+        workspaceMeta
       );
       if (error) { warn('Tasks load error:', error); return null; }
       return (data || []).map(rowToTask);
@@ -2098,12 +2563,12 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
   }
 
-  async function saveTasks(tasks) {
+  async function saveTasks(tasks, options = {}) {
     const ownerId = getOwnerId();
     if (!ownerId || !Array.isArray(tasks)) return;
-    const ctx = getContext();
+    const workspaceMeta = normalizeWorkspaceMeta(options.workspaceMeta || {});
     const rows = tasks
-      .map((task) => taskToRow(task, ownerId, ctx.team_id))
+      .map((task) => taskToRow(task, ownerId, workspaceMeta.teamId))
       .filter((row) => row.id && row.text);
     if (rows.length === 0) return;
     try {
@@ -2115,13 +2580,15 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
   }
 
-  async function loadRevenueGoal() {
+  async function loadRevenueGoal(options = {}) {
     const ownerId = getOwnerId();
     if (!ownerId) return null;
+    const workspaceMeta = normalizeWorkspaceMeta(options.workspaceMeta || {});
     try {
-      const { data, error } = await applyUserScopeFilter(
+      const { data, error } = await applyScopeFilterForMeta(
         db.from('revenue_goals').select('*').eq('period', 'monthly').limit(1),
-        'user_id'
+        'user_id',
+        workspaceMeta
       );
       if (error) { warn('Revenue goal load error:', error); return null; }
       const row = (data || [])[0];
@@ -2132,14 +2599,14 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
   }
 
-  async function saveRevenueGoal(goal) {
+  async function saveRevenueGoal(goal, options = {}) {
     const ownerId = getOwnerId();
     if (!ownerId || !goal) return;
-    const ctx = getContext();
+    const workspaceMeta = normalizeWorkspaceMeta(options.workspaceMeta || {});
     try {
       const { error } = await db.from('revenue_goals').upsert(
-        [revenueGoalToRow(goal, ownerId, ctx.team_id)],
-        { onConflict: ctx.team_id ? 'team_id,period' : 'user_id,period' }
+        [revenueGoalToRow(goal, ownerId, workspaceMeta.teamId)],
+        { onConflict: workspaceMeta.teamId ? 'team_id,period' : 'user_id,period' }
       );
       throwIfSupabaseError('Revenue goal save', error);
     } catch (err) {
@@ -2148,13 +2615,15 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
   }
 
-  async function loadBBFEntries() {
+  async function loadBBFEntries(options = {}) {
     const ownerId = getOwnerId();
     if (!ownerId) return null;
+    const workspaceMeta = normalizeWorkspaceMeta(options.workspaceMeta || {});
     try {
-      const { data, error } = await applyUserScopeFilter(
+      const { data, error } = await applyScopeFilterForMeta(
         db.from('bbf_entries').select('*').order('period', { ascending: true }),
-        'user_id'
+        'user_id',
+        workspaceMeta
       );
       if (error) { warn('BBF load error:', error); return null; }
       return (data || []).map(rowToBBF);
@@ -2164,18 +2633,18 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
   }
 
-  async function saveBBFEntries(entries) {
+  async function saveBBFEntries(entries, options = {}) {
     const ownerId = getOwnerId();
     if (!ownerId || !Array.isArray(entries)) return;
-    const ctx = getContext();
+    const workspaceMeta = normalizeWorkspaceMeta(options.workspaceMeta || {});
     const rows = entries
-      .map((entry) => bbfToRow(entry, ownerId, ctx.team_id))
+      .map((entry) => bbfToRow(entry, ownerId, workspaceMeta.teamId))
       .filter((row) => row.period);
     if (rows.length === 0) return;
     try {
       const { error } = await db.from('bbf_entries').upsert(
         rows,
-        { onConflict: ctx.team_id ? 'team_id,period' : 'user_id,period' }
+        { onConflict: workspaceMeta.teamId ? 'team_id,period' : 'user_id,period' }
       );
       throwIfSupabaseError('BBF save', error);
     } catch (err) {
@@ -2184,13 +2653,15 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
   }
 
-  async function loadClosingThoughts() {
+  async function loadClosingThoughts(options = {}) {
     const ownerId = getOwnerId();
     if (!ownerId) return null;
+    const workspaceMeta = normalizeWorkspaceMeta(options.workspaceMeta || {});
     try {
-      const { data, error } = await applyUserScopeFilter(
+      const { data, error } = await applyScopeFilterForMeta(
         db.from('closing_thoughts').select('*').order('updated_at', { ascending: true }),
-        'user_id'
+        'user_id',
+        workspaceMeta
       );
       if (error) { warn('Closing thoughts load error:', error); return null; }
       return (data || []).map(rowToClosingThought);
@@ -2200,18 +2671,18 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
   }
 
-  async function saveClosingThoughts(entries) {
+  async function saveClosingThoughts(entries, options = {}) {
     const ownerId = getOwnerId();
     if (!ownerId || !Array.isArray(entries)) return;
-    const ctx = getContext();
+    const workspaceMeta = normalizeWorkspaceMeta(options.workspaceMeta || {});
     const rows = entries
-      .map((entry) => closingThoughtToRow(entry, ownerId, ctx.team_id))
+      .map((entry) => closingThoughtToRow(entry, ownerId, workspaceMeta.teamId))
       .filter((row) => row.period && row.content);
     if (rows.length === 0) return;
     try {
       const { error } = await db.from('closing_thoughts').upsert(
         rows,
-        { onConflict: ctx.team_id ? 'team_id,period' : 'user_id,period' }
+        { onConflict: workspaceMeta.teamId ? 'team_id,period' : 'user_id,period' }
       );
       throwIfSupabaseError('Closing thoughts save', error);
     } catch (err) {
@@ -2220,11 +2691,24 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
   }
 
-  async function loadAllData() {
+  async function loadAllData(options = {}) {
     const ownerId = getOwnerId();
     if (!ownerId) return null;
     if (!(await ensureWorkspaceReady({ promptOnSelection: false }))) return null;
-    const profile = _profile || await getProfile();
+    const workspaceMeta = normalizeWorkspaceMeta(options.workspaceMeta || {});
+    logWorkspaceDiagnostics('loadAllData.scope', workspaceMeta, { reason: options.reason || 'loadAllData' });
+    let profile = _profile || null;
+    if (!profile && !options.skipProfileFetch) {
+      try {
+        profile = await withTimeout(
+          () => getProfile(),
+          typeof options.profileTimeoutMs === 'number' ? options.profileTimeoutMs : 2500,
+          'getProfile[loadAllData]'
+        );
+      } catch (err) {
+        warn('Profile lookup skipped during cloud data load:', err);
+      }
+    }
     try {
       const timedLoad = async (label, fn, timeoutMs) => {
         const started = nowMs();
@@ -2250,16 +2734,21 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         }
       };
 
-      // Sequential loads â€” Supabase SDK Web Locks deadlock on concurrent
-      // auth-bearing requests (see CLAUDE.md Â§12).
-      const core             = await timedLoad('loadData',            () => loadData(),            7000);
-      const audienceMetrics  = await timedLoad('loadAudienceMetrics', () => loadAudienceMetrics(), 5000);
-      const tasks            = await timedLoad('loadTasks',           () => loadTasks(),           5000);
-      const revenueGoal      = await timedLoad('loadRevenueGoal',     () => loadRevenueGoal(),     4000);
-      const bbfEntries       = await timedLoad('loadBBFEntries',      () => loadBBFEntries(),      5000);
-      const closingThoughts  = await timedLoad('loadClosingThoughts', () => loadClosingThoughts(), 5000);
+      // Sequential loads — Supabase SDK Web Locks deadlock on concurrent
+      // auth-bearing requests (see CLAUDE.md §12).
+      const core             = await timedLoad('loadData',            () => loadData({ workspaceMeta }), 7000);
+      const audienceMetrics  = await timedLoad('loadAudienceMetrics', () => loadAudienceMetrics({ workspaceMeta }), 5000);
+      const tasks            = await timedLoad('loadTasks',           () => loadTasks({ workspaceMeta }),           5000);
+      const revenueGoal      = await timedLoad('loadRevenueGoal',     () => loadRevenueGoal({ workspaceMeta }),     4000);
+      const bbfEntries       = await timedLoad('loadBBFEntries',      () => loadBBFEntries({ workspaceMeta }),      5000);
+      const closingThoughts  = await timedLoad('loadClosingThoughts', () => loadClosingThoughts({ workspaceMeta }), 5000);
 
       const payload = {};
+      const coreMeta = core.value?.__meta || null;
+      const coreKeys = ['bookings', 'expenses', 'otherIncome', 'artists'];
+      const coreMissingKeys = core.value && typeof core.value === 'object'
+        ? coreKeys.filter((key) => !Object.prototype.hasOwnProperty.call(core.value, key))
+        : coreKeys;
       if (core.value && typeof core.value === 'object') Object.assign(payload, core.value);
       if (audienceMetrics.value) payload.audienceMetrics = audienceMetrics.value;
       if (tasks.value) payload.tasks = tasks.value;
@@ -2271,10 +2760,17 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       const allCriticalTimedOut = [core, audienceMetrics, tasks, revenueGoal, bbfEntries, closingThoughts].every(r => r.timedOut);
       const hasData = Object.keys(payload).length > 0;
       if (!hasData) {
-        return allCriticalTimedOut ? { __meta: { allCriticalTimedOut: true } } : null;
+        return allCriticalTimedOut
+          ? attachWorkspaceMeta({ __meta: { allCriticalTimedOut: true } }, options.reason || 'loadAllData-timeout', workspaceMeta)
+          : null;
       }
 
-      payload.__meta = { allCriticalTimedOut };
+      payload.__meta = {
+        allCriticalTimedOut,
+        corePartial: Boolean(coreMeta?.corePartial) || coreMissingKeys.length > 0,
+        missingKeys: Array.from(new Set([...(coreMeta?.missingKeys || []), ...coreMissingKeys])),
+      };
+      attachWorkspaceMeta(payload, options.reason || 'loadAllData', workspaceMeta);
       return payload;
     } catch (err) {
       warn('loadAllData failed:', err);
@@ -2291,11 +2787,24 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     for (let attempt = 0; attempt <= retries; attempt += 1) {
       try {
         const fresh = await withTimeout(
-          () => loadAllData(),
+          () => loadAllData({
+            workspaceMeta: options.workspaceMeta,
+            reason: label,
+            skipProfileFetch: options.skipProfileFetch,
+            profileTimeoutMs: options.profileTimeoutMs,
+          }),
           timeoutMs,
           attempt === 0 ? label : `${label}[retry-${attempt}]`
         );
         if (fresh) {
+          if (fresh.__meta?.corePartial) {
+            lastError = new Error(`Core cloud data incomplete: ${(fresh.__meta.missingKeys || []).join(', ')}`);
+            warn('loadAllDataWithRetry got partial core data:', fresh.__meta);
+            if (attempt < retries) {
+              continue;
+            }
+            throw lastError;
+          }
           return fresh;
         }
       } catch (err) {
@@ -2318,6 +2827,139 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     return null;
   }
 
+  function parseBootstrapPayload(raw) {
+    if (!raw) return null;
+    if (typeof raw === 'string') {
+      try { return JSON.parse(raw); } catch (_err) { return null; }
+    }
+    return raw && typeof raw === 'object' ? raw : null;
+  }
+
+  function mapBootstrapRows(rows, mapper) {
+    return Array.isArray(rows) ? rows.map(mapper).filter(Boolean) : [];
+  }
+
+  function normalizeBootstrapRpcPayload(raw, activeSession) {
+    const payload = parseBootstrapPayload(raw);
+    if (!payload || typeof payload !== 'object') return null;
+    const data = payload.data && typeof payload.data === 'object' ? payload.data : {};
+    const meta = payload.meta && typeof payload.meta === 'object' ? payload.meta : {};
+    const workspaceRaw = payload.workspace && typeof payload.workspace === 'object'
+      ? payload.workspace
+      : {};
+    const ownerId = workspaceRaw.ownerId || workspaceRaw.owner_id || activeSession?.user?.id || getOwnerId();
+    const teamId = normalizeTeamId(workspaceRaw.teamId || workspaceRaw.team_id || null);
+    const workspaceMeta = normalizeWorkspaceMeta({
+      ownerId,
+      teamId,
+      source: 'bootstrap-rpc',
+    });
+    const missingKeys = Array.isArray(meta.missingKeys)
+      ? meta.missingKeys
+      : (Array.isArray(meta.missing_keys) ? meta.missing_keys : []);
+    const fresh = {
+      bookings: mapBootstrapRows(data.bookings, rowToBooking),
+      expenses: mapBootstrapRows(data.expenses, rowToExpense),
+      otherIncome: mapBootstrapRows(data.otherIncome || data.other_income, rowToOtherIncome),
+      artists: mapBootstrapRows(data.artists, rowToArtist),
+      audienceMetrics: mapBootstrapRows(data.audienceMetrics || data.audience_metrics, rowToAudienceMetric),
+      tasks: mapBootstrapRows(data.tasks, rowToTask),
+      bbfEntries: mapBootstrapRows(data.bbfEntries || data.bbf_entries, rowToBBF),
+      closingThoughts: mapBootstrapRows(data.closingThoughts || data.closing_thoughts, rowToClosingThought),
+    };
+    if (data.revenueGoal || data.revenue_goal) {
+      fresh.revenueGoal = rowToRevenueGoal(data.revenueGoal || data.revenue_goal);
+    }
+    fresh.__meta = {
+      source: 'bootstrap-rpc',
+      complete: meta.complete !== false,
+      missingKeys,
+      generatedAt: meta.generatedAt || meta.generated_at || null,
+    };
+    attachWorkspaceMeta(fresh, 'bootstrap-rpc', workspaceMeta);
+    const teams = mapBootstrapRows(payload.teams, normalizeTeamContextRow);
+    cacheTeamContext(teams, 'bootstrap-rpc');
+    const activeTeam = teamId ? teams.find((team) => team.id === teamId) : null;
+    return {
+      profile: payload.profile || null,
+      teams,
+      workspaceMeta,
+      teamId,
+      role: workspaceRaw.role || activeTeam?.myRole || null,
+      permissions: workspaceRaw.permissions || activeTeam?.myPermissions || null,
+      fresh,
+      meta: fresh.__meta,
+    };
+  }
+
+  function applyBootstrapProfile(profile, activeSession, usernameHint, remember) {
+    if (!profile) return;
+    _profile = profile;
+    if (profile.preferred_currency) {
+      applyCurrency(profile.preferred_currency);
+    }
+    if (profile.preferred_theme && typeof window.applyTheme === 'function' && !hasLocalThemePreference()) {
+      window.applyTheme(profile.preferred_theme, { persist: true, syncRemote: false });
+    }
+    const stableUsername = resolveSessionUsername(activeSession.user, profile, usernameHint);
+    if (profile.username === 'Manager' && stableUsername && stableUsername !== 'Manager') {
+      _profile = { ...profile, username: stableUsername };
+    }
+    syncAuthIntoAppSession(stableUsername, _profile, remember);
+    if (typeof window.updateCurrentManagerContext === 'function') {
+      try {
+        window.updateCurrentManagerContext();
+      } catch (err) {
+        warn('updateCurrentManagerContext after bootstrap profile failed:', err);
+      }
+    }
+  }
+
+  async function loadBootstrapPayloadFromRpc(activeSession, options = {}) {
+    const userId = activeSession?.user?.id;
+    if (!userId || typeof db.rpc !== 'function') return null;
+    const timeoutMs = typeof options.timeoutMs === 'number' ? options.timeoutMs : 4500;
+    const started = nowMs();
+    recordBootstrapTiming('bootstrap.rpc.start', { timeoutMs });
+    let result = null;
+    try {
+      const response = await withTimeout(
+        () => db.rpc('get_bootstrap_payload', { uid: userId }),
+        timeoutMs,
+        'get_bootstrap_payload'
+      );
+      if (response?.error) {
+        if (isMissingRpcError(response.error, 'get_bootstrap_payload')) {
+          warn('Bootstrap RPC is not deployed yet; falling back to table bootstrap.');
+          recordBootstrapTiming('bootstrap.rpc.missing', {
+            ms: Math.round(nowMs() - started),
+          });
+          return null;
+        }
+        throwIfSupabaseError('get_bootstrap_payload', response.error);
+      }
+      result = normalizeBootstrapRpcPayload(response?.data, activeSession);
+      recordBootstrapTiming('bootstrap.rpc.done', {
+        ms: Math.round(nowMs() - started),
+        ok: Boolean(result?.fresh),
+        bookings: Array.isArray(result?.fresh?.bookings) ? result.fresh.bookings.length : null,
+        expenses: Array.isArray(result?.fresh?.expenses) ? result.fresh.expenses.length : null,
+        artists: Array.isArray(result?.fresh?.artists) ? result.fresh.artists.length : null,
+        missingKeys: result?.meta?.missingKeys || [],
+      });
+      return result;
+    } catch (err) {
+      const timedOut = err?.name === 'TimeoutError';
+      recordBootstrapTiming(timedOut ? 'bootstrap.timeout' : 'bootstrap.rpc.failed', {
+        ms: Math.round(nowMs() - started),
+        error: err?.message || 'unknown',
+      });
+      if (timedOut || isMissingRpcError(err, 'get_bootstrap_payload')) return null;
+      warn('Bootstrap RPC failed; falling back to table bootstrap:', err);
+      return null;
+    }
+  }
+
   async function refreshCloudData(options = {}) {
     if (!getOwnerId()) {
       await ensureSupabaseSession({ silent: true, clearIfMissing: true });
@@ -2325,6 +2967,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     if (!getOwnerId()) return null;
     if (!(await ensureWorkspaceReady({ promptOnSelection: false }))) return null;
     if (_refreshInFlight) return null;
+    const workspaceMeta = normalizeWorkspaceMeta(options.workspaceMeta || {});
     const now = Date.now();
     const minIntervalMs = typeof options.minIntervalMs === 'number' ? options.minIntervalMs : 5000;
     if (!options.force && now - _lastRefreshAt < minIntervalMs) return null;
@@ -2333,8 +2976,17 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     _lastRefreshAt = now;
     const timeoutMs = typeof options.timeoutMs === 'number' ? options.timeoutMs : 30000;
     try {
-      const fresh = await withTimeout(() => loadAllData(), timeoutMs, 'loadAllData[refresh]');
+      logWorkspaceDiagnostics('refreshCloudData.scope', workspaceMeta, { reason: options.reason || 'refresh' });
+      const fresh = await withTimeout(
+        () => loadAllData({ workspaceMeta, reason: options.reason || 'refresh' }),
+        timeoutMs,
+        'loadAllData[refresh]'
+      );
       const meta = fresh?.__meta || null;
+      if (meta?.corePartial) {
+        warn('refreshCloudData skipped partial core snapshot:', meta);
+        return null;
+      }
       if (fresh && meta) delete fresh.__meta;
       if (fresh) {
         const signature = computeCloudSignature(fresh);
@@ -2384,20 +3036,74 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
   }
 
-  async function performSaveAllData(payload = {}) {
+  function countPayloadItems(payload, key) {
+    return Array.isArray(payload?.[key]) ? payload[key].length : null;
+  }
+
+  function countVerifiedItems(payload, key) {
+    return Array.isArray(payload?.[key]) ? payload[key].length : 0;
+  }
+
+  async function verifySavedPayload(payload = {}, workspaceMeta = null) {
+    const requiredKeys = ['bookings', 'expenses', 'otherIncome', 'artists', 'audienceMetrics'];
+    const expected = requiredKeys.reduce((memo, key) => {
+      const count = countPayloadItems(payload, key);
+      if (Number.isFinite(count) && count > 0) memo[key] = count;
+      return memo;
+    }, {});
+    if (!Object.keys(expected).length) return null;
+
+    const verified = await loadAllDataWithRetry({
+      timeoutMs: 12000,
+      retries: 0,
+      label: 'loadAllData[save-verify]',
+      workspaceMeta,
+    });
+    const verifiedWorkspace = verified?.__workspace || null;
+    const expectedScope = normalizeWorkspaceMeta(workspaceMeta || {}).scopeKey;
+    if (verifiedWorkspace?.scopeKey && expectedScope && verifiedWorkspace.scopeKey !== expectedScope) {
+      throw new Error('Cloud save verification returned a different workspace.');
+    }
+    for (const [key, expectedCount] of Object.entries(expected)) {
+      const actualCount = countVerifiedItems(verified, key);
+      if (actualCount < expectedCount) {
+        throw new Error(`Cloud save verification failed for ${key}.`);
+      }
+    }
+    return verified;
+  }
+
+  async function performSaveAllData(payload = {}, options = {}) {
     if (!getOwnerId()) {
       await ensureSupabaseSession({ silent: true, clearIfMissing: false });
     }
     const ownerId = getOwnerId();
-    if (!ownerId) return;
-    if (!(await ensureWorkspaceReady({ promptOnSelection: false }))) return;
+    if (!ownerId) {
+      return buildStructuredSyncResult(false, {
+        failedStep: 'saveAllData',
+        message: 'No active cloud session. Please sign in again.',
+        context: {
+          operation: 'saveAllData',
+          reason: 'no-session',
+        },
+      });
+    }
+    if (!(await ensureWorkspaceReady({ promptOnSelection: false }))) {
+      return buildStructuredSyncResult(false, {
+        failedStep: 'saveAllData',
+        message: 'Workspace resolution failed. Try again in a moment.',
+        context: {
+          operation: 'saveAllData',
+          reason: 'workspace-unresolved',
+        },
+      });
+    }
 
     await refreshSessionIfNeeded({ minTtlSeconds: 90 });
+    const workspaceMeta = normalizeWorkspaceMeta(options.workspaceMeta || {});
+    logWorkspaceDiagnostics('saveAllData.scope', workspaceMeta, { reason: options.reason || 'saveAllData' });
 
     const sig = computeCloudSignature(payload);
-    if (sig && sig === _lastSavedSignature) {
-      return;
-    }
 
     updateSyncIndicator('syncing');
     let didSave = false;
@@ -2415,6 +3121,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     } = payload || {};
 
     let failedStep = 'saveAllData';
+    beginCloudSaveOperation();
     try {
       if (Array.isArray(bookings) || Array.isArray(expenses) || Array.isArray(otherIncome)) {
         failedStep = 'saveData';
@@ -2422,37 +3129,37 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
           bookings: Array.isArray(bookings) ? bookings : (window.bookings || []),
           expenses: Array.isArray(expenses) ? expenses : (window.expenses || []),
           otherIncome: Array.isArray(otherIncome) ? otherIncome : (window.otherIncome || []),
-        });
+        }, { workspaceMeta });
         didSave = true;
       }
       if (Array.isArray(artists)) {
         failedStep = 'saveArtists';
-        await saveArtistsData(artists);
+        await saveArtistsData(artists, { workspaceMeta });
         didSave = true;
       }
       if (Array.isArray(audienceMetrics)) {
         failedStep = 'saveAudienceMetrics';
-        await saveAudienceMetrics(audienceMetrics);
+        await saveAudienceMetrics(audienceMetrics, { workspaceMeta });
         didSave = true;
       }
       if (Array.isArray(tasks)) {
         failedStep = 'saveTasks';
-        await saveTasks(tasks);
+        await saveTasks(tasks, { workspaceMeta });
         didSave = true;
       }
       if (revenueGoal) {
         failedStep = 'saveRevenueGoal';
-        await saveRevenueGoal(revenueGoal);
+        await saveRevenueGoal(revenueGoal, { workspaceMeta });
         didSave = true;
       }
       if (Array.isArray(bbfEntries)) {
         failedStep = 'saveBBFEntries';
-        await saveBBFEntries(bbfEntries);
+        await saveBBFEntries(bbfEntries, { workspaceMeta });
         didSave = true;
       }
       if (Array.isArray(closingThoughts)) {
         failedStep = 'saveClosingThoughts';
-        await saveClosingThoughts(closingThoughts);
+        await saveClosingThoughts(closingThoughts, { workspaceMeta });
         didSave = true;
       }
       if (theme) {
@@ -2484,29 +3191,88 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       });
       updateSyncIndicator(navigator.onLine ? 'failed' : 'offline');
       throw syncError;
+    } finally {
+      endCloudSaveOperation();
     }
 
     if (didSave) {
+      failedStep = 'saveVerify';
+      let verifiedSnapshot = null;
+      try {
+        verifiedSnapshot = await verifySavedPayload(payload, workspaceMeta);
+      } catch (verifyErr) {
+        const syncError = createStructuredSyncError(failedStep, verifyErr, {
+          context: {
+            operation: 'saveAllData',
+            reason: 'read-after-write-verification',
+          },
+        });
+        captureSyncException(syncError, {
+          operation: 'saveAllData',
+          extra: {
+            failedStep,
+            reason: 'read-after-write-verification',
+          },
+        });
+        updateSyncIndicator(navigator.onLine ? 'failed' : 'offline');
+        throw syncError;
+      }
+      if (verifiedSnapshot) {
+        if (typeof window._SP_syncFromCloud === 'function') {
+          window._SP_syncFromCloud(verifiedSnapshot);
+        }
+        if (typeof window.loadUserData === 'function') {
+          window.loadUserData({
+            snapshot: verifiedSnapshot,
+            source: 'save-verify',
+          });
+        }
+        if (window.__spAppBooted) {
+          renderAppDataViews('save-verify');
+        }
+      }
       _lastSavedSignature = sig;
       broadcastLocalSync('saveAllData');
       updateSyncIndicator('synced');
       showSaveToast(true);
+      return buildStructuredSyncResult(true, {
+        message: 'Saved to cloud.',
+        context: {
+          operation: 'saveAllData',
+          didSave: true,
+        },
+      });
     }
+    return buildStructuredSyncResult(true, {
+      message: 'No cloud changes to save.',
+      context: {
+        operation: 'saveAllData',
+        didSave: false,
+      },
+    });
   }
 
-  async function saveAllData(payload = {}) {
+  async function saveAllData(payload = {}, options = {}) {
     _pendingSavePayload = payload || {};
     if (_saveInFlight) {
       return _saveInFlight;
     }
 
     _saveInFlight = (async () => {
+      let lastResult = null;
       try {
         while (_pendingSavePayload) {
           const nextPayload = _pendingSavePayload;
           _pendingSavePayload = null;
-          await performSaveAllData(nextPayload);
+          lastResult = await performSaveAllData(nextPayload, options);
         }
+        return lastResult || buildStructuredSyncResult(true, {
+          message: 'No cloud changes to save.',
+          context: {
+            operation: 'saveAllData',
+            didSave: false,
+          },
+        });
       } finally {
         _saveInFlight = null;
       }
@@ -2572,10 +3338,10 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     if (error) warn('Delete task error:', error);
   }
 
-  // â”€â”€ AUTH â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── AUTH ─────────────────────────────────────────────────────────────────────
 
   // Returns a valid http/https redirect URL regardless of environment.
-  // On file:// (local double-click), window.location.origin is "null" â€” Supabase
+  // On file:// (local double-click), window.location.origin is "null" — Supabase
   // cannot round-trip OAuth back into the file. We return the current http/https
   // origin when available, or the production URL as an explicit fallback for
   // email confirmation links only.
@@ -2592,10 +3358,10 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     return fallbackToProduction ? SP_PRODUCTION_URL : null;
   }
 
-  // Warn clearly when running on file:// â€” OAuth and email-confirm redirects need http(s).
+  // Warn clearly when running on file:// — OAuth and email-confirm redirects need http(s).
   if (window.location.protocol === 'file:') {
     console.warn(
-      '[StarPaper] Running on file:// â€” Google OAuth and email-confirm redirects will not work locally.\n' +
+      '[StarPaper] Running on file:// — Google OAuth and email-confirm redirects will not work locally.\n' +
       'Use a local server instead: run `npx serve .` or use VS Code Live Server.\n' +
       'Email/password sign-in works normally on http://localhost.'
     );
@@ -2625,14 +3391,14 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       ...overrides,
     });
 
-    // No OAuth params present â€” nothing to do.
+    // No OAuth params present — nothing to do.
     if (!hadAuthCallback) {
       window.__spAuthRedirectInProgress = false;
       return finishWith('none');
     }
 
     window.__spAuthRedirectInProgress = true;
-    setBootStateSafe('loading-session');
+    const flowId = beginBootTransitionSafe('auth-redirect', 'loading-session');
 
     // Explicit OAuth callback always clears the "logged out" guard.
     localStorage.removeItem('sp_logged_out');
@@ -2645,7 +3411,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         _session = null;
         _profile = null;
         window.__spSuppressStoredSessionBootstrap = true;
-        showLoginScreen();
+        showLoginScreen({ flowId, reason: 'auth-redirect-error' });
         if (typeof window.toastError === 'function') {
           window.toastError(errorMessage);
         }
@@ -2683,25 +3449,32 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         else { session = data?.session || null; }
       }
 
+      if (!isBootTransitionCurrentSafe(flowId)) {
+        return finishWith('stale', {
+          shouldBootstrapStoredSession: false,
+        });
+      }
+
       if (session) {
         window.__spSuppressStoredSessionBootstrap = false;
         await runBootstrapTask(() => bootstrapFromSupabaseSession(session, {
           remember: true,
           showWelcome: true,
+          flowId,
         }));
         return finishWith('success', {
           shouldBootstrapStoredSession: false,
         });
       } else {
-        // Exchange failed AND no stored session â€” clear the loader and show login
+        // Exchange failed AND no stored session — clear the loader and show login
         // so the user isn't stranded on a blank page after a bad OAuth redirect.
-        warn('Auth redirect: no valid session recovered â€” showing login.');
+        warn('Auth redirect: no valid session recovered — showing login.');
         clearSupabaseAuthArtifacts();
         resetWorkspaceState();
         _session = null;
         _profile = null;
         window.__spSuppressStoredSessionBootstrap = true;
-        showLoginScreen();
+        showLoginScreen({ flowId, reason: 'auth-redirect-invalid' });
         if (typeof window.toastError === 'function') {
           window.toastError('Sign-in link expired or invalid. Please log in again.');
         }
@@ -2718,7 +3491,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       _session = null;
       _profile = null;
       window.__spSuppressStoredSessionBootstrap = true;
-      showLoginScreen();
+      showLoginScreen({ flowId, reason: 'auth-redirect-failed' });
       return finishWith('error', {
         error: err?.message || 'Sign-in failed. Please try again.',
         shouldBootstrapStoredSession: false,
@@ -2821,7 +3594,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   async function ensureProfileRecord(user, usernameHint = '') {
     if (!user?.id) return null;
 
-    // â”€â”€ Step 1: try to fetch existing profile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Step 1: try to fetch existing profile ───────────────────────────────
     const { data: existing, error: existingError } = await db.from('profiles')
       .select('*')
       .eq('id', user.id)
@@ -2832,7 +3605,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       return existing;
     }
 
-    // A real RLS or network error on SELECT â€” build a minimal in-memory profile
+    // A real RLS or network error on SELECT — build a minimal in-memory profile
     // so downstream code (currency, theme) always has something to work with.
     if (existingError && existingError.code !== 'PGRST116') {
       warn('Profile SELECT error (non-fatal):', existingError);
@@ -2845,7 +3618,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       return _profile;
     }
 
-    // â”€â”€ Step 2: profile doesn't exist yet â€” upsert (DB trigger may race us) â”€
+    // ── Step 2: profile doesn't exist yet — upsert (DB trigger may race us) ─
     const username = deriveUsernameFromAuth(user, usernameHint);
     const upsertPayload = {
       id: user.id,
@@ -2864,10 +3637,10 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       return _profile;
     }
 
-    // â”€â”€ Step 3: upsert failed (most likely the DB trigger beat us to it) â”€â”€â”€â”€
+    // ── Step 3: upsert failed (most likely the DB trigger beat us to it) ────
     // Do one final SELECT to recover the trigger-created row.
     if (upsertError) {
-      warn('Profile upsert failed â€” attempting recovery SELECT:', upsertError);
+      warn('Profile upsert failed — attempting recovery SELECT:', upsertError);
       const { data: recovered } = await db.from('profiles')
         .select('*')
         .eq('id', user.id)
@@ -2878,7 +3651,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       }
     }
 
-    // â”€â”€ Step 4: absolute fallback â€” keep an in-memory shape so nothing breaks â”€
+    // ── Step 4: absolute fallback — keep an in-memory shape so nothing breaks ─
     _profile = _profile || upsertPayload;
     return _profile;
   }
@@ -2888,8 +3661,11 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     if (!normalized) return;
     const profileShape = {
       id: profile?.id || null,
+      username: profile?.username || normalized,
       email: profile?.email || '',
       phone: profile?.phone || '',
+      bio: profile?.bio || '',
+      avatar: profile?.avatar_url || profile?.avatar || '',
     };
 
     if (typeof window.applyAuthSession === 'function') {
@@ -2902,14 +3678,37 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     window.currentUser = normalized;
   }
 
+  function resolveSessionUsername(user, profile, usernameHint = '') {
+    const derived = deriveUsernameFromAuth(user, usernameHint);
+    const profileName = String(profile?.username || '').trim();
+    if (profileName && !(profileName === 'Manager' && derived && derived !== 'Manager')) {
+      return profileName;
+    }
+    return derived || profileName || 'Manager';
+  }
+
   async function bootstrapFromSupabaseSession(session, options = {}) {
-    log('bootstrap.start');
     clearLocalBootFallback();
+    const flowId = options.flowId || beginBootTransitionSafe('bootstrap-session', 'loading-session');
     const activeSession = session || _session || await getSession();
     if (!activeSession?.user) return false;
+    const bootstrapStartedAt = nowMs();
+    let bootstrapSucceeded = false;
+    if (
+      _lastBootstrapOutcome &&
+      _lastBootstrapOutcome.ok === false &&
+      _lastBootstrapOutcome.userId === activeSession.user.id &&
+      options.allowRepeatBootstrap !== true &&
+      nowMs() - _lastBootstrapOutcome.at < 15000
+    ) {
+      log('bootstrap.duplicate.skip', { flowId });
+      return false;
+    }
+    log('bootstrap.start');
+    if (!isBootTransitionCurrentSafe(flowId)) return false;
     setBootStateSafe('booting-data');
 
-    // Step C: A real authenticated user exists â€” clear the "explicitly logged out"
+    // Step C: A real authenticated user exists — clear the "explicitly logged out"
     // flag so that onAuthStateChange and checkAuth() can bootstrap normally from
     // this point forward. This is the only place we clear it, ensuring it always
     // takes effect on the very next successful login.
@@ -2939,6 +3738,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     // AUTH FIXPACK 2 2026-04-27 (Fix 8): tightened from 1200ms to 800ms to hit
     // the user's <5s total budget. App helpers are usually ready by then.
     const appReady = await waitForAppBootReady(800);
+    if (!isBootTransitionCurrentSafe(flowId)) return false;
     if (!appReady) {
       warn('App boot helpers were not ready before Supabase bootstrap; calling shell anyway.');
     }
@@ -2959,35 +3759,66 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     // AUTH FIXPACK 2 2026-04-27 (Fix 3 update): hard 5.5s wallclock safety timer
     // (was 8s) — matches user's "<5s" expectation with 500ms slack. Eliminates the
     // "stuck on boot loader" failure mode even if every Supabase call hangs.
-    const safetyTimer = setTimeout(() => {
+    clearBootstrapSafetyTimer();
+    _bootstrapSafetyTimer = setTimeout(() => {
+      if (!isBootTransitionCurrentSafe(flowId)) return;
       if (window.__spAppBooted) return; // happy path beat us — nothing to do.
-      warn('Bootstrap safety timeout fired — forcing boot resolution.');
+      if (_refreshInFlight || window.__spCloudBootstrapPending || _bootstrapPromise) {
+        warn('Bootstrap safety timeout found active cloud boot; abandoning stuck bootstrap owner.');
+        showStalledBootError('Cloud sync took too long', 'Tap Retry to reload your workspace, or Log out.', 'bootstrap-safety-timeout');
+        return;
+      }
+      warn('Bootstrap safety timeout fired with no active cloud boot; showing retryable boot error.');
       try {
-        if (_session && typeof window.showApp === 'function') {
-          showAuthenticatedDashboardShell('safety-timeout', { eager: true });
-          showBootErrorState('Cloud sync took too long', 'Tap Retry to reload, or Log out.');
+        if (_session) {
+          showBootErrorState('Cloud sync took too long', 'Tap Retry to reload your workspace, or Log out.');
         } else if (localStorage.getItem('sp_logged_out') === '1') {
-          showLandingScreen();
+          showLandingScreen({ flowId, reason: 'bootstrap-safety-logged-out' });
         } else {
-          showLoginScreen();
+          showLoginScreen({ flowId, reason: 'bootstrap-safety-no-session' });
         }
       } catch (recoveryErr) {
         warn('Safety-timeout recovery UI failed:', recoveryErr);
       }
-    }, 5500);
+    }, 15000);
 
     let profile = null;
+    let profileResolved = false;
     let teams = [];
     let fresh = null;
     let shouldRunBackgroundRefresh = false;
+    let workspaceMeta = null;
     try {
+      const rpcBootstrap = await loadBootstrapPayloadFromRpc(activeSession, {
+        timeoutMs: options.bootstrapRpcTimeoutMs || 4500,
+      });
+
+      if (rpcBootstrap?.fresh) {
+        profile = rpcBootstrap.profile;
+        profileResolved = Boolean(profile);
+        teams = rpcBootstrap.teams;
+        fresh = rpcBootstrap.fresh;
+        workspaceMeta = rpcBootstrap.workspaceMeta;
+        shouldRunBackgroundRefresh = rpcBootstrap.meta?.complete === false ||
+          (Array.isArray(rpcBootstrap.meta?.missingKeys) && rpcBootstrap.meta.missingKeys.length > 0);
+        applyBootstrapProfile(profile, activeSession, usernameHint, remember);
+        await persistActiveTeam(rpcBootstrap.teamId, {
+          persistRemote: false,
+          role: rpcBootstrap.role,
+          permissions: rpcBootstrap.permissions,
+          profile,
+        });
+        logWorkspaceDiagnostics('bootstrap.workspace', workspaceMeta, { source: 'bootstrap-rpc' });
+        subscribeToCoreRealtime();
+      } else if (options.allowLegacyBootstrap === true) {
       try {
         // AUTH FIXPACK 2 2026-04-27 (Fix 8): tightened 1800ms → 1200ms toward <5s total budget.
         profile = await withTimeout(
           () => ensureProfileRecord(activeSession.user, usernameHint),
-          1200,
+          3500,
           'ensureProfileRecord'
         );
+        profileResolved = Boolean(profile);
         log('bootstrap.profile.done', { ok: Boolean(profile) });
       } catch (err) {
         warn('Profile load failed or timed out:', err);
@@ -3000,20 +3831,39 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       if (profile?.preferred_theme && typeof window.applyTheme === 'function' && !hasLocalThemePreference()) {
         window.applyTheme(profile.preferred_theme, { persist: true, syncRemote: false });
       }
+      if (profile) {
+        const stableUsername = resolveSessionUsername(activeSession.user, profile, usernameHint);
+        if (profile.username === 'Manager' && stableUsername && stableUsername !== 'Manager') {
+          profile = { ...profile, username: stableUsername };
+          _profile = profile;
+        }
+        syncAuthIntoAppSession(stableUsername, profile, remember);
+        if (typeof window.updateCurrentManagerContext === 'function') {
+          try {
+            window.updateCurrentManagerContext();
+          } catch (err) {
+            warn('updateCurrentManagerContext after profile failed:', err);
+          }
+        }
+      }
 
       try {
         // AUTH FIXPACK 2 2026-04-27 (Fix 8): tightened 1800ms → 1200ms.
-        teams = await withTimeout(() => getMyTeams(), 1200, 'getMyTeams[bootstrap]');
+        teams = await withTimeout(() => getMyTeams({ nullOnError: true }), 2500, 'getMyTeams[bootstrap]');
       } catch (teamErr) {
         warn('Team membership load failed during bootstrap:', teamErr);
-        teams = [];
+        teams = null;
       }
 
       const workspace = await resolveActiveWorkspace({
         profile,
         teams,
         promptOnSelection: false,
+        skipProfileFetch: !profileResolved,
+        persistTimeoutMs: 1500,
       });
+      workspaceMeta = getActiveWorkspaceMeta(workspace?.source || 'bootstrap');
+      logWorkspaceDiagnostics('bootstrap.workspace', workspaceMeta, { source: workspace?.source || 'unknown' });
 
       subscribeToCoreRealtime();
 
@@ -3021,7 +3871,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         // AUTH FIXPACK 2 2026-04-27 (Fix 8): tightened 4500ms → 2500ms to hit the
         // user's <5s total budget. Background refresh at line 2916 picks up any
         // late records, so this is a soft-deadline only.
-        fresh = await loadCriticalDashboardDataFast(2500);
+        fresh = await loadCriticalDashboardDataFast(2500, { workspaceMeta });
         shouldRunBackgroundRefresh = true;
         log('bootstrap.data.fast.done', { ok: Boolean(fresh), source: workspace?.source || 'unknown' });
       } catch (dataError) {
@@ -3030,11 +3880,43 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         shouldRunBackgroundRefresh = true;
       }
 
+      const fastMeta = fresh?.__meta || null;
+      if (!fresh || fastMeta?.partial) {
+        if (fastMeta && fresh) delete fresh.__meta;
+        setBootStateSafe('booting-data', {
+          text: 'Syncing cloud data...',
+          subtext: 'Keeping your workspace intact while Star Paper fetches your records.'
+        });
+        try {
+          fresh = await loadAllDataWithRetry({
+            timeoutMs: 12000,
+            retries: 0,
+            label: 'loadAllData[bootstrap-required]',
+            workspaceMeta,
+            skipProfileFetch: !profileResolved,
+            profileTimeoutMs: 2500,
+          });
+          shouldRunBackgroundRefresh = true;
+          log('bootstrap.data.full.done', {
+            ok: Boolean(fresh),
+            reason: fastMeta?.partial ? 'fast-partial' : 'fast-empty',
+          });
+        } catch (fullDataError) {
+          warn('Full cloud data bootstrap failed:', fullDataError);
+          log('bootstrap.data.full.failed', {
+            error: fullDataError?.message || 'unknown',
+            reason: fastMeta?.partial ? 'fast-partial' : 'fast-empty',
+          });
+          fresh = null;
+        }
+      }
+      }
+
       if (fresh) {
         const meta = fresh.__meta || null;
         if (meta?.allCriticalTimedOut) {
-          toastSafe('Warn', 'Cloud data took too long. Retrying in the background.');
-          shouldRunBackgroundRefresh = true;
+          showBootErrorState('Cloud data is still syncing', 'Retry to reload your workspace data, or log out and sign in again.');
+          return false;
         }
         if (meta) delete fresh.__meta;
         if (window._SP_syncFromCloud) {
@@ -3043,15 +3925,16 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       }
 
       if (!fresh) {
-        // FIXED: never strand an authenticated user on a blank loader; show an empty cloud shell and refresh.
-        fresh = { bookings: [], expenses: [], otherIncome: [], artists: [] };
-        toastSafe('Warn', 'Cloud data is still loading. Refreshing in the background.');
+        if (!isBootTransitionCurrentSafe(flowId)) return false;
+        showBootErrorState('Cloud data is still syncing', 'Retry to reload your workspace data, or log out and sign in again.');
+        return false;
       }
 
       if (typeof window.loadUserData === 'function') {
         try {
           window.loadUserData({
             snapshot: fresh,
+            source: 'bootstrap',
           });
           if (window.__spAppBooted) {
             renderAppDataViews('bootstrap-fast-data'); // FIXED: background data paints into the already-visible dashboard shell.
@@ -3062,9 +3945,12 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       }
 
       if (typeof window.showApp === 'function' && !window.__spAppBooted) {
+        if (!isBootTransitionCurrentSafe(flowId)) return false;
         window.showApp();
         window.__spDataLoaded = true;
-        log('bootstrap.uiReady');
+        recordBootstrapTiming('bootstrap.uiReady', {
+          ms: Math.round(nowMs() - bootstrapStartedAt),
+        });
       }
       if (typeof window.restorePostBootUiState === 'function') {
         try {
@@ -3090,11 +3976,13 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       if (typeof window.clearLegacyCloudDataKeys === 'function') {
         window.clearLegacyCloudDataKeys();
       }
-      if (typeof window.hideBootLoaderWhenUiPainted === 'function') {
-        window.hideBootLoaderWhenUiPainted({ requireAppReady: true, minDelayMs: 260 });
-      } else if (typeof window.hideBootLoaderElement === 'function') {
-        setTimeout(() => window.hideBootLoaderElement(), 260);
-      }
+      clearLocalBootFallback();
+      clearBootstrapSafetyTimer();
+      commitBootTransitionSafe('appContainer', {
+        flowId,
+        requireAppReady: true,
+        minDelayMs: 260,
+      });
 
       if (shouldRunBackgroundRefresh) {
         setTimeout(() => {
@@ -3104,6 +3992,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
             minIntervalMs: 0,
             timeoutMs: 30000,
             reason: 'post-fast-bootstrap',
+            workspaceMeta,
           }).catch((err) => warn('Post-bootstrap cloud refresh failed:', err));
         }, 300);
       }
@@ -3118,6 +4007,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         if (typeof window.renderTasks === 'function') window.renderTasks();
         if (typeof window.renderAudienceMetrics === 'function') window.renderAudienceMetrics();
       }
+      bootstrapSucceeded = true;
     } catch (err) {
       // AUTH FIXPACK 2026-04-26 (Fix 1): never strand the user on a loader if any await throws.
       // Inner try/catches around individual awaits (profile, teams, data) absorb most failures,
@@ -3130,13 +4020,12 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       }
       try {
         if (_session) {
-          // We had a session — keep the user in an empty app shell with retry UI.
-          if (!window.__spAppBooted) showAuthenticatedDashboardShell('bootstrap-error', { eager: true });
+          // We had a session; keep the loader/error surface, not an empty app shell.
           showBootErrorState('Cloud sync needs attention', 'We couldn\'t fetch your data. Tap Retry to reload, or Log out.');
         } else if (localStorage.getItem('sp_logged_out') === '1') {
-          showLandingScreen();
+          showLandingScreen({ flowId, reason: 'bootstrap-error-logged-out' });
         } else {
-          showLoginScreen();
+          showLoginScreen({ flowId, reason: 'bootstrap-error-no-session' });
         }
       } catch (recoveryErr) {
         warn('Bootstrap recovery UI failed:', recoveryErr);
@@ -3144,9 +4033,20 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       // Swallow — user-visible recovery is the contract. Caller treats this as a non-fatal completion.
       return false;
     } finally {
-      clearTimeout(safetyTimer); // AUTH FIXPACK 2026-04-26 (Fix 3): clear the wallclock guard regardless of outcome.
-      _refreshInFlight = false;
-      window.__spCloudBootstrapPending = false;
+      if (isBootTransitionCurrentSafe(flowId)) {
+        clearBootstrapSafetyTimer();
+        _refreshInFlight = false;
+        window.__spCloudBootstrapPending = false;
+      } else {
+        log('bootstrap.finally.stale', { flowId });
+      }
+      _lastBootstrapOutcome = {
+        flowId,
+        userId: activeSession.user.id,
+        ok: bootstrapSucceeded,
+        at: nowMs(),
+        ms: Math.round(nowMs() - bootstrapStartedAt),
+      };
     }
 
     return true;
@@ -3158,7 +4058,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     window.__spSuppressStoredSessionBootstrap = false;
     window.__spAuthRedirectInProgress = false;
     // FIXED: Google OAuth always shows a prominent loader before leaving/returning.
-    setBootStateSafe('signing-in', {
+    const flowId = beginBootTransitionSafe('google-sign-in', 'signing-in', {
       text: 'Signing in...',
       subtext: 'Opening Google securely...'
     });
@@ -3176,7 +4076,9 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       try {
         sessionStorage.removeItem(BOOT_CONTEXT_STORAGE_KEY);
       } catch (_err) {}
-      throw new Error('Google sign-in requires http://localhost or your deployed https:// URL. file:// cannot receive OAuth redirects.');
+      const err = new Error('Google sign-in requires http://localhost or your deployed https:// URL. file:// cannot receive OAuth redirects.');
+      err.flowId = flowId;
+      throw err;
     }
     const { error } = await db.auth.signInWithOAuth({
       provider: 'google',
@@ -3192,6 +4094,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       try {
         sessionStorage.removeItem(BOOT_CONTEXT_STORAGE_KEY);
       } catch (_err) {}
+      error.flowId = flowId;
       throw error;
     }
   }
@@ -3204,7 +4107,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       if (typeof window.toastError === 'function') {
         window.toastError(err?.message || 'Google sign-in failed.');
       }
-      showLoginScreen();
+      showLoginScreen({ flowId: err?.flowId, reason: 'google-sign-in-failed' });
     }
   };
 
@@ -3348,7 +4251,9 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   }
 
   // Auth state listener
-  db.auth.onAuthStateChange(async (event, session) => {
+  db.auth.onAuthStateChange((event, session) => {
+    window.__spInitialAuthEventSeen = true;
+    const authEventFlowId = getBootTransitionIdSafe();
     if (window.__spAuthRedirectInProgress && !window.__spAppBooted) {
       log('Deferring auth state event until redirect handling completes', { event });
       return;
@@ -3364,8 +4269,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       } else {
         _session = null;
         if (session) {
-          // A stale token survived â€” revoke it silently.
-          db.auth.signOut().catch(() => {});
+          // A stale token survived — revoke it silently.
+          setTimeout(() => db.auth.signOut().catch(() => {}), 0);
         }
         return;
       }
@@ -3374,27 +4279,55 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
     if (!session?.user) {
       const bootContext = getStartupBootContext();
+      const restoringAppRefresh = !window.__spAppBooted &&
+        event !== 'SIGNED_OUT' &&
+        bootContext === 'app-refresh' &&
+        localStorage.getItem('sp_logged_out') !== '1';
+      if (restoringAppRefresh) {
+        const flowId = authEventFlowId || beginBootTransitionSafe(`auth-event:${event}:restore`, 'loading-session');
+        deferAuthEventWork(`auth-event:${event}:restore`, async () => {
+          const recovered = await bootstrapInitialSession({
+            bootContext: 'app-refresh',
+            loggedOutScreen: 'login',
+            sessionTimeoutMs: 5000,
+            flowId,
+          });
+          if (!isBootTransitionCurrentSafe(flowId)) return;
+          if (!recovered) {
+            showBootErrorState('Session restore needs attention', 'Retry to reconnect to Star Paper, or log out and sign in again.');
+          }
+        });
+        return;
+      }
       const coldStartAnonymous = !window.__spAppBooted &&
         event !== 'SIGNED_OUT' &&
         bootContext === 'cold-start';
-      const signedOutState = await handleSignedOutSession({
-        notify: !coldStartAnonymous && event === 'SIGNED_OUT' && window.__spAppBooted,
-        reason: event === 'SIGNED_OUT' ? 'signed-out-event' : 'missing-session-event',
-        event,
-        confirm: !coldStartAnonymous && localStorage.getItem('sp_logged_out') !== '1',
-        destination: coldStartAnonymous ? 'landing' : 'login',
-        clearAuthArtifacts: coldStartAnonymous ? false : undefined,
-        suppressDiagnostics: coldStartAnonymous,
+      deferAuthEventWork(`auth-event:${event}:signed-out`, async () => {
+        const signedOutState = await handleSignedOutSession({
+          notify: !coldStartAnonymous && event === 'SIGNED_OUT' && window.__spAppBooted,
+          reason: event === 'SIGNED_OUT' ? 'signed-out-event' : 'missing-session-event',
+          event,
+          confirm: !coldStartAnonymous && localStorage.getItem('sp_logged_out') !== '1',
+          destination: coldStartAnonymous ? 'landing' : 'login',
+          clearAuthArtifacts: coldStartAnonymous ? false : undefined,
+          suppressDiagnostics: coldStartAnonymous,
+          flowId: authEventFlowId,
+        });
+        if (signedOutState?.recovered && signedOutState.session?.user) {
+          const recoveredFlowId = authEventFlowId || beginBootTransitionSafe(`auth-event:${event}:recovered`, 'loading-session');
+          await runBootstrapTask(() => bootstrapFromSupabaseSession(signedOutState.session, {
+            remember: true,
+            showWelcome: false,
+            flowId: recoveredFlowId,
+          }));
+        }
       });
-      if (!signedOutState?.recovered) {
-        return;
-      }
-      session = signedOutState.session;
+      return;
     }
 
     _session = session;
     if (session?.user) {
-      await syncRealtimeAuthToken(session);
+      syncRealtimeAuthToken(session).catch((err) => warn('onAuthStateChange: realtime token sync failed:', err));
       if (_workspaceResolved && !_workspaceRequiresSelection) {
         subscribeToCoreRealtime();
       }
@@ -3402,24 +4335,31 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
     // Always keep _profile warm on any session event.
     if (session && !_profile && window.__spAppBooted) {
-      try {
-        _profile = await ensureProfileRecord(session.user);
-      } catch (err) {
-        warn('onAuthStateChange: ensureProfileRecord failed (non-fatal):', err);
-      }
-      if (_profile?.preferred_currency) {
-        _currency = _profile.preferred_currency;
-        applyCurrency(_currency);
-      }
-    } else if (session && !_profile) {
-      // FIXED: cold auth events do not block the fast dashboard shell on profile I/O.
-      ensureProfileRecord(session.user).then((profile) => {
-        _profile = _profile || profile;
+      deferAuthEventWork(`auth-event:${event}:profile-warm`, async () => {
+        try {
+          _profile = await ensureProfileRecord(session.user);
+        } catch (err) {
+          warn('onAuthStateChange: ensureProfileRecord failed (non-fatal):', err);
+        }
         if (_profile?.preferred_currency) {
           _currency = _profile.preferred_currency;
           applyCurrency(_currency);
         }
-      }).catch((err) => warn('onAuthStateChange: background profile warm failed:', err));
+      });
+    } else if (session && !_profile) {
+      // FIXED: cold auth events do not block the fast dashboard shell on profile I/O.
+      deferAuthEventWork(`auth-event:${event}:profile-warm-cold`, async () => {
+        try {
+          const profile = await ensureProfileRecord(session.user);
+          _profile = _profile || profile;
+          if (_profile?.preferred_currency) {
+            _currency = _profile.preferred_currency;
+            applyCurrency(_currency);
+          }
+        } catch (err) {
+          warn('onAuthStateChange: background profile warm failed:', err);
+        }
+      });
     }
 
     // Full bootstrap path: app not yet booted, not already in progress.
@@ -3431,43 +4371,51 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED');
 
     if (shouldBootstrap) {
-      await runBootstrapTask(() => bootstrapFromSupabaseSession(session, {
-        remember: true,
-        showWelcome: event === 'SIGNED_IN',
-      }));
+      const flowId = authEventFlowId || beginBootTransitionSafe(`auth-event:${event}:bootstrap`, 'loading-session');
+      scheduleLocalSessionRestoreFallback({ bootContext: getStartupBootContext(), flowId });
+      deferAuthEventWork(`auth-event:${event}:bootstrap`, async () => {
+        if (!isBootTransitionCurrentSafe(flowId) || window.__spAppBooted || _bootstrapping) return;
+        await runBootstrapTask(() => bootstrapFromSupabaseSession(session, {
+          remember: true,
+          showWelcome: event === 'SIGNED_IN',
+          flowId,
+        }));
+      });
       return;
     }
 
     // App is already booted (returning user with localStorage session) but a fresh
-    // SIGNED_IN just fired â€” pull cloud data so the new-device scenario stays in sync.
+    // SIGNED_IN just fired — pull cloud data so the new-device scenario stays in sync.
     if (event === 'SIGNED_IN' && session && window.__spAppBooted && !_bootstrapping) {
-      try {
-        await resolveActiveWorkspace({ promptOnSelection: false });
-        if (_workspaceRequiresSelection) {
-          promptTeamSelectionIfNeeded(await getMyTeams());
-          return;
+      deferAuthEventWork(`auth-event:${event}:resync`, async () => {
+        try {
+          await resolveActiveWorkspace({ promptOnSelection: false });
+          if (_workspaceRequiresSelection) {
+            promptTeamSelectionIfNeeded(await getMyTeams());
+            return;
+          }
+          subscribeToCoreRealtime();
+          await reloadForResolvedWorkspace({
+            timeoutMs: 8000,
+            silent: true,
+            forceShowApp: false,
+            runMigration: false,
+          });
+        } catch (reSyncErr) {
+          warn('onAuthStateChange re-sync failed (non-fatal):', reSyncErr);
         }
-        subscribeToCoreRealtime();
-        await reloadForResolvedWorkspace({
-          timeoutMs: 8000,
-          silent: true,
-          forceShowApp: false,
-          runMigration: false,
-        });
-      } catch (reSyncErr) {
-        warn('onAuthStateChange re-sync failed (non-fatal):', reSyncErr);
-      }
+      });
     }
   });
 
-  // â”€â”€ TEAMS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── TEAMS ─────────────────────────────────────────────────────────────────────
   async function createTeam(name) {
     const session = await ensureTeamActionSession();
     const ownerId = session?.user?.id || getOwnerId();
     if (!ownerId) throw new Error('Not logged in');
 
     // Use a single RPC call that inserts teams + team_members atomically.
-    // This replaces two sequential db.from().insert() calls â€” halving the number
+    // This replaces two sequential db.from().insert() calls — halving the number
     // of Web Lock acquisitions and eliminating the "steal" race condition.
     const { data, error } = await db.rpc('create_team_with_member', {
       p_name:     name,
@@ -3479,28 +4427,80 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     return typeof data === 'string' ? JSON.parse(data) : data;
   }
 
-  async function getMyTeams() {
+  async function refreshTeamContextFromCloud(options = {}) {
     if (!getOwnerId()) return [];
-    let { data, error } = await db.from('team_members')
-      .select('role, permissions, teams(id, name, invite_code, owner_id)')
-      .eq('user_id', getOwnerId());
-    if (error && /permissions/i.test(error.message || '')) {
-      ({ data, error } = await db.from('team_members')
-        .select('role, teams(id, name, invite_code, owner_id)')
-        .eq('user_id', getOwnerId()));
+    try {
+      const { data, error } = await db.rpc('get_my_team_context', {
+        uid: getOwnerId(),
+      });
+      if (!error && Array.isArray(data)) {
+        return cacheTeamContext(data.map(normalizeTeamContextRow), 'get_my_team_context')
+          .map((team) => ({ ...team }));
+      }
+      if (error && !isMissingRpcError(error, 'get_my_team_context')) {
+        warn('getMyTeams RPC error, falling back to table query:', error);
+      }
+    } catch (rpcErr) {
+      warn('getMyTeams RPC failed, falling back to table query:', rpcErr);
     }
-    if (error) { warn('getMyTeams error:', error); return []; }
+    let data = null;
+    let error = null;
+    try {
+      ({ data, error } = await db.from('team_members')
+        .select('role, permissions, teams(id, name, invite_code, owner_id)')
+        .eq('user_id', getOwnerId()));
+      if (error && /permissions/i.test(error.message || '')) {
+        ({ data, error } = await db.from('team_members')
+          .select('role, teams(id, name, invite_code, owner_id)')
+          .eq('user_id', getOwnerId()));
+      }
+    } catch (err) {
+      warn('getMyTeams table query failed:', err);
+      return options.nullOnError ? null : [];
+    }
+    if (error) {
+      warn('getMyTeams error:', error);
+      return options.nullOnError ? null : [];
+    }
     const teams = (data || []).map(row => ({
-      ...row.teams,
+      ...(row.teams || {}),
       myRole: normalizeTeamRole(row.role),
       myRoleLabel: roleLabel(row.role),
       myPermissions: permissionsForRole(row.role, row.permissions),
-    }));
-    if (_activeTeamId) {
-      const active = teams.find(t => t.id === _activeTeamId);
-      setActiveTeamRole(active?.myRole || null, active?.myPermissions || null);
+    })).filter((team) => team.id);
+    return cacheTeamContext(teams, 'team_members-fallback')
+      .map((team) => ({ ...team }));
+  }
+
+  function refreshTeamContextInBackground() {
+    if (_teamContextRefreshPromise) return _teamContextRefreshPromise;
+    _teamContextRefreshPromise = refreshTeamContextFromCloud({ nullOnError: true })
+      .catch((err) => {
+        warn('Background team context refresh failed:', err);
+        return null;
+      })
+      .finally(() => {
+        _teamContextRefreshPromise = null;
+      });
+    return _teamContextRefreshPromise;
+  }
+
+  async function getMyTeams(options = {}) {
+    if (!getOwnerId()) return [];
+    const maxAgeMs = Object.prototype.hasOwnProperty.call(options, 'cacheMaxAgeMs')
+      ? options.cacheMaxAgeMs
+      : 5 * 60 * 1000;
+    const canUseCache = options.forceRefresh !== true &&
+      options.cache !== false &&
+      hasCachedTeamContext(maxAgeMs);
+    if (canUseCache) {
+      const cached = getCachedTeamContext(maxAgeMs);
+      if (options.backgroundRefresh !== false) {
+        refreshTeamContextInBackground();
+      }
+      return cached;
     }
-    return teams;
+    return refreshTeamContextFromCloud(options);
   }
 
   async function joinTeamByCode(inviteCode) {
@@ -3508,7 +4508,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     if (!session?.user) {
       throw new Error('Your session is still loading. Please try again in a moment.');
     }
-    // Single RPC replaces SELECT teams + INSERT team_members â€” one lock acquisition,
+    // Single RPC replaces SELECT teams + INSERT team_members — one lock acquisition,
     // one round-trip, atomic. Prevents the lock contention that caused the timeout.
     const { data, error } = await db.rpc('join_team_by_code', {
       p_invite_code: inviteCode.trim().toLowerCase(),
@@ -3519,6 +4519,20 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   }
 
   async function getTeamMembers(teamId) {
+    if (!teamId) return [];
+    try {
+      const { data, error } = await db.rpc('get_team_members_context', {
+        p_team_id: teamId,
+      });
+      if (!error && Array.isArray(data)) {
+        return data.map(normalizeTeamMemberContextRow);
+      }
+      if (error && !isMissingRpcError(error, 'get_team_members_context')) {
+        warn('getTeamMembers RPC error, falling back to table query:', error);
+      }
+    } catch (rpcErr) {
+      warn('getTeamMembers RPC failed, falling back to table query:', rpcErr);
+    }
     let { data, error } = await db.from('team_members')
       .select('user_id, role, permissions, joined_at, profiles(id, username, email, avatar)')
       .eq('team_id', teamId);
@@ -3641,7 +4655,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
   }
 
-  // â”€â”€ TEAM CHAT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── TEAM CHAT ─────────────────────────────────────────────────────────────────
   async function loadMessages(teamId, limit = 50) {
     const { data, error } = await db.from('messages')
       .select('*')
@@ -3686,7 +4700,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
   }
 
-  // â”€â”€ CURRENCY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── CURRENCY ─────────────────────────────────────────────────────────────────
   function syncCurrencyPreferenceUI() {
     const curr = SP_CURRENCIES[_currency] || SP_CURRENCIES.UGX;
     const badge = document.getElementById('spCurrencyBadge');
@@ -3736,7 +4750,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     toastSafe('Success', `Currency switched to ${SP_CURRENCIES[code].name}`);
   }
 
-  // â”€â”€ APP RELOAD HELPER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── APP RELOAD HELPER ─────────────────────────────────────────────────────────
   async function reloadForResolvedWorkspace(options = {}) {
     if (!(await ensureWorkspaceReady({ promptOnSelection: options.promptOnSelection !== false }))) {
       return null;
@@ -3744,6 +4758,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
     const timeoutMs = typeof options.timeoutMs === 'number' ? options.timeoutMs : 30000;
     let fresh = null;
+    const workspaceMeta = getActiveWorkspaceMeta(options.label || 'workspace-reload');
 
     window.__spCloudBootstrapPending = true;
     _refreshInFlight = true;
@@ -3752,6 +4767,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         timeoutMs,
         label: options.label || 'loadAllData[workspace]',
         retries: 1,
+        workspaceMeta,
       });
     } catch (err) {
       warn('reloadForResolvedWorkspace failed:', err);
@@ -3819,8 +4835,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     });
   }
 
-  // â”€â”€ TEAM UI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  function buildTeamPanelHTML(teams, activeTeamId, members) {
+  // ── TEAM UI ─────────────────────────────────────────────────────────────────
+  function legacyTeamPanelMarkupRemoved(teams, activeTeamId, members) {
     const membersHTML = members.map(m => `
       <div class="sp-team-member">
         <div class="sp-team-member-avatar">${(m.username || m.email || '?')[0].toUpperCase()}</div>
@@ -3871,7 +4887,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
           <div class="sp-team-invite-code">
             <label>Invite Code</label>
             <div class="sp-team-code-row">
-              <code id="spTeamInviteCode">${teams.find(t => t.id === activeTeamId)?.invite_code || 'â€”'}</code>
+              <code id="spTeamInviteCode">${teams.find(t => t.id === activeTeamId)?.invite_code || '—'}</code>
               <button class="action-btn" onclick="window.SP.copyInviteCode()">Copy</button>
             </div>
             <p class="sp-muted">Share this code so others can join your team.</p>
@@ -3881,7 +4897,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
           <h4>Team Chat</h4>
           <div id="spTeamChatMessages" class="sp-chat-messages"></div>
           <div class="sp-chat-input-row">
-            <input type="text" id="spChatInput" class="form-input" placeholder="Type a messageâ€¦" 
+            <input type="text" id="spChatInput" class="form-input" placeholder="Type a message…" 
                    onkeydown="if(event.key==='Enter')window.SP.sendChatMessage()">
             <button class="action-btn" onclick="window.SP.sendChatMessage()">Send</button>
           </div>
@@ -3917,7 +4933,9 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     `;
   }
 
-  function buildTeamPanelHTML(teams, activeTeamId, members) {
+  function buildTeamPanelHTML(teams, activeTeamId, members, options = {}) {
+    teams = Array.isArray(teams) ? teams : [];
+    members = Array.isArray(members) ? members : [];
     const activeTeam = teams.find(t => t.id === activeTeamId);
     const activeAccess = activeTeam?.myPermissions || getActiveTeamPermissions();
     const isAdmin = Boolean(activeTeam && (activeTeam.owner_id === getOwnerId() || activeAccess.admin));
@@ -3934,7 +4952,25 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       </div>
     `;
 
-    const membersHTML = members.length ? members.map(m => {
+    const inlineStatusHTML = options.statusMessage
+      ? `<div class="sp-team-status-card sp-team-inline-status">
+          <div class="sp-team-status-label">${escapeHTML(options.statusLabel || 'Team status')}</div>
+          <div class="sp-team-status-title">${escapeHTML(options.statusMessage)}</div>
+          ${options.statusDetail ? `<p class="sp-muted">${escapeHTML(options.statusDetail)}</p>` : ''}
+        </div>`
+      : '';
+
+    const membersHTML = options.membersLoading
+      ? '<p class="sp-muted">Loading members...</p>'
+      : options.membersFailed
+        ? `<div class="sp-team-empty-state">
+            <div class="sp-team-empty-title">Members are still loading</div>
+            <p>Team switching, creating, and joining still work. Retry member loading when your connection settles.</p>
+            <div class="sp-team-actions">
+              <button class="action-btn" onclick="window.SP.showTeamModal()">Retry</button>
+            </div>
+          </div>`
+        : members.length ? members.map(m => {
       const displayName = m.username || m.email || 'Member';
       const isSelf = m.userId && m.userId === getOwnerId();
       const canManageMember = isAdmin && !isSelf && m.role !== 'owner';
@@ -3987,6 +5023,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
           ${activeTeam ? buildTeamPermissionChips(activeAccess) : '<p class="sp-muted">Personal data stays private until you switch into a team.</p>'}
         </div>
 
+        ${inlineStatusHTML}
+
         <div class="sp-team-section">
           <h4>My Teams</h4>
           ${personalWorkspaceHTML}
@@ -4000,7 +5038,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         ${activeTeamId ? `
         <div class="sp-team-section">
           <h4>Team Members</h4>
-          ${membersHTML}
+          <div id="spTeamMembers">${membersHTML}</div>
           <div class="sp-team-invite-code">
             <label>Invite Code</label>
             <div class="sp-team-code-row">
@@ -4012,7 +5050,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         </div>
         <div class="sp-team-section">
           <h4>Team Chat</h4>
-          <div id="spTeamChatMessages" class="sp-chat-messages"></div>
+          <div id="spTeamChatMessages" class="sp-chat-messages">${options.chatLoading ? '<p class="sp-muted">Loading chat...</p>' : ''}</div>
           <div class="sp-chat-input-row">
             <input type="text" id="spChatInput" class="form-input" placeholder="Type a message..." 
                    onkeydown="if(event.key==='Enter')window.SP.sendChatMessage()">
@@ -4033,10 +5071,10 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
   function showLoginPrompt() {
     closeTeamModal();
-    showLoginScreen();
+    showLoginScreen({ reason: 'team-login-prompt' });
   }
 
-  async function showTeamModal() {
+  async function legacyTeamModalRemoved() {
     let modal = document.getElementById('spTeamModal');
     if (!modal) {
       modal = document.createElement('div');
@@ -4047,7 +5085,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         <div class="sp-modal-backdrop" onclick="window.SP.closeTeamModal()"></div>
         <div class="sp-modal-box" style="max-width:560px;padding:0;">
           <div id="spTeamPanelContent" style="padding:24px;">
-            <div style="text-align:center;padding:24px;opacity:0.6;">Loadingâ€¦</div>
+            <div style="text-align:center;padding:24px;opacity:0.6;">Loading…</div>
           </div>
         </div>`;
       document.body.appendChild(modal);
@@ -4076,18 +5114,18 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       return;
     }
 
-    // Hard 8-second timeout â€” if the DB query hangs (e.g. recursive RLS),
+    // Hard 8-second timeout — if the DB query hangs (e.g. recursive RLS),
     // we reject immediately so the user sees an error instead of infinite spin.
     const withTimeout = (promise, ms, label) =>
       Promise.race([
         promise,
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s â€” check Supabase RLS policies`)), ms)
+          setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s — check Supabase RLS policies`)), ms)
         ),
       ]);
 
     try {
-      const teams   = await withTimeout(getMyTeams(), 8000, 'getMyTeams');
+      const teams   = [];
       const active = teams.find(t => t.id === _activeTeamId);
       setActiveTeamRole(active?.myRole || null, active?.myPermissions || null);
       const members = _activeTeamId
@@ -4121,13 +5159,162 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
           </div>
           <p style="color:#ef4444;padding:16px 0;">
             ${isTimeout
-              ? 'Team data took too long to load. Check your connection and try again.'
+              ? 'Team data is still loading. You can retry, create a team, or join by code.'
               : 'Failed to load team data. Check your connection and try again.'}
           </p>
         `;
       }
     }
   }
+
+  showTeamModal = async function showTeamModal() {
+    let modal = document.getElementById('spTeamModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'spTeamModal';
+      modal.className = 'sp-admin-modal';
+      modal.style.display = 'none';
+      modal.innerHTML = `
+        <div class="sp-modal-backdrop" onclick="window.SP.closeTeamModal()"></div>
+        <div class="sp-modal-box" style="max-width:560px;padding:0;">
+          <div id="spTeamPanelContent" style="padding:24px;">
+            <div style="text-align:center;padding:24px;opacity:0.6;">Loading...</div>
+          </div>
+        </div>`;
+      document.body.appendChild(modal);
+    }
+
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    const content = document.getElementById('spTeamPanelContent');
+    if (content) {
+      content.innerHTML = buildTeamModalStateHTML(
+        'Checking your session',
+        'One moment while Star Paper confirms your signed-in account.'
+      );
+    }
+
+    let session = null;
+    try {
+      session = getOwnerId()
+        ? (_session || await withTimeout(() => ensureTeamActionSession(), 7000, 'ensureTeamActionSession'))
+        : await withTimeout(() => ensureTeamActionSession(), 7000, 'ensureTeamActionSession');
+    } catch (err) {
+      warn('Team session restore delayed:', err);
+    }
+
+    const ownerId = session?.user?.id || getOwnerId();
+    if (!ownerId) {
+      if (content) {
+        content.innerHTML = buildTeamModalStateHTML(
+          'Sign in required',
+          'You need an active account session before creating or joining a team.',
+          '<div class="sp-team-actions"><button class="action-btn" onclick="window.SP.showLoginPrompt()">Log in</button></div>'
+        );
+      }
+      return;
+    }
+
+    if (session?.user) {
+      _session = session;
+      syncRealtimeAuthToken(session).catch((err) => warn('Team modal auth sync failed:', err));
+    }
+
+    let teams = getCachedTeamContext(Infinity);
+    const renderTeamPanel = (nextTeams, members = [], panelOptions = {}) => {
+      if (!content) return;
+      const hasVisibleActiveTeam = Boolean(
+        _activeTeamId && Array.isArray(nextTeams) && nextTeams.some((team) => team.id === _activeTeamId)
+      );
+      content.innerHTML = buildTeamPanelHTML(nextTeams, hasVisibleActiveTeam ? _activeTeamId : null, members, panelOptions);
+    };
+
+    renderTeamPanel(teams, [], {
+      statusLabel: 'Signed in',
+      statusMessage: hasCachedTeamContext(Infinity) ? 'Refreshing team list...' : 'Loading your team list...',
+      statusDetail: 'Create Team and Join by Code are ready even if team data is slow.',
+      membersLoading: Boolean(_activeTeamId && teams.some((team) => team.id === _activeTeamId)),
+      chatLoading: Boolean(_activeTeamId && teams.some((team) => team.id === _activeTeamId)),
+    });
+
+    try {
+      const refreshedTeams = await withTimeout(
+        () => getMyTeams({ forceRefresh: true, backgroundRefresh: false }),
+        5000,
+        'getMyTeams'
+      );
+      if (Array.isArray(refreshedTeams)) {
+        teams = refreshedTeams;
+      }
+    } catch (err) {
+      warn('showTeamModal team list load delayed:', err);
+      const schemaHint = err?.name === 'TimeoutError'
+        ? 'If this repeats, apply the latest schema.sql RPC helpers in Supabase, then retry.'
+        : 'Check your connection, then retry. Existing team actions remain available.';
+      renderTeamPanel(teams, [], {
+        statusLabel: 'Team list delayed',
+        statusMessage: teams.length
+          ? 'Using cached team access while Star Paper refreshes team data.'
+          : 'Team data is still loading. Personal Workspace, Create Team, and Join by Code remain available.',
+        statusDetail: schemaHint,
+      });
+    }
+
+    const active = teams.find(t => t.id === _activeTeamId);
+    setActiveTeamRole(active?.myRole || null, active?.myPermissions || null);
+    const activeTeamVisible = Boolean(_activeTeamId && active);
+
+    renderTeamPanel(teams, [], {
+      membersLoading: activeTeamVisible,
+      chatLoading: activeTeamVisible,
+      statusMessage: teams.length ? '' : 'Create Team and Join by Code are ready.',
+    });
+
+    if (!activeTeamVisible) return;
+
+    let members = [];
+    let membersFailed = false;
+    try {
+      members = await withTimeout(() => getTeamMembers(_activeTeamId), 5000, 'getTeamMembers');
+    } catch (err) {
+      membersFailed = true;
+      warn('showTeamModal members load delayed:', err);
+    }
+
+    renderTeamPanel(teams, members, {
+      membersFailed,
+      chatLoading: true,
+      statusMessage: membersFailed
+        ? 'Member details are still loading, but workspace switching and invite actions are available.'
+        : '',
+    });
+
+    try {
+      const msgs = await withTimeout(() => loadMessages(_activeTeamId), 5000, 'loadMessages');
+      renderChatMessages(msgs);
+      subscribeToTeamChat(_activeTeamId, (newMsg) => {
+        const container = document.getElementById('spTeamChatMessages');
+        if (container) {
+          container.insertAdjacentHTML('beforeend', buildMessageHTML(newMsg));
+          container.scrollTop = container.scrollHeight;
+        }
+      });
+    } catch (err) {
+      warn('showTeamModal chat load delayed:', err);
+      const chatContainer = document.getElementById('spTeamChatMessages');
+      if (chatContainer) {
+        chatContainer.innerHTML = `
+          <div class="sp-team-empty-state">
+            <div class="sp-team-empty-title">Chat is still loading</div>
+            <p>Team workspace actions are ready. Retry the modal if chat does not appear.</p>
+            <div class="sp-team-actions">
+              <button class="action-btn" onclick="window.SP.showTeamModal()">Retry</button>
+            </div>
+          </div>
+        `;
+      }
+    }
+  };
 
   function buildMessageHTML(msg) {
     const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -4167,7 +5354,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     if (!name?.trim()) return;
     const copyPersonalData = confirm('Copy your current personal workspace data into this team?\n\nOK = copy personal data into the team.\nCancel = start this team empty.');
     try {
-      // Await createTeam fully â€” the RPC lock must be released before showTeamModal
+      // Await createTeam fully — the RPC lock must be released before showTeamModal
       // fires getMyTeams(), otherwise two lock acquisitions overlap and race.
       const team = await createTeam(name.trim());
       if (copyPersonalData) {
@@ -4196,7 +5383,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     try {
       const team = await joinTeamByCode(code.trim());
       toastSafe('Success', `Joined team "${escapeHTML(team.name)}"!`);
-      // 500ms yield â€” lets Postgres fully commit the new team_members row
+      // 500ms yield — lets Postgres fully commit the new team_members row
       // before getMyTeams() reads it back inside showTeamModal.
       await new Promise(r => setTimeout(r, 500));
       await switchTeam(team.id);
@@ -4212,7 +5399,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     navigator.clipboard?.writeText(code).then(() => toastSafe('Success', 'Invite code copied!'));
   }
 
-  // â”€â”€ CURRENCY SWITCHER UI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── CURRENCY SWITCHER UI ──────────────────────────────────────────────────────
   function showCurrencySwitcher() {
     let modal = document.getElementById('spCurrencyModal');
     if (!modal) {
@@ -4222,7 +5409,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       modal.innerHTML = `
         <div class="sp-modal-backdrop" onclick="this.parentElement.style.display='none'"></div>
         <div class="sp-modal-box" style="max-width:380px;">
-          <button class="sp-modal-close" onclick="document.getElementById('spCurrencyModal').style.display='none'">âœ•</button>
+          <button class="sp-modal-close" onclick="document.getElementById('spCurrencyModal').style.display='none'">✕</button>
           <div style="padding:8px 0 16px;">
             <div class="sp-modal-title">Currency</div>
             <div class="sp-modal-subtitle">All figures will convert in real-time</div>
@@ -4244,7 +5431,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     modal.style.display = 'flex';
   }
 
-  // â”€â”€ INJECT CURRENCY BUTTON INTO SIDEBAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── INJECT CURRENCY BUTTON INTO SIDEBAR ──────────────────────────────────────
   function injectDashboardCurrencyButton() {
     syncCurrencyPreferenceUI();
   }
@@ -4280,7 +5467,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
   }
 
-  // â”€â”€ PATCH APP LOGIN/SIGNUP TO SUPABASE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── PATCH APP LOGIN/SIGNUP TO SUPABASE ────────────────────────────────────────
   function patchAppAuth() {
     // Store reference to original functions as fallback
     const _origLogin = window.login;
@@ -4305,17 +5492,17 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
           if (typeof window.toastError === 'function') {
             window.toastError('Google sign-in is not enabled in Supabase Authentication Providers yet.');
           }
-          showLoginScreen();
+          showLoginScreen({ flowId: err?.flowId, reason: 'google-provider-disabled' });
           return;
         }
         if (typeof window.toastError === 'function') {
           window.toastError(err?.message || 'Google sign-in failed.');
         }
-        showLoginScreen();
+        showLoginScreen({ flowId: err?.flowId, reason: 'google-sign-in-failed' });
       }
     };
 
-    // â”€â”€ SUPABASE LOGIN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── SUPABASE LOGIN ──────────────────────────────────────────────────────────
     window.login = async function supabaseLogin() {
       const nameOrEmail = document.getElementById('loginName')?.value?.trim() || '';
       const password    = document.getElementById('loginPassword')?.value || '';
@@ -4327,7 +5514,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
       const setLoading = window.setLoginLoading || (() => {});
       setLoading(true);
-      setBootStateSafe('signing-in');
+      const flowId = beginBootTransitionSafe('password-sign-in', 'signing-in');
 
       try {
         window.__spSuppressStoredSessionBootstrap = false;
@@ -4338,7 +5525,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
           if (resolvedEmail) {
             email = resolvedEmail;
           }
-          // No match â€” fall through with nameOrEmail; signIn will reject with a clear error.
+          // No match — fall through with nameOrEmail; signIn will reject with a clear error.
         }
 
         const { data } = await signIn(email, password);
@@ -4346,14 +5533,15 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
           throw new Error('Could not initialise session.');
         }
         // bootstrapFromSupabaseSession handles showApp + showWelcomeMessage internally.
-        // Do NOT call them again here â€” that causes a double-render.
-        const booted = await bootstrapFromSupabaseSession(data?.session, {
+        // Do NOT call them again here — that causes a double-render.
+        const booted = await runBootstrapTask(() => bootstrapFromSupabaseSession(data?.session, {
           usernameHint: nameOrEmail,
           remember: Boolean(document.getElementById('rememberMe')?.checked),
           showWelcome: true,
-        });
+          flowId,
+        }));
         if (!booted) {
-          if (!_session) showLoginScreen();
+          if (!_session) showLoginScreen({ flowId, reason: 'password-sign-in-no-session' });
           return;
         }
       } catch (err) {
@@ -4370,16 +5558,14 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
             if (typeof window.toastError === 'function') {
               window.toastError('Cloud login unavailable. Please check your connection and try again.');
             }
-            showLoginScreen();
+            showLoginScreen({ flowId, reason: 'password-sign-in-fallback-disabled' });
             return;
           }
           warn('Supabase login unavailable. Falling back to local auth.', err);
           if (typeof window.toastWarn === 'function') {
             window.toastWarn('Cloud login unavailable. Using local login on this device.');
           }
-          if (typeof window.hideBootLoaderElement === 'function') {
-            window.hideBootLoaderElement();
-          }
+          commitBootTransitionSafe('loginScreen', { flowId, minDelayMs: 120 });
           return _origLogin();
         }
         let msg = 'Invalid credentials. Please try again.';
@@ -4389,14 +5575,14 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
           msg = 'Sign-in succeeded, but your cloud data could not load. Use Retry or log out.';
         }
         if (typeof window.toastError === 'function') window.toastError(msg);
-        showLoginScreen();
+        showLoginScreen({ flowId, reason: 'password-sign-in-failed' });
       } finally {
         // Guaranteed: spinner always stops, button always re-enables.
         setLoading(false);
       }
     };
 
-    // â”€â”€ SUPABASE SIGNUP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── SUPABASE SIGNUP ─────────────────────────────────────────────────────────
     window.signup = async function supabaseSignup() {
       const name  = document.getElementById('signupName')?.value?.trim() || '';
       const pw    = document.getElementById('signupPassword')?.value || '';
@@ -4419,11 +5605,13 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         }
         const result = await signUp(name, email, pw, phone);
         if (result?.session) {
-          const booted = await bootstrapFromSupabaseSession(result.session, {
+          const flowId = beginBootTransitionSafe('signup-session', 'signing-in');
+          const booted = await runBootstrapTask(() => bootstrapFromSupabaseSession(result.session, {
             usernameHint: name,
             remember: true,
             showWelcome: true,
-          });
+            flowId,
+          }));
           if (!booted) {
             return;
           }
@@ -4468,9 +5656,9 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       }
     };
 
-    // â”€â”€ SUPABASE LOGOUT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── SUPABASE LOGOUT ─────────────────────────────────────────────────────────
     window.logout = async function supabaseLogout() {
-      setBootStateSafe('signing-out');
+      const flowId = beginBootTransitionSafe('logout', 'signing-out');
       try {
         document.getElementById('sidebar')?.classList.remove('active');
         document.getElementById('sidebarOverlay')?.classList.remove('active');
@@ -4501,7 +5689,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         // authoritative step that prevents re-bootstrap.
       }
 
-      // 2b. CRITICAL â€” Directly delete the Supabase SDK's own auth token from
+      // 2b. CRITICAL — Directly delete the Supabase SDK's own auth token from
       //    localStorage. The SDK stores it under a well-known key. This is
       //    synchronous and instant. Without this step, the SDK finds its own
       //    token on the next page load and fires onAuthStateChange('INITIAL_SESSION'),
@@ -4535,7 +5723,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       if (_retryTimer) { clearTimeout(_retryTimer); _retryTimer = null; }
       resetWorkspaceState();
 
-      // 6. Show landing page immediately â€” user doesn't wait for any network call.
+      // 6. Show landing page immediately — user doesn't wait for any network call.
       if (typeof window.clearLegacyCloudDataKeys === 'function') {
         window.clearLegacyCloudDataKeys();
       }
@@ -4543,12 +5731,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         if (typeof window.clearAppShellBootContext === 'function') window.clearAppShellBootContext();
         if (window.location.hash) window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
       } catch (_err) {}
-      showLandingScreen({ keepLoader: true }); // FIXED: mobile/desktop logout returns to landing with Supabase artifacts cleared.
-      if (typeof window.hideBootLoaderWhenUiPainted === 'function') {
-        window.hideBootLoaderWhenUiPainted({ minDelayMs: 350 });
-      } else if (typeof window.hideBootLoaderElement === 'function') {
-        setTimeout(() => window.hideBootLoaderElement(), 350);
-      }
+      showLandingScreen({ keepLoader: true, flowId, reason: 'logout-complete', minDelayMs: 350 }); // FIXED: mobile/desktop logout returns to landing with Supabase artifacts cleared.
       if (typeof window.toastInfo === 'function') window.toastInfo('Logged out');
 
       // AUTH FIXPACK 2 2026-04-27 (Fix 10): more lenient integrity check.
@@ -4574,11 +5757,11 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       }, 350);
 
       // 7. Revoke the server-side token in the background (best-effort).
-      //    Even if this fails the user is fully logged out locally (steps 2â€“5 above).
+      //    Even if this fails the user is fully logged out locally (steps 2–5 above).
       signOut().catch(() => {});
     };
 
-    // â”€â”€ PATCH saveUserData TO CLOUD-FIRST SYNC â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── PATCH saveUserData TO CLOUD-FIRST SYNC ──────────────────────────────────
     const _origSaveUserData = window.saveUserData;
     window.saveUserData = async function supabaseSaveUserData() {
       // FIXED: no localStorage core-data fallback; saves wait for the cloud sync promise.
@@ -4598,13 +5781,13 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     log('App auth patched with Supabase');
   }
 
-  // â”€â”€ SYNC BRIDGE: allows supabase.js to inject data into app's closure â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── SYNC BRIDGE: allows supabase.js to inject data into app's closure ─────────
   // app.js registers the full _SP_syncFromCloud function in loadUserData() which
   // updates both closure-scoped vars AND window globals. We only initialise the
   // data slot here; the real bridge is set by app.js.
   function setupSyncBridge() {
     window._SP_cloudData = null;
-    // Lightweight fallback â€” only used if bootstrapFromSupabaseSession fires
+    // Lightweight fallback — only used if bootstrapFromSupabaseSession fires
     // before app.js's loadUserData() has registered the full bridge.
     if (typeof window._SP_syncFromCloud !== 'function') {
       window._SP_syncFromCloud = function(data) {
@@ -4617,7 +5800,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
   }
 
-  // â”€â”€ INIT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── INIT ────────────────────────────────────────────────────────────────────────────
   function bindAutoSync() {
     if (window.__spAutoSyncBound) return;
     window.__spAutoSyncBound = true;
@@ -4656,7 +5839,6 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     window.addEventListener('focus', () => triggerCloudRefresh('focus'));
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
-        if (getOwnerId()) routeAuthenticatedUserToDashboard('visibility'); // FIXED: refresh/return keeps authenticated users in app shell.
         triggerCloudRefresh('visibility');
       }
     });
@@ -4669,6 +5851,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
   async function bootstrapInitialSession(options = {}) {
     const bootContext = options.bootContext || getStartupBootContext();
+    const flowId = options.flowId || getBootTransitionIdSafe();
     if (_bootstrapPromise) {
       try {
         return await withTimeout(
@@ -4678,7 +5861,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         );
       } catch (err) {
         warn('Waiting for in-flight bootstrap failed:', err);
-        showBootErrorState('Session restore stalled', 'Retry to reconnect to Star Paper, or log out and sign in again.');
+        showStalledBootError('Session restore stalled', 'Retry to reconnect to Star Paper, or log out and sign in again.', 'bootstrap-inflight-timeout');
         return false;
       }
     }
@@ -4686,9 +5869,12 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     const quietIfNoSession = options.quietIfNoSession === true;
     const loggedOutScreen = options.loggedOutScreen || 'login';
     if (!quietIfNoSession) {
-      setBootStateSafe('loading-session');
-      scheduleLocalSessionRestoreFallback({ bootContext });
+      const nextFlowId = flowId || beginBootTransitionSafe('initial-session', 'loading-session');
+      if (flowId) setBootStateSafe('loading-session');
+      options.flowId = nextFlowId;
+      scheduleLocalSessionRestoreFallback({ bootContext, flowId: nextFlowId });
     }
+    const activeFlowId = options.flowId || flowId;
     let session = null;
     try {
       session = await withTimeout(
@@ -4699,7 +5885,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     } catch (err) {
       warn('Initial session restore failed:', err);
       if (quietIfNoSession && loggedOutScreen === 'landing') {
-        showLandingScreen();
+        showLandingScreen({ flowId: activeFlowId, reason: 'initial-session-timeout' });
       } else {
         showBootErrorState('Session restore took too long', 'Retry to reconnect to Star Paper, or log out and sign in again.');
       }
@@ -4710,24 +5896,28 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       if (bootContext === 'app-refresh' && hasStoredSupabaseSessionHint()) {
         showBootErrorState('Session restore needs attention', 'Retry to reconnect to Star Paper, or log out and sign in again.');
       } else if (loggedOutScreen === 'landing') {
-        showLandingScreen();
+        showLandingScreen({ flowId: activeFlowId, reason: 'initial-session-anonymous' });
       } else {
-        showLoginScreen();
+        showLoginScreen({ flowId: activeFlowId, reason: 'initial-session-anonymous' });
       }
       return false;
     }
+    if (activeFlowId && !isBootTransitionCurrentSafe(activeFlowId)) return false;
     setBootStateSafe('loading-session');
-    scheduleLocalSessionRestoreFallback({ bootContext });
+    scheduleLocalSessionRestoreFallback({ bootContext, flowId: activeFlowId });
     return runBootstrapTask(() => bootstrapFromSupabaseSession(session, {
       remember: true,
       showWelcome: false,
+      flowId: activeFlowId,
+      allowRepeatBootstrap: options.allowRepeatBootstrap === true,
     }));
   }
 
   window.retryInitialCloudBootstrap = async function retryInitialCloudBootstrap() {
     try {
-      setBootStateSafe('booting-data');
-      await bootstrapInitialSession();
+      abandonActiveBootstrapWork('manual-retry');
+      const flowId = beginBootTransitionSafe('retry-initial-bootstrap', 'booting-data');
+      await bootstrapInitialSession({ flowId, allowRepeatBootstrap: true });
     } catch (err) {
       warn('Retry bootstrap failed:', err);
       showBootErrorState('Retry failed', err?.message || 'Please check your connection and try again.');
@@ -4740,20 +5930,26 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     initLocalSyncBroadcast();
     restoreRetryQueue();
     bindAutoSync();
-    const localColdStart = isLocalDevOrigin() && !hasAuthCallbackInUrl();
+    const localMarker = readBootContextMarker();
+    const localColdStart = isLocalDevOrigin() &&
+      !hasAuthCallbackInUrl() &&
+      localMarker !== APP_SHELL_BOOT_CONTEXT &&
+      localMarker !== AUTH_RETURN_BOOT_CONTEXT &&
+      !hasStoredSupabaseSessionHint();
     if (localColdStart) {
       window.__spSuppressStoredSessionBootstrap = true;
     }
 
     // handleAuthRedirect() and bootstrapFromStoredSession() must only run AFTER
-    // app.js has fully executed â€” otherwise showApp/loadUserData donâ€™t exist yet
+    // app.js has fully executed — otherwise showApp/loadUserData don’t exist yet
     // and the OAuth callback lands on the landing page instead of the dashboard.
     // We defer everything that calls bootstrapFromSupabaseSession to DOMContentLoaded.
     const onAppReady = () => {
       const bootContext = getStartupBootContext();
       const shouldShowBootLoader = bootContext === 'auth-callback' || bootContext === 'app-refresh';
       if (localColdStart) {
-        setTimeout(showLandingScreen, 0);
+        const flowId = beginBootTransitionSafe('local-cold-start', 'loading-session');
+        setTimeout(() => showLandingScreen({ flowId, reason: 'local-cold-start' }), 0);
         setTimeout(patchAppAuth, 0);
         setTimeout(injectSidebarButtons, 1200);
         return;
@@ -4777,11 +5973,24 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         if (result?.shouldBootstrapStoredSession === false) {
           return;
         }
-        bootstrapInitialSession({
-          quietIfNoSession: bootContext === 'cold-start',
-          loggedOutScreen: bootContext === 'cold-start' ? 'landing' : 'login',
-          bootContext,
-        });
+        const fallbackFlowId = getBootTransitionIdSafe();
+        setTimeout(() => {
+          if (
+            window.__spInitialAuthEventSeen ||
+            _bootstrapPromise ||
+            window.__spAppBooted ||
+            window.__spAuthRedirectInProgress
+          ) {
+            return;
+          }
+          bootstrapInitialSession({
+            quietIfNoSession: bootContext === 'cold-start',
+            loggedOutScreen: bootContext === 'cold-start' ? 'landing' : 'login',
+            bootContext,
+            flowId: fallbackFlowId,
+            sessionTimeoutMs: bootContext === 'app-refresh' ? 1800 : undefined,
+          });
+        }, bootContext === 'app-refresh' ? 150 : 300);
       });
 
       setTimeout(patchAppAuth, 0);         // replace window.login/signup immediately
@@ -4789,7 +5998,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
       if (shouldShowBootLoader && typeof window.showBootLoaderElement === 'function') {
         window.showBootLoaderElement();
-        scheduleLocalSessionRestoreFallback({ bootContext });
+        scheduleLocalSessionRestoreFallback({ bootContext, flowId: getBootTransitionIdSafe() });
       }
     };
 
@@ -4808,7 +6017,30 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   }
 
 
-  // â”€â”€ PUBLIC API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── PUBLIC API ────────────────────────────────────────────────────────────────
+  async function inspectCloudScope() {
+    const workspaceMeta = getActiveWorkspaceMeta('debug');
+    const data = await loadAllData({
+      workspaceMeta,
+      reason: 'debug-cloud-scope',
+    });
+    const result = {
+      workspace: workspaceMeta,
+      meta: data?.__meta || null,
+      counts: {
+        bookings: Array.isArray(data?.bookings) ? data.bookings.length : null,
+        expenses: Array.isArray(data?.expenses) ? data.expenses.length : null,
+        otherIncome: Array.isArray(data?.otherIncome) ? data.otherIncome.length : null,
+        artists: Array.isArray(data?.artists) ? data.artists.length : null,
+        audienceMetrics: Array.isArray(data?.audienceMetrics) ? data.audienceMetrics.length : null,
+        tasks: Array.isArray(data?.tasks) ? data.tasks.length : null,
+      },
+    };
+    log('debug.cloudScope', result);
+    return result;
+  }
+  window.SP_debugCloudScope = inspectCloudScope;
+
   window.SP = {
     // Auth
     login:           (email, password) => signIn(email, password),
@@ -4824,6 +6056,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     refreshSessionIfNeeded,
     resolveActiveWorkspace,
     persistActiveTeam,
+    getActiveWorkspaceMeta,
     autoSync:        bindAutoSync,
 
     // Data
@@ -4837,6 +6070,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     saveAllData,
     queueCloudSync:  saveAllData,
     saveArtists,
+    debugCloudScope: inspectCloudScope,
     enqueueSave,
     realtimeSubs:    subscribeToCoreRealtime,
     loadTasks,
@@ -4906,11 +6140,11 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   } catch (err) {
     // no-op: event dispatch is best-effort
   }
-  log('Supabase integration loaded âœ“');
+  log('Supabase integration loaded ✓');
 
 })();
 
-// â”€â”€ SIDEBAR BUTTON STYLES (injected dynamically) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── SIDEBAR BUTTON STYLES (injected dynamically) ──────────────────────────────
 (function injectTeamCurrencyStyles() {
   const style = document.createElement('style');
   style.textContent = `

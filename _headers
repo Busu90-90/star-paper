@@ -4,3 +4,7 @@
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+  Netlify-CDN-Cache-Control: no-cache

@@ -20,6 +20,84 @@
   const GLASS_BG = 'rgba(255,255,255,0.06)';
   const CHART_COLORS = [GOLD, '#60a5fa', GREEN, '#f97316', '#a78bfa', '#ec4899', '#14b8a6', '#f43f5e'];
 
+  function buildStarPaperChartTheme(mode = 'dark') {
+    const light = mode === 'light';
+    const palette = light
+      ? {
+          surface: '#FFF9ED',
+          surfaceAlt: '#F7EFD9',
+          ink: '#17130B',
+          muted: '#665334',
+          faint: '#8A7650',
+          grid: 'rgba(95, 74, 33, 0.18)',
+          border: 'rgba(138, 109, 26, 0.28)',
+          tooltipBg: 'rgba(255, 250, 239, 0.98)',
+          tooltipBorder: 'rgba(184, 137, 47, 0.64)',
+          gold: '#B8892F',
+          goldBright: '#D4A843',
+          goldSoft: 'rgba(184, 137, 47, 0.18)',
+          silver: '#6F7480',
+          revenue: '#8A6D1A',
+          revenueFill: 'rgba(184, 137, 47, 0.18)',
+          other: '#52677F',
+          otherFill: 'rgba(82, 103, 127, 0.14)',
+          expense: '#9A3412',
+          expenseFill: 'rgba(154, 52, 18, 0.14)',
+          profit: '#2F6B3F',
+          profitFill: 'rgba(47, 107, 63, 0.14)',
+          red: '#B42318',
+          green: '#257A3E',
+          blue: '#2F5D8C'
+        }
+      : {
+          surface: '#101116',
+          surfaceAlt: '#171922',
+          ink: '#F8EED2',
+          muted: '#B9AA83',
+          faint: '#8C846F',
+          grid: 'rgba(248, 237, 207, 0.10)',
+          border: 'rgba(212, 168, 67, 0.24)',
+          tooltipBg: 'rgba(13, 14, 18, 0.96)',
+          tooltipBorder: 'rgba(212, 168, 67, 0.58)',
+          gold: '#D4A843',
+          goldBright: '#F2CF75',
+          goldSoft: 'rgba(212, 168, 67, 0.22)',
+          silver: '#B8BDC7',
+          revenue: '#F2CF75',
+          revenueFill: 'rgba(212, 168, 67, 0.18)',
+          other: '#B8BDC7',
+          otherFill: 'rgba(184, 189, 199, 0.12)',
+          expense: '#F59E72',
+          expenseFill: 'rgba(245, 158, 114, 0.13)',
+          profit: '#9CCF9B',
+          profitFill: 'rgba(156, 207, 155, 0.13)',
+          red: '#F87171',
+          green: '#86D28C',
+          blue: '#A8B8D8'
+        };
+    return {
+      ...palette,
+      pie: [palette.goldBright, palette.silver, palette.profit, palette.expense, palette.blue, '#8B7BD4', '#C08B5C', '#7E8794'],
+      fontFamily: "'Montserrat', 'Inter', system-ui, sans-serif",
+      monoFamily: "'Courier New', monospace"
+    };
+  }
+
+  if (!window.SP_CHART_THEME) {
+    window.SP_CHART_THEME = {
+      get(mode) {
+        const selected = mode || (document.body.classList.contains('light-theme') ? 'light' : 'dark');
+        return buildStarPaperChartTheme(selected);
+      }
+    };
+  }
+
+  function chartTheme() {
+    return (window.SP_CHART_THEME && typeof window.SP_CHART_THEME.get === 'function')
+      ? window.SP_CHART_THEME.get()
+      : buildStarPaperChartTheme(document.body.classList.contains('light-theme') ? 'light' : 'dark');
+  }
+
   // ── HELPERS ───────────────────────────────────────────────────────────────────
   function fmtUGX(v) {
     const n = Math.round(Number(v) || 0);
@@ -504,22 +582,32 @@
   }
 
   function darkChartDefaults() {
+    const T = chartTheme();
     return {
       responsive: true,
       maintainAspectRatio: false,
-      animation: { duration: 600 },
+      animation: { duration: 620, easing: 'easeOutQuart' },
+      layout: { padding: { top: 8, right: 8, bottom: 4, left: 4 } },
       plugins: {
         legend: {
-          labels: { color: '#ccc', font: { size: 11 }, usePointStyle: true, padding: 12 }
+          labels: {
+            color: T.ink,
+            font: { size: 11, family: T.fontFamily, weight: '700' },
+            usePointStyle: true,
+            pointStyle: 'rectRounded',
+            padding: 14
+          }
         },
         tooltip: {
-          backgroundColor: 'rgba(0,0,0,0.85)',
-          titleColor: GOLD,
-          bodyColor: '#fff',
-          borderColor: 'rgba(255,255,255,0.1)',
+          backgroundColor: T.tooltipBg,
+          titleColor: T.goldBright,
+          bodyColor: T.ink,
+          borderColor: T.tooltipBorder,
           borderWidth: 1,
-          cornerRadius: 8,
-          padding: 10,
+          cornerRadius: 10,
+          padding: 12,
+          displayColors: true,
+          boxPadding: 4,
         }
       }
     };
@@ -533,6 +621,7 @@
     const revData = m.allMonths.map(k => m.monthlyRevenue[k] || 0);
     const expData = m.allMonths.map(k => m.monthlyExpenses[k] || 0);
     const profitData = m.allMonths.map((k, i) => revData[i] - expData[i]);
+    const T = chartTheme();
 
     _charts.momentum = new Chart(canvas, {
       type: 'line',
@@ -542,34 +631,43 @@
           {
             label: 'Revenue',
             data: revData,
-            borderColor: GOLD,
-            backgroundColor: GOLD_DIM,
+            borderColor: T.revenue,
+            backgroundColor: T.revenueFill,
             fill: true,
-            tension: 0.4,
-            borderWidth: 2,
-            pointRadius: 3,
+            tension: 0.42,
+            borderWidth: 3,
+            pointRadius: 3.5,
             pointHoverRadius: 6,
+            pointBackgroundColor: T.surface,
+            pointBorderColor: T.revenue,
+            pointBorderWidth: 2,
           },
           {
             label: 'Expenses',
             data: expData,
-            borderColor: RED,
-            backgroundColor: 'rgba(239,68,68,0.1)',
+            borderColor: T.expense,
+            backgroundColor: T.expenseFill,
             fill: false,
-            tension: 0.4,
-            borderWidth: 2,
-            borderDash: [5, 3],
-            pointRadius: 2,
+            tension: 0.42,
+            borderWidth: 2.5,
+            borderDash: [6, 4],
+            pointRadius: 2.5,
+            pointBackgroundColor: T.surface,
+            pointBorderColor: T.expense,
+            pointBorderWidth: 2,
           },
           {
             label: 'Net Profit',
             data: profitData,
-            borderColor: GREEN,
-            backgroundColor: 'rgba(34,197,94,0.15)',
+            borderColor: T.profit,
+            backgroundColor: T.profitFill,
             fill: true,
-            tension: 0.4,
-            borderWidth: 2,
+            tension: 0.42,
+            borderWidth: 2.5,
             pointRadius: 3,
+            pointBackgroundColor: T.surface,
+            pointBorderColor: T.profit,
+            pointBorderWidth: 2,
           }
         ]
       },
@@ -589,10 +687,10 @@
           ]);
         },
         scales: {
-          x: { ticks: { color: '#888' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          x: { ticks: { color: T.muted, font: { family: T.fontFamily, weight: '700' } }, grid: { color: T.grid } },
           y: {
-            ticks: { color: '#888', callback: v => fmtUGX(v) },
-            grid: { color: 'rgba(255,255,255,0.05)' }
+            ticks: { color: T.muted, font: { family: T.fontFamily, weight: '700' }, callback: v => fmtUGX(v) },
+            grid: { color: T.grid }
           }
         }
       }
@@ -607,15 +705,18 @@
     if (entries.length === 0) return;
     const labels = entries.map(e => e[0]);
     const values = entries.map(e => e[1]);
+    const T = chartTheme();
     _charts.cost = new Chart(canvas, {
       type: 'doughnut',
       data: {
         labels,
         datasets: [{
           data: values,
-          backgroundColor: CHART_COLORS.slice(0, entries.length).map(c => c + 'CC'),
-          borderColor: 'rgba(0,0,0,0.3)',
-          borderWidth: 2,
+          backgroundColor: T.pie.slice(0, entries.length),
+          borderColor: T.surface,
+          borderWidth: 3,
+          hoverBorderColor: T.goldBright,
+          hoverOffset: 4,
         }]
       },
       options: {
@@ -658,16 +759,19 @@
     if (entries.length === 0) return;
     const labels = entries.map(e => e[0]);
     const values = entries.map(e => e[1]);
-    const statusColors = { confirmed: GREEN, pending: GOLD, completed: '#60a5fa', cancelled: RED };
+    const T = chartTheme();
+    const statusColors = { confirmed: T.profit, pending: T.goldBright, completed: T.silver, cancelled: T.red };
     _charts.status = new Chart(canvas, {
       type: 'doughnut',
       data: {
         labels,
         datasets: [{
           data: values,
-          backgroundColor: entries.map(e => (statusColors[e[0]] || '#888') + 'CC'),
-          borderColor: 'rgba(0,0,0,0.3)',
-          borderWidth: 2,
+          backgroundColor: entries.map(e => statusColors[e[0]] || T.faint),
+          borderColor: T.surface,
+          borderWidth: 3,
+          hoverBorderColor: T.goldBright,
+          hoverOffset: 4,
         }]
       },
       options: {
@@ -1384,6 +1488,13 @@
             chartCard: '#101012',
             chartBorder: '#101012'
           };
+      const PDF_CHART = buildStarPaperChartTheme(PDF_THEME);
+      P.chartBg = PDF_CHART.surface;
+      P.chartCard = PDF_CHART.surface;
+      P.chartLegend = PDF_CHART.ink;
+      P.chartTicks = PDF_CHART.muted;
+      P.chartGrid = PDF_CHART.grid;
+      P.chartBorder = PDF_CHART.surface;
 
       const formatMoney = (v) => `UGX ${Math.round(Number(v) || 0).toLocaleString()}`;
       const fmtDate = (d) => {
@@ -1932,14 +2043,14 @@
         const ctx = canvas.getContext('2d');
 
         const revenueBarGrad = ctx.createLinearGradient(0, 0, 0, 420);
-        revenueBarGrad.addColorStop(0, '#FACC15');
-        revenueBarGrad.addColorStop(1, '#F59E0B');
+        revenueBarGrad.addColorStop(0, PDF_CHART.goldBright);
+        revenueBarGrad.addColorStop(1, PDF_CHART.revenue);
         const expenseBarGrad = ctx.createLinearGradient(0, 0, 0, 420);
-        expenseBarGrad.addColorStop(0, '#FB7185');
-        expenseBarGrad.addColorStop(1, '#EF4444');
+        expenseBarGrad.addColorStop(0, PDF_CHART.expense);
+        expenseBarGrad.addColorStop(1, PDF_CHART.red);
         const profitBarGrad = ctx.createLinearGradient(0, 0, 0, 420);
-        profitBarGrad.addColorStop(0, '#4ADE80');
-        profitBarGrad.addColorStop(1, '#16A34A');
+        profitBarGrad.addColorStop(0, PDF_CHART.profit);
+        profitBarGrad.addColorStop(1, PDF_CHART.green);
 
         const revData = m.allMonths.map(k => m.monthlyRevenue[k] || 0);
         const expData = m.allMonths.map(k => m.monthlyExpenses[k] || 0);
@@ -1956,10 +2067,10 @@
               {
                 label: 'Revenue',
                 data: revData,
-                borderColor: '#F59E0B',
+                borderColor: PDF_CHART.revenue,
                 backgroundColor: revenueBarGrad,
-                borderWidth: 1.4,
-                borderRadius: 8,
+                borderWidth: 1.8,
+                borderRadius: 10,
                 borderSkipped: false,
                 maxBarThickness: 26,
                 categoryPercentage: 0.66,
@@ -1968,10 +2079,10 @@
               {
                 label: 'Expenses',
                 data: expData,
-                borderColor: '#EF4444',
+                borderColor: PDF_CHART.expense,
                 backgroundColor: expenseBarGrad,
-                borderWidth: 1.4,
-                borderRadius: 8,
+                borderWidth: 1.8,
+                borderRadius: 10,
                 borderSkipped: false,
                 maxBarThickness: 26,
                 categoryPercentage: 0.66,
@@ -1980,10 +2091,10 @@
               {
                 label: 'Net Profit',
                 data: profData,
-                borderColor: '#16A34A',
+                borderColor: PDF_CHART.profit,
                 backgroundColor: profitBarGrad,
-                borderWidth: 1.4,
-                borderRadius: 8,
+                borderWidth: 1.8,
+                borderRadius: 10,
                 borderSkipped: false,
                 maxBarThickness: 26,
                 categoryPercentage: 0.66,
@@ -2046,12 +2157,12 @@
         const ctx2 = c2.getContext('2d');
         ctx2.fillStyle = P.chartCard;
         ctx2.fillRect(0, 0, c2.width, c2.height);
-        const dColors = CHART_COLORS.slice(0, costEntries.length);
+        const dColors = PDF_CHART.pie.slice(0, costEntries.length);
         const ch2 = new Chart(ctx2, {
           type: 'doughnut',
           data: {
             labels: costEntries.map(e => e[0]),
-            datasets: [{ data: costEntries.map(e => e[1]), backgroundColor: dColors, borderColor: P.chartBorder, borderWidth: 3 }]
+            datasets: [{ data: costEntries.map(e => e[1]), backgroundColor: dColors, borderColor: P.chartBorder, borderWidth: 4 }]
           },
           options: {
             responsive: false,
@@ -2211,7 +2322,7 @@
         const totalStatuses = statusEntries.reduce((sum, [, count]) => sum + Number(count || 0), 0);
         const confirmedCount = Math.max(0, Number(m.confirmedCount) || 0);
         const confirmedPct = totalStatuses > 0 ? Math.round((confirmedCount / totalStatuses) * 100) : 0;
-        const statusPalette = { confirmed: '#22c55e', pending: '#FFB300', completed: '#60a5fa', cancelled: '#ef4444' };
+        const statusPalette = { confirmed: PDF_CHART.profit, pending: PDF_CHART.goldBright, completed: PDF_CHART.silver, cancelled: PDF_CHART.red };
         const pieBoxW = Math.min(36, Math.max(28, (w - (cardPad * 2)) * 0.44));
         const pieX = x + cardPad;
         const summaryX = pieX + pieBoxW + 5;

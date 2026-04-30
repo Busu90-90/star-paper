@@ -2184,6 +2184,149 @@ html:not(.sp-prem-off) body.light-theme #spCurrencyModal #spCurrencyList .action
   border-color: rgba(120, 94, 33, 0.34);
 }
 
+/* Money readability + Star Paper chart suite */
+html:not(.sp-prem-off) #appContainer {
+  --sp-chart-paper: #111217;
+  --sp-chart-paper-alt: #181a23;
+  --sp-chart-ink: #f8edcf;
+  --sp-chart-muted: #b9aa83;
+  --sp-chart-border: rgba(212, 168, 67, 0.24);
+  --sp-chart-grid: rgba(248, 237, 207, 0.08);
+}
+
+html:not(.sp-prem-off) body.light-theme #appContainer {
+  --sp-chart-paper: #fff9ed;
+  --sp-chart-paper-alt: #f7efd9;
+  --sp-chart-ink: #17130b;
+  --sp-chart-muted: #5b4b32;
+  --sp-chart-border: rgba(138, 109, 26, 0.28);
+  --sp-chart-grid: rgba(95, 74, 33, 0.12);
+}
+
+html:not(.sp-prem-off) #appContainer :is(.chart-container, .sp-rpt-chart-card) {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--sp-chart-paper) 94%, white 6%), var(--sp-chart-paper-alt));
+  border: 1px solid var(--sp-chart-border);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 18px 40px rgba(0, 0, 0, 0.22);
+}
+
+html:not(.sp-prem-off) body.light-theme #appContainer :is(.chart-container, .sp-rpt-chart-card) {
+  background:
+    linear-gradient(180deg, rgba(255, 250, 239, 0.98), rgba(247, 239, 217, 0.94));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 14px 32px rgba(52, 34, 7, 0.12);
+}
+
+html:not(.sp-prem-off) #appContainer :is(.chart-container, .sp-rpt-chart-card)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--sp-chart-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--sp-chart-grid) 1px, transparent 1px),
+    radial-gradient(circle at 18% 0%, rgba(212, 168, 67, 0.12), transparent 34%);
+  background-size: 100% 38px, 48px 100%, auto;
+  opacity: 0.5;
+}
+
+html:not(.sp-prem-off) #appContainer :is(.chart-container, .sp-rpt-chart-card) > * {
+  position: relative;
+  z-index: 1;
+}
+
+html:not(.sp-prem-off) body.light-theme #appContainer :is(.mainstage-pulse-card, .dashboard-financials-card, .card, .stat-card, .mainstage-kpi, .settings-row, .settings-card) {
+  color: var(--text-primary);
+}
+
+html:not(.sp-prem-off) body.light-theme #appContainer .monthly-goal-track {
+  background:
+    linear-gradient(180deg, rgba(255, 250, 239, 0.98), rgba(247, 239, 217, 0.92)) !important;
+  border-color: rgba(138, 109, 26, 0.32) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 12px 28px rgba(52, 34, 7, 0.1) !important;
+}
+
+html:not(.sp-prem-off) body.light-theme #appContainer .monthly-goal-metric {
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(138, 109, 26, 0.24);
+}
+
+html:not(.sp-prem-off) body.light-theme #appContainer :is(.monthly-goal-track__title, .monthly-goal-metric__label, .stat-label, .stat-click-hint, .sp-rpt-kpi__label, .sp-rpt-kpi__sub, .sp-rpt-hero__subtitle) {
+  color: #5b4b32 !important;
+}
+
+html:not(.sp-prem-off) body.light-theme #appContainer :is(.monthly-goal-metric__value, .mainstage-kpi__value, .stat-value, .sp-rpt-kpi__value, .sp-rpt-hero__profit, .sp-rpt-num) {
+  color: #17130b !important;
+  text-shadow: none !important;
+}
+
+html:not(.sp-prem-off) body.light-theme #appContainer :is(input, select, textarea, .sp-inline-edit-control) {
+  background: #fffaf1 !important;
+  color: #17130b !important;
+  border-color: rgba(138, 109, 26, 0.38) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+html:not(.sp-prem-off) body.light-theme #appContainer :is(input, select, textarea, .sp-inline-edit-control)::placeholder {
+  color: #75613d !important;
+  opacity: 1;
+}
+
+html:not(.sp-prem-off) body.light-theme #appContainer :is(input, select, textarea, .sp-inline-edit-control):focus {
+  border-color: rgba(184, 137, 47, 0.78) !important;
+  box-shadow:
+    0 0 0 3px rgba(184, 137, 47, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78) !important;
+}
+
+html:not(.sp-prem-off) body.light-theme #appContainer :is(.action-btn, .back-btn, .add-btn, .settings-inline-action, .settings-currency-btn) {
+  color: #20160a !important;
+  border-color: rgba(138, 109, 26, 0.34) !important;
+}
+
+html:not(.sp-prem-off) body.light-theme #appContainer :is(.action-btn, .back-btn, .add-btn, .settings-inline-action, .settings-currency-btn):hover {
+  color: #17130b !important;
+  border-color: rgba(184, 137, 47, 0.62) !important;
+  background: linear-gradient(180deg, rgba(255, 250, 239, 1), rgba(241, 222, 177, 0.82)) !important;
+}
+
+html:not(.sp-prem-off) body.light-theme #appContainer .monthly-goal-progress {
+  background: rgba(138, 109, 26, 0.16) !important;
+  border-color: rgba(138, 109, 26, 0.24) !important;
+}
+
+html:not(.sp-prem-off) #appContainer .sp-rpt-chart-title {
+  color: var(--sp-chart-ink);
+  letter-spacing: 0.02em;
+}
+
+html:not(.sp-prem-off) #appContainer :is(.sp-rpt-hero, .sp-rpt-kpi, .sp-rpt-focus, .sp-rpt-table-card, .sp-rpt-achievements, .sp-rpt-recs, .sp-rpt-ledger) {
+  border-color: var(--sp-chart-border);
+}
+
+html:not(.sp-prem-off) body.light-theme #appContainer :is(.sp-rpt-hero, .sp-rpt-kpi, .sp-rpt-focus, .sp-rpt-table-card, .sp-rpt-achievements, .sp-rpt-recs, .sp-rpt-ledger) {
+  background: linear-gradient(180deg, rgba(255, 250, 239, 0.98), rgba(247, 239, 217, 0.9));
+  color: #17130b;
+}
+
+html:not(.sp-prem-off) body.light-theme #appContainer :is(.sp-rpt-chart-title, .sp-rpt-focus__title, .sp-rpt-table tbody td, .sp-rpt-badge, .sp-rpt-rec, .sp-rpt-ledger__toggle, .audience-metric-row, .audience-metric-row__artist, .audience-metric-row__value) {
+  color: #17130b !important;
+}
+
+html:not(.sp-prem-off) body.light-theme #appContainer :is(.sp-rpt-focus__body, .sp-rpt-table thead th, .audience-metric-row__period, .audience-metric-row__label) {
+  color: #5b4b32 !important;
+}
+
 html:not(.sp-prem-off) #appContainer .settings-admin-actions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

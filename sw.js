@@ -48,23 +48,24 @@ if (IS_LEGACY_NETLIFY_WORKER) {
     event.respondWith(Response.redirect(toCanonicalUrl(event.request.url), 302));
   });
 } else {
-const CACHE_NAME = "star-paper-shell-v107";
+const CACHE_NAME = "star-paper-shell-v125";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=44",
+  "./styles.css?v=50",
   "./styles.premium.css?v=8",
-  "./styles.shell.css?v=10",
+  "./styles.shell.css?v=11",
   "./star-paper-tokens.css?v=21",
-  "./supabase.js?v=41",
+  "./supabase.js?v=62",
   "./app.migrations.js?v=10",
   "./app.actions.js?v=8",
   "./app.todayboard.js?v=1",
   "./app.tasks.js?v=4",
-  "./app.reports.js?v=11",
-  "./app.js?v=87",
+  "./app.reports.js?v=12",
+  "./app.js?v=104",
+  "./app.globe.js?v=6",
   "./app.premium.js?v=4",
-  "./sw.js?v=107",
+  "./sw.js?v=125",
   "./manifest.json",
   "./manifest.json?v=21",
   "./logo-ui.png",

@@ -37,9 +37,17 @@ function isBootRevealBlockingState(state) {
     return ['booting-auth', 'loading-session', 'signing-in', 'booting-data', 'loading-app'].includes(state);
 }
 
+let spBootTransitionId = 0;
+
 function isAppShellPaintReady() {
     const app = document.getElementById('appContainer');
     if (!app || !window.__spAppBooted) return false;
+    return isAppShellVisible();
+}
+
+function isAppShellVisible() {
+    const app = document.getElementById('appContainer');
+    if (!app) return false;
     const style = window.getComputedStyle ? window.getComputedStyle(app) : null;
     const isVisible = app.classList.contains('screen-active') &&
         app.style.display !== 'none' &&
@@ -48,10 +56,16 @@ function isAppShellPaintReady() {
     const rect = app.getBoundingClientRect();
     return rect.width > 0 && rect.height > 0;
 }
+window.isAppShellVisible = isAppShellVisible;
+
+function isCurrentBootTransition(flowId) {
+    return !flowId || Number(flowId) === spBootTransitionId;
+}
 
 function hideBootLoaderElement(options = {}) {
+    if (options.flowId && !isCurrentBootTransition(options.flowId)) return;
     if (window.__spBootRevealPending && options.force !== true) {
-        hideBootLoaderWhenUiPainted({ requireAppReady: true, minDelayMs: 120 });
+        hideBootLoaderWhenUiPainted({ requireAppReady: true, minDelayMs: 120, flowId: options.flowId });
         return;
     }
     window.__spBootRevealPending = false;
@@ -71,13 +85,15 @@ function hideBootLoaderWhenUiPainted(options = {}) {
         ? Math.max(0, Number(options.minDelayMs))
         : 180;
     const requireAppReady = options.requireAppReady === true;
+    const flowId = options.flowId || null;
     const startedAt = Date.now();
 
     const hideWhenReady = () => {
+        if (flowId && !isCurrentBootTransition(flowId)) return;
         const appReady = !requireAppReady || isAppShellPaintReady();
         const elapsed = Date.now() - startedAt;
         if (appReady && elapsed >= minDelayMs) {
-            hideBootLoaderElement({ force: true });
+            hideBootLoaderElement({ force: true, flowId });
             return;
         }
         setTimeout(hideWhenReady, appReady ? Math.max(0, minDelayMs - elapsed) : 80);
@@ -105,6 +121,8 @@ function showBootLoaderElement() {
 window.hideBootLoaderElement = hideBootLoaderElement;
 window.hideBootLoaderWhenUiPainted = hideBootLoaderWhenUiPainted;
 window.showBootLoaderElement = showBootLoaderElement;
+window.isCurrentBootTransition = isCurrentBootTransition;
+window.getBootTransitionId = () => spBootTransitionId;
 
 const APP_BOOT_CONTEXT_STORAGE_KEY = 'sp_boot_context';
 const APP_BOOT_CONTEXT_APP_SHELL = 'app-shell';
@@ -169,14 +187,9 @@ function getStartupBootContext() {
     if (marker === APP_BOOT_CONTEXT_AUTH_RETURN) {
         clearAppShellBootContext();
     }
-    // FIXED: treat persisted Supabase auth as an app refresh so landing never flashes for signed-in users.
-    try {
-        if (!isLocalDevOrigin() && window.__spSupabaseConfigured && localStorage.getItem('sp-starpaper-auth-v1') && localStorage.getItem('sp_logged_out') !== '1') {
-            return 'app-refresh';
-        }
-    } catch (_err) {
-        // Ignore storage restrictions; Supabase bootstrap will decide the final screen.
-    }
+    // Treat persisted Supabase auth as an app refresh on every origin, including
+    // local testing. Logged-out users still fall through to the public landing.
+    if (hasStoredCloudSessionHint()) return 'app-refresh';
     return marker === APP_BOOT_CONTEXT_APP_SHELL ? 'app-refresh' : 'cold-start';
 }
 
@@ -184,18 +197,87 @@ function isLocalDevOrigin() {
     return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 }
 
-function scheduleLocalBootFallback(bootContext) {
+function hasStoredCloudSessionHint() {
+    try {
+        return Boolean(window.__spSupabaseConfigured) &&
+            localStorage.getItem('sp-starpaper-auth-v1') &&
+            localStorage.getItem('sp_logged_out') !== '1';
+    } catch (_err) {
+        return false;
+    }
+}
+
+function isSupabaseBootWorkActive() {
+    if (!window.__spSupabaseConfigured) return false;
+    return Boolean(
+        window.__spCloudBootstrapPending ||
+        window.__spSupabaseBootPromise ||
+        window.__spAuthRedirectInProgress
+    );
+}
+
+function resetCloudSaveInFlightFlags(reason = 'ui-not-app') {
+    window.__spCloudSaveInFlightCount = 0;
+    window.__spCloudSaveInFlight = false;
+    window.__spCloudSaveInFlightReason = reason;
+}
+
+window.__spResetCloudSaveInFlightFlags = resetCloudSaveInFlightFlags;
+
+function isScreenElementVisible(id) {
+    const element = document.getElementById(id);
+    if (!element) return false;
+    const style = getComputedStyle(element);
+    return style.display !== 'none' && style.visibility !== 'hidden' && element.offsetParent !== null;
+}
+
+function shouldWarnBeforeUnload() {
+    const count = Number(window.__spCloudSaveInFlightCount || 0);
+    if (window.__spCloudSaveInFlight !== true || count <= 0) return false;
+    if (isSupabaseBootWorkActive()) return false;
+    if (isScreenElementVisible('landingScreen') || isScreenElementVisible('loginScreen')) return false;
+    const loader = document.getElementById('appBootLoader');
+    const loaderVisible = loader && getComputedStyle(loader).display !== 'none' && loader.dataset.state !== 'hidden';
+    if (loaderVisible && !window.__spAppBooted) return false;
+    if (!isAppShellVisible()) return false;
+    const hasAuthenticatedUser = Boolean(
+        window.currentUser ||
+        (typeof currentUser !== 'undefined' && currentUser) ||
+        window.currentManagerId ||
+        (typeof currentManagerId !== 'undefined' && currentManagerId)
+    );
+    return hasAuthenticatedUser;
+}
+
+window.__spShouldWarnBeforeUnload = shouldWarnBeforeUnload;
+
+function scheduleLocalBootFallback(bootContext, flowId = null) {
     if (!isLocalDevOrigin() || bootContext === 'auth-callback') return;
     setTimeout(() => {
+        if (flowId && !isCurrentBootTransition(flowId)) return;
         const loader = document.getElementById('appBootLoader');
         if (window.__spAppBooted || loader?.dataset.state !== 'loading-session') return;
-        clearAppShellBootContext();
-        window.__spBootRevealPending = false;
-        document.documentElement.classList.remove('sp-force-boot');
-        if (typeof setActiveScreen === 'function') {
-            setActiveScreen('landingScreen');
+        if (isAppShellVisible()) {
+            hideBootLoaderElement({ force: true, flowId });
+            return;
         }
-        hideBootLoaderElement({ force: true });
+        if (isSupabaseBootWorkActive()) {
+            return;
+        }
+        if (bootContext === 'app-refresh' || hasStoredCloudSessionHint()) {
+            setBootState('boot-error', {
+                text: 'Session restore stalled',
+                subtext: 'Retry to reconnect to Star Paper, or log out and sign in again.',
+                showActions: true
+            });
+            return;
+        }
+        clearAppShellBootContext();
+        commitBootTransition('landingScreen', {
+            flowId,
+            reason: 'local-boot-fallback',
+            minDelayMs: 80
+        });
     }, 8000);
 }
 
@@ -241,6 +323,10 @@ const BOOT_STATE_MESSAGES = {
 function setBootState(state, options = {}) {
     const loader = document.getElementById('appBootLoader');
     if (!loader) return;
+    if (state === 'boot-error' && isAppShellVisible()) {
+        hideBootLoaderElement({ force: true });
+        return;
+    }
     const preset = BOOT_STATE_MESSAGES[state] || BOOT_STATE_MESSAGES['booting-auth'];
     const nextText = options.text || preset.text;
     const nextSubtext = options.subtext ?? preset.subtext;
@@ -263,6 +349,48 @@ function setBootState(state, options = {}) {
 }
 window.setBootState = setBootState;
 
+function beginBootTransition(reason = 'boot', state = 'loading-session', options = {}) {
+    spBootTransitionId += 1;
+    const flowId = spBootTransitionId;
+    window.__spBootTransitionReason = reason;
+    window.__spBootTransitionTarget = '';
+    window.__spBootRevealPending = true;
+    if (state) {
+        setBootState(state, options);
+    } else {
+        showBootLoaderElement();
+    }
+    return flowId;
+}
+
+function commitBootTransition(target, options = {}) {
+    const flowId = options.flowId || spBootTransitionId;
+    if (flowId && !isCurrentBootTransition(flowId)) return false;
+    const targetScreen = target || options.target;
+    if (!targetScreen) return false;
+
+    if (options.state) {
+        setBootState(options.state, options);
+    }
+    if (typeof setActiveScreen === 'function') {
+        setActiveScreen(targetScreen);
+    }
+
+    window.__spBootTransitionTarget = targetScreen;
+    const shouldHideLoader = options.hideLoader !== false;
+    if (!shouldHideLoader) return true;
+
+    hideBootLoaderWhenUiPainted({
+        flowId,
+        requireAppReady: options.requireAppReady === true || targetScreen === 'appContainer',
+        minDelayMs: Number.isFinite(options.minDelayMs) ? options.minDelayMs : 180
+    });
+    return true;
+}
+
+window.beginBootTransition = beginBootTransition;
+window.commitBootTransition = commitBootTransition;
+
 function markRootLayoutReady() {
     document.body.classList.add('loaded', 'layout-root-ready');
     // Do NOT add layout-ready to appContainer here - only when user logs in
@@ -274,19 +402,17 @@ function initializeBootSequence() {
     window.__spBootContext = bootContext;
 
     if (bootContext === 'auth-callback' || bootContext === 'app-refresh') {
-        setBootState('loading-session');
-        scheduleLocalBootFallback(bootContext);
+        const flowId = beginBootTransition(`startup:${bootContext}`, 'loading-session');
+        scheduleLocalBootFallback(bootContext, flowId);
         return;
     }
 
-    hideBootLoaderElement({ force: true });
-    if (typeof setActiveScreen === 'function') {
-        setActiveScreen('landingScreen');
-    }
+    const flowId = beginBootTransition('startup:cold-start', 'loading-session');
+    commitBootTransition('landingScreen', { flowId, minDelayMs: 80 });
 }
 
 function getSectionIconMarkup(iconKey) {
-        // All icons use Phosphor Ã¢â‚¬â€ <i class="ph ph-*"> for consistent rendering
+        // All icons use Phosphor — <i class="ph ph-*"> for consistent rendering
         const phClass = {
             money:      'ph-currency-circle-dollar',
             schedule:   'ph-calendar-blank',
@@ -296,6 +422,7 @@ function getSectionIconMarkup(iconKey) {
             financials: 'ph-chart-bar',
             expenses:   'ph-receipt',
             tour:       'ph-globe',
+            global:     'ph-globe-hemisphere-east',
             otherIncome:'ph-plus-circle',
             calendar:   'ph-calendar-blank',
             reports:    'ph-clipboard-text',
@@ -698,6 +825,7 @@ function getSectionIconMarkup(iconKey) {
         let bookings = [];
         let expenses = [];
         let otherIncome = [];
+        const cloudHydrationByScope = {};
         let performanceChart = null;
         let currentCalendarDate = new Date();
         let selectedCalendarDate = null;
@@ -1570,7 +1698,7 @@ function getSectionIconMarkup(iconKey) {
             saveRevenueGoalFromInput('financialsMonthlyGoalInput', 'financialsMonthlyGoalEditor');
         }
 
-        // Ã¢â€â‚¬Ã¢â€â‚¬ Balance Brought Forward (BBF) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+        // ── Balance Brought Forward (BBF) ─────────────────────────────────────
         const BBF_ARTIST_MARKER = '::artist::';
 
         function formatBBFMonthKey(date) {
@@ -1913,7 +2041,7 @@ function getSectionIconMarkup(iconKey) {
             syncCloudExtras();
             toastSuccess(`BBF saved for ${artist?.name || 'Roster'} (${formatBBFPeriodLabel(period)}).`);
         }
-        // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+        // ─────────────────────────────────────────────────────────────────────
 
         function normalizeAllManagerBookingReferences() {
             bookings = ensureBookingArtistRefs(bookings, currentManagerId);
@@ -1963,7 +2091,7 @@ function getSectionIconMarkup(iconKey) {
             if (window.__starPaperMainEventsBound) return;
             window.__starPaperMainEventsBound = true;
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ In-app navigation history stack Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── In-app navigation history stack ──────────────────────────
             window._spNavStack = [];   // array of section names
             window._spNavIndex = -1;  // current position in stack
             window._spNavSkip = false; // flag: popstate-driven navigation, don't push
@@ -1983,7 +2111,7 @@ function getSectionIconMarkup(iconKey) {
             document.getElementById('hamburgerBtn')?.addEventListener('click', () => toggleSidebar());
             document.getElementById('sidebarOverlay')?.addEventListener('click', () => closeSidebar());
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ Back / Forward navigation buttons Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── Back / Forward navigation buttons ────────────────────────
             document.getElementById('navBackBtn')?.addEventListener('click', () => {
                 if (window._spNavIndex > 0) {
                     window._spNavIndex--;
@@ -2001,7 +2129,7 @@ function getSectionIconMarkup(iconKey) {
                 }
             });
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ Scroll-to-top FAB Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── Scroll-to-top FAB ──────────────────────────────────────
             const scrollFab = document.getElementById('scrollTopFab');
             const mainContent = document.querySelector('.main-content');
             const showFab = () => {
@@ -2015,7 +2143,7 @@ function getSectionIconMarkup(iconKey) {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             });
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ Landing: sticky mini-nav on scroll Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── Landing: sticky mini-nav on scroll ────────────────────
             const landingEl = document.getElementById('landingScreen');
             const miniNav   = document.getElementById('landingMiniNav');
             if (landingEl && miniNav) {
@@ -2138,6 +2266,11 @@ function getSectionIconMarkup(iconKey) {
             applyTheme(getStoredThemePreference() || 'dark', { persist: false, syncRemote: false });
             document.addEventListener('input', cacheDrafts);
             window.addEventListener('beforeunload', cacheDrafts);
+            window.addEventListener('beforeunload', (event) => {
+                if (!shouldWarnBeforeUnload()) return;
+                event.preventDefault();
+                event.returnValue = '';
+            });
 
             // Mobile swipe gestures for sidebar
             let touchStartX = 0;
@@ -2194,7 +2327,7 @@ function getSectionIconMarkup(iconKey) {
             // Supabase v2 uses the Web Locks API internally to coordinate auth token
             // refresh across tabs. When a new tab steals the lock, every other tab
             // gets an AbortError: "Lock broken by another request with the 'steal' option".
-            // This is non-fatal Ã¢â‚¬â€ the auth state self-heals Ã¢â‚¬â€ but without this handler
+            // This is non-fatal — the auth state self-heals — but without this handler
             // it surfaces as a red toast. We silence it here and log quietly instead.
             window.addEventListener('unhandledrejection', (event) => {
                 const err = event.reason;
@@ -2751,7 +2884,7 @@ function getSectionIconMarkup(iconKey) {
         window.__spAppBooted = false;
         window.currentUser = null;
         window.currentManagerId = null;
-        setBootState('loading-session');
+        beginBootTransition('app-state-init', 'loading-session');
 
         // Populate location dropdowns on page load
         function populateLocationDropdowns() {
@@ -2993,7 +3126,7 @@ function getSectionIconMarkup(iconKey) {
          * @param {string} type - Type of detail to show
          */
         function showDetailView(type) {
-            showSection('schedule');
+            showSection('bookings');
             
             setTimeout(() => {
                 const table = document.getElementById('bookingsTable');
@@ -3969,6 +4102,10 @@ function getSectionIconMarkup(iconKey) {
             syncSidebarThemeButtonState(isLight);
             if (currentUser) {
                 updateDashboard();
+                if (document.getElementById('moneyPanel-reports')?.classList.contains('sp-tab-panel--active') &&
+                    typeof window.renderMomentumDashboard === 'function') {
+                    window.renderMomentumDashboard();
+                }
             }
             if (shouldSync) {
                 syncCloudExtras({ includeTheme: true });
@@ -4005,10 +4142,9 @@ function getSectionIconMarkup(iconKey) {
             }
         }
 
-function showLoginForm() {
-            setBootState('auth-required');
-            hideBootLoaderElement({ force: true });
-            setActiveScreen('loginScreen');
+function showLoginForm(options = {}) {
+            resetCloudSaveInFlightFlags('show-login');
+            const flowId = options.flowId || beginBootTransition('show-login', 'auth-required');
             document.getElementById('loginForm').style.display = 'block';
             document.getElementById('signupForm').style.display = 'none';
             document.getElementById('forgotPasswordForm').style.display = 'none';
@@ -4022,12 +4158,12 @@ function showLoginForm() {
             }
             clearLoginValidation();
             setLoginLoading(false);
+            commitBootTransition('loginScreen', { flowId, minDelayMs: 120 });
         }
 
-        function showSignupForm() {
-            setBootState('auth-required');
-            hideBootLoaderElement({ force: true });
-            setActiveScreen('loginScreen');
+        function showSignupForm(options = {}) {
+            resetCloudSaveInFlightFlags('show-signup');
+            const flowId = options.flowId || beginBootTransition('show-signup', 'auth-required');
             document.getElementById('signupForm').style.display = 'block';
             document.getElementById('loginForm').style.display = 'none';
             document.getElementById('forgotPasswordForm').style.display = 'none';
@@ -4037,12 +4173,17 @@ function showLoginForm() {
             if (s) s.textContent = 'Create your account to get started.';
             clearLoginValidation();
             setLoginLoading(false);
+            commitBootTransition('loginScreen', { flowId, minDelayMs: 120 });
         }
 
-        function showLanding() {
-            hideBootLoaderElement({ force: true });
-            setActiveScreen('landingScreen');
+        function showLanding(options = {}) {
+            resetCloudSaveInFlightFlags('show-landing');
+            const flowId = options.flowId || beginBootTransition('show-landing', options.state || 'loading-session', {
+                text: options.text,
+                subtext: options.subtext
+            });
             clearForms();
+            commitBootTransition('landingScreen', { flowId, minDelayMs: options.minDelayMs ?? 120 });
         }
 
         function clearForms() {
@@ -4134,11 +4275,11 @@ function showLoginForm() {
             }
         });
 
-        // Ã¢â€â‚¬Ã¢â€â‚¬ SAFE WINDOW EXPOSURE Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+        // ── SAFE WINDOW EXPOSURE ─────────────────────────────────────────────────
         // All functions below are global declarations (depth-0) and are already
         // on window automatically in browsers. We use ||= so app.actions.js (which
         // loads first) always wins if it defines its own version. We never override
-        // what another module already set Ã¢â‚¬â€ this prevents regression on every deploy.
+        // what another module already set — this prevents regression on every deploy.
 
         // Form show/open
         window.showAddExpense         ||= showAddExpense;
@@ -4339,7 +4480,7 @@ function showLoginForm() {
             try {
                 const remember = document.getElementById('rememberMe')?.checked;
 
-                // â”€â”€ LOCAL FALLBACK (offline / Supabase not configured) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                // ── LOCAL FALLBACK (offline / Supabase not configured) ────────────────
                 const user = findUserByUsername(name) || findUserByUsernameInsensitive(name);
                 const credMatch = (user ? findCredentialByUsername(user.username) : null) || findCredentialByUsername(name);
                 const cred = credMatch?.record;
@@ -4392,7 +4533,7 @@ function showLoginForm() {
                     return;
                 }
 
-                // â”€â”€ SUPABASE PATH (primary) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                // ── SUPABASE PATH (primary) ───────────────────────────────────────────
                 if (window.SP?.signup) {
                     try {
                         const data = await window.SP.signup(name, email, password, phone);
@@ -4401,7 +4542,7 @@ function showLoginForm() {
                             toastSuccess('Account created! Check your email to confirm before logging in.');
                         } else if (data?.session) {
                             toastSuccess('Account created! Welcome to Star Paper.');
-                            // Session is live â€” bootstrap will fire via onAuthStateChange.
+                            // Session is live — bootstrap will fire via onAuthStateChange.
                         } else {
                             toastSuccess('Account created! You can now log in.');
                         }
@@ -4418,7 +4559,7 @@ function showLoginForm() {
                     }
                 }
 
-                // â”€â”€ LOCAL FALLBACK (offline / no Supabase) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                // ── LOCAL FALLBACK (offline / no Supabase) ────────────────────────────
                 if (!hasSecureCredentialCrypto()) {
                     toastError('Secure password storage is not available in this browser.');
                     return;
@@ -4571,12 +4712,15 @@ function showLoginForm() {
         }
 
         function logout() {
+            const flowId = beginBootTransition('local-logout', 'signing-out');
+            resetCloudSaveInFlightFlags('local-logout');
             saveUserData();
+            resetCloudSaveInFlightFlags('local-logout-complete');
             clearAuthSessionState();
             Storage.saveSync('starPaperDrafts', null);
             refreshProfileUI();
-            setActiveScreen('landingScreen');
             clearForms();
+            commitBootTransition('landingScreen', { flowId, minDelayMs: 180 });
             toastInfo('Logged out');
         }
 
@@ -4624,6 +4768,7 @@ function showLoginForm() {
             const ownsBootLoader = !window.__spCloudBootstrapPending &&
                 !window.__spSupabaseBootPromise &&
                 !window.__spAuthRedirectInProgress;
+            const flowId = window.getBootTransitionId?.() || beginBootTransition('show-app', 'loading-app');
             setBootState('loading-app');
             try {
                 console.log('=== SHOW APP STARTING ===');
@@ -4632,7 +4777,7 @@ function showLoginForm() {
                 console.log('Bookings:', bookings);
                 console.log('Expenses:', expenses);
                 
-                setActiveScreen('appContainer');
+                commitBootTransition('appContainer', { flowId, hideLoader: false });
                 const sidebar = document.getElementById('sidebar');
                 const sidebarOverlay = document.getElementById('sidebarOverlay');
                 sidebar?.classList.remove('active');
@@ -4704,7 +4849,11 @@ function showLoginForm() {
                 window.__spAppBooted = true;
                 applyReadOnlyMode();
                 if (ownsBootLoader) {
-                    hideBootLoaderWhenUiPainted({ requireAppReady: true, minDelayMs: 220 });
+                    commitBootTransition('appContainer', {
+                        flowId,
+                        requireAppReady: true,
+                        minDelayMs: 220
+                    });
                 }
                 
                 console.log('=== SHOW APP COMPLETED ===');
@@ -4720,18 +4869,75 @@ function showLoginForm() {
             }
         }
 
+        const SP_MONEY_TAB_IDS = new Set(['financials', 'expenses', 'otherIncome', 'reports']);
+        const SP_SCHEDULE_TAB_IDS = new Set(['global', 'bookings', 'calendar']);
+        const SP_APP_SECTION_IDS = new Set(['dashboard', 'money', 'schedule', 'artists', 'tasks', 'settings', ...SP_MONEY_TAB_IDS, ...SP_SCHEDULE_TAB_IDS]);
+
+        function isMoneyTabSection(section) {
+            return SP_MONEY_TAB_IDS.has(section);
+        }
+
+        function isScheduleTabSection(section) {
+            return SP_SCHEDULE_TAB_IDS.has(section);
+        }
+
+        function normalizeAppSection(section) {
+            if (section === 'money') {
+                const saved = Storage.loadSync('starPaperLastMoneyTab', 'financials');
+                return isMoneyTabSection(saved) ? saved : 'financials';
+            }
+            if (section === 'schedule') {
+                const saved = Storage.loadSync('starPaperLastScheduleTab', 'global');
+                return isScheduleTabSection(saved) ? saved : 'global';
+            }
+            return SP_APP_SECTION_IDS.has(section) ? section : 'dashboard';
+        }
+
+        function persistAppSectionRoute(section) {
+            const normalized = normalizeAppSection(section);
+            Storage.saveSync('starPaperLastSection', normalized);
+            if (isMoneyTabSection(normalized)) {
+                Storage.saveSync('starPaperLastMoneyTab', normalized);
+            } else if (isScheduleTabSection(normalized)) {
+                Storage.saveSync('starPaperLastScheduleTab', normalized);
+            }
+            try {
+                const hash = `#${normalized}`;
+                if (window.location.hash !== hash) {
+                    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}${hash}`);
+                }
+            } catch (_err) {}
+            return normalized;
+        }
+
         function restorePostBootUiState() {
-            const allowedSections = new Set(['dashboard', 'money', 'schedule', 'artists', 'tasks', 'settings', 'financials', 'expenses', 'otherIncome', 'reports', 'bookings', 'calendar']);
+            const allowedSections = SP_APP_SECTION_IDS;
+            const readHashSection = () => {
+                try {
+                    const raw = decodeURIComponent(String(window.location.hash || '').replace(/^#/, '')).trim();
+                    if (!raw || raw.includes('=') || raw.includes('&')) return '';
+                    return allowedSections.has(raw) ? raw : '';
+                } catch (_err) {
+                    return '';
+                }
+            };
+            const hashSection = readHashSection();
             const lastSectionRaw = Storage.loadSync('starPaperLastSection', 'dashboard');
             const lastMoneyTab = Storage.loadSync('starPaperLastMoneyTab', 'financials');
-            const lastScheduleTab = Storage.loadSync('starPaperLastScheduleTab', 'bookings');
+            const lastScheduleTab = Storage.loadSync('starPaperLastScheduleTab', 'global');
+            const storedSection = allowedSections.has(lastSectionRaw) ? lastSectionRaw : 'dashboard';
 
-            let targetSection = allowedSections.has(lastSectionRaw) ? lastSectionRaw : 'dashboard';
+            // Older deployed builds forced #dashboard even while another section was active.
+            // Treat that specific stale hash as weaker than the stored app section.
+            let targetSection = hashSection && !(hashSection === 'dashboard' && storedSection !== 'dashboard')
+                ? hashSection
+                : storedSection;
             if (targetSection === 'money') {
-                targetSection = allowedSections.has(lastMoneyTab) ? lastMoneyTab : 'financials';
+                targetSection = isMoneyTabSection(lastMoneyTab) ? lastMoneyTab : 'financials';
             } else if (targetSection === 'schedule') {
-                targetSection = allowedSections.has(lastScheduleTab) ? lastScheduleTab : 'bookings';
+                targetSection = isScheduleTabSection(lastScheduleTab) ? lastScheduleTab : 'global';
             }
+            targetSection = normalizeAppSection(targetSection);
 
             if (typeof showSection === 'function') {
                 showSection(targetSection);
@@ -4753,6 +4959,62 @@ function showLoginForm() {
                 Boolean(window.SP?.getOwnerId?.());
         }
 
+        const CORE_CLOUD_DATASET_KEYS = ['bookings', 'expenses', 'otherIncome', 'artists'];
+
+        function hasOwnCloudField(cloudData, key) {
+            return Boolean(cloudData) && Object.prototype.hasOwnProperty.call(cloudData, key);
+        }
+
+        function hasCompleteCoreCloudSnapshot(cloudData) {
+            return CORE_CLOUD_DATASET_KEYS.every((key) => hasOwnCloudField(cloudData, key));
+        }
+
+        function normalizeWorkspaceScopeKey(scopeKey) {
+            return String(scopeKey || '').trim();
+        }
+
+        function getActiveWorkspaceSnapshotMeta(scopeKey) {
+            return {
+                ownerId: window.SP?.getOwnerId?.() || null,
+                teamId: getActiveTeamId() || null,
+                scopeKey: normalizeWorkspaceScopeKey(scopeKey || getActiveDataScopeKey())
+            };
+        }
+
+        function markWorkspaceHydrated(scopeKey, hydrated, detail = {}) {
+            if (!scopeKey) return;
+            cloudHydrationByScope[scopeKey] = {
+                hydrated: Boolean(hydrated),
+                updatedAt: Date.now(),
+                detail
+            };
+            window.__spWorkspaceDataHydrated = Boolean(hydrated);
+            window.__spWorkspaceHydrationScope = scopeKey;
+        }
+
+        function isActiveWorkspaceHydrated() {
+            if (!window.__spCloudOnly || !hasAuthenticatedCloudSession()) return true;
+            const scopeKey = getActiveDataScopeKey();
+            return Boolean(scopeKey && cloudHydrationByScope[scopeKey]?.hydrated);
+        }
+
+        function guardWorkspaceHydrated(actionLabel = 'save this workspace') {
+            if (isActiveWorkspaceHydrated()) return false;
+            const message = 'Cloud data is still loading. Try again in a moment.';
+            if (typeof window.toastWarn === 'function') {
+                window.toastWarn(message);
+            }
+            return {
+                ok: false,
+                cloudSynced: false,
+                skipped: true,
+                queued: false,
+                reason: 'workspace-hydrating',
+                message,
+                action: actionLabel
+            };
+        }
+
         function syncWindowState() {
             markSearchIndexDirty();
             window.bookings = bookings;
@@ -4766,18 +5028,90 @@ function showLoginForm() {
             window.currentUser = currentUser;
         }
 
-        function applyCloudSnapshotToRuntime(cloudData, activeScopeKey) {
+        function cloneRuntimeRecordList(records) {
+            if (!Array.isArray(records)) return [];
+            return records.map((record) => {
+                if (!record || typeof record !== 'object') return record;
+                return { ...record };
+            });
+        }
+
+        function captureRuntimeDataSnapshot() {
+            const scopeKey = getActiveDataScopeKey();
+            return {
+                ...getActiveWorkspaceSnapshotMeta(scopeKey),
+                artists: cloneRuntimeRecordList(artists),
+                bookings: cloneRuntimeRecordList(bookings),
+                expenses: cloneRuntimeRecordList(expenses),
+                otherIncome: cloneRuntimeRecordList(otherIncome),
+                audienceMetrics: cloneRuntimeRecordList(audienceMetrics),
+            };
+        }
+
+        function restoreRuntimeDataSnapshot(snapshot) {
+            if (!snapshot) return;
+            artists = cloneRuntimeRecordList(snapshot.artists);
+            bookings = cloneRuntimeRecordList(snapshot.bookings);
+            expenses = cloneRuntimeRecordList(snapshot.expenses);
+            otherIncome = cloneRuntimeRecordList(snapshot.otherIncome);
+            audienceMetrics = cloneRuntimeRecordList(snapshot.audienceMetrics);
+            if (snapshot.scopeKey) {
+                saveAudienceMetricsForScope(snapshot.scopeKey, audienceMetrics);
+            }
+            Storage.saveSync('starPaperArtists', artists);
+            syncWindowState();
+        }
+
+        function renderPortfolioDataSurfaces() {
+            renderArtists();
+            populateArtistDropdown();
+            updateAvailabilityArtists();
+            renderBookings();
+            renderExpenses();
+            renderOtherIncome();
+            renderCalendar();
+            renderPerformanceMap();
+            updateDashboard();
+            updateReportStatistics();
+            renderAudienceMetrics();
+            if (typeof window.renderMomentumDashboard === 'function') {
+                window.renderMomentumDashboard();
+            }
+        }
+
+        function applyCloudSnapshotToRuntime(cloudData, activeScopeKey, options = {}) {
             if (!cloudData) {
                 syncWindowState();
                 return;
             }
 
-            bookings = Array.isArray(cloudData.bookings)
-                ? ensureBookingArtistRefs(cloudData.bookings, currentManagerId)
-                : [];
-            expenses = Array.isArray(cloudData.expenses) ? cloudData.expenses : [];
-            otherIncome = Array.isArray(cloudData.otherIncome) ? cloudData.otherIncome : [];
-            artists = Array.isArray(cloudData.artists) ? cloudData.artists : [];
+            const normalizedActiveScopeKey = normalizeWorkspaceScopeKey(activeScopeKey || getActiveDataScopeKey());
+            const incomingWorkspace = cloudData?.__workspace || options.workspaceMeta || null;
+            const incomingScopeKey = normalizeWorkspaceScopeKey(incomingWorkspace?.scopeKey || normalizedActiveScopeKey);
+            if (incomingScopeKey && normalizedActiveScopeKey && incomingScopeKey !== normalizedActiveScopeKey) {
+                console.warn('Ignored cloud snapshot for inactive workspace scope:', {
+                    incomingScopeKey,
+                    activeScopeKey: normalizedActiveScopeKey,
+                    source: options.source || 'cloud'
+                });
+                syncWindowState();
+                return;
+            }
+
+            if (hasOwnCloudField(cloudData, 'bookings')) {
+                bookings = Array.isArray(cloudData.bookings)
+                    ? ensureBookingArtistRefs(cloudData.bookings, currentManagerId)
+                    : bookings;
+            }
+            if (hasOwnCloudField(cloudData, 'expenses')) {
+                expenses = Array.isArray(cloudData.expenses) ? cloudData.expenses : expenses;
+            }
+            if (hasOwnCloudField(cloudData, 'otherIncome')) {
+                otherIncome = Array.isArray(cloudData.otherIncome) ? cloudData.otherIncome : otherIncome;
+            }
+            if (hasOwnCloudField(cloudData, 'artists')) {
+                artists = Array.isArray(cloudData.artists) ? cloudData.artists : artists;
+            }
 
             if (cloudData.revenueGoal && typeof cloudData.revenueGoal === 'object') {
                 const goalKey = getCurrentRevenueGoalKey();
@@ -4813,13 +5147,24 @@ function showLoginForm() {
                 window.applyTaskSync(cloudData.tasks, { source: 'cloud', render: false });
             }
 
-            audienceMetrics = Array.isArray(cloudData.audienceMetrics)
-                ? cloudData.audienceMetrics
-                : [];
-            saveAudienceMetricsForScope(activeScopeKey, audienceMetrics);
+            if (hasOwnCloudField(cloudData, 'audienceMetrics')) {
+                audienceMetrics = Array.isArray(cloudData.audienceMetrics)
+                    ? cloudData.audienceMetrics
+                    : audienceMetrics;
+                saveAudienceMetricsForScope(activeScopeKey, audienceMetrics);
+            }
 
             if (cloudData.theme && typeof applyTheme === 'function' && !window.__spAppBooted && !hasStoredThemePreference()) {
                 applyTheme(cloudData.theme, { persist: true, syncRemote: false });
+            }
+
+            if (!options.provisional && hasCompleteCoreCloudSnapshot(cloudData)) {
+                markWorkspaceHydrated(activeScopeKey, true, {
+                    source: options.source || 'cloud',
+                    keys: Object.keys(cloudData)
+                });
+            } else if (options.provisional && activeScopeKey) {
+                markWorkspaceHydrated(activeScopeKey, false, { source: options.source || 'provisional' });
             }
 
             syncWindowState();
@@ -4830,15 +5175,22 @@ function showLoginForm() {
             const activeScopeKey = getActiveDataScopeKey();
             const initialSnapshot = options.snapshot || window._SP_cloudData || null;
             window._SP_cloudData = null;
-            applyCloudSnapshotToRuntime(initialSnapshot, activeScopeKey);
+            applyCloudSnapshotToRuntime(initialSnapshot, activeScopeKey, {
+                provisional: options.provisional === true,
+                source: options.source || 'loadUserData'
+            });
             window._SP_syncFromCloud = function(data) {
-                applyCloudSnapshotToRuntime(data, getActiveDataScopeKey());
+                applyCloudSnapshotToRuntime(data, getActiveDataScopeKey(), { source: 'cloud-sync' });
             };
         }
 
         async function saveUserData() {
             if (!(currentUser && currentManagerId)) {
                 return { cloudSynced: false, skipped: true, queued: false };
+            }
+            const hydrationBlock = guardWorkspaceHydrated('save workspace data');
+            if (hydrationBlock) {
+                return hydrationBlock;
             }
             bookings = ensureBookingArtistRefs(bookings, currentManagerId);
             markSearchIndexDirty();
@@ -4939,12 +5291,28 @@ function showLoginForm() {
             }
             const payload = window.SP_collectAllData({ includeTheme: opts.includeTheme === true });
             const saveFn = window.SP.queueCloudSync || window.SP.saveAllData;
-            window.__spLastCloudSyncPromise = Promise.resolve(saveFn(payload)).then(() => ({
-                cloudSynced: true,
-                skipped: false,
-                queued: false,
-                payload
-            })).catch((err) => {
+            window.__spCloudSaveInFlightCount = (Number(window.__spCloudSaveInFlightCount) || 0) + 1;
+            window.__spCloudSaveInFlight = true;
+            window.__spLastCloudSyncPromise = Promise.resolve(saveFn(payload)).then((result) => {
+                if (result && result.ok === false) {
+                    return {
+                        cloudSynced: false,
+                        skipped: false,
+                        queued: false,
+                        error: result.error || null,
+                        message: result.message || 'Cloud save failed.',
+                        result,
+                        payload
+                    };
+                }
+                return {
+                    cloudSynced: true,
+                    skipped: Boolean(result?.context?.skippedDuplicate),
+                    queued: false,
+                    result: result || null,
+                    payload
+                };
+            }).catch((err) => {
                 console.warn('Cloud sync failed:', err);
                 return {
                     cloudSynced: false,
@@ -4953,6 +5321,9 @@ function showLoginForm() {
                     error: err,
                     payload
                 };
+            }).finally(() => {
+                window.__spCloudSaveInFlightCount = Math.max(0, (Number(window.__spCloudSaveInFlightCount) || 1) - 1);
+                window.__spCloudSaveInFlight = window.__spCloudSaveInFlightCount > 0;
             });
             return window.__spLastCloudSyncPromise;
         }
@@ -5003,7 +5374,7 @@ function showLoginForm() {
             return date.toISOString().split('T')[0];
         }
 
-        function loadMockPortfolioData() {
+        async function loadMockPortfolioData() {
             updateCurrentManagerContext();
             if (!currentManagerId) {
                 toastError('Please sign in first.');
@@ -5012,6 +5383,10 @@ function showLoginForm() {
             if (guardReadOnly('load mock data into this team')) {
                 return;
             }
+            if (guardWorkspaceHydrated('load mock data')) {
+                return;
+            }
+            const runtimeSnapshot = captureRuntimeDataSnapshot();
 
             const mockArtists = [
                 {
@@ -5488,22 +5863,19 @@ function showLoginForm() {
             if (artistsMutated) {
                 Storage.saveSync('starPaperArtists', artists);
             }
-            saveUserData();
-
-            renderArtists();
-            populateArtistDropdown();
-            updateAvailabilityArtists();
-            renderBookings();
-            renderExpenses();
-            renderOtherIncome();
-            renderCalendar();
-            renderPerformanceMap();
-            updateDashboard();
-            updateReportStatistics();
-            renderAudienceMetrics();
-            if (typeof window.renderMomentumDashboard === 'function') {
-                window.renderMomentumDashboard();
+            try {
+                await persistMutationWithCloudFeedback(() => saveUserData(), {
+                    suppressSuccessToast: true,
+                    failureMessage: 'Mock data could not be saved to cloud.'
+                });
+            } catch (error) {
+                restoreRuntimeDataSnapshot(runtimeSnapshot);
+                renderPortfolioDataSurfaces();
+                toastError(error?.message || 'Mock data could not be saved to cloud. Try again.');
+                return;
             }
+
+            renderPortfolioDataSurfaces();
 
             const periodEl = document.getElementById('reportPeriod');
             if (periodEl && typeof getReportPeriodData === 'function') {
@@ -5529,13 +5901,16 @@ function showLoginForm() {
             toastSuccess(`Mock data loaded: ${added.artists} artists, ${added.bookings} bookings, ${added.expenses} expenses, ${added.otherIncome} income entries, ${added.audienceMetrics} audience metrics.`);
         }
 
-        function clearMockData() {
+        async function clearMockData() {
             updateCurrentManagerContext();
             if (!currentManagerId) {
                 toastError('Please sign in first.');
                 return;
             }
             if (guardReadOnly('clear mock data from this team')) {
+                return;
+            }
+            if (guardWorkspaceHydrated('clear mock data')) {
                 return;
             }
             const before = {
@@ -5551,6 +5926,7 @@ function showLoginForm() {
                 return;
             }
             if (!confirm(`Remove ${total} mock item(s): ${before.artists} artist(s), ${before.bookings} booking(s), ${before.expenses} expense(s), ${before.otherIncome} income entry/entries, ${before.audienceMetrics} audience metric(s). Continue?`)) return;
+            const runtimeSnapshot = captureRuntimeDataSnapshot();
 
             artists = artists.filter(a => !(a.mockSeedVersion === MOCK_PORTFOLIO_VERSION && a.managerId === currentManagerId));
             Storage.saveSync('starPaperArtists', artists);
@@ -5560,33 +5936,34 @@ function showLoginForm() {
             audienceMetrics = audienceMetrics.filter(m => m.mockSeedVersion !== MOCK_PORTFOLIO_VERSION);
             saveAudienceMetricsForScope(getActiveDataScopeKey(), audienceMetrics);
             window.audienceMetrics = audienceMetrics;
-            saveUserData();
+            try {
+                await persistMutationWithCloudFeedback(() => saveUserData(), {
+                    suppressSuccessToast: true,
+                    failureMessage: 'Mock data changes could not be saved to cloud.'
+                });
+            } catch (error) {
+                restoreRuntimeDataSnapshot(runtimeSnapshot);
+                renderPortfolioDataSurfaces();
+                toastError(error?.message || 'Mock data changes could not be saved to cloud. Try again.');
+                return;
+            }
 
-            renderArtists();
-            populateArtistDropdown();
-            updateAvailabilityArtists();
-            renderBookings();
-            renderExpenses();
-            renderOtherIncome();
-            renderCalendar();
-            renderPerformanceMap();
-            updateDashboard();
-            updateReportStatistics();
-            renderAudienceMetrics();
+            renderPortfolioDataSurfaces();
 
             toastSuccess(`Mock data cleared: ${before.artists} artist(s), ${before.bookings} booking(s), ${before.expenses} expense(s), ${before.otherIncome} income entry/entries, ${before.audienceMetrics} audience metric(s) removed.`);
         }
 
         // Navigation
         function showSection(section, el) {
+            section = normalizeAppSection(section);
             // Map sub-sections to their parent section div
             const PARENT_MAP = {
                 financials: 'money', expenses: 'money', otherIncome: 'money', reports: 'money',
-                bookings: 'schedule', calendar: 'schedule'
+                global: 'schedule', bookings: 'schedule', calendar: 'schedule'
             };
             const NAV_SECTION_MAP = {
                 financials: 'money', expenses: 'money', otherIncome: 'money', reports: 'money',
-                bookings: 'schedule', calendar: 'schedule'
+                global: 'schedule', bookings: 'schedule', calendar: 'schedule'
             };
 
             const parentSection = PARENT_MAP[section] || section;
@@ -5604,17 +5981,7 @@ function showLoginForm() {
                     document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.id === parentSection));
                 });
             }
-            Storage.saveSync('starPaperLastSection', section);
-            if (['financials', 'expenses', 'otherIncome', 'reports'].includes(section)) {
-                Storage.saveSync('starPaperLastMoneyTab', section);
-            } else if (section === 'money') {
-                Storage.saveSync('starPaperLastMoneyTab', Storage.loadSync('starPaperLastMoneyTab', 'financials'));
-            }
-            if (['bookings', 'calendar'].includes(section)) {
-                Storage.saveSync('starPaperLastScheduleTab', section);
-            } else if (section === 'schedule') {
-                Storage.saveSync('starPaperLastScheduleTab', Storage.loadSync('starPaperLastScheduleTab', 'bookings'));
-            }
+            persistAppSectionRoute(section);
 
             // Scroll to top on every section change
             window.scrollTo({ top: 0, behavior: 'instant' });
@@ -5625,7 +5992,7 @@ function showLoginForm() {
             const target = el || null;
             target?.classList.add('active');
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ Push to in-app navigation history stack Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── Push to in-app navigation history stack ───────────────
             if (!window._spNavSkip) {
                 if (window._spNavStack) {
                     window._spNavStack = window._spNavStack.slice(0, window._spNavIndex + 1);
@@ -5636,7 +6003,7 @@ function showLoginForm() {
             }
             window._spNavSkip = false;
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ Sync bottom nav (map sub-sections to parent nav entry) Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── Sync bottom nav (map sub-sections to parent nav entry) ──
             const navKey = NAV_SECTION_MAP[section] || section;
             requestAnimationFrame(() => {
                 document.querySelectorAll('.bottom-nav-item').forEach(btn => {
@@ -5651,7 +6018,7 @@ function showLoginForm() {
             // Legacy active-class loop (now merged into the rAF above) intentionally removed below.
             (function _spLegacyNoop(){})(); // keep line count stable for downstream patches
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ Sync sidebar nav active state Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── Sync sidebar nav active state ──────────────────────────
             // Always show lists when navigating to sections
             if (section === 'bookings') {
                 document.getElementById('addBookingForm')?.style.setProperty('display', 'none');
@@ -5673,6 +6040,7 @@ function showLoginForm() {
                 'financials': 'Money - Overview',
                 'artists':    'Artists',
                 'schedule':   'Schedule',
+                'global':     'Schedule - Global',
                 'bookings':   'Schedule - Bookings',
                 'expenses':   'Money - Expenses',
                 'otherIncome':'Money - Other Income',
@@ -5692,10 +6060,6 @@ function showLoginForm() {
 
             if (section === 'dashboard') {
                 updateDashboard();
-            } else if (section === 'money') {
-                activateMoneyTab('financials');
-                updateDashboard();
-                renderPerformanceMap();
             } else if (section === 'financials') {
                 activateMoneyTab('financials');
                 updateDashboard();
@@ -5709,9 +6073,9 @@ function showLoginForm() {
             } else if (section === 'reports') {
                 activateMoneyTab('reports');
                 updateReportsSection();
-            } else if (section === 'schedule') {
-                activateScheduleTab('bookings');
-                renderBookings();
+            } else if (section === 'global') {
+                activateScheduleTab('global');
+                renderPerformanceMap();
             } else if (section === 'bookings') {
                 activateScheduleTab('bookings');
                 renderBookings();
@@ -5737,7 +6101,7 @@ function showLoginForm() {
 
         function checkAuth() {
             if (window.__spCloudBootstrapPending || window.__spSupabaseBootPromise || window.__spAuthRedirectInProgress) {
-                setBootState('loading-session');
+                beginBootTransition('check-auth', 'loading-session');
             }
             return;
         }
@@ -5850,9 +6214,23 @@ function showLoginForm() {
 
         // Tour Map
         function renderPerformanceMap(filtered = null, options = {}) {
+            const sourceBookings = Array.isArray(filtered) ? filtered : bookings;
+            const globalRoot = document.getElementById('globalScheduleGlobe');
+            if (!options.fallbackOnly && window.SP_GLOBAL_GLOBE && typeof window.SP_GLOBAL_GLOBE.render === 'function') {
+                try {
+                    if (window.SP_GLOBAL_GLOBE.isFallback !== true) {
+                        globalRoot?.classList.remove('sp-global-schedule--fallback');
+                    }
+                    window.SP_GLOBAL_GLOBE.render(sourceBookings, options);
+                } catch (err) {
+                    console.warn('[StarPaper] Global globe render failed:', err);
+                    globalRoot?.classList.add('sp-global-schedule--fallback');
+                }
+            } else if (globalRoot && (options.fallbackOnly || !window.SP_GLOBAL_GLOBE)) {
+                globalRoot.classList.add('sp-global-schedule--fallback');
+            }
             const map = document.getElementById('performanceMap');
             if (!map) {
-                console.error('Performance map element not found!');
                 return;
             }
             map.innerHTML = '';
@@ -5861,7 +6239,6 @@ function showLoginForm() {
             const showPinnedPanel = options.showPinnedPanel !== false;
 
             const today = new Date();
-            const sourceBookings = Array.isArray(filtered) ? filtered : bookings;
             const allBookings = sourceBookings.filter(b => b.date);
             const hasInternational = allBookings.some(b => b.locationType === 'abroad');
 
@@ -6990,7 +7367,7 @@ function showLoginForm() {
             return reportLogoDataUrlPromise;
         }
 
-        // â”€â”€ CSV Export â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── CSV Export ──────────────────────────────────────────────────────
         function escapeCSVField(field) {
             const str = String(field ?? '');
             if (str.includes(',') || str.includes('"') || str.includes('\n')) {
@@ -8762,43 +9139,38 @@ function showLoginForm() {
 
             try {
                 const isLightTheme = document.body.classList.contains('light-theme');
-                const palette = isLightTheme
-                    ? {
-                        legend: '#2b1f08',
-                        tooltipBg: 'rgba(255, 255, 255, 0.98)',
-                        tooltipBorder: '#D4AF37',
-                        tooltipTitle: '#6f5314',
-                        tooltipBody: '#1f170d',
-                        yTick: '#2b1f08',
-                        xTick: '#2b1f08',
-                        yGrid: 'rgba(111, 83, 20, 0.28)',
-                        xGrid: 'rgba(111, 83, 20, 0.20)',
-                        pointBorder: '#ffffff',
-                        income: '#1f7a4d',
-                        incomeFill: 'rgba(31, 122, 77, 0.14)',
-                        other: '#2f6ebd',
-                        otherFill: 'rgba(47, 110, 189, 0.14)',
-                        expense: '#b45309',
-                        expenseFill: 'rgba(180, 83, 9, 0.14)'
-                    }
-                    : {
-                        legend: '#ffffff',
-                        tooltipBg: 'rgba(0, 0, 0, 0.9)',
-                        tooltipBorder: '#FFB300',
-                        tooltipTitle: '#FFB300',
-                        tooltipBody: '#ffffff',
-                        yTick: '#ffffff',
-                        xTick: '#ffffff',
-                        yGrid: 'rgba(255, 255, 255, 0.1)',
-                        xGrid: 'rgba(255, 255, 255, 0.05)',
-                        pointBorder: '#ffffff',
-                        income: '#4caf50',
-                        incomeFill: 'rgba(76, 175, 80, 0.1)',
-                        other: '#2196f3',
-                        otherFill: 'rgba(33, 150, 243, 0.12)',
-                        expense: '#ff9800',
-                        expenseFill: 'rgba(255, 152, 0, 0.1)'
-                    };
+                const chartTheme = window.SP_CHART_THEME && typeof window.SP_CHART_THEME.get === 'function'
+                    ? window.SP_CHART_THEME.get(isLightTheme ? 'light' : 'dark')
+                    : null;
+                const palette = chartTheme || {
+                    legend: isLightTheme ? '#17130b' : '#f8eed2',
+                    tooltipBg: isLightTheme ? 'rgba(255,250,239,0.98)' : 'rgba(13,14,18,0.96)',
+                    tooltipBorder: isLightTheme ? 'rgba(184,137,47,0.64)' : 'rgba(212,168,67,0.58)',
+                    tooltipTitle: isLightTheme ? '#8a6d1a' : '#f2cf75',
+                    tooltipBody: isLightTheme ? '#17130b' : '#f8eed2',
+                    yTick: isLightTheme ? '#665334' : '#b9aa83',
+                    xTick: isLightTheme ? '#665334' : '#b9aa83',
+                    yGrid: isLightTheme ? 'rgba(95,74,33,0.18)' : 'rgba(248,237,207,0.10)',
+                    xGrid: isLightTheme ? 'rgba(95,74,33,0.12)' : 'rgba(248,237,207,0.08)',
+                    pointBorder: isLightTheme ? '#fff9ed' : '#101116',
+                    revenue: isLightTheme ? '#8a6d1a' : '#f2cf75',
+                    revenueFill: isLightTheme ? 'rgba(184,137,47,0.18)' : 'rgba(212,168,67,0.18)',
+                    other: isLightTheme ? '#52677f' : '#b8bdc7',
+                    otherFill: isLightTheme ? 'rgba(82,103,127,0.14)' : 'rgba(184,189,199,0.12)',
+                    expense: isLightTheme ? '#9a3412' : '#f59e72',
+                    expenseFill: isLightTheme ? 'rgba(154,52,18,0.14)' : 'rgba(245,158,114,0.13)',
+                    fontFamily: "'Montserrat', 'Inter', system-ui, sans-serif"
+                };
+                palette.legend ??= palette.ink;
+                palette.tooltipTitle ??= palette.goldBright;
+                palette.tooltipBody ??= palette.ink;
+                palette.yTick ??= palette.muted;
+                palette.xTick ??= palette.muted;
+                palette.yGrid ??= palette.grid;
+                palette.xGrid ??= palette.grid;
+                palette.pointBorder ??= palette.surface;
+                palette.income = palette.revenue || palette.income;
+                palette.incomeFill = palette.revenueFill || palette.incomeFill;
 
                 window.performanceChart = new Chart(ctx, {
                     type: 'line',
@@ -8810,7 +9182,7 @@ function showLoginForm() {
                                 data: monthlyIncome,
                                 borderColor: palette.income,
                                 backgroundColor: palette.incomeFill,
-                                tension: 0.4,
+                                tension: 0.42,
                                 fill: true,
                                 borderWidth: 3,
                                 pointRadius: 5,
@@ -8823,7 +9195,7 @@ function showLoginForm() {
                                 data: monthlyOtherIncome,
                                 borderColor: palette.other,
                                 backgroundColor: palette.otherFill,
-                                tension: 0.4,
+                                tension: 0.42,
                                 fill: true,
                                 borderWidth: 3,
                                 pointRadius: 5,
@@ -8836,7 +9208,7 @@ function showLoginForm() {
                                 data: monthlyExpenses,
                                 borderColor: palette.expense,
                                 backgroundColor: palette.expenseFill,
-                                tension: 0.4,
+                                tension: 0.42,
                                 fill: true,
                                 borderWidth: 3,
                                 pointRadius: 5,
@@ -8857,8 +9229,10 @@ function showLoginForm() {
                             legend: {
                                 labels: { 
                                     color: palette.legend,
-                                    font: { size: 13 },
-                                    padding: 15
+                                    font: { size: 13, weight: '700', family: palette.fontFamily },
+                                    padding: 16,
+                                    usePointStyle: true,
+                                    pointStyle: 'rectRounded'
                                 }
                             },
                             tooltip: {
@@ -8880,6 +9254,7 @@ function showLoginForm() {
                                 beginAtZero: true,
                                 ticks: { 
                                     color: palette.yTick,
+                                    font: { weight: '700', family: palette.fontFamily },
                                     callback: function(value) {
                                         return 'UGX ' + (value / 1000000).toFixed(1) + 'M';
                                     }
@@ -8889,6 +9264,7 @@ function showLoginForm() {
                             x: {
                                 ticks: { 
                                     color: palette.xTick,
+                                    font: { weight: '700', family: palette.fontFamily },
                                     maxRotation: 45,
                                     minRotation: 45
                                 },
@@ -8999,7 +9375,7 @@ function showLoginForm() {
             showAddBooking();
         }
 
-        // Custom delete confirmation Ã¢â‚¬â€ avoids browser confirm() dialog
+        // Custom delete confirmation — avoids browser confirm() dialog
         function confirmDeleteBooking(id) {
             const modal = document.getElementById('confirmDeleteModal');
             const body  = document.getElementById('confirmDeleteBody');
@@ -10021,6 +10397,7 @@ function showLoginForm() {
             }
             updateLandingTopControlsVisibility();
         }
+        window.setActiveScreen = setActiveScreen;
 
         function updateLandingTopControlsVisibility() {
             const controls = document.querySelector('.landing-top-controls');
@@ -10078,7 +10455,7 @@ function showLoginForm() {
             }
         });
 
-        // Ã¢â€â‚¬Ã¢â€â‚¬ Premium Toast System Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+        // ── Premium Toast System ──────────────────────────────────────────────
         function showToast(message, type = 'info', opts = {}) {
             const stack = document.getElementById('spToastStack');
             if (!stack) return;
@@ -10125,7 +10502,7 @@ function showLoginForm() {
         function toastInfo(msg, title)    { showToast(msg, 'info',    { title }); }
         function toastWarn(msg, title)    { showToast(msg, 'warning', { title }); }
 
-        // Ã¢â€â‚¬Ã¢â€â‚¬ Relative timestamps Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+        // ── Relative timestamps ───────────────────────────────────────────────
         function timeAgo(dateInput) {
             if (!dateInput) return '';
             const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
@@ -10144,7 +10521,7 @@ function showLoginForm() {
             return `${Math.floor(secs / 2592000)} months ago`;
         }
 
-        // Ã¢â€â‚¬Ã¢â€â‚¬ Empty state builder Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+        // ── Empty state builder ───────────────────────────────────────────────
         function emptyState({ icon, title, sub, ctaLabel, ctaAction }) {
             // icon = Phosphor class name e.g. 'ph-receipt' OR legacy emoji (renders as text fallback)
             const isPhosphor = typeof icon === 'string' && icon.startsWith('ph-');
@@ -10159,7 +10536,7 @@ function showLoginForm() {
             </div>`;
         }
 
-        // Ã¢â€â‚¬Ã¢â€â‚¬ Revenue Pulse Ã¢â‚¬â€ countUp animation Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+        // ── Revenue Pulse — countUp animation ────────────────────────────────
         function countUp(el, targetValue, prefix = null, duration = 900) {
             if (!el) return;
             const formatValue = (value) => {
@@ -10189,7 +10566,7 @@ function showLoginForm() {
             requestAnimationFrame(step);
         }
 
-        // Ã¢â€â‚¬Ã¢â€â‚¬ Tab switchers: Money Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+        // ── Tab switchers: Money ──────────────────────────────────────────────
         function activateMoneyTab(tabId) {
             document.querySelectorAll('#moneyTabs .sp-tab').forEach(btn => {
                 btn.classList.toggle('sp-tab--active', btn.dataset.tab === tabId);
@@ -10201,18 +10578,12 @@ function showLoginForm() {
         }
 
         function switchMoneyTab(tab) {
-            if (!tab) return;
-            Storage.saveSync('starPaperLastMoneyTab', tab);
-            Storage.saveSync('starPaperLastSection', tab);
-            activateMoneyTab(tab);
-            if (tab === 'financials') { updateDashboard(); renderPerformanceMap(); }
-            else if (tab === 'expenses') renderExpenses();
-            else if (tab === 'otherIncome') renderOtherIncome();
-            else if (tab === 'reports') updateReportsSection();
+            if (!isMoneyTabSection(tab)) return;
+            showSection(tab);
         }
         window.switchMoneyTab = switchMoneyTab;
 
-        // Ã¢â€â‚¬Ã¢â€â‚¬ Dedicated tab listener (bypasses all action dispatchers) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+        // ── Dedicated tab listener (bypasses all action dispatchers) ─────────
         // Runs at capture phase so it fires before any dispatcher can swallow it
         document.addEventListener('click', function spTabListener(e) {
             const btn = e.target.closest('[data-action="switchMoneyTab"],[data-action="switchScheduleTab"]');
@@ -10225,7 +10596,7 @@ function showLoginForm() {
             else if (action === 'switchScheduleTab') switchScheduleTab(tab);
         }, true); // capture phase = runs first
 
-        // Ã¢â€â‚¬Ã¢â€â‚¬ Tab switchers: Schedule Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+        // ── Tab switchers: Schedule ───────────────────────────────────────────
         function activateScheduleTab(tabId) {
             document.querySelectorAll('#scheduleTabs .sp-tab').forEach(btn => {
                 btn.classList.toggle('sp-tab--active', btn.dataset.tab === tabId);
@@ -10237,16 +10608,12 @@ function showLoginForm() {
         }
 
         function switchScheduleTab(tab) {
-            if (!tab) return;
-            Storage.saveSync('starPaperLastScheduleTab', tab);
-            Storage.saveSync('starPaperLastSection', tab);
-            activateScheduleTab(tab);
-            if (tab === 'bookings') renderBookings();
-            else if (tab === 'calendar') renderCalendar();
+            if (!isScheduleTabSection(tab)) return;
+            showSection(tab);
         }
         window.switchScheduleTab = switchScheduleTab;
 
-        // Ã¢â€â‚¬Ã¢â€â‚¬ About Modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+        // ── About Modal ───────────────────────────────────────────────────────
         function showAboutModal() {
             const modal = document.getElementById('spAboutModal');
             if (!modal) return;
@@ -10260,7 +10627,7 @@ function showLoginForm() {
             document.getElementById('spAboutBackdrop')?.addEventListener('click', close, { once: true });
         }
 
-        // Ã¢â€â‚¬Ã¢â€â‚¬ Admin Settings Modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+        // ── Admin Settings Modal ──────────────────────────────────────────────
         function showAdminSettings() {
             const modal = document.getElementById('spAdminModal');
             if (!modal) return;
@@ -10328,7 +10695,7 @@ function showLoginForm() {
         window.adminApproveUser = adminApproveUser;
         window.adminDeleteUser = adminDeleteUser;
 
-        // Ã¢â€â‚¬Ã¢â€â‚¬ Booking Velocity Gauge Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+        // ── Booking Velocity Gauge ────────────────────────────────────────────
         function updateVelocityGauge() {
             const fillEl   = document.getElementById('velocityGaugeFill');
             const needleEl = document.getElementById('velocityGaugeNeedle');
@@ -10354,8 +10721,8 @@ function showLoginForm() {
                 return d.getMonth() === lm && d.getFullYear() === ly;
             }).length;
 
-            // Arc: 0Ã¢â‚¬â€œ180 degrees mapped to 0Ã¢â‚¬â€œmax shows
-            // Arc total length Ã¢â€°Ë† 251px (Ãâ‚¬ * 80)
+            // Arc: 0–180 degrees mapped to 0–max shows
+            // Arc total length ≈ 251px (π * 80)
             const ARC_LEN = 251;
             const maxShows = Math.max(thisCount, lastCount, 1);
             const ratio = Math.min(thisCount / maxShows, 1);
@@ -10384,7 +10751,7 @@ function showLoginForm() {
             }
         }
 
-        // Ã¢â€â‚¬Ã¢â€â‚¬ Today Board + Nudge Engine Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+        // ── Today Board + Nudge Engine ────────────────────────────────────────
         window.updateTodayBoard = function updateTodayBoard() {
             const now = new Date();
             const hour = now.getHours();
@@ -10405,7 +10772,7 @@ function showLoginForm() {
             const todayStr = now.toISOString().slice(0, 10);
             const nudges = [];
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ Midnight Whisper (9 PM Ã¢â‚¬â€œ 4 AM) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── Midnight Whisper (9 PM – 4 AM) ───────────────────────────────
             if (hour >= 21 || hour < 4) {
                 const liveCount = allBookings.filter(b => b.status === 'confirmed' && b.date === todayStr).length;
                 nudges.push({
@@ -10416,7 +10783,7 @@ function showLoginForm() {
                 });
             }
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ Collection Nudge Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── Collection Nudge ──────────────────────────────────────────────
             const unpaid = allBookings.filter(b => (Math.round(Number(b.balance) || 0)) > 0);
             if (unpaid.length > 0) {
                 const total = unpaid.reduce((s, b) => s + (Math.round(Number(b.balance) || 0)), 0);
@@ -10428,7 +10795,7 @@ function showLoginForm() {
                 });
             }
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ Show Nudge Ã¢â‚¬â€ show in Ã¢â€°Â¤5 days with balance due Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── Show Nudge — show in ≤5 days with balance due ─────────────────
             allBookings.filter(b => {
                 if (!b.date || (Math.round(Number(b.balance) || 0)) <= 0) return false;
                 const diff = (new Date(b.date) - now) / 86400000;
@@ -10443,7 +10810,7 @@ function showLoginForm() {
                 });
             });
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ Momentum Nudge Ã¢â‚¬â€ 3+ confirmed bookings in 3 months Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── Momentum Nudge — 3+ confirmed bookings in 3 months ───────────
             const cutoff = new Date(now); cutoff.setMonth(cutoff.getMonth() - 3);
             const recent = allBookings.filter(b => b.status === 'confirmed' && b.date && new Date(b.date) >= cutoff);
             if (recent.length >= 3) {
@@ -10456,7 +10823,7 @@ function showLoginForm() {
                 });
             }
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ Render Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── Render ────────────────────────────────────────────────────────
             if (!alertsEl) return;
             const dismissed = JSON.parse(sessionStorage.getItem('sp_dismissed_nudges') || '[]');
             const visible = nudges.filter(n => !dismissed.includes(n.id));
@@ -10577,7 +10944,7 @@ function showLoginForm() {
             }
         });
 
-        // Ã¢â€â‚¬Ã¢â€â‚¬ In-app navigation history button state Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+        // ── In-app navigation history button state ────────────────────────────
         function updateNavHistButtons() {
             const back = document.getElementById('navBackBtn');
             const fwd  = document.getElementById('navFwdBtn');
@@ -10586,7 +10953,7 @@ function showLoginForm() {
             fwd.disabled  = !window._spNavStack || window._spNavIndex >= window._spNavStack.length - 1;
         }
 
-        // Ã¢â€â‚¬Ã¢â€â‚¬ Falling Gold Coins canvas animation Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+        // ── Falling Gold Coins canvas animation ───────────────────────────────
         function drawCoinDollarMark(ctx, radius, scaleX) {
             if (radius < 4.8) return;
             const safeScaleX = Math.max(scaleX, 0.08);
@@ -10878,7 +11245,7 @@ function showLoginForm() {
             });
         })();
 
-        // Ã¢â€â‚¬Ã¢â€â‚¬ Gold Dust burst Ã¢â‚¬â€ triggered on booking confirmed Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+        // ── Gold Dust burst — triggered on booking confirmed ──────────────────
         function triggerGoldDust() {
             if (!document.body) return;
             document.querySelector('.sp-gold-dust-canvas')?.remove();
@@ -10952,11 +11319,11 @@ function showLoginForm() {
             requestAnimationFrame(burstTick);
         }
 
-        // Ã¢â€¢ÂÃ¢â€¢Â COMMAND PALETTE & KEYBOARD SHORTCUTS Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+        // ══ COMMAND PALETTE & KEYBOARD SHORTCUTS ══════════════════════════════
 
         (function initCommandPalette() {
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ Section registry Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── Section registry ──────────────────────────────────────────────
             const SECTIONS = [
                 { id: 'dashboard',   label: 'Dashboard',    icon: '<i class="ph ph-house"></i>',                     sub: 'Overview & KPIs',                key: 'D' },
                 { id: 'money',       label: 'Money',        icon: '<i class="ph ph-currency-circle-dollar"></i>',   sub: 'Financials, Expenses & Reports', key: 'M' },
@@ -10974,7 +11341,7 @@ function showLoginForm() {
                 { label: 'Open Quick Launcher',   icon: '<i class="ph ph-command"></i>', sub: 'Cmd/Ctrl+K',           action: () => openPalette() },
             ];
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ DOM refs Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── DOM refs ──────────────────────────────────────────────────────
             const palette   = document.getElementById('spPalette');
             const backdrop  = document.getElementById('spPaletteBackdrop');
             const input     = document.getElementById('spPaletteInput');
@@ -10986,7 +11353,7 @@ function showLoginForm() {
             let selectedIdx = -1;
             let currentResults = [];
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ Open / close Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── Open / close ──────────────────────────────────────────────────
             function isAppActive() {
                 const app = document.getElementById('appContainer');
                 return app && app.style.display !== 'none' && currentUser;
@@ -11015,7 +11382,7 @@ function showLoginForm() {
                 }, { once: true });
             }
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ Search & render Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── Search & render ───────────────────────────────────────────────
             function highlight(text, query) {
                 if (!query) return text;
                 const idx = text.toLowerCase().indexOf(query.toLowerCase());
@@ -11156,13 +11523,13 @@ function showLoginForm() {
                 }
             }
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ Input handler Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── Input handler ─────────────────────────────────────────────────
             input.addEventListener('input', () => {
                 selectedIdx = -1;
                 renderResults(input.value);
             });
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ Keyboard navigation inside palette Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── Keyboard navigation inside palette ────────────────────────────
             input.addEventListener('keydown', e => {
                 if (e.key === 'ArrowDown') {
                     e.preventDefault();
@@ -11183,7 +11550,7 @@ function showLoginForm() {
             // Close on backdrop click
             backdrop.addEventListener('click', closePalette);
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ Global keyboard shortcuts Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── Global keyboard shortcuts ─────────────────────────────────────
             let gPressed = false;
             let gTimer = null;
 
@@ -11192,7 +11559,7 @@ function showLoginForm() {
                 const inInput = ['input','textarea','select'].includes(tag) ||
                     document.activeElement?.isContentEditable;
 
-                // Cmd/Ctrl+K Ã¢â‚¬â€ open palette
+                // Cmd/Ctrl+K — open palette
                 if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
                     e.preventDefault();
                     if (isOpen) closePalette(); else openPalette();
@@ -11231,7 +11598,7 @@ function showLoginForm() {
                 }
             });
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ Keyboard hint display Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── Keyboard hint display ─────────────────────────────────────────
             let hintTimer = null;
             function showKbdHint(text) {
                 if (!kbdHint) return;
@@ -11246,7 +11613,7 @@ function showLoginForm() {
 
         })();
 
-        // Ã¢â€¢ÂÃ¢â€¢Â PHASE 5: DENSITY TOGGLE Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+        // ══ PHASE 5: DENSITY TOGGLE ═══════════════════════════════════════════
 
         (function initDensityToggle() {
             const STORAGE_KEY = 'sp_density';
@@ -11269,7 +11636,7 @@ function showLoginForm() {
             compactBtn.addEventListener('click',  () => applyDensity('compact'));
         })();
 
-        // Ã¢â€¢ÂÃ¢â€¢Â PHASE 5: GOAL PROGRESS PULSE Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+        // ══ PHASE 5: GOAL PROGRESS PULSE ══════════════════════════════════════
 
         // Wrap goal progress bar updates to add pulse animation
         (function patchGoalProgressPulse() {
@@ -11287,7 +11654,7 @@ function showLoginForm() {
             });
         })();
 
-        // Ã¢â€¢ÂÃ¢â€¢Â PHASE 5: KEYBOARD CHEAT SHEET Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+        // ══ PHASE 5: KEYBOARD CHEAT SHEET ════════════════════════════════════
 
         (function initCheatSheet() {
             const sheet    = document.getElementById('spCheatsheet');
@@ -11318,7 +11685,7 @@ function showLoginForm() {
             closeBtn?.addEventListener('click', closeSheet);
             backdrop.addEventListener('click', closeSheet);
 
-            // ? key opens cheat sheet Ã¢â‚¬â€ only when not in input and app is active
+            // ? key opens cheat sheet — only when not in input and app is active
             document.addEventListener('keydown', e => {
                 const tag = document.activeElement?.tagName?.toLowerCase();
                 const inInput = ['input','textarea','select'].includes(tag) ||
@@ -11338,7 +11705,7 @@ function showLoginForm() {
             });
         })();
 
-        // Ã¢â€â‚¬Ã¢â€â‚¬ Typewriter headline animation Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+        // ── Typewriter headline animation ─────────────────────────────────────
         (function normalizeNavOrder() {
             const sidebarNav = document.querySelector('.sidebar-nav');
             if (sidebarNav) {
@@ -11388,7 +11755,7 @@ function showLoginForm() {
                 return;
             }
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ Cursor-safe structure: text lives in a <span>, cursor is a sibling <i>
+            // ── Cursor-safe structure: text lives in a <span>, cursor is a sibling <i>
             // We NEVER overwrite subtitle.innerHTML so the cursor element persists.
             subtitle.classList.add('landing-hero-subtitle--typing');
             subtitle.innerHTML = '<span class="tw-text"></span><i class="ph ph-cursor-text tw-cursor" aria-hidden="true"></i>';
@@ -11439,11 +11806,11 @@ function showLoginForm() {
                 schedule(DELETE_SPEED);
             }
 
-            // charIndex starts at 0 Ã¢â‚¬â€ tick() will type from empty naturally
+            // charIndex starts at 0 — tick() will type from empty naturally
             tick();
         })();
 
-        // Ã¢â€â‚¬Ã¢â€â‚¬ Collapsible sidebar (desktop Ã¢â€°Â¥1025px) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+        // ── Collapsible sidebar (desktop ≥1025px) ────────────────────────────
         (function initSidebarCollapse() {
             const STORAGE_KEY = 'sp_sidebar_collapsed';
             const btn = document.getElementById('sidebarCollapseBtn');
@@ -11474,7 +11841,7 @@ function showLoginForm() {
                 Storage.saveSync(STORAGE_KEY, val ? '1' : '0'); // FIXED: sidebar preference no longer writes app-owned localStorage.
             };
 
-            // Restore saved state Ã¢â‚¬â€ set position without transition
+            // Restore saved state — set position without transition
             if (isDesktop()) {
                 let saved = Storage.loadSync(STORAGE_KEY, '0');
                 const isCollapsed = saved === '1';
@@ -11508,7 +11875,7 @@ function showLoginForm() {
             // regression risk. Reverted to the canonical CLAUDE.md §2 approach: users
             // get a fresh shell on next manual reload after the new SW activates.
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=107').then((registration) => {
+                navigator.serviceWorker.register('sw.js?v=125').then((registration) => {
                     registration?.update?.().catch(() => {});
                 }).catch((error) => {
                     console.warn('Service worker registration failed:', error);
