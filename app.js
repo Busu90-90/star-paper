@@ -83,7 +83,7 @@ function hideBootLoaderElement(options = {}) {
 function hideBootLoaderWhenUiPainted(options = {}) {
     const minDelayMs = Number.isFinite(options.minDelayMs)
         ? Math.max(0, Number(options.minDelayMs))
-        : 180;
+        : 0;
     const requireAppReady = options.requireAppReady === true;
     const flowId = options.flowId || null;
     const startedAt = Date.now();
@@ -99,15 +99,11 @@ function hideBootLoaderWhenUiPainted(options = {}) {
         setTimeout(hideWhenReady, appReady ? Math.max(0, minDelayMs - elapsed) : 80);
     };
 
-    const waitForPaint = () => {
-        if (typeof requestAnimationFrame !== 'function') {
-            setTimeout(hideWhenReady, 50);
-            return;
-        }
-        requestAnimationFrame(() => requestAnimationFrame(hideWhenReady));
-    };
-
-    waitForPaint();
+    if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(hideWhenReady);
+    } else {
+        setTimeout(hideWhenReady, 0);
+    }
 }
 
 function showBootLoaderElement() {
@@ -11903,7 +11899,7 @@ function showLoginForm(options = {}) {
             // regression risk. Reverted to the canonical CLAUDE.md §2 approach: users
             // get a fresh shell on next manual reload after the new SW activates.
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=126').then((registration) => {
+                navigator.serviceWorker.register('sw.js?v=128').then((registration) => {
                     registration?.update?.().catch(() => {});
                 }).catch((error) => {
                     console.warn('Service worker registration failed:', error);

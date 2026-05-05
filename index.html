@@ -36,8 +36,10 @@
             })
           );
         }
-        Promise.allSettled(cleanupTasks).then(goCanonical).catch(goCanonical);
-        setTimeout(goCanonical, 1400);
+        Promise.race([
+          Promise.allSettled(cleanupTasks),
+          new Promise(function(resolve) { setTimeout(resolve, 400); })
+        ]).then(goCanonical);
       })();
     </script>
     <link rel="manifest" href="manifest.json?v=21">
@@ -1589,16 +1591,16 @@
 
         <!--
           FIX: supabase.js moved here from <head>. The Supabase SDK is already
-          loaded (synchronously, above in <head>), so this file now runs
-          synchronously — window.SP is fully initialised before app.js executes.
+          loaded above, and these deferred scripts keep document order:
+          Supabase boot wiring is installed before app.js initializes UI helpers.
         -->
-<script src="supabase.js?v=63"></script>
+<script src="supabase.js?v=64" defer></script>
         <script src="app.migrations.js?v=10"></script>
         <script src="app.actions.js?v=8"></script>
         <script src="app.todayboard.js?v=1"></script>
         <script src="app.tasks.js?v=4"></script>
     <script src="app.reports.js?v=13"></script>
-<script src="app.js?v=105"></script>
+<script src="app.js?v=106" defer></script>
 <script>
 (function setupDeferredLibraries() {
   var sources = {

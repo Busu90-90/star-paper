@@ -48,7 +48,7 @@ if (IS_LEGACY_NETLIFY_WORKER) {
     event.respondWith(Response.redirect(toCanonicalUrl(event.request.url), 302));
   });
 } else {
-const CACHE_NAME = "star-paper-shell-v126";
+const CACHE_NAME = "star-paper-shell-v128";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -56,16 +56,16 @@ const APP_SHELL = [
   "./styles.premium.css?v=8",
   "./styles.shell.css?v=11",
   "./star-paper-tokens.css?v=21",
-  "./supabase.js?v=63",
+  "./supabase.js?v=64",
   "./app.migrations.js?v=10",
   "./app.actions.js?v=8",
   "./app.todayboard.js?v=1",
   "./app.tasks.js?v=4",
   "./app.reports.js?v=13",
-  "./app.js?v=105",
+  "./app.js?v=106",
   "./app.globe.js?v=6",
   "./app.premium.js?v=4",
-  "./sw.js?v=126",
+  "./sw.js?v=128",
   "./manifest.json",
   "./manifest.json?v=21",
   "./logo-ui.png",
@@ -149,25 +149,28 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (request.mode === "navigate") {
-    const spaNav = isSpaNavigation(url);
+    // Stale-while-revalidate: serve the cached app shell immediately so first
+    // paint is ~0 ms, and refresh the cache from the network in the background
+    // for the next visit. Auth-bearing requests still bypass the cache via
+    // isCacheableAppShellRequest() below.
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          if (response && response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put("./index.html", clone));
+      caches.match("./index.html").then((cached) => {
+        const networkFetch = fetch(request)
+          .then((response) => {
+            if (response && response.ok) {
+              const clone = response.clone();
+              caches.open(CACHE_NAME).then((cache) =>
+                cache.put("./index.html", clone));
+            }
             return response;
-          }
-          // If the network returns a non-OK document for an SPA route (e.g. 404 on refresh),
-          // fall back to the cached app shell instead of showing a blank/404 page.
-          if (spaNav) {
-            return caches.match("./index.html").then((cached) => cached || response);
-          }
-          return response;
-        })
-        .catch(() =>
-          caches.match("./index.html").then((cached) => cached || Response.error())
-        )
+          })
+          .catch(() => null);
+        if (cached) {
+          networkFetch.catch(() => {});
+          return cached;
+        }
+        return networkFetch.then((resp) => resp || Response.error());
+      })
     );
     return;
   }
