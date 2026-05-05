@@ -220,8 +220,7 @@ function shouldUseInstantPublicReveal(options = {}) {
     if (options.keepLoader === true) return false;
     if (options.instant === true || options.publicReveal === true || options.skipBoot === true) return true;
     if (hasAuthCallbackParams() || hasStoredCloudSessionHint() || isSupabaseBootWorkActive()) return false;
-    const marker = readBootContextMarker();
-    return marker !== APP_BOOT_CONTEXT_APP_SHELL && marker !== APP_BOOT_CONTEXT_AUTH_RETURN;
+    return getStartupBootContext() === 'cold-start';
 }
 
 function shouldSuppressBootLoaderForReason(reason = '', state = '', options = {}) {
@@ -4824,12 +4823,6 @@ function showLoginForm(options = {}) {
             const flowId = window.getBootTransitionId?.() || beginBootTransition('show-app', 'loading-app');
             setBootState('loading-app');
             try {
-                console.log('=== SHOW APP STARTING ===');
-                console.log('Current user:', currentUser);
-                console.log('Users object:', users);
-                console.log('Bookings:', bookings);
-                console.log('Expenses:', expenses);
-                
                 commitBootTransition('appContainer', { flowId, hideLoader: false });
                 const sidebar = document.getElementById('sidebar');
                 const sidebarOverlay = document.getElementById('sidebarOverlay');
@@ -4843,61 +4836,18 @@ function showLoginForm(options = {}) {
                 const welcomeCard = document.getElementById('welcomeMessage');
                 if (welcomeCard) welcomeCard.style.display = 'block'; // FIXED: top search bar is visible after refresh bootstrap.
                 refreshProfileUI();
-                console.log('Calling populateLocationDropdowns...');
                 populateLocationDropdowns();
-                
-                console.log('Calling updateDashboard...');
                 updateDashboard();
                 updateMonthContextLabels();
-                
-                // Update Today Board
                 if (typeof window.updateTodayBoard === 'function') {
                     window.updateTodayBoard();
                 }
-                
-                console.log('Calling renderBookings...');
                 renderBookings();
-                
-                console.log('Calling renderExpenses...');
                 renderExpenses();
-
-                console.log('Calling renderOtherIncome...');
                 renderOtherIncome();
-                
-                console.log('Calling renderArtists...');
                 renderArtists();
-                
-                console.log('Calling renderCalendar...');
-                renderCalendar();
-                
-                console.log('Calling updateAvailabilityArtists...');
-                updateAvailabilityArtists();
-                
-                console.log('Calling populateArtistDropdown...');
                 populateArtistDropdown();
-                populateAudienceArtistDropdown();
-                renderAudienceMetrics();
-                bindAudienceArtistSelect();
-                handleAudienceArtistChange();
-
-                console.log('Calling loadPushSettings...');
-                loadPushSettings();
                 toggleAdminOnlyUI();
-                
-                console.log('Calling renderPerformanceMap...');
-                if (window.innerWidth <= 900) {
-                    deferNonCriticalRender(() => renderPerformanceMap(), 500);
-                } else {
-                    setTimeout(() => {
-                        renderPerformanceMap();
-                    }, 200);
-                }
-                
-                // report statistics
-                console.log('Calling updateReportStatistics...');
-                updateReportStatistics();
-                requestNotificationPermission();
-                scheduleReminderChecks();
 
                 window.__spAppBooted = true;
                 applyReadOnlyMode();
@@ -4908,8 +4858,34 @@ function showLoginForm(options = {}) {
                         minDelayMs: 220
                     });
                 }
-                
-                console.log('=== SHOW APP COMPLETED ===');
+
+                const deferBootWork = (label, work, timeout = 700) => {
+                    deferNonCriticalRender(() => {
+                        try {
+                            work();
+                        } catch (err) {
+                            console.warn(`Deferred app boot task failed (${label}):`, err);
+                        }
+                    }, timeout);
+                };
+
+                deferBootWork('calendar', () => renderCalendar(), 350);
+                deferBootWork('audience-controls', () => {
+                    updateAvailabilityArtists();
+                    renderAudienceMetrics();
+                    bindAudienceArtistSelect();
+                    handleAudienceArtistChange();
+                }, 450);
+                deferBootWork('push-settings', () => loadPushSettings(), 650);
+                deferBootWork('performance-map', () => renderPerformanceMap(), window.innerWidth <= 900 ? 900 : 700);
+                deferBootWork('report-statistics', () => updateReportStatistics(), 800);
+                deferBootWork('reminders', () => {
+                    requestNotificationPermission();
+                    scheduleReminderChecks();
+                }, 1000);
+                if (typeof window.__spLoadDeferredThirdParty === 'function') {
+                    window.__spLoadDeferredThirdParty('app-booted');
+                }
             } catch (error) {
                 console.error('ERROR IN SHOWAPP:', error);
                 console.error('Error stack:', error.stack);
@@ -7502,8 +7478,18 @@ function showLoginForm(options = {}) {
                 if (typeof window.generateMomentumPDF === 'function' && window.generateMomentumPDF !== generateCleanReport) {
                     return await window.generateMomentumPDF();
                 }
+                if ((!window.jspdf?.jsPDF || !window.html2canvas) && typeof window.__spLoadDeferredLibrary === 'function') {
+                    await window.__spLoadDeferredLibrary('pdf');
+                }
+                if (typeof window.Chart === 'undefined' && typeof window.__spLoadDeferredLibrary === 'function') {
+                    await window.__spLoadDeferredLibrary('chart').catch(() => null);
+                }
                 const { period } = getReportPeriodSelection();
-                const { jsPDF } = window.jspdf;
+                const { jsPDF } = window.jspdf || {};
+                if (!jsPDF) {
+                    toastError('PDF library not loaded. Please try again.');
+                    return;
+                }
                 const isMobileReportLayout = window.matchMedia('(max-width: 900px), (pointer: coarse)').matches;
 
                 const pdf = new jsPDF({
@@ -8820,8 +8806,6 @@ function showLoginForm(options = {}) {
             }
             
             const artistList = getArtists();
-            
-            console.log('Populating artist dropdown with:', artistList.map((artist) => artist.name));
             select.innerHTML = '<option value="">Select Artist</option>' + 
                 artistList.map(artist => `<option value="${artist.name}">${artist.name}</option>`).join('');
             populateAudienceArtistDropdown();
@@ -9122,11 +9106,15 @@ function showLoginForm(options = {}) {
         }
 
         function updatePerformanceChart() {
-            console.log('=== UPDATE PERFORMANCE CHART STARTING ===');
-            
             // Check if Chart.js is loaded
             if (typeof Chart === 'undefined') {
-                console.error('Chart.js is not loaded! Cannot render chart.');
+                if (typeof window.__spLoadDeferredLibrary === 'function') {
+                    window.__spLoadDeferredLibrary('chart')
+                        .then(() => updatePerformanceChart())
+                        .catch((err) => console.warn('Chart.js deferred load failed:', err));
+                    return;
+                }
+                console.warn('Chart.js is not loaded; skipping performance chart render.');
                 return;
             }
             
@@ -9136,11 +9124,6 @@ function showLoginForm(options = {}) {
                 return;
             }
             
-            console.log('Chart.js available, canvas found');
-            console.log('Bookings for chart:', bookings);
-            console.log('Expenses for chart:', expenses);
-            console.log('Other income for chart:', otherIncome);
-
             // Get last 12 months of data (rolling)
             const monthlyIncome = new Array(12).fill(0);
             const monthlyExpenses = new Array(12).fill(0);
@@ -9154,8 +9137,6 @@ function showLoginForm(options = {}) {
                 const year = String(date.getFullYear()).slice(-2);
                 monthLabels.push(`${monthName}'${year}`);
             }
-            
-            console.log('Month labels:', monthLabels);
             
             bookings.forEach(booking => {
                 const date = new Date(booking.date);
@@ -9181,12 +9162,7 @@ function showLoginForm(options = {}) {
                 }
             });
             
-            console.log('Monthly income data:', monthlyIncome);
-            console.log('Monthly expenses data:', monthlyExpenses);
-            console.log('Monthly other income data:', monthlyOtherIncome);
-
             if (window.performanceChart && typeof window.performanceChart.destroy === 'function') {
-                console.log('Destroying existing chart');
                 window.performanceChart.destroy();
             }
 
@@ -9326,7 +9302,6 @@ function showLoginForm(options = {}) {
                         }
                     }
                 });
-                console.log('Performance chart rendered successfully');
             } catch (error) {
                 console.error('Error creating performance chart:', error);
             }
@@ -11928,7 +11903,7 @@ function showLoginForm(options = {}) {
             // regression risk. Reverted to the canonical CLAUDE.md §2 approach: users
             // get a fresh shell on next manual reload after the new SW activates.
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=125').then((registration) => {
+                navigator.serviceWorker.register('sw.js?v=126').then((registration) => {
                     registration?.update?.().catch(() => {});
                 }).catch((error) => {
                     console.warn('Service worker registration failed:', error);

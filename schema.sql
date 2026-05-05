@@ -166,6 +166,9 @@ ALTER TABLE public.teams ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS last_active_team_id UUID REFERENCES public.teams(id) ON DELETE SET NULL;
 
+CREATE INDEX IF NOT EXISTS idx_profiles_username_lower
+  ON public.profiles (lower(username));
+
 CREATE INDEX IF NOT EXISTS idx_profiles_last_active_team_id
   ON public.profiles(last_active_team_id);
 

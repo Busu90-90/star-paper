@@ -80,13 +80,31 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     });
   }
 
+  const _initialAuthCallbackState = detectAuthCallbackState();
+  const _initialAuthReturnMarker = (() => {
+    try {
+      return sessionStorage.getItem('sp_boot_context') === 'auth-return';
+    } catch (_err) {
+      return false;
+    }
+  })();
+  if (_initialAuthCallbackState.hasCallbackParams || _initialAuthReturnMarker) {
+    window.__spAuthRedirectInProgress = true;
+    if (_initialAuthCallbackState.hasError) {
+      window.__spSuppressStoredSessionBootstrap = true;
+    }
+  }
+
   const { createClient } = window.supabase;
   const db = createClient(SP_SUPABASE_URL, SP_SUPABASE_KEY, {
     auth: {
       persistSession:     true,
       autoRefreshToken:   true,
       flowType:           'pkce',
-      detectSessionInUrl: true,
+      // Star Paper handles OAuth callbacks explicitly in handleAuthRedirect().
+      // Leaving Supabase auto-detection on races that manual exchange and can
+      // leave the return page on "Loading session..." until a later fallback.
+      detectSessionInUrl: false,
       // Stable storage key — all tabs share the same lock namespace.
       storageKey: SP_SUPABASE_STORAGE_KEY,
       // Disable the Web Locks API for auth token refresh coordination.
@@ -131,6 +149,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   let _teamContextCache = [];
   let _teamContextCacheAt = 0;
   let _teamContextRefreshPromise = null;
+  const _usernameEmailCache = new Map();
   let showTeamModal = null;
 
   // ── SYNC RELIABILITY: Retry Queue + Status Indicator ────────────────────────
@@ -138,14 +157,15 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   const BOOT_CONTEXT_STORAGE_KEY = 'sp_boot_context';
   const APP_SHELL_BOOT_CONTEXT = 'app-shell';
   const AUTH_RETURN_BOOT_CONTEXT = 'auth-return';
+  const OAUTH_INTENT_STORAGE_KEY = 'sp_oauth_intent';
   let _retryQueue = [];               // Array of { payload, attempts, lastAttempt }
   let _syncState = 'idle';            // 'idle' | 'syncing' | 'synced' | 'failed' | 'offline'
   let _retryTimer = null;
   let _lastSaveToastAt = 0;
   const MAX_RETRY_ATTEMPTS = 5;
   const SAVE_TOAST_THROTTLE_MS = 10000;
-  window.__spAuthRedirectInProgress = false;
-  window.__spSuppressStoredSessionBootstrap = false;
+  window.__spAuthRedirectInProgress = Boolean(window.__spAuthRedirectInProgress);
+  window.__spSuppressStoredSessionBootstrap = Boolean(window.__spSuppressStoredSessionBootstrap);
 
   function persistRetryQueue() {
     // FIXED: retry queue is memory-only in cloud-first mode; Supabase remains the source of truth.
@@ -318,7 +338,15 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   }
 
   // ── HELPERS ─────────────────────────────────────────────────────────────────
-  function log(...args)  { console.log('[StarPaper Supabase]', ...args); }
+  const SP_DEBUG_AUTH = (() => {
+    try {
+      return localStorage.getItem('sp_debug_auth') === '1' ||
+        new URLSearchParams(window.location.search).get('sp_debug_auth') === '1';
+    } catch (_err) {
+      return false;
+    }
+  })();
+  function log(...args)  { if (SP_DEBUG_AUTH) console.log('[StarPaper Supabase]', ...args); }
   function warn(...args) { console.warn('[StarPaper Supabase]', ...args); }
 
   function escapeHTML(str) {
@@ -1140,6 +1168,14 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
   }
 
+  function clearAuthReturnBootMarker() {
+    try {
+      if (sessionStorage.getItem(BOOT_CONTEXT_STORAGE_KEY) === AUTH_RETURN_BOOT_CONTEXT) {
+        sessionStorage.removeItem(BOOT_CONTEXT_STORAGE_KEY);
+      }
+    } catch (_err) {}
+  }
+
   function getStartupBootContext() {
     if (typeof window.getStartupBootContext === 'function') {
       try {
@@ -1149,7 +1185,9 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
     if (hasAuthCallbackInUrl()) return 'auth-callback';
     const marker = readBootContextMarker();
-    if (marker === AUTH_RETURN_BOOT_CONTEXT) return 'auth-callback';
+    if (marker === AUTH_RETURN_BOOT_CONTEXT) {
+      return 'auth-callback';
+    }
     return marker === APP_SHELL_BOOT_CONTEXT ? 'app-refresh' : 'cold-start';
   }
 
@@ -1203,6 +1241,21 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   }
 
   function recordBootstrapTiming(event, extra = {}) {
+    try {
+      const trace = Array.isArray(window.__spBootstrapTrace)
+        ? window.__spBootstrapTrace
+        : [];
+      trace.push({
+        event,
+        at: new Date().toISOString(),
+        t: Math.round(nowMs()),
+        ...(extra || {}),
+      });
+      if (trace.length > 200) trace.splice(0, trace.length - 200);
+      window.__spBootstrapTrace = trace;
+    } catch (_traceErr) {
+      // Local diagnostics are best-effort only.
+    }
     log(event, extra);
     try {
       const sentry = window.Sentry;
@@ -1279,14 +1332,6 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     if (modal) {
       modal.style.display = 'none';
       document.body.style.overflow = '';
-    }
-  }
-
-  const _initialAuthCallbackState = detectAuthCallbackState();
-  if (_initialAuthCallbackState.hasCallbackParams) {
-    window.__spAuthRedirectInProgress = true;
-    if (_initialAuthCallbackState.hasError) {
-      window.__spSuppressStoredSessionBootstrap = true;
     }
   }
 
@@ -3423,6 +3468,68 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     return fallbackToProduction ? SP_PRODUCTION_URL : null;
   }
 
+  // Store non-sensitive OAuth intent metadata so callback errors can explain wrong-origin returns.
+  function writeOAuthIntent(redirectTo) {
+    try {
+      const redirectUrl = new URL(redirectTo);
+      const intent = {
+        redirectTo: redirectUrl.toString(),
+        origin: redirectUrl.origin,
+        path: `${redirectUrl.pathname}${redirectUrl.search || ''}`,
+        startedAt: Date.now(),
+      };
+      sessionStorage.setItem(OAUTH_INTENT_STORAGE_KEY, JSON.stringify(intent));
+      recordBootstrapTiming('auth.oauth.intent', {
+        origin: intent.origin,
+        path: intent.path,
+      });
+      return intent;
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  function readOAuthIntent() {
+    try {
+      const raw = sessionStorage.getItem(OAUTH_INTENT_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  function clearOAuthIntent() {
+    try {
+      sessionStorage.removeItem(OAUTH_INTENT_STORAGE_KEY);
+    } catch (_err) {}
+  }
+
+  function getRedirectLocationMeta(url) {
+    try {
+      const cleanUrl = new URL(url.toString());
+      ['access_token', 'refresh_token', 'type', 'token_type', 'expires_in', 'code', 'error', 'error_code', 'error_description', 'state'].forEach((key) => {
+        cleanUrl.searchParams.delete(key);
+      });
+      return {
+        origin: cleanUrl.origin,
+        path: `${cleanUrl.pathname}${cleanUrl.search || ''}`,
+      };
+    } catch (_err) {
+      return {
+        origin: '',
+        path: '',
+      };
+    }
+  }
+
+  function isPkceCodeVerifierMissingError(error) {
+    const name = String(error?.name || '').toLowerCase();
+    const message = String(error?.message || error || '').toLowerCase();
+    return name.includes('authpkcecodeverifiermissing') ||
+      (message.includes('pkce') && message.includes('code verifier') &&
+        (message.includes('not found') || message.includes('missing')));
+  }
+
   // Warn clearly when running on file:// — OAuth and email-confirm redirects need http(s).
   if (window.location.protocol === 'file:') {
     console.warn(
@@ -3441,6 +3548,11 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     const oauthError = hashParams.get('error') || url.searchParams.get('error');
     const oauthErrorCode = hashParams.get('error_code') || url.searchParams.get('error_code');
     const oauthErrorDescription = hashParams.get('error_description') || url.searchParams.get('error_description');
+    const oauthIntent = readOAuthIntent();
+    const redirectLocation = getRedirectLocationMeta(url);
+    const oauthIntentAgeMs = Number.isFinite(oauthIntent?.startedAt)
+      ? Math.max(0, Date.now() - Number(oauthIntent.startedAt))
+      : null;
     const hadAuthCallback = Boolean(
       accessToken ||
       refreshToken ||
@@ -3456,8 +3568,88 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       ...overrides,
     });
 
-    // No OAuth params present — nothing to do.
+    // No OAuth params present: recover auth-return sessions before routing away.
     if (!hadAuthCallback) {
+      const isAuthReturnWithoutParams = readBootContextMarker() === AUTH_RETURN_BOOT_CONTEXT;
+      if (isAuthReturnWithoutParams) {
+        const flowId = getBootTransitionIdSafe() || beginBootTransitionSafe('auth-return-recovery', 'loading-session');
+        recordBootstrapTiming('auth.return.recovery.start', {
+          hasStoredSessionHint: hasStoredSupabaseSessionHint(),
+          hasPendingSession: Boolean(_pendingAuthRedirectSession?.session?.user),
+        });
+
+        if (_bootstrapPromise) {
+          try {
+            const booted = await withTimeout(
+              _bootstrapPromise,
+              12000,
+              'auth-return-existing-bootstrap'
+            );
+            if (booted || window.__spAppBooted) {
+              return finishWith('existing-bootstrap', {
+                shouldBootstrapStoredSession: false,
+              });
+            }
+          } catch (err) {
+            warn('Auth return waited for existing bootstrap but it did not finish:', err);
+          }
+        }
+
+        if (_pendingAuthRedirectSession?.session?.user) {
+          const booted = await consumePendingAuthRedirectSession({
+            reason: 'auth-return-pending-session',
+            bootContext: 'auth-callback',
+            flowId,
+          });
+          if (booted) {
+            return finishWith('pending-session', {
+              shouldBootstrapStoredSession: false,
+            });
+          }
+        }
+
+        let recoveredSession = null;
+        try {
+          const { data, error } = await withTimeout(
+            () => db.auth.getSession(),
+            3000,
+            'auth.getSession[auth-return-recovery]'
+          );
+          if (error) {
+            warn('Auth return session recovery failed:', error);
+          } else {
+            recoveredSession = data?.session || null;
+          }
+        } catch (err) {
+          warn('Auth return session recovery timed out:', err);
+        }
+
+        if (recoveredSession?.user) {
+          window.__spSuppressStoredSessionBootstrap = false;
+          await runBootstrapTask(() => bootstrapFromSupabaseSession(recoveredSession, {
+            remember: true,
+            showWelcome: true,
+            flowId,
+          }));
+          return finishWith('recovered-session', {
+            shouldBootstrapStoredSession: false,
+          });
+        }
+
+        window.__spAuthRedirectInProgress = false;
+        try {
+          sessionStorage.removeItem(BOOT_CONTEXT_STORAGE_KEY);
+        } catch (_err) {}
+        clearOAuthIntent();
+        window.__spSuppressStoredSessionBootstrap = true;
+        showLoginScreen({ reason: 'auth-return-without-callback' });
+        recordBootstrapTiming('auth.return.recovery.missing', {
+          hasStoredSessionHint: hasStoredSupabaseSessionHint(),
+        });
+        return finishWith('missing-callback', {
+          shouldBootstrapStoredSession: false,
+        });
+      }
       window.__spAuthRedirectInProgress = false;
       if (_pendingAuthRedirectSession?.session?.user) {
         const booted = await consumePendingAuthRedirectSession({
@@ -3475,6 +3667,20 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
     window.__spAuthRedirectInProgress = true;
     const flowId = beginBootTransitionSafe('auth-redirect', 'loading-session');
+    recordBootstrapTiming('auth.callback.start', {
+      hasCode: Boolean(code),
+      hasTokenPair: Boolean(accessToken && refreshToken),
+      hasError: Boolean(oauthError || oauthErrorCode || oauthErrorDescription),
+      currentOrigin: redirectLocation.origin,
+      currentPath: redirectLocation.path,
+      expectedOrigin: oauthIntent?.origin || null,
+      expectedPath: oauthIntent?.path || null,
+      intentAgeMs: oauthIntentAgeMs,
+    });
+    setBootStateSafe('signing-in', {
+      text: 'Signing in...',
+      subtext: 'Finishing your secure Google sign-in.'
+    });
 
     // Explicit OAuth callback always clears the "logged out" guard.
     localStorage.removeItem('sp_logged_out');
@@ -3487,6 +3693,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         _session = null;
         _profile = null;
         window.__spSuppressStoredSessionBootstrap = true;
+        clearAuthReturnBootMarker();
         showLoginScreen({ flowId, reason: 'auth-redirect-error' });
         if (typeof window.toastError === 'function') {
           window.toastError(errorMessage);
@@ -3499,33 +3706,99 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
       let session = null;
       let exchangeError = null;
+      let exchangeTimedOut = false;
 
       if (accessToken && refreshToken && typeof db.auth.setSession === 'function') {
-        const { data, error } = await db.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-        if (error) { exchangeError = error; }
-        else { session = data?.session || null; }
+        try {
+          const { data, error } = await withTimeout(
+            () => db.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            }),
+            6000,
+            'auth.setSession[redirect]'
+          );
+          if (error) {
+            exchangeError = error;
+            recordBootstrapTiming('auth.exchange.failed', {
+              method: 'setSession',
+              error: error?.message || 'unknown',
+            });
+          } else {
+            session = data?.session || null;
+            recordBootstrapTiming('auth.exchange.done', {
+              method: 'setSession',
+              ok: Boolean(session),
+            });
+          }
+        } catch (err) {
+          exchangeTimedOut = err?.name === 'TimeoutError';
+          exchangeError = err;
+          recordBootstrapTiming(exchangeTimedOut ? 'auth.exchange.timeout' : 'auth.exchange.failed', {
+            method: 'setSession',
+            error: err?.message || 'unknown',
+            pkceVerifierMissing: isPkceCodeVerifierMissingError(err),
+          });
+        }
 
       } else if (code && typeof db.auth.exchangeCodeForSession === 'function') {
-        const { data, error } = await db.auth.exchangeCodeForSession(code);
-        if (error) { exchangeError = error; }
-        else { session = data?.session || null; }
+        try {
+          const { data, error } = await withTimeout(
+            () => db.auth.exchangeCodeForSession(code),
+            6000,
+            'auth.exchangeCodeForSession'
+          );
+          if (error) {
+            exchangeError = error;
+            recordBootstrapTiming('auth.exchange.failed', {
+              method: 'exchangeCodeForSession',
+              error: error?.message || 'unknown',
+              pkceVerifierMissing: isPkceCodeVerifierMissingError(error),
+            });
+          } else {
+            session = data?.session || null;
+            recordBootstrapTiming('auth.exchange.done', {
+              method: 'exchangeCodeForSession',
+              ok: Boolean(session),
+            });
+          }
+        } catch (err) {
+          exchangeTimedOut = err?.name === 'TimeoutError';
+          exchangeError = err;
+          recordBootstrapTiming(exchangeTimedOut ? 'auth.exchange.timeout' : 'auth.exchange.failed', {
+            method: 'exchangeCodeForSession',
+            error: err?.message || 'unknown',
+            pkceVerifierMissing: isPkceCodeVerifierMissingError(err),
+          });
+        }
       }
 
       if (exchangeError) {
         warn('Auth redirect exchange failed:', exchangeError);
       }
+      const pkceVerifierMissing = isPkceCodeVerifierMissingError(exchangeError);
 
       // If exchange didn't give us a session, try fetching the stored one.
       if (!session) {
-        const { data, error } = await db.auth.getSession();
-        if (error) { warn('Auth redirect session fallback failed:', error); }
-        else { session = data?.session || null; }
+        try {
+          const { data, error } = await withTimeout(
+            () => db.auth.getSession(),
+            2500,
+            'auth.getSession[redirect-fallback]'
+          );
+          if (error) { warn('Auth redirect session fallback failed:', error); }
+          else { session = data?.session || null; }
+        } catch (fallbackErr) {
+          warn('Auth redirect session fallback timed out:', fallbackErr);
+        }
       }
       if (!session && _pendingAuthRedirectSession?.session?.user) {
         session = _pendingAuthRedirectSession.session;
+      }
+      if (session?.user) {
+        recordBootstrapTiming('auth.callback.sessionRecovered', {
+          source: exchangeTimedOut ? 'fallback-after-timeout' : 'exchange',
+        });
       }
 
       if (!isBootTransitionCurrentSafe(flowId)) {
@@ -3546,14 +3819,50 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
           shouldBootstrapStoredSession: false,
         });
       } else {
+        if (exchangeTimedOut) {
+          warn('Auth redirect exchange timed out with no recovered session.');
+          showBootErrorState('Sign-in is still finishing', 'Retry to reconnect to Star Paper, or log out and sign in again.');
+          return finishWith('timeout', {
+            error: exchangeError?.message || 'Sign-in timed out.',
+            shouldBootstrapStoredSession: false,
+          });
+        }
         // Exchange failed AND no stored session — clear the loader and show login
         // so the user isn't stranded on a blank page after a bad OAuth redirect.
+        if (pkceVerifierMissing) {
+          const message = 'Google returned without its sign-in verifier. Check Supabase redirect URLs for this exact origin, then try again.';
+          warn('Auth redirect PKCE verifier missing; showing login with configuration guidance.', {
+            currentOrigin: redirectLocation.origin,
+            expectedOrigin: oauthIntent?.origin || null,
+          });
+          recordBootstrapTiming('auth.exchange.pkceVerifierMissing', {
+            currentOrigin: redirectLocation.origin,
+            currentPath: redirectLocation.path,
+            expectedOrigin: oauthIntent?.origin || null,
+            expectedPath: oauthIntent?.path || null,
+          });
+          clearSupabaseAuthArtifacts();
+          resetWorkspaceState();
+          _session = null;
+          _profile = null;
+          window.__spSuppressStoredSessionBootstrap = true;
+          clearAuthReturnBootMarker();
+          showLoginScreen({ flowId, reason: 'auth-redirect-pkce-verifier-missing' });
+          if (typeof window.toastError === 'function') {
+            window.toastError(message);
+          }
+          return finishWith('pkce-verifier-missing', {
+            error: message,
+            shouldBootstrapStoredSession: false,
+          });
+        }
         warn('Auth redirect: no valid session recovered — showing login.');
         clearSupabaseAuthArtifacts();
         resetWorkspaceState();
         _session = null;
         _profile = null;
         window.__spSuppressStoredSessionBootstrap = true;
+        clearAuthReturnBootMarker();
         showLoginScreen({ flowId, reason: 'auth-redirect-invalid' });
         if (typeof window.toastError === 'function') {
           window.toastError('Sign-in link expired or invalid. Please log in again.');
@@ -3571,6 +3880,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       _session = null;
       _profile = null;
       window.__spSuppressStoredSessionBootstrap = true;
+      clearAuthReturnBootMarker();
       showLoginScreen({ flowId, reason: 'auth-redirect-failed' });
       return finishWith('error', {
         error: err?.message || 'Sign-in failed. Please try again.',
@@ -3584,6 +3894,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       });
       const cleanUrl = url.pathname + url.search;
       window.history.replaceState({}, document.title, cleanUrl);
+      if (hadAuthCallback) clearOAuthIntent();
       window.__spAuthRedirectInProgress = false;
     }
   }
@@ -3607,13 +3918,23 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   async function lookupEmailForUsername(username) {
     const normalized = String(username || '').trim();
     if (!normalized) return null;
+    const cacheKey = normalized.toLowerCase();
+    if (_usernameEmailCache.has(cacheKey)) {
+      return _usernameEmailCache.get(cacheKey);
+    }
     try {
-      const { data, error } = await db.rpc('get_email_for_username', { p_username: normalized });
+      const { data, error } = await withTimeout(
+        () => db.rpc('get_email_for_username', { p_username: normalized }),
+        1500,
+        'get_email_for_username'
+      );
       if (error) {
         warn('Username lookup failed:', error);
         return null;
       }
-      return typeof data === 'string' && data.includes('@') ? data : null;
+      const email = typeof data === 'string' && data.includes('@') ? data : null;
+      if (email) _usernameEmailCache.set(cacheKey, email);
+      return email;
     } catch (err) {
       warn('Username lookup error:', err);
       return null;
@@ -4156,10 +4477,12 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       try {
         sessionStorage.removeItem(BOOT_CONTEXT_STORAGE_KEY);
       } catch (_err) {}
+      clearOAuthIntent();
       const err = new Error('Google sign-in requires http://localhost or your deployed https:// URL. file:// cannot receive OAuth redirects.');
       err.flowId = flowId;
       throw err;
     }
+    writeOAuthIntent(redirectTo);
     const { error } = await db.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -4174,6 +4497,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       try {
         sessionStorage.removeItem(BOOT_CONTEXT_STORAGE_KEY);
       } catch (_err) {}
+      clearOAuthIntent();
       error.flowId = flowId;
       throw error;
     }

@@ -989,13 +989,26 @@
       </details>
     `;
 
-    // Render charts after DOM is in place
+    // Render charts after DOM is in place. Chart.js is lazy-loaded so auth boot
+    // is not competing with report visuals on first paint.
     requestAnimationFrame(() => {
-      renderMomentumChart(m);
-      renderCostDoughnut(m);
-      renderStatusPie(m);
-      updateReportFocusPanel();
-      wireReportRowInteractions();
+      const renderCharts = () => {
+        renderMomentumChart(m);
+        renderCostDoughnut(m);
+        renderStatusPie(m);
+        updateReportFocusPanel();
+        wireReportRowInteractions();
+      };
+      if (!window.Chart && typeof window.__spLoadDeferredLibrary === 'function') {
+        window.__spLoadDeferredLibrary('chart')
+          .then(renderCharts)
+          .catch(() => {
+            updateReportFocusPanel();
+            wireReportRowInteractions();
+          });
+        return;
+      }
+      renderCharts();
     });
   }
 
@@ -1280,7 +1293,13 @@
     closePdfExportModal();
 
     try {
-      const { jsPDF } = window.jspdf;
+      if ((!window.jspdf?.jsPDF || !window.html2canvas) && typeof window.__spLoadDeferredLibrary === 'function') {
+        await window.__spLoadDeferredLibrary('pdf');
+      }
+      if (typeof window.Chart === 'undefined' && typeof window.__spLoadDeferredLibrary === 'function') {
+        await window.__spLoadDeferredLibrary('chart').catch(() => null);
+      }
+      const { jsPDF } = window.jspdf || {};
       if (!jsPDF) { window.toastError?.('PDF library not loaded'); return; }
 
       // ── Read modal selections ──
