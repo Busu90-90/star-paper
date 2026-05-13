@@ -48,9 +48,9 @@ if (IS_LEGACY_NETLIFY_WORKER) {
     event.respondWith(Response.redirect(toCanonicalUrl(event.request.url), 302));
   });
 } else {
-const SHELL_VERSION = "138";
+const SHELL_VERSION = "142";
 const REPORT_BUNDLE_VERSION = "17";
-const APP_BUNDLE_VERSION = "118";
+const APP_BUNDLE_VERSION = "121";
 const CACHE_NAME = `star-paper-shell-v${SHELL_VERSION}`;
 const REPORT_RUNTIME_ASSETS = new Set(
   [
@@ -74,12 +74,12 @@ const APP_SHELL = [
   "./how-it-works.html",
   "./proof.html",
   "./testimonials.html",
-  "./styles.css?v=51",
+  "./styles.css?v=53",
   "./styles.premium.css?v=8",
   "./styles.shell.css?v=11",
-  "./styles.handcraft.css?v=31",
+  "./styles.handcraft.css?v=32",
   "./star-paper-tokens.css?v=21",
-  "./supabase.js?v=66",
+  "./supabase.js?v=68",
   "./app.migrations.js?v=10",
   "./app.actions.js?v=8",
   "./app.todayboard.js?v=1",
@@ -89,18 +89,18 @@ const APP_SHELL = [
   "./app.handcraft.js?v=18",
   "./app.globe.js?v=6",
   "./app.premium.js?v=4",
-  "./assets/landing/notebook-board-desktop.webp?v=3",
-  "./assets/landing/notebook-board-mobile.webp?v=3",
-  "./manifest.json?v=23",
-  "./star_paper_logo_pack/star_paper_32.png?v=2",
-  "./star_paper_logo_pack/star_paper_64.png?v=2",
-  "./star_paper_logo_pack/star_paper_128.png?v=2",
-  "./star_paper_logo_pack/star_paper_256.png?v=2",
-  "./star_paper_logo_pack/star_paper_512.png?v=2",
-  "./star_paper_logo_pack/star_paper_1024.png?v=2",
-  "./star_paper_logo_pack/star_paper_transparent.png?v=2",
-  "./star_paper_logo_pack/star_paper_black.png?v=2",
-  "./star_paper_logo_pack/star_paper_white.png?v=2",
+  "/assets/landing/notebook-board-desktop.webp?v=3",
+  "/assets/landing/notebook-board-mobile.webp?v=3",
+  "/manifest.json?v=23",
+  "/star_paper_logo_pack/star_paper_32.png?v=2",
+  "/star_paper_logo_pack/star_paper_64.png?v=2",
+  "/star_paper_logo_pack/star_paper_128.png?v=2",
+  "/star_paper_logo_pack/star_paper_256.png?v=2",
+  "/star_paper_logo_pack/star_paper_512.png?v=2",
+  "/star_paper_logo_pack/star_paper_1024.png?v=2",
+  "/star_paper_logo_pack/star_paper_transparent.png?v=2",
+  "/star_paper_logo_pack/star_paper_black.png?v=2",
+  "/star_paper_logo_pack/star_paper_white.png?v=2",
 ];
 
 const APP_SHELL_URLS = new Set(

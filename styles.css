@@ -1467,6 +1467,12 @@ select:focus-visible,
     border-radius: 12px;
     background: transparent;
     border: none;
+    cursor: pointer;
+    flex: 0 0 auto;
+}
+.header-left .app-brand:focus-visible {
+    outline: 2px solid var(--primary-gold);
+    outline-offset: 3px;
 }
 .header-left .app-brand img {
     width: 100%;

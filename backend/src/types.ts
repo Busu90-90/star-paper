@@ -1,21 +1,11 @@
 export interface ApiError {
   error: string;
-}
-
-export interface LoginRequest {
-  username: string;
-  password: string;
-}
-
-export interface LoginResponse {
-  accessToken: string;
-  tokenType: "Bearer";
-  expiresInSeconds: number;
-  username: string;
+  message?: string;
 }
 
 export interface HealthResponse {
-  status: "ok";
-  service: string;
+  status: "retired";
+  service: "star-paper-backend";
   timestamp: string;
+  message: string;
 }

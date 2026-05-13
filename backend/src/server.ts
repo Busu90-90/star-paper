@@ -1,6 +1,5 @@
 import express, { type Request, type Response } from "express";
 import helmet from "helmet";
-import { authenticate, validateLoginPayload } from "./auth.js";
 import type { ApiError, HealthResponse } from "./types.js";
 
 const app = express();
@@ -11,27 +10,18 @@ app.use(express.json({ limit: "256kb" }));
 
 app.get("/health", (_req: Request, res: Response<HealthResponse>) => {
   res.status(200).json({
-    status: "ok",
+    status: "retired",
     service: "star-paper-backend",
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    message: "This local backend is retired. Star Paper authenticates through Supabase Auth only."
   });
 });
 
-app.post("/auth/login", (req: Request, res: Response) => {
-  if (!validateLoginPayload(req.body)) {
-    const body: ApiError = { error: "Invalid login payload" };
-    res.status(400).json(body);
-    return;
-  }
-
-  const result = authenticate(req.body);
-  if (!result) {
-    const body: ApiError = { error: "Invalid username or password" };
-    res.status(401).json(body);
-    return;
-  }
-
-  res.status(200).json(result);
+app.all("/auth/*", (_req: Request, res: Response<ApiError>) => {
+  res.status(410).json({
+    error: "Local auth backend retired",
+    message: "Use Supabase Auth. Star Paper does not support local backend login."
+  });
 });
 
 app.use((_req: Request, res: Response<ApiError>) => {
@@ -44,5 +34,5 @@ app.use((error: unknown, _req: Request, res: Response<ApiError>, _next: () => vo
 });
 
 app.listen(PORT, () => {
-  console.log(`Star Paper backend listening on http://localhost:${PORT}`);
+  console.log(`Retired Star Paper local backend listening on http://localhost:${PORT}`);
 });

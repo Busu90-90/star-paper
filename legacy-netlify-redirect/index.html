@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="0; url=https://star-paper.netlify.app/">
+  <title>Redirecting to Star Paper</title>
+  <script>
+    (function cleanAndRedirect() {
+      var target = new URL(window.location.href);
+      target.protocol = 'https:';
+      target.hostname = 'star-paper.netlify.app';
+      function go() {
+        window.location.replace(target.toString());
+      }
+      var tasks = [];
+      try {
+        if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+          tasks.push(navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            return Promise.all(registrations.map(function(registration) {
+              return registration.unregister().catch(function() {});
+            }));
+          }));
+        }
+        if (window.caches && caches.keys) {
+          tasks.push(caches.keys().then(function(keys) {
+            return Promise.all(keys.map(function(key) {
+              return caches.delete(key).catch(function() {});
+            }));
+          }));
+        }
+      } catch (_err) {}
+      Promise.allSettled(tasks).then(go).catch(go);
+      setTimeout(go, 1200);
+    })();
+  </script>
+</head>
+<body>
+  <p>Redirecting to <a href="https://star-paper.netlify.app/">Star Paper</a>.</p>
+</body>
+</html>

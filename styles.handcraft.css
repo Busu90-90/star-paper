@@ -15,8 +15,8 @@ html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen {
   --sp-handcraft-serif: "Cormorant", "Cormorant Garamond", "Playfair Display", Georgia, "Times New Roman", serif;
   --sp-handcraft-sans: "Space Grotesk", "Inter", "Segoe UI", system-ui, sans-serif;
   --sp-handcraft-hand: "Caveat", "Cormorant", cursive;
-  --sp-notebook-desktop: url("./assets/landing/notebook-board-desktop.webp?v=3");
-  --sp-notebook-mobile: url("./assets/landing/notebook-board-mobile.webp?v=3");
+  --sp-notebook-desktop: url("/assets/landing/notebook-board-desktop.webp?v=3");
+  --sp-notebook-mobile: url("/assets/landing/notebook-board-mobile.webp?v=3");
   display: block;
   min-height: 100svh;
   overflow-x: clip;
@@ -4576,13 +4576,23 @@ html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .s
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   NAV LOGO REMOVAL — the small star in the navbar/mini-nav is redundant
-   with the hero medallion. Keep the wordmark + the brand link's clickable
-   area; just hide the <img>.
+   NAV LOGO VISIBILITY - keep brand image marks visible with stable sizing.
    ═══════════════════════════════════════════════════════════════════════ */
 html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-logo,
 html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .mini-nav-logo {
-  display: none !important;
+  display: block !important;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-logo {
+  width: 44px;
+  height: 44px;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .mini-nav-logo {
+  width: 32px;
+  height: 32px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════

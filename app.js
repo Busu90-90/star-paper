@@ -4,6 +4,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Initialize Fade-In Animations (Intersection Observer)
     initScrollAnimations();
+    installBrandImageFallbacks();
     harmonizeSectionIcons();
     updateAppHeaderIcon('dashboard');
     updateLandingTopControlsVisibility();
@@ -32,6 +33,33 @@ function initScrollAnimations() {
 
     document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
 }
+
+const STAR_PAPER_IMAGE_FALLBACK = '/favicon.ico';
+
+function applyBrandImageFallback(img) {
+    if (!img || img.dataset.spBrandFallbackApplied === '1') return;
+    img.dataset.spBrandFallbackApplied = '1';
+    img.removeAttribute('srcset');
+    img.src = STAR_PAPER_IMAGE_FALLBACK;
+}
+
+function installBrandImageFallbacks(root = document) {
+    if (!root || typeof root.querySelectorAll !== 'function') return;
+    const selector = [
+        'img[src*="star_paper_logo_pack"]',
+        'img[srcset*="star_paper_logo_pack"]'
+    ].join(',');
+    root.querySelectorAll(selector).forEach((img) => {
+        if (img.dataset.spBrandFallbackBound !== '1') {
+            img.dataset.spBrandFallbackBound = '1';
+            img.addEventListener('error', () => applyBrandImageFallback(img));
+        }
+        if (img.complete && img.naturalWidth === 0) {
+            applyBrandImageFallback(img);
+        }
+    });
+}
+window.installBrandImageFallbacks = installBrandImageFallbacks;
 
 function isBootRevealBlockingState(state) {
     return ['booting-auth', 'loading-session', 'signing-in', 'booting-data', 'loading-app'].includes(state);
@@ -976,7 +1004,7 @@ function getSectionIconMarkup(iconKey) {
 
         function resolveDisplayAvatar(user) {
             const raw = String(user?.avatar || '').trim();
-            if (!raw) return './star_paper_logo_pack/star_paper_128.png?v=2';
+            if (!raw) return '/star_paper_logo_pack/star_paper_128.png?v=2';
             if (raw.startsWith('data:image/') || raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('./') || raw.startsWith('/')) {
                 return raw;
             }
@@ -1097,6 +1125,7 @@ function getSectionIconMarkup(iconKey) {
                 profilePreview.src = previewSrc;
                 syncBrandMarkPresentation(profilePreview, previewSrc);
             }
+            installBrandImageFallbacks();
             updateHeaderGreeting();
         }
 
@@ -4262,8 +4291,10 @@ function showLoginForm(options = {}) {
             }
             try {
                 const hash = `#${normalized}`;
-                if (window.location.hash !== hash) {
-                    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}${hash}`);
+                const route = `/${window.location.search || ''}${hash}`;
+                const currentRoute = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+                if (currentRoute !== route) {
+                    window.history.replaceState(null, '', route);
                 }
             } catch (_err) {}
             return normalized;
@@ -6041,7 +6072,7 @@ function showLoginForm(options = {}) {
             const candidateNames = [primaryLogo, 'star_paper_transparent.png', 'star_paper_512.png'];
             return [
                 ...candidateNames.map((name) => withOrigin(`/star_paper_logo_pack/${name}?v=${REPORT_LOGO_ASSET_VERSION}`)),
-                ...candidateNames.map((name) => `./star_paper_logo_pack/${name}?v=${REPORT_LOGO_ASSET_VERSION}`)
+                ...candidateNames.map((name) => `/star_paper_logo_pack/${name}?v=${REPORT_LOGO_ASSET_VERSION}`)
             ];
         }
 
@@ -8187,8 +8218,8 @@ function showLoginForm(options = {}) {
                     if (reg) {
                         reg.showNotification(title, {
                             body,
-                            icon: './star_paper_logo_pack/star_paper_transparent.png?v=2',
-                            badge: './star_paper_logo_pack/star_paper_transparent.png?v=2'
+                            icon: '/star_paper_logo_pack/star_paper_transparent.png?v=2',
+                            badge: '/star_paper_logo_pack/star_paper_transparent.png?v=2'
                         });
                     } else {
                         new Notification(title, { body });
@@ -10155,7 +10186,7 @@ function showLoginForm(options = {}) {
             // regression risk. Reverted to the canonical CLAUDE.md §2 approach: users
             // get a fresh shell on next manual reload after the new SW activates.
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=138').then((registration) => {
+                navigator.serviceWorker.register('sw.js?v=142').then((registration) => {
                     registration?.update?.().catch(() => {});
                 }).catch((error) => {
                     console.warn('Service worker registration failed:', error);

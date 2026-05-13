@@ -154,6 +154,32 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   const APP_SHELL_BOOT_CONTEXT = 'app-shell';
   const AUTH_RETURN_BOOT_CONTEXT = 'auth-return';
   const OAUTH_INTENT_STORAGE_KEY = 'sp_oauth_intent';
+  const SP_PUBLIC_SHELL_PATHS = new Set([
+    '/',
+    '/index.html',
+    '/how-it-works',
+    '/how-it-works.html',
+    '/proof',
+    '/proof.html',
+    '/testimonials',
+    '/testimonials.html',
+  ]);
+  const SP_APP_ROUTE_HASHES = new Set([
+    'artists',
+    'bookings',
+    'calendar',
+    'dashboard',
+    'expenses',
+    'financials',
+    'global',
+    'money',
+    'otherIncome',
+    'reports',
+    'schedule',
+    'settings',
+    'tasks',
+  ]);
+  const SP_PASSIVE_AUTH_EVENTS = new Set(['INITIAL_SESSION', 'SIGNED_IN', 'TOKEN_REFRESHED']);
   let _retryQueue = [];               // Array of { payload, attempts, lastAttempt }
   let _syncState = 'idle';            // 'idle' | 'syncing' | 'synced' | 'failed' | 'offline'
   let _retryTimer = null;
@@ -1035,7 +1061,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       clearLocalBootFallback();
     }
     resetCloudSaveFlagsSafe('show-landing');
-    const instantPublicReveal = !options.flowId &&
+    const instantPublicReveal = options.instant === true || !options.flowId &&
       !keepFallback &&
       !window.__spAuthRedirectInProgress &&
       !_session?.user &&
@@ -1187,6 +1213,34 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       return 'auth-callback';
     }
     return marker === APP_SHELL_BOOT_CONTEXT ? 'app-refresh' : 'cold-start';
+  }
+
+  function getRouteHashToken() {
+    try {
+      const raw = decodeURIComponent(String(window.location.hash || '').replace(/^#/, '')).trim();
+      if (!raw || raw.includes('=') || raw.includes('&')) return '';
+      return raw;
+    } catch (_err) {
+      return '';
+    }
+  }
+
+  function hasExplicitAppRouteHash() {
+    return SP_APP_ROUTE_HASHES.has(getRouteHashToken());
+  }
+
+  function isPublicShellRoute() {
+    const pathname = (window.location.pathname || '/').replace(/\/+$/, '') || '/';
+    return SP_PUBLIC_SHELL_PATHS.has(pathname);
+  }
+
+  function shouldStayOnPublicShell() {
+    if (hasAuthCallbackInUrl() || window.__spAuthRedirectInProgress || window.__spUserInitiatedAuth) return false;
+    return isPublicShellRoute() && !hasExplicitAppRouteHash();
+  }
+
+  function shouldSuppressPassiveAuthBootstrap(event) {
+    return SP_PASSIVE_AUTH_EVENTS.has(event) && shouldStayOnPublicShell();
   }
 
   function captureSyncException(error, context = {}) {
@@ -4421,6 +4475,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   async function signInWithGoogle() {
     // If user explicitly logged out before, allow a fresh OAuth login.
     localStorage.removeItem('sp_logged_out');
+    window.__spUserInitiatedAuth = true;
     window.__spSuppressStoredSessionBootstrap = false;
     window.__spAuthRedirectInProgress = false;
     // FIXED: Google OAuth always shows a prominent loader before leaving/returning.
@@ -4443,6 +4498,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         sessionStorage.removeItem(BOOT_CONTEXT_STORAGE_KEY);
       } catch (_err) {}
       clearOAuthIntent();
+      window.__spUserInitiatedAuth = false;
       const err = new Error('Google sign-in requires http://localhost or your deployed https:// URL. file:// cannot receive OAuth redirects.');
       err.flowId = flowId;
       throw err;
@@ -4463,6 +4519,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         sessionStorage.removeItem(BOOT_CONTEXT_STORAGE_KEY);
       } catch (_err) {}
       clearOAuthIntent();
+      window.__spUserInitiatedAuth = false;
       error.flowId = flowId;
       throw error;
     }
@@ -4650,6 +4707,16 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       }
     }
  
+    if (session?.user && shouldSuppressPassiveAuthBootstrap(event)) {
+      _session = session;
+      window.__spSuppressStoredSessionBootstrap = true;
+      clearLocalBootFallback();
+      deferAuthEventWork(`auth-event:${event}:public-shell`, async () => {
+        showLandingScreen({ instant: true, reason: 'public-shell-stored-session' });
+      });
+      return;
+    }
+
 
     if (!session?.user) {
       const bootContext = getStartupBootContext();
@@ -5891,6 +5958,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       const flowId = beginBootTransitionSafe('password-sign-in', 'signing-in');
 
       try {
+        window.__spUserInitiatedAuth = true;
         window.__spSuppressStoredSessionBootstrap = false;
         const { data } = await signIn(nameOrEmail, password);
         if (!data?.session?.user) {
@@ -5932,6 +6000,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         if (typeof window.toastError === 'function') window.toastError(msg);
         showLoginScreen({ flowId, reason: 'password-sign-in-failed' });
       } finally {
+        window.__spUserInitiatedAuth = false;
         // Guaranteed: spinner always stops, button always re-enables.
         setLoading(false);
       }
@@ -5950,6 +6019,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       }
 
       try {
+        window.__spUserInitiatedAuth = true;
         window.__spSuppressStoredSessionBootstrap = false;
         const available = await isUsernameAvailable(name);
         if (available === false) {
@@ -6000,6 +6070,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
           msg = 'That username is already taken. Please choose another.';
         }
         if (typeof window.toastError === 'function') window.toastError(msg);
+      } finally {
+        window.__spUserInitiatedAuth = false;
       }
     };
 
@@ -6213,6 +6285,12 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       }
     }
     if (window.__spAuthRedirectInProgress) return false;
+    if (shouldStayOnPublicShell() && options.forceAppBootstrap !== true) {
+      window.__spSuppressStoredSessionBootstrap = true;
+      clearLocalBootFallback();
+      showLandingScreen({ instant: true, flowId, reason: 'initial-session-public-shell' });
+      return false;
+    }
     const quietIfNoSession = options.quietIfNoSession === true;
     const loggedOutScreen = options.loggedOutScreen || 'login';
     if (!quietIfNoSession) {
@@ -6285,12 +6363,13 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     restoreRetryQueue();
     bindAutoSync();
     const localMarker = readBootContextMarker();
+    const publicShellColdStart = shouldStayOnPublicShell();
     const localColdStart = isLocalDevOrigin() &&
       !hasAuthCallbackInUrl() &&
       localMarker !== APP_SHELL_BOOT_CONTEXT &&
       localMarker !== AUTH_RETURN_BOOT_CONTEXT &&
       !hasStoredSupabaseSessionHint();
-    if (localColdStart) {
+    if (publicShellColdStart || localColdStart) {
       window.__spSuppressStoredSessionBootstrap = true;
     }
 
@@ -6301,8 +6380,11 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     const onAppReady = () => {
       const bootContext = getStartupBootContext();
       const shouldShowBootLoader = bootContext === 'auth-callback' || bootContext === 'app-refresh';
-      if (localColdStart) {
-        setTimeout(() => showLandingScreen({ instant: true, reason: 'local-cold-start' }), 0);
+      if (publicShellColdStart || localColdStart) {
+        setTimeout(() => showLandingScreen({
+          instant: true,
+          reason: publicShellColdStart ? 'public-shell-cold-start' : 'local-cold-start',
+        }), 0);
         setTimeout(patchAppAuth, 0);
         setTimeout(injectSidebarButtons, 1200);
         return;

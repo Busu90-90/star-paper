@@ -4,17 +4,45 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Star Paper How It Works</title>
-    <link rel="icon" type="image/png" sizes="32x32" href="./star_paper_logo_pack/star_paper_32.png?v=2">
-    <link rel="icon" type="image/png" sizes="256x256" href="./star_paper_logo_pack/star_paper_256.png?v=2">
-    <link rel="shortcut icon" type="image/png" href="./star_paper_logo_pack/star_paper_32.png?v=2">
-    <link rel="apple-touch-icon" sizes="256x256" href="./star_paper_logo_pack/star_paper_256.png?v=2">
+    <script>
+      (function stripAppHashFromPublicPage() {
+        var appHashes = {
+          artists: true,
+          bookings: true,
+          calendar: true,
+          dashboard: true,
+          expenses: true,
+          financials: true,
+          global: true,
+          money: true,
+          otherIncome: true,
+          reports: true,
+          schedule: true,
+          settings: true,
+          tasks: true
+        };
+        var hash = '';
+        try {
+          hash = decodeURIComponent(String(window.location.hash || '').replace(/^#/, '')).trim();
+        } catch (_err) {
+          hash = String(window.location.hash || '').replace(/^#/, '').trim();
+        }
+        if (appHashes[hash]) {
+          window.history.replaceState(null, '', window.location.pathname + (window.location.search || ''));
+        }
+      })();
+    </script>
+    <link rel="icon" type="image/png" sizes="32x32" href="/star_paper_logo_pack/star_paper_32.png?v=2">
+    <link rel="icon" type="image/png" sizes="256x256" href="/star_paper_logo_pack/star_paper_256.png?v=2">
+    <link rel="shortcut icon" type="image/png" href="/star_paper_logo_pack/star_paper_32.png?v=2">
+    <link rel="apple-touch-icon" sizes="256x256" href="/star_paper_logo_pack/star_paper_256.png?v=2">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,300..700;1,300..700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
-    <link rel="stylesheet" href="styles.css?v=51">
+    <link rel="stylesheet" href="styles.css?v=53">
     <link rel="stylesheet" href="star-paper-tokens.css?v=21">
     <link rel="stylesheet" href="styles.premium.css?v=8">
-    <link rel="stylesheet" href="styles.handcraft.css?v=31">
+    <link rel="stylesheet" href="styles.handcraft.css?v=32">
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
     <style>
       html.sp-handcraft-off .sp-handcraft-widget { display: none !important; }
@@ -40,7 +68,7 @@
     <div class="landing-container sp-prem-landing-refine" id="landingScreen">
         <div class="landing-mini-nav" id="landingMiniNav" aria-hidden="true">
             <a class="landing-mini-nav-brand" href="./index.html" aria-label="Go to Star Paper home">
-                <img src="./star_paper_logo_pack/star_paper_128.png?v=2" srcset="./star_paper_logo_pack/star_paper_128.png?v=2 1x, ./star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Star Paper" class="mini-nav-logo">
+                <img src="/star_paper_logo_pack/star_paper_128.png?v=2" srcset="/star_paper_logo_pack/star_paper_128.png?v=2 1x, /star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Star Paper" class="mini-nav-logo">
                 <span class="mini-nav-brand">STAR PAPER</span>
             </a>
             <a class="mini-nav-cta" href="./index.html?auth=signup">Get Started</a>
@@ -56,7 +84,7 @@
                 <div class="landing-hero-rail">
                     <div class="landing-shell-nav">
                         <a class="landing-shell-brand" href="./index.html" aria-label="Go to Star Paper home">
-                            <img src="./star_paper_logo_pack/star_paper_128.png?v=2" srcset="./star_paper_logo_pack/star_paper_128.png?v=2 1x, ./star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Star Paper" class="landing-shell-logo" />
+                            <img src="/star_paper_logo_pack/star_paper_128.png?v=2" srcset="/star_paper_logo_pack/star_paper_128.png?v=2 1x, /star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Star Paper" class="landing-shell-logo" />
                             <span class="landing-shell-brand-text">STAR PAPER</span>
                         </a>
                         <div class="landing-shell-nav-actions">
@@ -74,7 +102,7 @@
                             <div class="sp-prem-hero-copy">
                                 <div class="landing-hero-intro">
                                     <div class="landing-hero-medallion">
-                                        <img src="./star_paper_logo_pack/star_paper_256.png?v=2" srcset="./star_paper_logo_pack/star_paper_256.png?v=2 1x, ./star_paper_logo_pack/star_paper_512.png?v=2 2x" alt="Star Paper" class="landing-hero-medallion-logo" />
+                                        <img src="/star_paper_logo_pack/star_paper_256.png?v=2" srcset="/star_paper_logo_pack/star_paper_256.png?v=2 1x, /star_paper_logo_pack/star_paper_512.png?v=2 2x" alt="Star Paper" class="landing-hero-medallion-logo" />
                                     </div>
                                     <div class="landing-shell-kicker">The Manager&apos;s Mainstage!</div>
                                 </div>
@@ -164,7 +192,7 @@
 
         <footer class="sp-prem-landing-footer sp-prem-widget" aria-label="Star Paper landing footer">
             <a class="sp-prem-landing-footer__brand" href="./index.html" aria-label="Go to Star Paper home">
-                <img src="./star_paper_logo_pack/star_paper_128.png?v=2" srcset="./star_paper_logo_pack/star_paper_128.png?v=2 1x, ./star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Star Paper" class="sp-prem-landing-footer__logo" />
+                <img src="/star_paper_logo_pack/star_paper_128.png?v=2" srcset="/star_paper_logo_pack/star_paper_128.png?v=2 1x, /star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Star Paper" class="sp-prem-landing-footer__logo" />
                 <div>
                     <div class="sp-prem-landing-footer__name">STAR PAPER</div>
                     <div class="sp-prem-landing-footer__meta">&copy; 2026 Star Paper</div>
