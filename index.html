@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://unpkg.com https://fonts.gstatic.com; connect-src 'self' https: wss:; manifest-src 'self'; worker-src 'self' blob:; frame-ancestors 'none';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://unpkg.com https://fonts.gstatic.com; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:; frame-ancestors 'none';">
     <title>Star Paper</title>
     <script>
       (function redirectLegacyNetlifyOrigin() {
@@ -42,18 +42,21 @@
         ]).then(goCanonical);
       })();
     </script>
-    <link rel="manifest" href="manifest.json?v=21">
+    <link rel="manifest" href="manifest.json?v=23">
     <meta name="theme-color" content="#0B0B0B">
-    <link rel="icon" type="image/png" sizes="192x192" href="./logo-192.png?v=21">
-    <link rel="icon" type="image/png" sizes="32x32" href="./logo-32.png?v=21">
-    <link rel="icon" type="image/x-icon" href="./favicon.ico?v=21">
-    <link rel="shortcut icon" type="image/png" href="./logo-32.png?v=21">
-    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=21">
+    <link rel="icon" type="image/png" sizes="32x32" href="./star_paper_logo_pack/star_paper_32.png?v=2">
+    <link rel="icon" type="image/png" sizes="256x256" href="./star_paper_logo_pack/star_paper_256.png?v=2">
+    <link rel="shortcut icon" type="image/png" href="./star_paper_logo_pack/star_paper_32.png?v=2">
+    <link rel="apple-touch-icon" sizes="256x256" href="./star_paper_logo_pack/star_paper_256.png?v=2">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://fxcyocdwvjiyatqnaahg.supabase.co" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="dns-prefetch" href="//browser.sentry-cdn.com">
     <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
     <link rel="dns-prefetch" href="//unpkg.com">
+    <!-- Handcraft variable + display fonts (loaded before styles.handcraft.css applies them) -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,300..700;1,300..700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
     <link rel="preload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" as="script" crossorigin>
 
     <!--
@@ -87,14 +90,27 @@
 
       /* UPGRADE: Premium polish kill-switch failsafe (also in styles.premium.css) */
       html.sp-prem-off .sp-prem-widget { display: none !important; }
+      html.sp-handcraft-off .sp-handcraft-widget { display: none !important; }
     </style>
+    <script>
+      (function applyHandcraftFlagBeforePaint() {
+        try {
+          if (localStorage.getItem('sp_handcraft_off') === '1' || localStorage.getItem('sp_prem_off') === '1') {
+            document.documentElement.classList.add('sp-handcraft-off');
+          }
+        } catch (_err) {}
+      })();
+    </script>
 
-    <link rel="stylesheet" href="styles.css?v=50">
+    <link rel="stylesheet" href="styles.css?v=51">
     <!-- UPGRADE: Final premium relayering token layer (additive, kill-switchable via localStorage.sp_prem_off) -->
     <link rel="stylesheet" href="star-paper-tokens.css?v=21">
     <!-- UPGRADE: Premium polish layer (additive, kill-switchable via localStorage.sp_prem_off) -->
     <link rel="stylesheet" href="styles.premium.css?v=8">
     <link rel="stylesheet" href="styles.shell.css?v=11">
+    <link rel="preload" as="image" href="assets/landing/notebook-board-desktop.webp?v=3" imagesrcset="assets/landing/notebook-board-desktop.webp?v=3">
+    <link rel="preload" as="image" href="star_paper_logo_pack/star_paper_256.png?v=2">
+    <link rel="stylesheet" href="styles.handcraft.css?v=31">
     <!-- Phosphor Icons — unified icon system -->
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
@@ -136,7 +152,7 @@
     </script>
     <div class="app-boot-loader hidden" id="appBootLoader" aria-live="polite" aria-hidden="true" data-state="loading-session">
         <div class="app-boot-loader__inner">
-            <img src="./logo-ui.png?v=21" alt="Star Paper" class="app-boot-loader__logo" />
+            <img src="./star_paper_logo_pack/star_paper_128.png?v=2" srcset="./star_paper_logo_pack/star_paper_128.png?v=2 1x, ./star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Star Paper" class="app-boot-loader__logo" />
             <div class="app-boot-loader__spinner" aria-hidden="true"></div>
             <div class="app-boot-loader__text" id="appBootLoaderText">Loading session...</div>
             <div class="app-boot-loader__subtext" id="appBootLoaderSubtext">Checking your secure cloud session...</div>
@@ -152,7 +168,7 @@
         <!-- Sticky mini-nav (appears after scrolling past hero CTA on mobile) -->
         <div class="landing-mini-nav" id="landingMiniNav" aria-hidden="true">
             <a class="landing-mini-nav-brand" href="./index.html" aria-label="Go to Star Paper home">
-                <img src="./logo-ui.png?v=21" alt="Star Paper" class="mini-nav-logo">
+                <img src="./star_paper_logo_pack/star_paper_128.png?v=2" srcset="./star_paper_logo_pack/star_paper_128.png?v=2 1x, ./star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Star Paper" class="mini-nav-logo">
                 <span class="mini-nav-brand">STAR PAPER</span>
             </a>
             <button class="mini-nav-cta" data-action="showSignupForm" onclick="showSignupForm()">Get Started</button>
@@ -168,154 +184,122 @@
                 <div class="landing-hero-rail">
                     <div class="landing-shell-nav">
                         <a class="landing-shell-brand" href="./index.html" aria-label="Go to Star Paper home">
-                            <img src="./logo-192.png?v=21" alt="Star Paper" class="landing-shell-logo" />
+                            <img src="./star_paper_logo_pack/star_paper_128.png?v=2" srcset="./star_paper_logo_pack/star_paper_128.png?v=2 1x, ./star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Star Paper" class="landing-shell-logo" />
                             <span class="landing-shell-brand-text">STAR PAPER</span>
                         </a>
+                        <nav class="landing-handcraft-desktop-nav" aria-label="Landing sections">
+                            <a href="./how-it-works.html#landing-features">How it works</a>
+                            <a href="./proof.html">Proof</a>
+                            <a href="./testimonials.html">Testimonials</a>
+                            <span class="landing-handcraft-desktop-divider" aria-hidden="true"></span>
+                            <button type="button" data-action="showLoginForm" onclick="showLoginForm()">Sign in</button>
+                            <button class="theme-toggle icon-toggle landing-theme-toggle landing-handcraft-nav-theme" id="landingThemeToggle" type="button" aria-label="Toggle theme">
+                                <i class="ph ph-moon" aria-hidden="true" style="font-size:15px;"></i>
+                            </button>
+                        </nav>
                         <div class="landing-shell-nav-actions">
-                            <button class="landing-shell-login" type="button" data-action="showLoginForm" onclick="showLoginForm()">Login</button>
-                            <div class="landing-top-controls" data-inline="1">
-                                <button class="theme-toggle icon-toggle landing-theme-toggle" id="landingThemeToggle" type="button" aria-label="Toggle theme">
-                                    <i class="ph ph-moon" aria-hidden="true" style="font-size:15px;"></i>
-                                </button>
-                            </div>
+                            <button class="landing-shell-login" type="button" data-action="showLoginForm" onclick="showLoginForm()">Sign in</button>
                         </div>
                     </div>
 
                     <div class="landing-shell-body">
-                        <div class="landing-shell-hero sp-prem-hero-layout">
+                        <div class="landing-shell-hero sp-prem-hero-layout" data-handcraft="phase-one">
                             <div class="sp-prem-hero-copy">
                                 <div class="landing-hero-intro">
                                     <div class="landing-hero-medallion">
-                                        <img src="./logo-192.png?v=21" alt="Star Paper" class="landing-hero-medallion-logo" />
+                                        <img src="./star_paper_logo_pack/star_paper_256.png?v=2" srcset="./star_paper_logo_pack/star_paper_256.png?v=2 1x, ./star_paper_logo_pack/star_paper_512.png?v=2 2x" alt="Star Paper" class="landing-hero-medallion-logo" />
                                     </div>
-                                    <div class="landing-shell-kicker">The Manager&apos;s Mainstage!</div>
+                                    <div class="landing-shell-kicker">The Manager&apos;s Mainstage</div>
                                 </div>
-                                <h1 class="landing-hero-heading" data-tw-static="1">
+                                <h1 class="landing-hero-heading">
                                     Run your entire
                                     <span class="landing-hero-highlight">artist operation</span>
-                                    from one command center.
+                                    from one command center
                                 </h1>
                                 <p class="landing-hero-subtitle">
-                                    Built for managers, labels &amp; teams who need clarity, speed, and control.
+                                    Bookings, finances, contracts, splits, and more. Everything in sync. Everyone in the loop.
                                 </p>
                                 <div class="landing-buttons">
-                                    <button class="landing-btn" id="createAccountBtn" data-action="showSignupForm" data-sp-prem-pulse="gold" onclick="showSignupForm()">Get Started &rarr;</button>
+                                    <button class="landing-btn" id="createAccountBtn" data-action="showSignupForm" data-sp-prem-pulse="gold" onclick="showSignupForm()">
+                                        <span>Get started</span>
+                                        <i class="ph ph-arrow-right" aria-hidden="true"></i>
+                                    </button>
                                     <a class="landing-btn landing-btn--ghost landing-btn--how" href="./how-it-works.html#landing-features">
-                                        <span>How It Works</span>
-                                        <i class="ph ph-arrow-down" aria-hidden="true"></i>
+                                        <i class="ph ph-play-circle" aria-hidden="true"></i>
+                                        <span>How it works</span>
                                     </a>
                                 </div>
                             </div>
-                            <div class="sp-prem-hero-product sp-prem-widget" aria-hidden="true">
-                                <div class="sp-prem-device-glow"></div>
-                                <div class="landing-notebook sp-prem-device-parallax" role="img" aria-label="A manager's notebook with handwritten bookings, scribbled income, expenses, reminders, and a last-bit-of-ink phrase">
-                                    <div class="landing-notebook__page">
-                                        <svg class="landing-notebook__coil" viewBox="0 0 28 480" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-                                            <defs>
-                                                <linearGradient id="coilMetal" x1="0" x2="1" y1="0" y2="0">
-                                                    <stop offset="0%" stop-color="#9a8a6a"/>
-                                                    <stop offset="35%" stop-color="#f0dfb1"/>
-                                                    <stop offset="65%" stop-color="#c9a86b"/>
-                                                    <stop offset="100%" stop-color="#5d4f33"/>
-                                                </linearGradient>
-                                                <linearGradient id="coilHole" x1="0" x2="0" y1="0" y2="1">
-                                                    <stop offset="0%" stop-color="rgba(0,0,0,0.55)"/>
-                                                    <stop offset="100%" stop-color="rgba(0,0,0,0.25)"/>
-                                                </linearGradient>
-                                            </defs>
-                                            <g class="landing-notebook__coil-rings">
-                                                <ellipse cx="14" cy="22"  rx="9" ry="5.2" fill="url(#coilHole)"/>
-                                                <path d="M 5 14 C 22 14, 22 30, 5 30" fill="none" stroke="url(#coilMetal)" stroke-width="2.6" stroke-linecap="round"/>
-                                                <ellipse cx="14" cy="62"  rx="9" ry="5.2" fill="url(#coilHole)"/>
-                                                <path d="M 5 54 C 22 54, 22 70, 5 70" fill="none" stroke="url(#coilMetal)" stroke-width="2.6" stroke-linecap="round"/>
-                                                <ellipse cx="14" cy="102" rx="9" ry="5.2" fill="url(#coilHole)"/>
-                                                <path d="M 5 94 C 22 94, 22 110, 5 110" fill="none" stroke="url(#coilMetal)" stroke-width="2.6" stroke-linecap="round"/>
-                                                <ellipse cx="14" cy="142" rx="9" ry="5.2" fill="url(#coilHole)"/>
-                                                <path d="M 5 134 C 22 134, 22 150, 5 150" fill="none" stroke="url(#coilMetal)" stroke-width="2.6" stroke-linecap="round"/>
-                                                <ellipse cx="14" cy="182" rx="9" ry="5.2" fill="url(#coilHole)"/>
-                                                <path d="M 5 174 C 22 174, 22 190, 5 190" fill="none" stroke="url(#coilMetal)" stroke-width="2.6" stroke-linecap="round"/>
-                                                <ellipse cx="14" cy="222" rx="9" ry="5.2" fill="url(#coilHole)"/>
-                                                <path d="M 5 214 C 22 214, 22 230, 5 230" fill="none" stroke="url(#coilMetal)" stroke-width="2.6" stroke-linecap="round"/>
-                                                <ellipse cx="14" cy="262" rx="9" ry="5.2" fill="url(#coilHole)"/>
-                                                <path d="M 5 254 C 22 254, 22 270, 5 270" fill="none" stroke="url(#coilMetal)" stroke-width="2.6" stroke-linecap="round"/>
-                                                <ellipse cx="14" cy="302" rx="9" ry="5.2" fill="url(#coilHole)"/>
-                                                <path d="M 5 294 C 22 294, 22 310, 5 310" fill="none" stroke="url(#coilMetal)" stroke-width="2.6" stroke-linecap="round"/>
-                                                <ellipse cx="14" cy="342" rx="9" ry="5.2" fill="url(#coilHole)"/>
-                                                <path d="M 5 334 C 22 334, 22 350, 5 350" fill="none" stroke="url(#coilMetal)" stroke-width="2.6" stroke-linecap="round"/>
-                                                <ellipse cx="14" cy="382" rx="9" ry="5.2" fill="url(#coilHole)"/>
-                                                <path d="M 5 374 C 22 374, 22 390, 5 390" fill="none" stroke="url(#coilMetal)" stroke-width="2.6" stroke-linecap="round"/>
-                                                <ellipse cx="14" cy="422" rx="9" ry="5.2" fill="url(#coilHole)"/>
-                                                <path d="M 5 414 C 22 414, 22 430, 5 430" fill="none" stroke="url(#coilMetal)" stroke-width="2.6" stroke-linecap="round"/>
-                                                <ellipse cx="14" cy="462" rx="9" ry="5.2" fill="url(#coilHole)"/>
-                                                <path d="M 5 454 C 22 454, 22 470, 5 470" fill="none" stroke="url(#coilMetal)" stroke-width="2.6" stroke-linecap="round"/>
-                                            </g>
-                                        </svg>
-                                        <div class="landing-notebook__rules" aria-hidden="true"></div>
-                                        <div class="landing-notebook__date" aria-hidden="true">Mon &middot; 12 Feb</div>
-                                        <ul class="landing-notebook__entries">
-                                            <li class="landing-notebook__entry is-affirmation is-wide" style="--n: 6;">
-                                                <div class="landing-notebook__affirm-row">
-                                                    <span class="landing-notebook__entry-text">GET THE JOB DONE!!!</span>
-                                                </div>
-                                                <svg class="landing-notebook__affirm-underline" viewBox="0 0 220 12" aria-hidden="true" focusable="false">
-                                                    <path d="M2 6 Q 50 0, 110 7 T 218 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                                    <path d="M4 10 Q 60 4, 116 11 T 216 9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.7"/>
-                                                </svg>
-                                            </li>
-                                            <li class="landing-notebook__entry is-done" style="--n: 0;"><span class="landing-notebook__entry-text">Burna &middot; KLA &middot; 15th</span><span class="landing-notebook__tick" aria-hidden="true">&check;</span></li>
-                                            <li class="landing-notebook__entry is-circled" style="--n: 2;"><span class="landing-notebook__entry-text">CONFIRMED</span></li>
-                                            <li class="landing-notebook__entry is-circled-yellow" style="--n: 3;"><span class="landing-notebook__entry-text">PENDING</span></li>
-                                            <li class="landing-notebook__entry is-note is-wide" style="--n: 1;"><span class="landing-notebook__entry-text">KLA show - deposit clear</span></li>
-                                            <li class="landing-notebook__entry is-note" style="--n: 2;"><span class="landing-notebook__entry-text">Crew call 7pm</span></li>
-                                            <li class="landing-notebook__entry is-reminder is-wide" style="--n: 5;"><span class="landing-notebook__entry-text">Interview - NTV Thu 10am</span></li>
-                                            <li class="landing-notebook__entry is-income" style="--n: 5;"><span class="landing-notebook__entry-text">+Burna 30M</span></li>
-                                            <li class="landing-notebook__entry is-income" style="--n: 6;"><span class="landing-notebook__entry-text">+Aya 5M</span><span class="landing-notebook__tick" aria-hidden="true">&check;</span></li>
-                                            <li class="landing-notebook__entry is-expense" style="--n: 8;"><span class="landing-notebook__entry-text">&minus;Stage 4.2M</span></li>
-                                            <li class="landing-notebook__entry is-expense" style="--n: 10;"><span class="landing-notebook__entry-text">&minus;Hotel 1.2M</span></li>
-                                            <li class="landing-notebook__entry is-expense" style="--n: 4;"><span class="landing-notebook__entry-text">&minus;Fuel 180k</span></li>
-                                            <li class="landing-notebook__entry is-expense" style="--n: 7;"><span class="landing-notebook__entry-text">&minus;Crew food 320k</span></li>
-                                            <li class="landing-notebook__entry is-expense" style="--n: 9;"><span class="landing-notebook__entry-text">&minus;Posters 250k</span></li>
-                                            <li class="landing-notebook__entry is-expense" style="--n: 11;"><span class="landing-notebook__entry-text">&minus;Runner 90k</span></li>
-                                            <li class="landing-notebook__entry is-calc is-wide" style="--n: 12;"><span class="landing-notebook__entry-text">Net 23.8M &middot; clear</span><span class="landing-notebook__tick" aria-hidden="true">&check;</span></li>
-                                            <li class="landing-notebook__entry is-arrow" style="--n: 13;"><span class="landing-notebook__entry-text">&#9742; promoter &middot; 5pm</span></li>
-                                            <li class="landing-notebook__entry is-balance is-wide" style="--n: 15;"><span class="landing-notebook__entry-text">Bal 3.5M &middot; due Fri</span></li>
-                                        </ul>
-                                        <svg class="landing-notebook__doodle" viewBox="0 0 120 80" aria-hidden="true" focusable="false">
-                                            <path d="M8 60 Q 30 18, 60 38 T 110 22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-                                            <path d="M104 14 L 110 22 L 100 26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-                                            <path d="M82 56 L 86 64 L 95 64 L 88 70 L 91 79 L 82 73 L 73 79 L 76 70 L 69 64 L 78 64 Z" fill="currentColor" opacity="0.85"/>
-                                        </svg>
-                                        <div class="landing-notebook__last-ink" aria-hidden="true">
-                                            <span class="landing-notebook__last-ink-line is-this">This Is The</span>
-                                            <span class="landing-notebook__last-ink-line is-last">Last</span>
-                                            <span class="landing-notebook__last-ink-line is-bit">Bit Of Ink</span>
-                                            <span class="landing-notebook__last-ink-line is-using">I'm Using</span>
-                                            <span class="landing-notebook__last-ink-line is-you">On You!!!</span>
-                                            <span class="landing-notebook__last-ink-note">This Is The Last Bit Of Ink I'm Using On You!!!</span>
-                                        </div>
-                                    </div>
+                            <!-- Mainstage Compass — the four pillars of an artist operation orbit the brand mark. -->
+                            <aside class="sp-hero-preview sp-hero-preview--compass" aria-hidden="true">
+                                <div class="sp-compass">
+                                    <svg class="sp-compass__rings" viewBox="0 0 240 240" aria-hidden="true">
+                                        <circle cx="120" cy="120" r="110" stroke-width="1" opacity="0.22"></circle>
+                                        <circle cx="120" cy="120" r="84"  stroke-width="1" opacity="0.34"></circle>
+                                        <circle cx="120" cy="120" r="56"  stroke-width="1" opacity="0.5"></circle>
+                                        <line x1="120" y1="6"   x2="120" y2="32"  stroke-width="1"></line>
+                                        <line x1="120" y1="208" x2="120" y2="234" stroke-width="1"></line>
+                                        <line x1="6"   y1="120" x2="32"  y2="120" stroke-width="1"></line>
+                                        <line x1="208" y1="120" x2="234" y2="120" stroke-width="1"></line>
+                                    </svg>
+                                    <img src="./star_paper_logo_pack/star_paper_256.png?v=2" srcset="./star_paper_logo_pack/star_paper_256.png?v=2 1x, ./star_paper_logo_pack/star_paper_512.png?v=2 2x" alt="" class="sp-compass__mark" />
+                                    <span class="sp-compass__label sp-compass__label--n">Bookings</span>
+                                    <span class="sp-compass__label sp-compass__label--e">Money</span>
+                                    <span class="sp-compass__label sp-compass__label--s">Tasks</span>
+                                    <span class="sp-compass__label sp-compass__label--w">Artists</span>
                                 </div>
-                            </div>
+                            </aside>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- Handcraft Phase 2: Bento features grid (additive — kill-switchable via sp_handcraft_off) -->
+        <section class="sp-handcraft-bento" aria-label="What Star Paper does">
+            <div class="sp-handcraft-bento-head">
+                <div class="sp-handcraft-bento-kicker">
+                    <span class="sp-handcraft-bento-kicker-dot" aria-hidden="true"></span>
+                    Everything in one ledger
+                </div>
+                <h2 class="sp-handcraft-bento-title">Bookings, money, and people. <em>One source of truth.</em></h2>
+            </div>
+            <div class="sp-handcraft-bento-grid">
+                <article class="sp-handcraft-bento-card sp-handcraft-bento-card--featured" data-handcraft-magnetic="card">
+                    <div class="sp-handcraft-bento-card-icon" aria-hidden="true"><i class="ph ph-currency-circle-dollar"></i></div>
+                    <h3>Control finances</h3>
+                    <p>Watch revenue, expenses, balances, and payouts from one live ledger — every artist, every show, every month.</p>
+                </article>
+                <article class="sp-handcraft-bento-card" data-handcraft-magnetic="card">
+                    <div class="sp-handcraft-bento-card-icon" aria-hidden="true"><i class="ph ph-calendar-check"></i></div>
+                    <h3>Track bookings</h3>
+                    <p>Follow show status, deposits, and due balances without spreadsheet drift.</p>
+                </article>
+                <article class="sp-handcraft-bento-card" data-handcraft-magnetic="card">
+                    <div class="sp-handcraft-bento-card-icon" aria-hidden="true"><i class="ph ph-users-three"></i></div>
+                    <h3>Manage artists</h3>
+                    <p>Keep artist profiles, priorities, and team context in one command center.</p>
+                </article>
+                <article class="sp-handcraft-bento-card sp-handcraft-bento-card--meta" data-handcraft-magnetic="card">
+                    <div class="sp-handcraft-bento-card-icon" aria-hidden="true"><i class="ph ph-globe-hemisphere-east"></i></div>
+                    <h3>Made for the road</h3>
+                    <p>Built first for managers in Uganda — works for any team running artists, bookings, and money.</p>
+                </article>
+            </div>
+        </section>
+
         <footer class="sp-prem-landing-footer sp-prem-widget" aria-label="Star Paper landing footer">
+            <div class="sp-prem-landing-footer__trust sp-handcraft-proof" aria-live="polite">
+                <div class="sp-handcraft-stars" aria-hidden="true"><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span></div>
+                <p class="sp-handcraft-proof-copy" data-handcraft-tw-done="1">Built for artist managers, labels, and teams</p>
+            </div>
             <a class="sp-prem-landing-footer__brand" href="./index.html" aria-label="Go to Star Paper home">
-                <img src="./logo-192.png?v=21" alt="Star Paper" class="sp-prem-landing-footer__logo" />
+                <img src="./star_paper_logo_pack/star_paper_128.png?v=2" srcset="./star_paper_logo_pack/star_paper_128.png?v=2 1x, ./star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Star Paper" class="sp-prem-landing-footer__logo" />
                 <div>
                     <div class="sp-prem-landing-footer__name">STAR PAPER</div>
                     <div class="sp-prem-landing-footer__meta">&copy; 2026 Star Paper</div>
                 </div>
             </a>
-            <nav class="sp-prem-landing-footer__links" aria-label="Landing sections">
-                <a href="./index.html">Home</a>
-                <a href="./how-it-works.html">How It Works</a>
-                <a href="./testimonials.html">Testimonials</a>
-                <a href="./proof.html">Proof</a>
-            </nav>
         </footer>
     </div>
 
@@ -327,13 +311,15 @@
                 <div>Logging in...</div>
             </div>
             <a class="logo login-home-link" href="#landingScreen" data-action="showLanding" onclick="showLanding(); return false;" aria-label="Return to Star Paper landing">
-                <img src="./logo-ui.png?v=21" alt="Star Paper" class="login-box-logo" />
+                <img src="./star_paper_logo_pack/star_paper_128.png?v=2" srcset="./star_paper_logo_pack/star_paper_128.png?v=2 1x, ./star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Star Paper" class="login-box-logo" />
                 <p id="loginBoxHeading">Welcome back to Star Paper</p>
                 <small class="login-subtext" id="loginBoxSubtext">Sign in to continue to your dashboard.</small>
             </a>
             <div id="loginForm" style="display: none;">
-                <input type="text" id="loginName" placeholder="Username" autocomplete="username" />
+                <label class="sr-only" for="loginName">Email</label>
+                <input type="email" id="loginName" placeholder="Email" autocomplete="email" inputmode="email" />
                 <div class="validation-message" id="loginNameError"></div>
+                <label class="sr-only" for="loginPassword">Password</label>
                 <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password" />
                 <div class="validation-message" id="loginPasswordError"></div>
                 <label class="remember-me">
@@ -347,19 +333,24 @@
                     Continue with Google
                 </button>
                 <button class="back-btn" data-action="showLanding" onclick="showLanding()">Back</button>
-                <button class="forgot-password-link" type="button" data-action="showForgotPassword" onclick="showForgotPassword()">Forgot password?</button>
+                <button class="forgot-password-link" type="button" data-action="showForgotPassword">Forgot password?</button>
             </div>
             <div id="forgotPasswordForm" style="display: none;">
-                <p class="forgot-password-intro">Enter your username and we'll help you reset your password through your account settings.</p>
-                <input type="text" id="forgotUsername" placeholder="Username" autocomplete="username" />
+                <p class="forgot-password-intro">Enter your account email and we'll send secure reset instructions if the account exists.</p>
+                <label class="sr-only" for="forgotEmail">Account email</label>
+                <input type="email" id="forgotEmail" placeholder="Email" autocomplete="email" inputmode="email" />
                 <div class="forgot-password-hint" id="forgotPasswordResult"></div>
-                <button class="btn-primary" type="button" data-action="submitForgotPassword" onclick="submitForgotPassword()">Find Account</button>
+                <button class="btn-primary" type="button" data-action="submitForgotPassword">Send Reset Email</button>
                 <button class="back-btn" type="button" data-action="showLoginForm" onclick="showLoginForm()">Back to Login</button>
             </div>
             <div id="signupForm" style="display: none;">
+                <label class="sr-only" for="signupName">Name</label>
                 <input type="text" id="signupName" placeholder="Name" autocomplete="name" />
+                <label class="sr-only" for="signupPassword">Password</label>
                 <input type="password" id="signupPassword" placeholder="Password" autocomplete="new-password" />
+                <label class="sr-only" for="signupEmail">Email</label>
                 <input type="email" id="signupEmail" placeholder="Email (required for cloud signup)" autocomplete="email" />
+                <label class="sr-only" for="signupPhone">Phone</label>
                 <input type="tel" id="signupPhone" placeholder="Phone (optional)" autocomplete="tel" />
                 <button class="btn-primary" data-action="signup" onclick="signup()">Create Account</button>
                 <div class="auth-oauth-divider"><span>or</span></div>
@@ -407,7 +398,7 @@
             <div class="sidebar-profile">
                 <div class="sidebar-profile-content">
                     <div class="sidebar-avatar sidebar-avatar--brand-mark">
-                        <img src="./logo-ui.png?v=21" alt="User Avatar" class="avatar-img avatar-img--brand-mark" id="sidebarAvatarImg">
+                        <img src="./star_paper_logo_pack/star_paper_128.png?v=2" srcset="./star_paper_logo_pack/star_paper_128.png?v=2 1x, ./star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="User Avatar" class="avatar-img avatar-img--brand-mark" id="sidebarAvatarImg">
                     </div>
                 <div class="sidebar-greeting">
                     <div class="greeting-name" id="sidebarUserName">Manager</div>
@@ -841,6 +832,12 @@
                             <input type="date" id="expenseDate" />
                         </div>
                         <div class="form-group">
+                            <label>Artist</label>
+                            <select id="expenseArtist">
+                                <option value="">Roster / Shared</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
                             <label>Category</label>
                             <select id="expenseCategory">
                                 <option value="transport">Transport</option>
@@ -877,6 +874,7 @@
                         <thead>
                             <tr>
                                 <th>Description</th>
+                                <th>Artist</th>
                                 <th>Category</th>
                                 <th>Amount</th>
                                 <th>Date</th>
@@ -910,6 +908,12 @@
                         <div class="form-group">
                             <label>Date</label>
                             <input type="date" id="otherIncomeDate" />
+                        </div>
+                        <div class="form-group">
+                            <label>Artist</label>
+                            <select id="otherIncomeArtist">
+                                <option value="">Roster / Shared</option>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label>Type</label>
@@ -969,6 +973,7 @@
                         <thead>
                             <tr>
                                 <th>Source</th>
+                                <th>Artist</th>
                                 <th>Type</th>
                                 <th>Amount</th>
                                 <th>Date</th>
@@ -986,7 +991,7 @@
 
                 </div>
                 <div class="sp-tab-panel" id="moneyPanel-reports">
-                <!-- Report Controls (period, closing thoughts, mock data) -->
+                <!-- Report Controls (period, closing thoughts) -->
                 <div class="card" id="reportControlsCard">
                     <h3 class="section-title" data-icon="reports">Generate Report</h3>
                     <div class="report-controls">
@@ -1001,8 +1006,6 @@
                         <button class="add-btn" data-action="openPdfExportModal" onclick="openPdfExportModal()" style="margin:0;"><i class="ph ph-download-simple" aria-hidden="true"></i> Generate &amp; Download PDF</button>
                         <button class="add-btn" data-action="exportCSV" onclick="exportCSV()" style="margin:0; background: var(--glass-bg, rgba(255,255,255,0.08));"><i class="ph ph-file-csv" aria-hidden="true"></i> Export CSV</button>
                         <button class="action-btn" data-action="toggleClosingThoughts" style="margin: 0;">Closing Thoughts</button>
-                        <button class="action-btn" data-action="loadMockPortfolioData" style="margin: 0;">Load Mock Data</button>
-                        <button class="action-btn action-btn--danger" data-action="clearMockData" style="margin: 0;">Clear Mock Data</button>
                     </div>
                     <div class="closing-thoughts-panel" id="closingThoughtsPanel" style="display: none;">
                         <label for="closingThoughtsInput">Manager Closing Thoughts (Optional)</label>
@@ -1032,7 +1035,7 @@
                             <input type="month" id="audienceMetricPeriod" />
                         </div>
                         <div class="form-group">
-                            <label>Social Followers (Total)</label>
+                            <label>Social Media Followers (Total)</label>
                             <input type="number" id="audienceSocialFollowers" min="0" />
                         </div>
                         <div class="form-group">
@@ -1043,9 +1046,11 @@
                             <label>YouTube Monthly Listeners</label>
                             <input type="number" id="audienceYouTubeListeners" min="0" />
                         </div>
-                    </div>
-                    <div class="report-controls" style="margin-top: 10px;">
-                        <button class="add-btn" data-action="saveAudienceMetricEntry" onclick="saveAudienceMetricEntry()" style="margin:0;"><i class="ph ph-chart-line-up" aria-hidden="true"></i> Save Metrics</button>
+                        <div class="form-group audience-metric-save-group">
+                            <button type="button" id="audienceMetricSaveBtn" class="add-btn audience-metric-save-btn" data-action="saveAudienceMetricEntry" aria-label="Save audience growth metrics">
+                                <i class="ph ph-floppy-disk" aria-hidden="true"></i> Save Metrics
+                            </button>
+                        </div>
                     </div>
                     <div id="audienceMetricList" style="margin-top: 12px;"></div>
                 </div>
@@ -1345,7 +1350,7 @@
                             <div class="settings-panel-label">Profile</div>
                             <div class="settings-profile-summary">
                                 <div class="sidebar-avatar settings-profile-avatar sidebar-avatar--brand-mark">
-                                    <img src="./logo-ui.png?v=21" alt="Settings profile avatar" class="avatar-img avatar-img--brand-mark" id="settingsAvatarImg">
+                                    <img src="./star_paper_logo_pack/star_paper_128.png?v=2" srcset="./star_paper_logo_pack/star_paper_128.png?v=2 1x, ./star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Settings profile avatar" class="avatar-img avatar-img--brand-mark" id="settingsAvatarImg">
                                 </div>
                                 <div class="settings-profile-copy">
                                     <div class="settings-profile-name" id="settingsProfileName">Manager</div>
@@ -1451,7 +1456,7 @@
             <h3 class="section-title" data-icon="dashboard">Edit Profile</h3>
             <div class="profile-avatar-row">
                 <div class="sidebar-avatar profile-avatar-preview sidebar-avatar--brand-mark">
-                    <img src="./logo-ui.png?v=21" alt="Profile Avatar" class="avatar-img avatar-img--brand-mark" id="profileAvatarPreview">
+                    <img src="./star_paper_logo_pack/star_paper_128.png?v=2" srcset="./star_paper_logo_pack/star_paper_128.png?v=2 1x, ./star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Profile Avatar" class="avatar-img avatar-img--brand-mark" id="profileAvatarPreview">
                 </div>
                 <div class="profile-avatar-actions">
                     <label class="action-btn profile-upload-btn" for="profileAvatarUpload">Upload Photo</label>
@@ -1518,7 +1523,7 @@
                 <div class="footer-section footer-bottom">
                     <div class="footer-copyright-wrap">
                         <span class="logo-wrapper footer-logo-wrapper">
-                            <img src="./logo-ui.png?v=21" alt="Star Paper Footer Logo" class="brand-logo logo-footer" loading="lazy">
+                            <img src="./star_paper_logo_pack/star_paper_128.png?v=2" srcset="./star_paper_logo_pack/star_paper_128.png?v=2 1x, ./star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Star Paper Footer Logo" class="brand-logo logo-footer" loading="lazy">
                         </span>
                         <p class="footer-copyright">&copy; 2026 Star Paper. All rights reserved.</p>
                     </div>
@@ -1594,13 +1599,14 @@
           loaded above, and these deferred scripts keep document order:
           Supabase boot wiring is installed before app.js initializes UI helpers.
         -->
-<script src="supabase.js?v=64" defer></script>
+<script src="supabase.js?v=66" defer></script>
         <script src="app.migrations.js?v=10"></script>
         <script src="app.actions.js?v=8"></script>
         <script src="app.todayboard.js?v=1"></script>
         <script src="app.tasks.js?v=4"></script>
-    <script src="app.reports.js?v=13"></script>
-<script src="app.js?v=106" defer></script>
+    <script src="app.reports.js?v=17"></script>
+<script src="app.js?v=118" defer></script>
+<script src="app.handcraft.js?v=18" defer></script>
 <script>
 (function setupDeferredLibraries() {
   var sources = {
@@ -1610,16 +1616,12 @@
       crossOrigin: 'anonymous'
     },
     chart: {
-      src: 'https://cdn.jsdelivr.net/npm/chart.js',
+      src: 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
       global: 'Chart'
     },
     jspdf: {
       src: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
       global: 'jspdf'
-    },
-    html2canvas: {
-      src: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
-      global: 'html2canvas'
     },
     globe: {
       src: 'app.globe.js?v=6',
@@ -1669,7 +1671,7 @@
 
   window.__spLoadDeferredLibrary = function(name) {
     if (name === 'pdf') {
-      return Promise.all([loadScript('jspdf'), loadScript('html2canvas')]);
+      return loadScript('jspdf');
     }
     return loadScript(name);
   };
@@ -1680,7 +1682,7 @@
     window.Sentry.init({
       dsn: 'https://43eaad14b9ae20eec68d9249f139cbc2@o4511079351189504.ingest.de.sentry.io/4511081427894352',
       environment: window.location.hostname === 'star-paper.netlify.app' ? 'production' : 'development',
-      release: 'star-paper@1.0.0',
+      release: 'star-paper@report-runtime-v138',
       tracesSampleRate: 0.1,
       ignoreErrors: [
         'AbortError',
@@ -1752,9 +1754,14 @@
           if (hasAuthCallback) return;
           var marker = '';
           var hasStoredCloudSession = false;
+          var publicAuthIntent = '';
           try {
             marker = sessionStorage.getItem('sp_boot_context') || '';
             hasStoredCloudSession = Boolean(localStorage.getItem('sp-starpaper-auth-v1')) && localStorage.getItem('sp_logged_out') !== '1';
+            publicAuthIntent = (url.searchParams.get('auth') || url.searchParams.get('screen') || '').toLowerCase();
+            var publicHash = decodeURIComponent((url.hash || '').replace(/^#/, '')).toLowerCase();
+            if (!publicAuthIntent && (publicHash === 'signup' || publicHash === 'create-account')) publicAuthIntent = 'signup';
+            if (!publicAuthIntent && (publicHash === 'login' || publicHash === 'signin')) publicAuthIntent = 'login';
           } catch (_err) {}
           if (
             window.__spAppBooted ||
@@ -1774,6 +1781,14 @@
             if (!flowId && window.beginBootTransition) {
               flowId = window.beginBootTransition('local-dev-cold-start', 'loading-session');
             }
+            if (publicAuthIntent === 'signup' && window.showSignupForm) {
+              window.showSignupForm({ instant: true });
+              return;
+            }
+            if ((publicAuthIntent === 'login' || publicAuthIntent === 'signin') && window.showLoginForm) {
+              window.showLoginForm({ instant: true });
+              return;
+            }
             if (window.showLanding) {
               window.showLanding({ flowId: flowId, minDelayMs: 80 });
               return;
@@ -1789,7 +1804,7 @@
         })();
         </script>
         <script>
-        // ── FILE:// PROTOCOL GUARD ───────────────────────────────────────────────
+        // -- FILE:// PROTOCOL GUARD -----------------------------------------------
         // When the app is opened as a local file (double-clicked), window.location.origin
         // is "null". OAuth (Google sign-in) cannot work on file:// — it requires http/https.
         // This block shows a clear warning and disables the Google button gracefully.
@@ -1873,12 +1888,9 @@
                 'goToToday':              function() { if (typeof window.goToToday        === 'function') window.goToToday(); },
                 'checkAvailability':      function() { if (typeof window.checkAvailability === 'function') window.checkAvailability(); },
                 // Reports / data
-                'generateCleanReport':    function() { if (typeof window.generateCleanReport === 'function') window.generateCleanReport(); },
                 'generateMomentumPDF':    function() { if (typeof window.generateMomentumPDF === 'function') window.generateMomentumPDF(); },
                 'openPdfExportModal':     function() { if (typeof window.openPdfExportModal === 'function') window.openPdfExportModal(); },
                 'exportCSV':              function() { if (typeof window.exportCSV === 'function') window.exportCSV(); },
-                'loadMockPortfolioData':  function() { if (typeof window.loadMockPortfolioData === 'function') window.loadMockPortfolioData(); },
-                'clearMockData':          function() { if (typeof window.clearMockData    === 'function') window.clearMockData(); },
                 'exportAllData':          function() { if (typeof window.exportAllData    === 'function') window.exportAllData(); },
                 'clearAllData':           function() { if (typeof window.clearAllData     === 'function') window.clearAllData(); },
                 // Modals
@@ -1943,56 +1955,64 @@
         })();
         </script>
         <script>
+            window.showForgotPassword = function showForgotPassword() {
+                var loginForm = document.getElementById('loginForm');
+                var signupForm = document.getElementById('signupForm');
+                var forgotForm = document.getElementById('forgotPasswordForm');
+                var result = document.getElementById('forgotPasswordResult');
+                var emailInput = document.getElementById('forgotEmail');
+                var heading = document.getElementById('loginBoxHeading');
+                var subtext = document.getElementById('loginBoxSubtext');
+                if (loginForm) loginForm.style.display = 'none';
+                if (signupForm) signupForm.style.display = 'none';
+                if (forgotForm) forgotForm.style.display = 'block';
+                if (result) {
+                    result.textContent = '';
+                    result.className = 'forgot-password-hint';
+                }
+                if (emailInput) emailInput.value = '';
+                if (heading) heading.textContent = 'Reset your password';
+                if (subtext) subtext.textContent = 'Enter your account email to receive secure reset instructions.';
+            };
+
+            window.submitForgotPassword = async function submitForgotPassword() {
+                var email = (document.getElementById('forgotEmail')?.value || '').trim();
+                var result = document.getElementById('forgotPasswordResult');
+                if (!result) return;
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                    result.textContent = 'Please enter a valid email address.';
+                    result.className = 'forgot-password-hint forgot-password-hint--error';
+                    return;
+                }
+                result.textContent = 'Sending reset instructions...';
+                result.className = 'forgot-password-hint';
+                try {
+                    if (window.SP?.client?.auth?.resetPasswordForEmail) {
+                        var redirectTo = typeof window.SP.getPasswordResetRedirectUrl === 'function'
+                            ? window.SP.getPasswordResetRedirectUrl()
+                            : new URL(window.location.pathname || '/', window.location.origin).toString();
+                        var resetResult = await window.SP.client.auth.resetPasswordForEmail(email, { redirectTo: redirectTo });
+                        if (resetResult?.error) {
+                            console.warn('[StarPaper] Password reset request was not accepted by Supabase:', resetResult.error);
+                        }
+                    } else {
+                        console.warn('[StarPaper] Password reset skipped because Supabase auth is not ready.');
+                    }
+                } catch (err) {
+                    console.warn('[StarPaper] Password reset request failed:', err);
+                }
+                result.textContent = 'If an account exists for that email, reset instructions will arrive shortly.';
+                result.className = 'forgot-password-hint forgot-password-hint--success';
+            };
+
             document.addEventListener('click', function(e) {
                 if (e.target.closest('[data-action="showForgotPassword"]')) {
-                    document.getElementById('loginForm').style.display = 'none';
-                    document.getElementById('signupForm').style.display = 'none';
-                    document.getElementById('forgotPasswordForm').style.display = 'block';
-                    document.getElementById('forgotPasswordResult').textContent = '';
-                    document.getElementById('forgotUsername').value = '';
+                    e.preventDefault();
+                    window.showForgotPassword();
                 }
                 if (e.target.closest('[data-action="submitForgotPassword"]')) {
-                    var username = (document.getElementById('forgotUsername').value || '').trim();
-                    var result = document.getElementById('forgotPasswordResult');
-                    if (!username) { result.textContent = 'Please enter your username.'; result.className = 'forgot-password-hint forgot-password-hint--error'; return; }
-                    result.textContent = 'Looking up account...';
-                    result.className = 'forgot-password-hint';
-                    (async function() {
-                        try {
-                            // Try Supabase password reset first
-                            if (window.SP && typeof window.SP.client !== 'undefined') {
-                                var email = null;
-                                // If input looks like email, use directly
-                                if (username.includes('@')) {
-                                    email = username;
-                                } else {
-                                    // Lookup email by username via RPC
-                                    var rpcResult = await window.SP.client.rpc('get_email_for_username', { p_username: username });
-                                    if (rpcResult.data && typeof rpcResult.data === 'string' && rpcResult.data.includes('@')) {
-                                        email = rpcResult.data;
-                                    }
-                                }
-                                if (email) {
-                                    var resetResult = await window.SP.client.auth.resetPasswordForEmail(email, {
-                                        redirectTo: window.location.origin
-                                    });
-                                    if (resetResult.error) {
-                                        result.textContent = 'Could not send reset email. Please try again later.';
-                                        result.className = 'forgot-password-hint forgot-password-hint--error';
-                                    } else {
-                                        result.textContent = 'Password reset email sent! Check your inbox.';
-                                        result.className = 'forgot-password-hint forgot-password-hint--success';
-                                    }
-                                    return;
-                                }
-                            }
-                            result.textContent = 'No cloud account was found with that username.';
-                            result.className = 'forgot-password-hint forgot-password-hint--error';
-                        } catch (err) {
-                            result.textContent = 'Something went wrong. Please try again.';
-                            result.className = 'forgot-password-hint forgot-password-hint--error';
-                        }
-                    })();
+                    e.preventDefault();
+                    window.submitForgotPassword();
                 }
             });
         </script>

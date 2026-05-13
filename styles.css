@@ -235,7 +235,7 @@ label {
    SECTION 4: BUTTONS
    ============================================================================ */
 
-/* ─── Neutral button reset — bare <button> is unstyled by default ─── */
+/* â”€â”€â”€ Neutral button reset â€” bare <button> is unstyled by default â”€â”€â”€ */
 button {
     cursor: pointer;
     font-family: 'Montserrat', 'Segoe UI', system-ui, sans-serif;
@@ -254,7 +254,7 @@ button {
     justify-content: center;
 }
 
-/* ─── Primary CTA: gold gradient pill ─── */
+/* â”€â”€â”€ Primary CTA: gold gradient pill â”€â”€â”€ */
 .btn-primary,
 .btn,
 .action-btn,
@@ -505,6 +505,17 @@ textarea {
     gap: 16px;
 }
 
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
 .validation-message {
     font-size: 12px;
     color: #f44336;
@@ -650,7 +661,7 @@ body.light-theme td.deposit-blue,
 body.light-theme td.expense-red { font-weight: 700; }
 
 /* ============================================================================
-   SECTION 8: ANIMATIONS (deduplicated — one definition each)
+   SECTION 8: ANIMATIONS (deduplicated â€” one definition each)
    ============================================================================ */
 
 @keyframes goldPulse {
@@ -706,7 +717,7 @@ body.light-theme td.expense-red { font-weight: 700; }
 }
 
 /* ============================================================================
-   SECTION 9: APPLICATION LAYOUT — APP CONTAINER
+   SECTION 9: APPLICATION LAYOUT â€” APP CONTAINER
    ============================================================================ */
 
 .app-container {
@@ -719,7 +730,7 @@ body.light-theme td.expense-red { font-weight: 700; }
 }
 
 /* ============================================================================
-   SECTION 10: SIDEBAR — SINGLE AUTHORITATIVE DEFINITION
+   SECTION 10: SIDEBAR â€” SINGLE AUTHORITATIVE DEFINITION
    ============================================================================ */
 
 /* --- Base (mobile-first): off-canvas sidebar --- */
@@ -787,7 +798,7 @@ body.light-theme .sidebar {
     .main-content { padding: 30px 22px; }
 }
 
-/* ── Sidebar collapse toggle button ─────────────────────────────────────────*/
+/* â”€â”€ Sidebar collapse toggle button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€*/
 .sidebar-collapse-btn { display: none; }
 
 @media (min-width: 1025px) {
@@ -843,7 +854,7 @@ body.light-theme .sidebar {
     body.sidebar--collapsed .scb-icon--open  { display: block; }
 }
 
-/* ── Collapsed state ─────────────────────────────────────────────────────────*/
+/* â”€â”€ Collapsed state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€*/
 @media (min-width: 1025px) {
     body.sidebar--collapsed {
         --layout-sidebar-offset: 64px;
@@ -874,12 +885,12 @@ body.light-theme .sidebar {
         pointer-events: none;
         transition: opacity 0.2s ease, width 0.25s ease;
     }
-    /* Greeting must be display:none — width:0 still occupies gap space in flexbox */
+    /* Greeting must be display:none â€” width:0 still occupies gap space in flexbox */
     body.sidebar--collapsed .sidebar-greeting {
         display: none;
     }
 
-    /* Strip all flex from profile — use block + margin auto to center avatar */
+    /* Strip all flex from profile â€” use block + margin auto to center avatar */
     body.sidebar--collapsed .sidebar-profile {
         display: block;
         width: var(--sidebar-collapsed-rail-item);
@@ -955,7 +966,7 @@ body.light-theme .sidebar {
         box-shadow: 0 4px 14px rgba(0,0,0,0.1);
     }
 
-    /* ── Hover peek: float out to full width without shifting layout ─────── */
+    /* â”€â”€ Hover peek: float out to full width without shifting layout â”€â”€â”€â”€â”€â”€â”€ */
     body.sidebar--collapsed .sidebar:hover {
         width: var(--sidebar-width);
         padding: 20px 16px;
@@ -1475,7 +1486,7 @@ select:focus-visible,
 
 .user-info { display: flex; align-items: center; gap: 15px; }
 
-/* ── Sync Status Indicator ──────────────────────────────────────────────── */
+/* â”€â”€ Sync Status Indicator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .sp-sync-indicator {
     display: flex;
     align-items: center;
@@ -2235,7 +2246,7 @@ body.light-theme .expense-field { background: #f7f4ef; border-color: rgba(255,17
 body.light-theme .expense-field span { color: #777; }
 
 /* ============================================================================
-   SECTION 23: UI CHROME — TOAST, LOADING, OVERLAYS
+   SECTION 23: UI CHROME â€” TOAST, LOADING, OVERLAYS
    ============================================================================ */
 
 .spinner {
@@ -2246,7 +2257,7 @@ body.light-theme .expense-field span { color: #777; }
     animation: spin 0.8s linear infinite;
 }
 
-/* ── Premium Toast System ────────────────────────────────────────────────── */
+/* â”€â”€ Premium Toast System â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .sp-toast-stack {
     position: fixed;
     bottom: 24px;
@@ -2369,7 +2380,7 @@ body.light-theme .sp-toast__close:hover { color: rgba(0,0,0,0.7); }
 }
 body.light-theme .activity-time-ago { color: #888; }
 
-/* ── Nudge Banners ───────────────────────────────────────────────────────── */
+/* â”€â”€ Nudge Banners â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .nudge-item {
     display: flex;
     align-items: flex-start;
@@ -2476,7 +2487,7 @@ body.light-theme .nudge-item--clickable:focus-visible {
 body.light-theme .sp-empty__title { color: #1b1b1b; }
 body.light-theme .sp-empty__sub   { color: #666; }
 
-/* ── Section transitions handled via @keyframes sectionFadeIn above ── */
+/* â”€â”€ Section transitions handled via @keyframes sectionFadeIn above â”€â”€ */
 
 .loading-overlay {
     position: absolute;
@@ -2521,7 +2532,7 @@ body.light-theme .sp-empty__sub   { color: #666; }
 .screen-active { opacity: 1; pointer-events: auto; }
 
 /* ============================================================================
-   SECTION 24: CONTROLS — TOP RIGHT, QUICK ADD, THEME TOGGLE
+   SECTION 24: CONTROLS â€” TOP RIGHT, QUICK ADD, THEME TOGGLE
    ============================================================================ */
 
 .theme-toggle {
@@ -2629,7 +2640,7 @@ body.light-theme .quick-add-panel button:hover {
 .remember-me input { width: 16px; height: 16px; margin: 0; flex-shrink: 0; }
 
 /* ============================================================================
-   SECTION 25: CARDS — FAB, HEADER ROW, ANIMATION
+   SECTION 25: CARDS â€” FAB, HEADER ROW, ANIMATION
    ============================================================================ */
 
 .card-fab {
@@ -3334,7 +3345,7 @@ body.light-theme #closingThoughtsCount {
     scrollbar-width: thin;
     scrollbar-color: rgba(255,179,0,0.3) transparent;
 }
-/* Profile and form modals should not scroll internally — let the viewport handle it */
+/* Profile and form modals should not scroll internally â€” let the viewport handle it */
 .profile-modal-content,
 .confirm-delete-modal-content {
     overflow: visible;
@@ -3399,26 +3410,45 @@ body.light-theme #closingThoughtsCount {
    SECTION 30: LOGIN / LANDING
    ============================================================================ */
 
+/* Auth screen â€” pinned to viewport so the page never scrolls when the form
+   is open. Pair with body.sp-auth-open { overflow: hidden } below to lock the
+   landing scroll while the form is visible. */
 .login-container {
     display: none;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    padding: 20px;
+    position: fixed;
+    inset: 0;
+    place-items: center;
+    padding: clamp(12px, 3vh, 24px);
     background: transparent;
-    position: relative;
     z-index: 100;
+    overflow: hidden;
+}
+.login-container[style*="display: flex"],
+.login-container[style*="display:flex"] {
+    /* If inline styles flip display to flex, retain grid centering. */
+    display: grid !important;
 }
 .login-box {
     background: rgba(0,0,0,0.8);
     backdrop-filter: blur(10px);
     border: 2px solid rgba(255,179,0,0.3);
     border-radius: 20px;
-    padding: 40px;
+    padding: clamp(20px, 4vh, 28px);
     width: 100%;
     max-width: 420px;
+    max-height: calc(100svh - 24px);
+    overflow: hidden;
     box-shadow: 0 8px 32px rgba(255,179,0,0.2);
     position: relative;
+}
+
+/* Lock body + html scroll while the auth screen is shown.
+   `<html>` gets a separate rule because some legacy CSS sets `overflow: auto`
+   directly on the html element, which keeps the page scrollable even when the
+   body is locked. */
+body.sp-auth-open,
+html:has(body.sp-auth-open) {
+    overflow: hidden !important;
 }
 
 /* All buttons inside the login box are full-width block by default */
@@ -3449,10 +3479,10 @@ body.light-theme #closingThoughtsCount {
 }
 
 .login-box-logo {
-    width: 64px;
-    height: 64px;
+    width: 48px;
+    height: 48px;
     display: block;
-    margin: 0 auto 14px;
+    margin: 0 auto 10px;
     object-fit: contain;
     border-radius: 0;
     background: transparent;
@@ -3694,7 +3724,7 @@ body.light-theme .forgot-password-hint--success { background: rgba(76,175,80,0.0
     box-shadow: 0 0 18px rgba(255, 179, 0, 0.2);
     transform: translateY(-2px);
 }
-/* "Already have an account?" — quieter, smaller */
+/* "Already have an account?" â€” quieter, smaller */
 .landing-btn--login {
     font-size: 13px;
     padding: 10px 24px;
@@ -3704,7 +3734,7 @@ body.light-theme .forgot-password-hint--success { background: rgba(76,175,80,0.0
 }
 .landing-btn--login:hover { color: #FFB300; border-color: rgba(255, 179, 0, 0.6); }
 
-/* "How It Works" — dimmest, text-like */
+/* "How It Works" â€” dimmest, text-like */
 .landing-btn--how {
     font-size: 13px;
     padding: 10px 24px;
@@ -3790,7 +3820,7 @@ body.light-theme #landingScreen .landing-btn {
 }
 
 /* ============================================================================
-   SECTION 30B: FEATURE REEL — animated landing hero preview
+   SECTION 30B: FEATURE REEL â€” animated landing hero preview
    ============================================================================ */
 
 /* --- Animation keyframes --- */
@@ -4182,7 +4212,7 @@ body.light-theme .brand-logo { filter: drop-shadow(0 2px 8px rgba(0,0,0,0.15)) d
 body.light-theme .brand-logo:hover { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.2)) drop-shadow(0 0 8px rgba(138,109,26,0.15)); }
 
 /* ============================================================================
-   SECTION 33: FOOTER — hidden in app shell (use sidebar help link instead)
+   SECTION 33: FOOTER â€” hidden in app shell (use sidebar help link instead)
    ============================================================================ */
 
 .app-footer {
@@ -4386,7 +4416,7 @@ body.light-theme #userName, body.light-theme #sidebarUserName { color: #1b1b1b; 
 }
 
 /* ============================================================================
-   SECTION 36: DASHBOARD — MAINSTAGE & PULSE
+   SECTION 36: DASHBOARD â€” MAINSTAGE & PULSE
    ============================================================================ */
 
 .mainstage-strip, .mainstage-pulse-card {
@@ -4548,7 +4578,7 @@ body.light-theme .nudge-banner__text {
     letter-spacing: -0.5px;
 }
 
-/* Status badge — matches app pill badge style */
+/* Status badge â€” matches app pill badge style */
 .today-board__status {
     font-size: 12px;
     font-weight: 700;
@@ -5816,12 +5846,12 @@ html {
 }
 
 /* ============================================================================
-   STAR PAPER ENHANCEMENTS — PHASE 2
+   STAR PAPER ENHANCEMENTS â€” PHASE 2
    Coin rain, bottom nav, history nav, scroll-to-top, section transitions,
    sticky mini-nav, logo pulse, typewriter
    ============================================================================ */
 
-/* ── Coin Rain Canvas ─────────────────────────────────────────────────────── */
+/* â”€â”€ Coin Rain Canvas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /* Ensure landing card floats above landing surfaces */
 #landingScreen .landing-top-controls,
 #landingScreen .landing-mainstage-card {
@@ -5829,7 +5859,7 @@ html {
     z-index: 2;
 }
 
-/* ── Logo pulse glow on landing ───────────────────────────────────────────── */
+/* â”€â”€ Logo pulse glow on landing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @keyframes logoPulse {
     0%, 100% { filter: drop-shadow(0 0 6px rgba(255,179,0,0.35)); }
     50%       { filter: drop-shadow(0 0 18px rgba(255,179,0,0.70)) drop-shadow(0 0 36px rgba(255,179,0,0.30)); }
@@ -5938,7 +5968,7 @@ body.light-theme #landingScreen .landing-feature-nav {
     border-color: rgba(138, 109, 26, 0.34);
 }
 
-/* ── Typewriter headline ──────────────────────────────────────────────────── */
+/* â”€â”€ Typewriter headline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @keyframes typerReveal {
     from { opacity: 0; transform: translateY(12px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -5947,6 +5977,7 @@ body.light-theme #landingScreen .landing-feature-nav {
     display: inline-block;
     opacity: 0;
     animation: typerReveal 0.42s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+    animation-fill-mode: both;
 }
 @keyframes twCaretBlink {
     0%, 49% { opacity: 1; }
@@ -5957,11 +5988,11 @@ body.light-theme #landingScreen .landing-feature-nav {
     position: relative;
     padding-right: 0;
 }
-/* Remove old pseudo-element cursor — replaced by Phosphor ph-cursor-text icon */
+/* Remove old pseudo-element cursor â€” replaced by Phosphor ph-cursor-text icon */
 #landingScreen .landing-hero-subtitle.landing-hero-subtitle--typing::after {
     display: none;
 }
-/* Phosphor cursor icon — sits inline immediately after typed text */
+/* Phosphor cursor icon â€” sits inline immediately after typed text */
 #landingScreen .landing-hero-subtitle .tw-cursor {
     display: inline;
     font-size: 0.95em;
@@ -5975,7 +6006,7 @@ body.light-theme #landingScreen .landing-feature-nav {
     display: inline;
 }
 
-/* ── Back / Forward history buttons ──────────────────────────────────────── */
+/* â”€â”€ Back / Forward history buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .nav-hist-wrap {
     display: flex;
     align-items: center;
@@ -6008,12 +6039,12 @@ body.light-theme #landingScreen .landing-feature-nav {
 }
 .nav-hist-btn .ph,
 .nav-hist-btn svg { font-size: 15px; line-height: 1; width: 15px; height: 15px; }
-/* Hide on desktop — browser native back/forward is available */
+/* Hide on desktop â€” browser native back/forward is available */
 @media (min-width: 1025px) {
     .nav-hist-wrap { display: none; }
 }
 
-/* ── Mobile bottom navigation bar ────────────────────────────────────────── */
+/* â”€â”€ Mobile bottom navigation bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .bottom-nav {
     display: none; /* shown only on mobile via media query */
     position: fixed;
@@ -6107,7 +6138,7 @@ body.light-theme .bottom-nav-item.active { color: #8a6d1a; }
 .bottom-nav-item--logout { color: rgba(248,113,113,0.82); }
 .bottom-nav-item--logout:hover { color: #ef4444; }
 
-/* ── Scroll-to-top FAB ────────────────────────────────────────────────────── */
+/* â”€â”€ Scroll-to-top FAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .scroll-top-fab {
     position: fixed;
     bottom: calc(70px + env(safe-area-inset-bottom, 0px));
@@ -6157,7 +6188,7 @@ body.light-theme .scroll-top-fab {
     border-color: rgba(138,109,26,0.35);
 }
 
-/* ── Landing sticky mini-nav ─────────────────────────────────────────────── */
+/* â”€â”€ Landing sticky mini-nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .landing-mini-nav {
     position: fixed;
     top: 0;
@@ -6238,7 +6269,7 @@ body.light-theme .mini-nav-brand { color: #8a6d1a; }
    COMMAND PALETTE & KEYBOARD SHORTCUTS
    ============================================================================ */
 
-/* ── Backdrop ──────────────────────────────────────────────────────────────── */
+/* â”€â”€ Backdrop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .sp-palette-backdrop {
     position: fixed;
     inset: 0;
@@ -6255,7 +6286,7 @@ body.light-theme .mini-nav-brand { color: #8a6d1a; }
     pointer-events: all;
 }
 
-/* ── Palette container ────────────────────────────────────────────────────── */
+/* â”€â”€ Palette container â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .sp-palette {
     position: fixed;
     top: 18vh;
@@ -6284,7 +6315,7 @@ body.light-theme .sp-palette {
     box-shadow: 0 32px 80px rgba(0,0,0,0.2), 0 0 0 1px rgba(138,109,26,0.08);
 }
 
-/* ── Header ───────────────────────────────────────────────────────────────── */
+/* â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .sp-palette__header {
     display: flex;
     align-items: center;
@@ -6330,7 +6361,7 @@ body.light-theme .sp-palette__esc {
     color: #5b4b32;
 }
 
-/* ── Results list ─────────────────────────────────────────────────────────── */
+/* â”€â”€ Results list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .sp-palette__results {
     list-style: none;
     margin: 0;
@@ -6437,7 +6468,7 @@ body.light-theme .sp-palette__empty { color: #766241; }
     font-weight: 700;
 }
 
-/* ── Footer ───────────────────────────────────────────────────────────────── */
+/* â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .sp-palette__footer {
     display: flex;
     align-items: center;
@@ -6463,7 +6494,7 @@ body.light-theme .sp-palette__footer kbd {
 }
 .sp-palette__footer-hint { margin-left: auto; font-style: italic; }
 
-/* ── Keyboard shortcut hint ───────────────────────────────────────────────── */
+/* â”€â”€ Keyboard shortcut hint â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .sp-kbd-hint {
     position: fixed;
     bottom: 80px;
@@ -6502,7 +6533,7 @@ body.light-theme .sp-kbd-hint {
    PHASE 4: BENTO GRID, VELOCITY GAUGE, GOLD SHIMMER SKELETONS
    ============================================================================ */
 
-/* ── Gold Shimmer Skeleton ────────────────────────────────────────────────── */
+/* â”€â”€ Gold Shimmer Skeleton â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .sp-skeleton {
     display: inline-block;
     width: 90px;
@@ -6533,7 +6564,7 @@ body.light-theme .sp-skeleton {
     animation: spSkeletonShimmer 1.4s ease-in-out infinite;
 }
 
-/* ── Bento Grid (desktop ≥1025px) ─────────────────────────────────────────── */
+/* â”€â”€ Bento Grid (desktop â‰¥1025px) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @media (min-width: 1025px) {
     #dashboard .dashboard-home-layout {
         grid-template-columns: 3fr 2fr;
@@ -6563,7 +6594,7 @@ body.light-theme .sp-skeleton {
     }
 }
 
-/* ── Velocity Gauge ────────────────────────────────────────────────────────── */
+/* â”€â”€ Velocity Gauge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .velocity-gauge-wrap {
     margin: 18px 0 6px;
     padding: 16px;
@@ -6634,10 +6665,10 @@ body.light-theme .velocity-gauge-wrap {
    PHASE 5: DENSITY TOGGLE, CARD SWEEP, PROGRESS ANIMATION, CHEAT SHEET
    ============================================================================ */
 
-/* ── Density Toggle Button ────────────────────────────────────────────────── */
+/* â”€â”€ Density Toggle Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .sp-density-btn { gap: 5px; }
 
-/* ── Compact Density Mode ─────────────────────────────────────────────────── */
+/* â”€â”€ Compact Density Mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 body.sp-density--compact .card,
 body.sp-density--compact .stat-card {
     padding: 20px !important;
@@ -6656,7 +6687,7 @@ body.sp-density--compact .velocity-gauge-wrap { padding: 12px; margin: 10px 0 4p
 body.sp-density--compact .sp-palette__result { padding: 8px 16px; }
 body.sp-density--compact table td, body.sp-density--compact table th { padding: 7px 10px; font-size: 12px; }
 
-/* ── Card Gold Sweep on Hover ─────────────────────────────────────────────── */
+/* â”€â”€ Card Gold Sweep on Hover â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .card { position: relative; }  /* overflow:visible to allow sticky card-header-row */
 .card::after {
     content: '';
@@ -6676,7 +6707,7 @@ body.sp-density--compact table td, body.sp-density--compact table th { padding: 
 }
 .card:hover::after { background-position: -200% 0; }
 
-/* ── Goal Progress Bar Animation ─────────────────────────────────────────── */
+/* â”€â”€ Goal Progress Bar Animation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .monthly-goal-progress__bar {
     transition: width 0.9s cubic-bezier(0.22, 0.61, 0.36, 1) !important;
 }
@@ -6689,7 +6720,7 @@ body.sp-density--compact table td, body.sp-density--compact table th { padding: 
     100% { box-shadow: 0 0 0 0 rgba(255,179,0,0); }
 }
 
-/* ── Cheat Sheet Modal ────────────────────────────────────────────────────── */
+/* â”€â”€ Cheat Sheet Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .sp-cheatsheet-backdrop {
     position: fixed;
     inset: 0;
@@ -6892,7 +6923,7 @@ body.light-theme .sp-tab--active {
     display: block !important;
 }
 
-/* ── Card hover scale (original better.txt request) ─────────────────────── */
+/* â”€â”€ Card hover scale (original better.txt request) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .card:hover { transform: translateY(-2px) scale(1.005); }
 .stat-card:hover { transform: translateY(-2px) scale(1.005); }
 
@@ -6901,7 +6932,7 @@ body.sp-density--compact .sp-tab { padding: 6px 12px; font-size: 12px; }
 body.sp-density--compact .sp-tabs { margin-bottom: 12px; padding-bottom: 10px; }
 
 /* ============================================================================
-   SIDEBAR COHESION — aligned with app card style
+   SIDEBAR COHESION â€” aligned with app card style
    ============================================================================ */
 
 /* Sidebar: match the app's glass-dark card language */
@@ -7024,7 +7055,7 @@ body.light-theme .sidebar-theme-toggle {
 }
 body.light-theme .sidebar-nav-label { color: rgba(138,109,26,0.5); }
 
-/* ── Sidebar utility row (About · Settings · Logout) ─────────────────────── */
+/* â”€â”€ Sidebar utility row (About Â· Settings Â· Logout) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .sidebar-util-row {
     display: flex;
     align-items: center;
@@ -7102,7 +7133,7 @@ body.sidebar--collapsed .sidebar:hover .sidebar-util-btn {
     padding: 8px 4px;
 }
 
-/* ── About Modal ─────────────────────────────────────────────────────────── */
+/* â”€â”€ About Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .sp-about-modal, .sp-admin-modal {
     position: fixed;
     inset: 0;
@@ -7594,7 +7625,7 @@ body.light-theme .sp-muted { color: rgba(0,0,0,0.4); }
     }
 }
 
-/* ── SECTION: Money Moves Report Dashboard ──────────────────────────── */
+/* â”€â”€ SECTION: Money Moves Report Dashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .sp-rpt-dashboard { margin-top: 16px; }
 
 /* Haptic hover effect */
@@ -7759,6 +7790,20 @@ body.light-theme .sp-muted { color: rgba(0,0,0,0.4); }
 .audience-metric-row__label { color: #bfbfbf; font-weight: 600; }
 .audience-metric-row__value { color: #fff; font-variant-numeric: tabular-nums; }
 .audience-metric-empty { color: #888; font-size: 12px; }
+.audience-metric-save-group {
+  display: flex;
+  align-items: flex-end;
+}
+.audience-metric-save-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  white-space: nowrap;
+}
 
 /* Light theme overrides */
 body.light-theme .sp-rpt-hero { background: linear-gradient(135deg, rgba(234,179,8,0.08) 0%, rgba(240,240,240,0.9) 60%); border-color: rgba(0,0,0,0.08); }
@@ -7947,8 +7992,8 @@ body.light-theme #audienceMetricsCard input[type="number"] {
 }
 
 #landingScreen .landing-hero-medallion {
-  width: clamp(72px, 5.4vw, 92px);
-  height: clamp(72px, 5.4vw, 92px);
+  width: clamp(96px, 9vw, 140px);
+  height: clamp(96px, 9vw, 140px);
   margin: 0 auto 10px !important;
 }
 
@@ -8094,8 +8139,8 @@ body.light-theme #landingScreen .landing-shell-nav {
   }
 
   #landingScreen .landing-hero-medallion {
-    width: 92px;
-    height: 92px;
+    width: 104px;
+    height: 104px;
     margin-bottom: 12px !important;
   }
 
@@ -8140,12 +8185,12 @@ body.light-theme #landingScreen .landing-shell-nav {
   }
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   B3 (2026-04-24): Landing typography unification → Space Grotesk via --font-ui
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   B3 (2026-04-24): Landing typography unification â†’ Space Grotesk via --font-ui
    Unifies family only. Weight/size/letter-spacing/line-height inherit from each
    selector's existing rules above. The notebook (B6) opts back into Caveat
    explicitly via --font-hand, so this block does not touch the notebook scope.
-   ───────────────────────────────────────────────────────────────────────────── */
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 #landingScreen,
 #landingScreen .landing-hero-heading,
 #landingScreen .landing-hero-subtitle,
@@ -8174,11 +8219,11 @@ body.light-theme #landingScreen .landing-shell-nav {
   font-family: var(--font-ui, 'Space Grotesk', 'Segoe UI', system-ui, sans-serif);
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   B4 (2026-04-24): Component surfaces → DS tokens
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   B4 (2026-04-24): Component surfaces â†’ DS tokens
    Pulls border/surface/accent from --landing-* aliases (B1) without breaking
    the pill-button and glass-card silhouettes. Radii kept at intentional values.
-   ───────────────────────────────────────────────────────────────────────────── */
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 #landingScreen .landing-card {
   background: color-mix(in srgb, var(--landing-surface) 82%, transparent);
   border-color: color-mix(in srgb, var(--landing-accent) 22%, transparent);
@@ -8223,10 +8268,10 @@ body.light-theme #landingScreen .landing-card {
   background: color-mix(in srgb, var(--landing-surface) 88%, transparent);
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   B5 (2026-04-24): Carousel dots/nav → DS tokens (kill-switch fallback)
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   B5 (2026-04-24): Carousel dots/nav â†’ DS tokens (kill-switch fallback)
    Premium layer still polishes on top; this keeps the base coherent.
-   ───────────────────────────────────────────────────────────────────────────── */
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 #landingScreen .landing-feature-nav {
   border-color: color-mix(in srgb, var(--landing-accent) 36%, transparent);
   background: color-mix(in srgb, var(--landing-bg) 85%, transparent);
@@ -8244,7 +8289,7 @@ body.light-theme #landingScreen .landing-card {
 }
 
 /* ============================================================
-   B6 — Landing notebook mainstage (replaces dashboard preview)
+   B6 â€” Landing notebook mainstage (replaces dashboard preview)
    Handwritten composition with live scribbles and a realistic pen.
    Uses DS tokens via --landing-* aliases (B1) and
    the canonical Caveat hand font from --font-hand (B2).
@@ -8276,7 +8321,7 @@ body.light-theme #landingScreen .landing-card {
   padding-block: clamp(4px, 0.8vw, 10px);
   isolation: isolate;
   font-family: var(--font-ui, 'Space Grotesk', system-ui, sans-serif);
-  /* B7+ Notebook stands upright (0deg) — no rotation, so its layout box
+  /* B7+ Notebook stands upright (0deg) â€” no rotation, so its layout box
      equals its visual box. Guarantees no overflow into the hero container
      at any viewport. */
   transform: none;
@@ -8303,7 +8348,7 @@ body.light-theme #landingScreen .landing-card {
   color: var(--notebook-ink);
 }
 
-/* B7a — Realistic SVG spiral coil binding (replaces flat repeating-radial spine) */
+/* B7a â€” Realistic SVG spiral coil binding (replaces flat repeating-radial spine) */
 #landingScreen .landing-notebook__coil {
   position: absolute;
   inset: 4% auto 4% 6px;
@@ -8455,7 +8500,7 @@ body.light-theme #landingScreen .landing-card {
   padding-bottom: 1px;
 }
 
-/* B7c — Multi-coloured ink variants for income/expense/balance/calc/phone */
+/* B7c â€” Multi-coloured ink variants for income/expense/balance/calc/phone */
 #landingScreen .landing-notebook__entry.is-income .landing-notebook__entry-text {
   color: var(--notebook-ink-green);
   font-weight: 600;
@@ -8535,7 +8580,7 @@ body.light-theme #landingScreen .landing-card {
   z-index: -1;
 }
 
-/* B7d — Quote (Berry Gordy) + signature (jobdatellem) styling */
+/* B7d â€” Quote (Berry Gordy) + signature (jobdatellem) styling */
 #landingScreen .landing-notebook__entry.is-quote .landing-notebook__entry-text {
   font-style: italic;
   font-size: 1.18em;
@@ -8548,7 +8593,7 @@ body.light-theme #landingScreen .landing-card {
   color: var(--notebook-ink-soft);
   margin-left: 1.6em;
 }
-/* B7+ Affirmation: "GET THE JOB DONE!!!" — bold scribbled headline with
+/* B7+ Affirmation: "GET THE JOB DONE!!!" â€” bold scribbled headline with
    no prop icons in this row. */
 #landingScreen .landing-notebook__entry.is-affirmation {
   flex-direction: column;
@@ -8676,7 +8721,7 @@ body.light-theme #landingScreen .landing-card {
   z-index: 1;
 }
 
-/* Light theme — warmer cream + darker ink (incl. multi-coloured ink overrides) */
+/* Light theme â€” warmer cream + darker ink (incl. multi-coloured ink overrides) */
 body.light-theme #landingScreen .landing-notebook {
   --notebook-page-bg: #fcf6e6;
   --notebook-page-bg-alt: #f3ead0;
@@ -8693,7 +8738,7 @@ body.light-theme #landingScreen .landing-notebook {
   --notebook-card-meta: #6b6e7a;
 }
 
-/* B7e — Desktop two-column grid for the entries (≥769px) so 22 scribbles fit */
+/* B7e â€” Desktop two-column grid for the entries (â‰¥769px) so 22 scribbles fit */
 @media (min-width: 769px) {
   #landingScreen .landing-notebook__entries {
     display: grid;
@@ -8710,12 +8755,11 @@ body.light-theme #landingScreen .landing-notebook {
   }
 }
 
-/* B7b — No-scroll home page (only #landingScreen with .landing-home-page on desktop ≥1024) */
+/* B7b â€” No-scroll home page (only #landingScreen with .landing-home-page on desktop â‰¥1024) */
 @media (min-width: 1024px) {
   #landingScreen.landing-home-page {
-    height: 100vh;
-    max-height: 100vh;
-    overflow: hidden !important;
+    min-height: 100vh;
+    overflow: visible !important;
     display: flex;
     flex-direction: column;
     padding-bottom: 0 !important;
@@ -8775,7 +8819,7 @@ body.light-theme #landingScreen .landing-notebook {
   }
 }
 
-/* Tablet — upright, slightly wider for legibility */
+/* Tablet â€” upright, slightly wider for legibility */
 @media (max-width: 1023px) {
   #landingScreen.landing-home-page .sp-prem-hero-product {
     transform: translateY(-24px);
@@ -8796,7 +8840,7 @@ body.light-theme #landingScreen .landing-notebook {
   }
 }
 
-/* Mobile — upright, full-width-ish, ensure no horizontal overflow on 375px viewport */
+/* Mobile â€” upright, full-width-ish, ensure no horizontal overflow on 375px viewport */
 @media (max-width: 480px) {
   #landingScreen.landing-home-page .sp-prem-hero-product {
     transform: translateY(-8px);
@@ -8830,7 +8874,7 @@ body.light-theme #landingScreen .landing-notebook {
   }
 }
 
-/* Reduced motion — skip the staggered ink reveal but keep per-entry rotation */
+/* Reduced motion â€” skip the staggered ink reveal but keep per-entry rotation */
 @media (prefers-reduced-motion: reduce) {
   #landingScreen .landing-notebook__entry {
     opacity: 1;

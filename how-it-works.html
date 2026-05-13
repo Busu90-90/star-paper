@@ -4,11 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Star Paper How It Works</title>
-    <link rel="icon" type="image/png" sizes="32x32" href="./logo-32.png?v=21">
-    <link rel="stylesheet" href="styles.css?v=27">
+    <link rel="icon" type="image/png" sizes="32x32" href="./star_paper_logo_pack/star_paper_32.png?v=2">
+    <link rel="icon" type="image/png" sizes="256x256" href="./star_paper_logo_pack/star_paper_256.png?v=2">
+    <link rel="shortcut icon" type="image/png" href="./star_paper_logo_pack/star_paper_32.png?v=2">
+    <link rel="apple-touch-icon" sizes="256x256" href="./star_paper_logo_pack/star_paper_256.png?v=2">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,300..700;1,300..700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="styles.css?v=51">
     <link rel="stylesheet" href="star-paper-tokens.css?v=21">
-    <link rel="stylesheet" href="styles.premium.css?v=7">
+    <link rel="stylesheet" href="styles.premium.css?v=8">
+    <link rel="stylesheet" href="styles.handcraft.css?v=31">
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+    <style>
+      html.sp-handcraft-off .sp-handcraft-widget { display: none !important; }
+    </style>
+    <script>
+      (function applyHandcraftFlagBeforePaint() {
+        try {
+          if (localStorage.getItem('sp_handcraft_off') === '1' || localStorage.getItem('sp_prem_off') === '1') {
+            document.documentElement.classList.add('sp-handcraft-off');
+          }
+        } catch (_e) {}
+      })();
+    </script>
 </head>
 <body>
     <script>
@@ -21,10 +40,10 @@
     <div class="landing-container sp-prem-landing-refine" id="landingScreen">
         <div class="landing-mini-nav" id="landingMiniNav" aria-hidden="true">
             <a class="landing-mini-nav-brand" href="./index.html" aria-label="Go to Star Paper home">
-                <img src="./logo-ui.png?v=21" alt="Star Paper" class="mini-nav-logo">
+                <img src="./star_paper_logo_pack/star_paper_128.png?v=2" srcset="./star_paper_logo_pack/star_paper_128.png?v=2 1x, ./star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Star Paper" class="mini-nav-logo">
                 <span class="mini-nav-brand">STAR PAPER</span>
             </a>
-            <a class="mini-nav-cta" href="#landingFinalCta">Get Started</a>
+            <a class="mini-nav-cta" href="./index.html?auth=signup">Get Started</a>
         </div>
 
         <div class="landing-hero-stage" id="landingHeroStage">
@@ -37,7 +56,7 @@
                 <div class="landing-hero-rail">
                     <div class="landing-shell-nav">
                         <a class="landing-shell-brand" href="./index.html" aria-label="Go to Star Paper home">
-                            <img src="./logo-192.png?v=21" alt="Star Paper" class="landing-shell-logo" />
+                            <img src="./star_paper_logo_pack/star_paper_128.png?v=2" srcset="./star_paper_logo_pack/star_paper_128.png?v=2 1x, ./star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Star Paper" class="landing-shell-logo" />
                             <span class="landing-shell-brand-text">STAR PAPER</span>
                         </a>
                         <div class="landing-shell-nav-actions">
@@ -55,7 +74,7 @@
                             <div class="sp-prem-hero-copy">
                                 <div class="landing-hero-intro">
                                     <div class="landing-hero-medallion">
-                                        <img src="./logo-192.png?v=21" alt="Star Paper" class="landing-hero-medallion-logo" />
+                                        <img src="./star_paper_logo_pack/star_paper_256.png?v=2" srcset="./star_paper_logo_pack/star_paper_256.png?v=2 1x, ./star_paper_logo_pack/star_paper_512.png?v=2 2x" alt="Star Paper" class="landing-hero-medallion-logo" />
                                     </div>
                                     <div class="landing-shell-kicker">The Manager&apos;s Mainstage!</div>
                                 </div>
@@ -65,78 +84,33 @@
                                     <span class="landing-hero-highlight">bookings, balances,</span>
                                     and artist context into one flow.
                                 </h1>
-                                <p class="landing-hero-subtitle">
+                                <p class="landing-hero-subtitle" data-tw-static="1">
                                     This page breaks the system into the few moves that keep revenue, schedules, and team coordination from drifting apart.
                                 </p>
                             </div>
-                            <div class="sp-prem-hero-product sp-prem-widget" aria-hidden="true">
-                                <div class="sp-prem-device-glow"></div>
-                                <div class="landing-dashboard-preview sp-prem-device-parallax">
-                                    <div class="landing-preview-shell">
-                                        <div class="landing-preview-sidebar">
-                                            <div class="landing-preview-brand">
-                                                <img src="./logo-192.png?v=21" alt="" class="landing-preview-logo" aria-hidden="true" />
-                                                <div class="landing-preview-brand-label">The Manager&apos;s Mainstage!</div>
-                                            </div>
-                                            <span class="landing-preview-rail-icon is-active"><i class="ph ph-path" aria-hidden="true"></i></span>
-                                            <span class="landing-preview-rail-icon"><i class="ph ph-currency-circle-dollar" aria-hidden="true"></i></span>
-                                            <span class="landing-preview-rail-icon"><i class="ph ph-calendar-check" aria-hidden="true"></i></span>
-                                            <span class="landing-preview-rail-icon"><i class="ph ph-users-three" aria-hidden="true"></i></span>
-                                        </div>
-                                        <div class="landing-preview-main">
-                                            <div class="landing-preview-topbar">
-                                                <div>
-                                                    <div class="landing-preview-heading">Operating flow</div>
-                                                    <div class="landing-preview-subheading">One sequence for bookings, money, and team follow-through</div>
-                                                </div>
-                                                <div class="landing-preview-live-pill">Clear</div>
-                                            </div>
-                                            <div class="landing-preview-grid">
-                                                <div class="landing-preview-stat landing-preview-stat--primary">
-                                                    <div class="landing-preview-stat-label">Bookings</div>
-                                                    <div class="landing-preview-stat-value">Locked</div>
-                                                    <div class="landing-preview-stat-sub">Deposits and dates stay visible</div>
-                                                </div>
-                                                <div class="landing-preview-stat landing-preview-stat--success">
-                                                    <div class="landing-preview-stat-label">Team context</div>
-                                                    <div class="landing-preview-stat-value">Shared</div>
-                                                    <div class="landing-preview-stat-sub">Everyone sees the same priorities</div>
-                                                </div>
-                                            </div>
-                                            <div class="landing-preview-band">
-                                                <div class="landing-preview-band-card">
-                                                    <div class="landing-preview-band-label">Move 1</div>
-                                                    <div class="landing-preview-band-value">Track the money</div>
-                                                </div>
-                                                <div class="landing-preview-band-card">
-                                                    <div class="landing-preview-band-label">Move 2</div>
-                                                    <div class="landing-preview-band-value">Follow every show</div>
-                                                </div>
-                                                <div class="landing-preview-band-card">
-                                                    <div class="landing-preview-band-label">Move 3</div>
-                                                    <div class="landing-preview-band-value">Keep artists aligned</div>
-                                                </div>
-                                            </div>
-                                            <div class="landing-preview-toast-stack">
-                                                <div class="landing-preview-toast landing-preview-toast--booking">
-                                                    <span class="landing-preview-toast-icon" aria-hidden="true"><i class="ph ph-check-circle"></i></span>
-                                                    <div>
-                                                        <div class="landing-preview-toast-title">Booking followed through</div>
-                                                        <div class="landing-preview-toast-copy">Deposit, balance, and notes stay attached</div>
-                                                    </div>
-                                                </div>
-                                                <div class="landing-preview-toast landing-preview-toast--expense">
-                                                    <span class="landing-preview-toast-icon" aria-hidden="true"><i class="ph ph-users-three"></i></span>
-                                                    <div>
-                                                        <div class="landing-preview-toast-title">Team stays synced</div>
-                                                        <div class="landing-preview-toast-copy">One command center replaces scattered updates</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+                            <aside class="sp-hero-preview sp-hero-preview--flow" aria-hidden="true">
+                                <div class="sp-flow">
+                                    <svg class="sp-flow__svg" viewBox="0 0 320 60" aria-hidden="true">
+                                        <defs>
+                                            <marker id="sp-flow-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                                <path class="sp-flow__arrow" d="M0 0 L10 5 L0 10 Z" fill="currentColor" stroke="none"></path>
+                                            </marker>
+                                        </defs>
+                                        <!-- Two arrowed segments so the user reads left to right: node 1 → node 2 → node 3. -->
+                                        <path class="sp-flow__path" d="M32 30 H148" stroke-width="1" marker-end="url(#sp-flow-arrow)"></path>
+                                        <path class="sp-flow__path" d="M172 30 H288" stroke-width="1" marker-end="url(#sp-flow-arrow)"></path>
+                                        <circle class="sp-flow__node" cx="20"  cy="30" r="12"></circle>
+                                        <circle class="sp-flow__node" cx="160" cy="30" r="12"></circle>
+                                        <circle class="sp-flow__node" cx="300" cy="30" r="12"></circle>
+                                        <circle class="sp-flow__dot"  cx="20"  cy="30" r="5"></circle>
+                                    </svg>
+                                    <div class="sp-flow__labels">
+                                        <span><strong>① Lock</strong>booking + deposit</span>
+                                        <span><strong>② Track</strong>money + splits</span>
+                                        <span><strong>③ Brief</strong>team + artist</span>
                                     </div>
                                 </div>
-                            </div>
+                            </aside>
                         </div>
                     </div>
                 </div>
@@ -179,7 +153,7 @@
                 <div class="landing-section-kicker">Ready When You Are</div>
                 <h2 class="sp-prem-final-cta__title">Ready to run your artist operation from one place?</h2>
                 <div class="sp-prem-final-cta__actions">
-                    <a class="landing-btn" href="./index.html" data-sp-prem-pulse="gold">Get Started &rarr;</a>
+                    <a class="landing-btn" href="./index.html?auth=signup" data-sp-prem-pulse="gold">Get Started &rarr;</a>
                     <a class="landing-btn landing-btn--ghost landing-btn--how" href="./proof.html">
                         <span>See The Proof</span>
                         <i class="ph ph-arrow-right" aria-hidden="true"></i>
@@ -190,18 +164,12 @@
 
         <footer class="sp-prem-landing-footer sp-prem-widget" aria-label="Star Paper landing footer">
             <a class="sp-prem-landing-footer__brand" href="./index.html" aria-label="Go to Star Paper home">
-                <img src="./logo-192.png?v=21" alt="Star Paper" class="sp-prem-landing-footer__logo" />
+                <img src="./star_paper_logo_pack/star_paper_128.png?v=2" srcset="./star_paper_logo_pack/star_paper_128.png?v=2 1x, ./star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Star Paper" class="sp-prem-landing-footer__logo" />
                 <div>
                     <div class="sp-prem-landing-footer__name">STAR PAPER</div>
                     <div class="sp-prem-landing-footer__meta">&copy; 2026 Star Paper</div>
                 </div>
             </a>
-            <nav class="sp-prem-landing-footer__links" aria-label="Landing sections">
-                <a href="./index.html">Home</a>
-                <a href="./how-it-works.html">How It Works</a>
-                <a href="./testimonials.html">Testimonials</a>
-                <a href="./proof.html">Proof</a>
-            </nav>
         </footer>
     </div>
 
@@ -240,5 +208,6 @@
         });
       })();
     </script>
+    <script src="app.handcraft.js?v=18" defer></script>
 </body>
 </html>

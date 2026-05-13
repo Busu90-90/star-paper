@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Star Paper - UI Initialization Engine
  */
 document.addEventListener('DOMContentLoaded', () => {
@@ -202,6 +202,22 @@ function hasStoredCloudSessionHint() {
         return false;
     }
 }
+
+function getPublicAuthIntent(href = window.location.href) {
+    try {
+        const url = new URL(href);
+        const hash = decodeURIComponent(String(url.hash || '').replace(/^#/, '')).trim().toLowerCase();
+        const authParam = String(url.searchParams.get('auth') || url.searchParams.get('screen') || '').trim().toLowerCase();
+        if (authParam === 'signup' || authParam === 'register' || hash === 'signup' || hash === 'create-account') {
+            return 'signup';
+        }
+        if (authParam === 'login' || authParam === 'signin' || hash === 'login' || hash === 'signin') {
+            return 'login';
+        }
+    } catch (_err) {}
+    return '';
+}
+window.getPublicAuthIntent = getPublicAuthIntent;
 
 function isSupabaseBootWorkActive() {
     if (!window.__spSupabaseConfigured) return false;
@@ -433,6 +449,15 @@ function initializeBootSequence() {
         return;
     }
 
+    const publicAuthIntent = getPublicAuthIntent();
+    if (publicAuthIntent === 'signup' && typeof showSignupForm === 'function') {
+        showSignupForm({ instant: true });
+        return;
+    }
+    if (publicAuthIntent === 'login' && typeof showLoginForm === 'function') {
+        showLoginForm({ instant: true });
+        return;
+    }
     revealPublicScreenInstant('landingScreen');
 }
 
@@ -465,28 +490,6 @@ function getSectionIconMarkup(iconKey) {
 
         // Storage Helper
         const isCloudOnlyMode = () => Boolean(window.__spCloudOnly);
-        const CLOUD_ONLY_STORAGE_KEYS = new Set([
-            'starPaperManagerData',
-            'starPaperBookings',
-            'starPaperExpenses',
-            'starPaperOtherIncome',
-            'starPaperArtists',
-            'starPaperRevenueGoals',
-            'starPaperBBF',
-            'starPaperClosingThoughtsByPeriod',
-            'starPaperAudienceMetrics',
-            'sp_tasks',
-            'starPaperTasks',
-            'starPaperUsers',
-            'starPaperCredentials',
-            'starPaperCurrentUser',
-            'starPaperRemember',
-            'starPaper_session',
-            'starPaperSessionUser',
-            'starPaperSchemaVersion',
-            'spManagers',
-            'spPendingUsers'
-        ]);
         const cloudOnlyStorageShadow = {};
         const closingThoughtsMemoryStore = {};
 
@@ -521,10 +524,6 @@ function getSectionIconMarkup(iconKey) {
             } catch (_err) {
                 // Ignore sessionStorage failures in private browsing / restrictive contexts.
             }
-        }
-
-        function isCloudOnlyStorageKey(key) {
-            return isCloudOnlyMode() && CLOUD_ONLY_STORAGE_KEYS.has(key);
         }
 
         const Storage = {
@@ -579,6 +578,7 @@ function getSectionIconMarkup(iconKey) {
             }
         };
 
+        // Retired local-auth/data keys kept only for explicit cache cleanup.
         const LEGACY_CLOUD_RUNTIME_KEYS = [
             'starPaperManagerData',
             'starPaperBookings',
@@ -836,7 +836,6 @@ function getSectionIconMarkup(iconKey) {
         let users = [];
         let artists = [];
         let managerData = {};
-        let credentials = {};
         let revenueGoals = {};
         let bbfData = {};
         let bbfViewState = Storage.loadSync('starPaperBBFViewState', {});
@@ -863,9 +862,8 @@ function getSectionIconMarkup(iconKey) {
         let searchInputDebounceTimer = null;
         let pendingProfileAvatarValue = '';
         let pendingArtistAvatarValue = '';
-        const MOCK_PORTFOLIO_VERSION = 'portfolio-seed-v1';
         const CLOSING_THOUGHTS_STORAGE_KEY = 'starPaperClosingThoughtsByPeriod';
-        const EMBEDDED_REPORT_LOGO_DATA_URL = 'data:image/png;base64,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';
+        const REPORT_LOGO_ASSET_VERSION = '2';
         const RETIRED_ARTIST_NAME_SET = new Set(['cinderella sanyu']);
         const dashboardWeatherCache = {
             geocode: new Map(),
@@ -886,8 +884,6 @@ function getSectionIconMarkup(iconKey) {
             artists = Array.isArray(loadedArtists) ? loadedArtists : [];
             const loadedManagerData = Storage.loadSync('starPaperManagerData', {});
             managerData = loadedManagerData && typeof loadedManagerData === 'object' && !Array.isArray(loadedManagerData) ? loadedManagerData : {};
-            const loadedCredentials = Storage.loadSync('starPaperCredentials', {});
-            credentials = loadedCredentials && typeof loadedCredentials === 'object' && !Array.isArray(loadedCredentials) ? loadedCredentials : {};
             const loadedRevenueGoals = Storage.loadSync('starPaperRevenueGoals', {});
             revenueGoals = loadedRevenueGoals && typeof loadedRevenueGoals === 'object' && !Array.isArray(loadedRevenueGoals) ? loadedRevenueGoals : {};
             const loadedBBF = Storage.loadSync('starPaperBBF', {});
@@ -904,7 +900,6 @@ function getSectionIconMarkup(iconKey) {
             }
             Storage.saveSync('starPaperUsers', users);
             Storage.saveSync('starPaperArtists', artists);
-            Storage.saveSync('starPaperCredentials', credentials);
         }
 
         function getUsers() {
@@ -927,147 +922,6 @@ function getSectionIconMarkup(iconKey) {
             const normalized = normalizeUsername(username);
             if (!normalized) return null;
             return users.find((user) => normalizeUsername(user?.username) === normalized) || null;
-        }
-
-        function findCredentialByUsername(username) {
-            const direct = credentials?.[username];
-            if (direct && typeof direct === 'object') {
-                return { key: username, record: direct };
-            }
-            const normalized = normalizeUsername(username);
-            if (!normalized || !credentials || typeof credentials !== 'object') return null;
-            const matchKey = Object.keys(credentials).find((key) => normalizeUsername(key) === normalized);
-            if (!matchKey) return null;
-            const record = credentials[matchKey];
-            if (!record || typeof record !== 'object') return null;
-            return { key: matchKey, record };
-        }
-
-        const CREDENTIAL_PBKDF2_ITERATIONS = 120000;
-        const CREDENTIAL_HASH_BITS = 256;
-        const CREDENTIAL_SALT_BYTES = 16;
-
-        function hasSecureCredentialCrypto() {
-            return Boolean(
-                window.crypto &&
-                window.crypto.subtle &&
-                typeof window.crypto.getRandomValues === 'function'
-            );
-        }
-
-        function bufferToBase64(buffer) {
-            const bytes = new Uint8Array(buffer);
-            let binary = '';
-            for (let i = 0; i < bytes.length; i += 1) {
-                binary += String.fromCharCode(bytes[i]);
-            }
-            return btoa(binary);
-        }
-
-        function base64ToUint8Array(base64) {
-            const binary = atob(base64);
-            const bytes = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i += 1) {
-                bytes[i] = binary.charCodeAt(i);
-            }
-            return bytes;
-        }
-
-        function isHashedCredentialRecord(record) {
-            return Boolean(
-                record &&
-                typeof record === 'object' &&
-                typeof record.passwordHash === 'string' &&
-                record.passwordHash.length > 0 &&
-                typeof record.salt === 'string' &&
-                record.salt.length > 0 &&
-                Number.isFinite(Number(record.iterations))
-            );
-        }
-
-        async function derivePasswordHashBase64(password, saltBase64, iterations = CREDENTIAL_PBKDF2_ITERATIONS) {
-            if (!hasSecureCredentialCrypto()) {
-                throw new Error('Secure credential crypto is unavailable.');
-            }
-            const encoder = new TextEncoder();
-            const keyMaterial = await window.crypto.subtle.importKey(
-                'raw',
-                encoder.encode(String(password || '')),
-                { name: 'PBKDF2' },
-                false,
-                ['deriveBits']
-            );
-            const bits = await window.crypto.subtle.deriveBits(
-                {
-                    name: 'PBKDF2',
-                    salt: base64ToUint8Array(saltBase64),
-                    iterations: Number(iterations) || CREDENTIAL_PBKDF2_ITERATIONS,
-                    hash: 'SHA-256'
-                },
-                keyMaterial,
-                CREDENTIAL_HASH_BITS
-            );
-            return bufferToBase64(bits);
-        }
-
-        async function createHashedCredentialRecord(password, existingRecord = null) {
-            if (!hasSecureCredentialCrypto()) {
-                throw new Error('Secure credential crypto is unavailable.');
-            }
-            const saltBytes = new Uint8Array(CREDENTIAL_SALT_BYTES);
-            window.crypto.getRandomValues(saltBytes);
-            const salt = bufferToBase64(saltBytes);
-            const passwordHash = await derivePasswordHashBase64(password, salt, CREDENTIAL_PBKDF2_ITERATIONS);
-            const nowIso = new Date().toISOString();
-            const createdAt = (existingRecord && typeof existingRecord.createdAt === 'string')
-                ? existingRecord.createdAt
-                : nowIso;
-            return {
-                passwordHash,
-                salt,
-                iterations: CREDENTIAL_PBKDF2_ITERATIONS,
-                createdAt,
-                updatedAt: nowIso
-            };
-        }
-
-        async function verifyCredentialPassword(record, candidatePassword) {
-            if (!record || typeof record !== 'object') return false;
-            if (isHashedCredentialRecord(record)) {
-                const computedHash = await derivePasswordHashBase64(
-                    candidatePassword,
-                    record.salt,
-                    record.iterations
-                );
-                return computedHash === record.passwordHash;
-            }
-            if (typeof record.password === 'string') {
-                return record.password === candidatePassword;
-            }
-            return false;
-        }
-
-        async function hardenCredentialStore() {
-            if (!hasSecureCredentialCrypto()) return;
-            if (!credentials || typeof credentials !== 'object') return;
-
-            let changed = false;
-            const entries = Object.entries(credentials);
-            for (const [username, record] of entries) {
-                if (!record || typeof record !== 'object') continue;
-                if (isHashedCredentialRecord(record)) continue;
-                if (typeof record.password !== 'string' || !record.password) continue;
-                try {
-                    credentials[username] = await createHashedCredentialRecord(record.password, record);
-                    changed = true;
-                } catch (error) {
-                    console.warn('Credential hardening skipped for user:', username, error);
-                }
-            }
-
-            if (changed) {
-                saveIdentityStores();
-            }
         }
 
         function findUserById(id) {
@@ -1122,7 +976,7 @@ function getSectionIconMarkup(iconKey) {
 
         function resolveDisplayAvatar(user) {
             const raw = String(user?.avatar || '').trim();
-            if (!raw) return './logo-ui.png?v=21';
+            if (!raw) return './star_paper_logo_pack/star_paper_128.png?v=2';
             if (raw.startsWith('data:image/') || raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('./') || raw.startsWith('/')) {
                 return raw;
             }
@@ -1133,11 +987,15 @@ function getSectionIconMarkup(iconKey) {
             const value = String(src || '').trim().toLowerCase();
             if (!value) return false;
             return [
-                'logo-ui.png',
-                'logo-report.png',
-                'logo-192.png',
-                'logo-32.png',
-                'logo.png'
+                'star_paper_32.png',
+                'star_paper_64.png',
+                'star_paper_128.png',
+                'star_paper_256.png',
+                'star_paper_512.png',
+                'star_paper_1024.png',
+                'star_paper_transparent.png',
+                'star_paper_black.png',
+                'star_paper_white.png'
             ].some((token) => value.includes(token));
         }
 
@@ -1374,11 +1232,15 @@ function getSectionIconMarkup(iconKey) {
         }
 
         function findArtistByName(name) {
-            return artists.find((artist) => artist?.name === name) || null;
+            const normalized = String(name || '').trim().toLowerCase();
+            if (!normalized) return null;
+            return artists.find((artist) => String(artist?.name || '').trim().toLowerCase() === normalized) || null;
         }
 
         function findArtistById(id) {
-            return artists.find((artist) => artist?.id === id) || null;
+            const normalized = String(id || '').trim();
+            if (!normalized) return null;
+            return artists.find((artist) => String(artist?.id || '').trim() === normalized) || null;
         }
 
         function isRetiredArtistName(name) {
@@ -1494,6 +1356,137 @@ function getSectionIconMarkup(iconKey) {
             });
         }
 
+        function resolveArtistScope(options = {}) {
+            const explicitArtist = options.artist && typeof options.artist === 'object' ? options.artist : null;
+            const selectedArtistName = String(options.selectedArtist || '').trim();
+            const artistName = String(options.artistName || selectedArtistName || '').trim();
+            const artistId = String(options.artistId || '').trim();
+            const artist = explicitArtist
+                || (artistId ? findArtistById(artistId) : null)
+                || (artistName ? findArtistByName(artistName) : null);
+            return {
+                artist: artist || null,
+                artistId: String(artistId || artist?.id || '').trim(),
+                artistName: String(artistName || artist?.name || '').trim(),
+                hasArtist: Boolean(artistId || artistName || artist?.id || artist?.name)
+            };
+        }
+
+        function financeRecordMatchesArtist(record, scope) {
+            if (!scope?.hasArtist) return true;
+            if (!record || typeof record !== 'object') return false;
+            const recordArtistId = String(record.artistId || '').trim();
+            const recordArtistName = String(record.artist || record.artistName || '').trim().toLowerCase();
+            if (scope.artistId && recordArtistId && recordArtistId === scope.artistId) return true;
+            if (scope.artistName && recordArtistName && recordArtistName === scope.artistName.toLowerCase()) return true;
+            return false;
+        }
+
+        function normalizeFinanceArtistRef(record) {
+            if (!record || typeof record !== 'object') return record;
+            const artist = resolveArtistScope({
+                artistId: record.artistId,
+                artistName: record.artist || record.artistName
+            }).artist;
+            if (!artist) {
+                return {
+                    ...record,
+                    artist: String(record.artist || record.artistName || '').trim(),
+                    artistId: record.artistId || null
+                };
+            }
+            return {
+                ...record,
+                artist: artist.name || String(record.artist || record.artistName || '').trim(),
+                artistId: artist.id || record.artistId || null
+            };
+        }
+
+        function ensureFinanceArtistRefs(records) {
+            if (!Array.isArray(records)) return [];
+            return records.map(normalizeFinanceArtistRef);
+        }
+
+        const FINANCE_ARTIST_NAME_VALUE_PREFIX = 'name:';
+
+        function encodeFinanceArtistNameValue(name) {
+            return `${FINANCE_ARTIST_NAME_VALUE_PREFIX}${String(name || '')}`;
+        }
+
+        function decodeFinanceArtistNameValue(value) {
+            const raw = String(value || '');
+            return raw.startsWith(FINANCE_ARTIST_NAME_VALUE_PREFIX)
+                ? raw.slice(FINANCE_ARTIST_NAME_VALUE_PREFIX.length).trim()
+                : '';
+        }
+
+        function populateFinanceArtistDropdown(select, selectedValue = '') {
+            if (!select) return;
+            const currentValue = String(selectedValue || select.value || '').trim();
+            const artistList = getArtists();
+            select.innerHTML = '<option value="">Roster / Shared</option>' +
+                artistList.map((artist) => {
+                    const id = escapeHtml(artist?.id || '');
+                    const name = escapeHtml(artist?.name || 'Artist');
+                    return `<option value="${id}">${name}</option>`;
+                }).join('');
+            if (currentValue) {
+                const knownArtist = findArtistById(currentValue) || findArtistByName(currentValue);
+                if (knownArtist?.id) {
+                    select.value = knownArtist.id;
+                    return;
+                }
+                const legacyName = decodeFinanceArtistNameValue(currentValue) || currentValue;
+                const opt = document.createElement('option');
+                opt.value = encodeFinanceArtistNameValue(legacyName);
+                opt.textContent = legacyName;
+                select.appendChild(opt);
+                select.value = opt.value;
+            }
+        }
+
+        function populateFinanceArtistDropdowns() {
+            populateFinanceArtistDropdown(document.getElementById('expenseArtist'));
+            populateFinanceArtistDropdown(document.getElementById('otherIncomeArtist'));
+        }
+
+        function setFinanceArtistSelectValue(selectId, record) {
+            const select = document.getElementById(selectId);
+            if (!select) return;
+            const artist = resolveArtistScope({
+                artistId: record?.artistId,
+                artistName: record?.artist || record?.artistName
+            }).artist;
+            const selectedValue = artist?.id
+                || (record?.artist ? encodeFinanceArtistNameValue(record.artist) : '');
+            populateFinanceArtistDropdown(select, selectedValue);
+        }
+
+        function getFinanceArtistSelection(selectId) {
+            const value = String(document.getElementById(selectId)?.value || '').trim();
+            if (!value) return null;
+            const legacyName = decodeFinanceArtistNameValue(value);
+            if (legacyName) return { id: null, name: legacyName };
+            const artist = findArtistById(value) || findArtistByName(value);
+            return artist ? { id: artist.id || null, name: artist.name || '' } : null;
+        }
+
+        function applyFinanceArtistSelection(record, selection) {
+            return {
+                ...record,
+                artistId: selection?.id || null,
+                artist: selection?.name || ''
+            };
+        }
+
+        function getFinanceArtistLabel(record) {
+            const artist = resolveArtistScope({
+                artistId: record?.artistId,
+                artistName: record?.artist || record?.artistName
+            }).artist;
+            return artist?.name || String(record?.artist || record?.artistName || '').trim() || 'Roster / Shared';
+        }
+
         function getAllMemberNames() {
             const managerNames = getUsers().map((user) => user.username).filter(Boolean);
             const artistNames = getArtists().map((artist) => artist.name).filter(Boolean);
@@ -1570,7 +1563,7 @@ function getSectionIconMarkup(iconKey) {
             banner = document.createElement('div');
             banner.id = 'spReadOnlyBanner';
             banner.className = 'sp-readonly-banner';
-            banner.textContent = 'Read-only access: this team role cannot add, edit, delete, or load mock records.';
+            banner.textContent = 'Read-only access: this team role cannot add, edit, or delete records.';
             container.insertBefore(banner, container.firstChild);
             return banner;
         }
@@ -1983,7 +1976,7 @@ function getSectionIconMarkup(iconKey) {
                 period,
                 artistId: artist?.id,
                 artistName: artist?.name,
-                fallbackToGlobal: true
+                fallbackToGlobal: !artist
             });
 
             amountInput.value = existingAmount > 0 ? String(Math.round(existingAmount)) : '';
@@ -2380,530 +2373,11 @@ function getSectionIconMarkup(iconKey) {
             initializeMainEventSystem();
         }
 
-        // Seed demo data only when explicitly enabled and storage is empty.
+        // Cloud-only runtime starts with empty in-memory stores; Supabase hydrates real data.
         function initializeData() {
             users = [];
             artists = [];
             managerData = {};
-            credentials = {};
-            return;
-            users = {
-                    'Admin': {
-                        password: 'admin123',
-                        userType: 'admin',
-                        email: 'admin@starpaper.com',
-                        phone: '+256 700 000000',
-                        specialty: 'System Administrator',
-                        bio: 'Managing the Star Paper artist management system',
-                        bookings: [
-                            {
-                                id: 1,
-                                event: 'Kampala Music Festival',
-                                artist: 'Davido',
-                                date: '2026-02-15',
-                                fee: 15000000,
-                                deposit: 7500000,
-                                balance: 7500000,
-                                contact: 'Event Manager: 0771234567',
-                                status: 'confirmed',
-                                notes: 'Main stage headliner, 90 min set',
-                                locationType: 'uganda',
-                                location: 'Kampala'
-                            },
-                            {
-                                id: 2,
-                                event: 'Lagos Afrobeat Festival',
-                                artist: 'Burna Boy',
-                                date: '2026-02-20',
-                                fee: 25000000,
-                                deposit: 12500000,
-                                balance: 12500000,
-                                contact: 'Lagos Events: +234 801 234 5678',
-                                status: 'confirmed',
-                                notes: 'International performance',
-                                locationType: 'abroad',
-                                location: 'Nigeria'
-                            },
-                            {
-                                id: 3,
-                                event: 'Entebbe Jazz Night',
-                                artist: 'Wizkid',
-                                date: '2026-02-25',
-                                fee: 12000000,
-                                deposit: 6000000,
-                                balance: 6000000,
-                                contact: 'Organizer: 0709876543',
-                                status: 'pending',
-                                notes: 'Acoustic set at lakeside venue',
-                                locationType: 'uganda',
-                                location: 'Entebbe'
-                            },
-                            {
-                                id: 4,
-                                event: 'Dubai Music Week',
-                                artist: 'Tiwa Savage',
-                                date: '2026-03-10',
-                                fee: 30000000,
-                                deposit: 15000000,
-                                balance: 15000000,
-                                contact: 'Dubai Events: +971 50 123 4567',
-                                status: 'confirmed',
-                                notes: 'Premium international show',
-                                locationType: 'abroad',
-                                location: 'Dubai (UAE)'
-                            },
-                            {
-                                id: 5,
-                                event: 'Jinja Beach Festival',
-                                artist: 'Sheebah Karungi',
-                                date: '2026-03-15',
-                                fee: 8000000,
-                                deposit: 4000000,
-                                balance: 4000000,
-                                contact: 'Festival Director: 0751112222',
-                                status: 'confirmed',
-                                notes: 'Local star performance',
-                                locationType: 'uganda',
-                                location: 'Jinja'
-                            },
-                            {
-                                id: 6,
-                                event: 'Mbarara Cultural Show',
-                                artist: 'Bebe Cool',
-                                date: '2026-03-20',
-                                fee: 6000000,
-                                deposit: 3000000,
-                                balance: 3000000,
-                                contact: 'Cultural Officer: 0783334444',
-                                status: 'confirmed',
-                                notes: 'Traditional fusion performance',
-                                locationType: 'uganda',
-                                location: 'Mbarara'
-                            }
-                            ,{
-                                id: 7,
-                                event: 'Gulu Heritage Gala',
-                                artist: 'Davido',
-                                date: '2025-10-18',
-                                fee: 7000000,
-                                deposit: 2500000,
-                                balance: 4500000,
-                                contact: 'Gulu Events: 0712345678',
-                                status: 'confirmed',
-                                notes: 'Outdoor cultural festival',
-                                locationType: 'uganda',
-                                location: 'Gulu'
-                            },
-                            {
-                                id: 8,
-                                event: 'Nairobi Fusion Night',
-                                artist: 'Wizkid',
-                                date: '2025-11-07',
-                                fee: 18000000,
-                                deposit: 7000000,
-                                balance: 11000000,
-                                contact: 'Nairobi Club: +254 701 222333',
-                                status: 'pending',
-                                notes: 'Club headline set',
-                                locationType: 'abroad',
-                                location: 'Kenya'
-                            },
-                            {
-                                id: 9,
-                                event: 'Kampala Christmas Jam',
-                                artist: 'Sheebah Karungi',
-                                date: '2025-12-20',
-                                fee: 9000000,
-                                deposit: 4500000,
-                                balance: 4500000,
-                                contact: 'Promoter: 0788001122',
-                                status: 'confirmed',
-                                notes: 'Holiday prime slot',
-                                locationType: 'uganda',
-                                location: 'Kampala'
-                            },
-                            {
-                                id: 10,
-                                event: 'New Year Countdown',
-                                artist: 'Bebe Cool',
-                                date: '2026-01-01',
-                                fee: 11000000,
-                                deposit: 5500000,
-                                balance: 5500000,
-                                contact: 'City Events: 0700112233',
-                                status: 'confirmed',
-                                notes: 'Midnight countdown performance',
-                                locationType: 'uganda',
-                                location: 'Kampala'
-                            },
-                            {
-                                id: 11,
-                                event: 'Accra Afrobeats Week',
-                                artist: 'Burna Boy',
-                                date: '2026-04-12',
-                                fee: 22000000,
-                                deposit: 10000000,
-                                balance: 12000000,
-                                contact: 'Accra Events: +233 201 445566',
-                                status: 'pending',
-                                notes: 'International tour stop',
-                                locationType: 'abroad',
-                                location: 'Ghana'
-                            },
-                            {
-                                id: 12,
-                                event: 'Fort Portal Jazz Weekend',
-                                artist: 'Tiwa Savage',
-                                date: '2026-05-09',
-                                fee: 14000000,
-                                deposit: 7000000,
-                                balance: 7000000,
-                                contact: 'Festival Office: 0779004433',
-                                status: 'confirmed',
-                                notes: 'Weekend headline slot',
-                                locationType: 'uganda',
-                                location: 'Fort Portal'
-                            },
-                            {
-                                id: 13,
-                                event: 'Zanzibar Beach Carnival',
-                                artist: 'Wizkid',
-                                date: '2026-06-21',
-                                fee: 24000000,
-                                deposit: 12000000,
-                                balance: 12000000,
-                                contact: 'Zanzibar Events: +255 701 778899',
-                                status: 'confirmed',
-                                notes: 'Sunset beach stage',
-                                locationType: 'abroad',
-                                location: 'Tanzania'
-                            },
-                            {
-                                id: 14,
-                                event: 'Lake Victoria Mega Show',
-                                artist: 'Davido',
-                                date: '2026-07-13',
-                                fee: 20000000,
-                                deposit: 8000000,
-                                balance: 12000000,
-                                contact: 'Mega Events: 0766554433',
-                                status: 'pending',
-                                notes: 'Regional mega show',
-                                locationType: 'uganda',
-                                location: 'Entebbe'
-                            }
-
-                        ],
-                        expenses: [
-                            {
-                                id: 1,
-                                description: 'Sound system rental - Kampala Festival',
-                                amount: 1200000,
-                                date: '2026-02-10',
-                                category: 'equipment',
-                                receipt: null
-                            },
-                            {
-                                id: 2,
-                                description: 'International flight tickets (Lagos)',
-                                amount: 3500000,
-                                date: '2026-02-18',
-                                category: 'transport',
-                                receipt: null
-                            },
-                            {
-                                id: 3,
-                                description: 'Hotel accommodation - Entebbe',
-                                amount: 800000,
-                                date: '2026-02-24',
-                                category: 'accommodation',
-                                receipt: null
-                            },
-                            {
-                                id: 4,
-                                description: 'Social media marketing campaign',
-                                amount: 1500000,
-                                date: '2026-02-05',
-                                category: 'marketing',
-                                receipt: null
-                            },
-                            {
-                                id: 5,
-                                description: 'Catering for crew (3 events)',
-                                amount: 650000,
-                                date: '2026-02-12',
-                                category: 'food',
-                                receipt: null
-                            },
-                            {
-                                id: 6,
-                                description: 'Stage lighting equipment',
-                                amount: 2000000,
-                                date: '2026-02-15',
-                                category: 'equipment',
-                                receipt: null
-                            }
-                            ,{
-                                id: 7,
-                                description: 'Stage design build - Christmas Jam',
-                                amount: 2100000,
-                                date: '2025-12-15',
-                                category: 'equipment',
-                                receipt: null
-                            },
-                            {
-                                id: 8,
-                                description: 'Artist travel allowances - Gulu Gala',
-                                amount: 900000,
-                                date: '2025-10-14',
-                                category: 'transport',
-                                receipt: null
-                            },
-                            {
-                                id: 9,
-                                description: 'Hotel block booking - Nairobi Fusion',
-                                amount: 1600000,
-                                date: '2025-11-03',
-                                category: 'accommodation',
-                                receipt: null
-                            },
-                            {
-                                id: 10,
-                                description: 'Streaming production crew',
-                                amount: 1250000,
-                                date: '2026-01-05',
-                                category: 'equipment',
-                                receipt: null
-                            },
-                            {
-                                id: 11,
-                                description: 'Artist styling & wardrobe',
-                                amount: 750000,
-                                date: '2026-04-08',
-                                category: 'other',
-                                receipt: null
-                            },
-                            {
-                                id: 12,
-                                description: 'Digital ads - Accra Week',
-                                amount: 1350000,
-                                date: '2026-04-10',
-                                category: 'marketing',
-                                receipt: null
-                            },
-                            {
-                                id: 13,
-                                description: 'Venue insurance & permits',
-                                amount: 980000,
-                                date: '2026-05-02',
-                                category: 'other',
-                                receipt: null
-                            },
-                            {
-                                id: 14,
-                                description: 'Fuel & logistics - Zanzibar',
-                                amount: 1150000,
-                                date: '2026-06-18',
-                                category: 'transport',
-                                receipt: null
-                            },
-                            {
-                                id: 15,
-                                description: 'Catering upgrade - Lake Victoria show',
-                                amount: 820000,
-                                date: '2026-07-09',
-                                category: 'food',
-                                receipt: null
-                            }
-
-                        ],
-                        otherIncome: [
-                            {
-                                id: 1,
-                                source: 'Merchandise sales - Kampala Festival',
-                                amount: 1800000,
-                                date: '2026-02-15',
-                                type: 'merch',
-                                payer: 'On-site booth',
-                                method: 'cash',
-                                status: 'received',
-                                notes: 'Event T-shirts and caps',
-                                proof: null
-                            },
-                            {
-                                id: 2,
-                                source: 'Brand endorsement advance',
-                                amount: 5000000,
-                                date: '2026-02-08',
-                                type: 'endorsement',
-                                payer: 'Orange Telecom',
-                                method: 'bank',
-                                status: 'received',
-                                notes: 'Q1 campaign advance',
-                                proof: null
-                            },
-                            {
-                                id: 3,
-                                source: 'Fan donations',
-                                amount: 650000,
-                                date: '2026-02-22',
-                                type: 'donation',
-                                payer: 'Online supporters',
-                                method: 'mobile',
-                                status: 'received',
-                                notes: 'Live stream tips',
-                                proof: null
-                            }
-                            ,{
-                                id: 4,
-                                source: 'New Year sponsorship bonus',
-                                amount: 3200000,
-                                date: '2026-01-02',
-                                type: 'sponsorship',
-                                payer: 'Nile Breweries',
-                                method: 'bank',
-                                status: 'received',
-                                notes: 'Post-event bonus',
-                                proof: null
-                            },
-                            {
-                                id: 5,
-                                source: 'Fan club subscriptions',
-                                amount: 950000,
-                                date: '2025-11-15',
-                                type: 'donation',
-                                payer: 'VIP supporters',
-                                method: 'mobile',
-                                status: 'received',
-                                notes: 'Monthly fan club payment',
-                                proof: null
-                            },
-                            {
-                                id: 6,
-                                source: 'Merchandise drop - Holiday edition',
-                                amount: 2400000,
-                                date: '2025-12-22',
-                                type: 'merch',
-                                payer: 'Online store',
-                                method: 'online',
-                                status: 'received',
-                                notes: 'Hoodies, caps, tees',
-                                proof: null
-                            },
-                            {
-                                id: 7,
-                                source: 'Brand content shoot',
-                                amount: 1800000,
-                                date: '2026-04-06',
-                                type: 'endorsement',
-                                payer: 'Galaxy Media',
-                                method: 'bank',
-                                status: 'received',
-                                notes: 'Social media campaign',
-                                proof: null
-                            },
-                            {
-                                id: 8,
-                                source: 'International booking deposit',
-                                amount: 4200000,
-                                date: '2026-06-10',
-                                type: 'other',
-                                payer: 'Zanzibar Carnival',
-                                method: 'bank',
-                                status: 'received',
-                                notes: 'Performance deposit',
-                                proof: null
-                            },
-                            {
-                                id: 9,
-                                source: 'VIP table sales',
-                                amount: 1500000,
-                                date: '2026-07-12',
-                                type: 'gift',
-                                payer: 'Corporate clients',
-                                method: 'cash',
-                                status: 'received',
-                                notes: 'Lake Victoria show',
-                                proof: null
-                            }
-
-                        ],
-                        lastLogin: null
-                    },
-                    'Davido': {
-                        password: 'artist123',
-                        userType: 'artist',
-                        email: 'davido@official.com',
-                        phone: '+234 803 456 7890',
-                        specialty: 'Afrobeats',
-                        bio: 'Nigerian superstar and Afrobeats pioneer. Known for hits like "Fall", "If", and "Unavailable". Winner of multiple awards including BET and MTV Africa.',
-                        bookings: [],
-                        expenses: [],
-                        otherIncome: [],
-                        lastLogin: null
-                    },
-                    'Burna Boy': {
-                        password: 'artist123',
-                        userType: 'artist',
-                        email: 'burnaboy@official.com',
-                        phone: '+234 805 123 4567',
-                        specialty: 'Afro-Fusion',
-                        bio: 'Grammy-winning Nigerian artist. Known for "Ye", "Last Last", and "On The Low". Global ambassador for African music.',
-                        bookings: [],
-                        expenses: [],
-                        otherIncome: [],
-                        lastLogin: null
-                    },
-                    'Wizkid': {
-                        password: 'artist123',
-                        userType: 'artist',
-                        email: 'wizkid@official.com',
-                        phone: '+234 807 890 1234',
-                        specialty: 'Afrobeats/R&B',
-                        bio: 'International Afrobeats sensation. Collaborated with Drake, Beyonce, and Justin Bieber. Known for "Essence", "Ojuelegba".',
-                        bookings: [],
-                        expenses: [],
-                        otherIncome: [],
-                        lastLogin: null
-                    },
-                    'Tiwa Savage': {
-                        password: 'artist123',
-                        userType: 'artist',
-                        email: 'tiwa@official.com',
-                        phone: '+234 809 234 5678',
-                        specialty: 'Afro-Pop',
-                        bio: 'Queen of Afrobeats. First African female to sign with Universal Music. Known for "Somebody\'s Son", "Koroba", and "All Over".',
-                        bookings: [],
-                        expenses: [],
-                        otherIncome: [],
-                        lastLogin: null
-                    },
-                    'Sheebah Karungi': {
-                        password: 'artist123',
-                        userType: 'artist',
-                        email: 'sheebah@official.com',
-                        phone: '+256 772 123 4567',
-                        specialty: 'Afropop/Dancehall',
-                        bio: 'Uganda\'s Queen of Dance. Multiple award winner with hits like "Nkwatako", "Nakyuka", and "Wankona". Dynamic performer and style icon.',
-                        bookings: [],
-                        expenses: [],
-                        otherIncome: [],
-                        lastLogin: null
-                    },
-                    'Bebe Cool': {
-                        password: 'artist123',
-                        userType: 'artist',
-                        email: 'bebecool@official.com',
-                        phone: '+256 774 567 8901',
-                        specialty: 'Reggae/Dancehall',
-                        bio: 'Ugandan music legend and multiple award winner. Known for "Love You Everyday", "Coccidiosis", and social activism. Over 20 years in the industry.',
-                        bookings: [],
-                        expenses: [],
-                        otherIncome: [],
-                        lastLogin: null
-                    }
-                };
-                Storage.saveSync('starPaperUsers', users);
         }
 
         window.__spAppBooted = false;
@@ -3357,7 +2831,7 @@ function getSectionIconMarkup(iconKey) {
                 },
                 fields: {
                     period: { label: 'Period', type: 'month', required: true },
-                    socialFollowers: { label: 'Social Followers', type: 'number', min: 0 },
+                    socialFollowers: { label: 'Social Media Followers', type: 'number', min: 0 },
                     spotifyListeners: { label: 'Spotify Listeners', type: 'number', min: 0 },
                     youtubeListeners: { label: 'YouTube Listeners', type: 'number', min: 0 },
                 },
@@ -3942,7 +3416,7 @@ function getSectionIconMarkup(iconKey) {
                     type: 'Audience Metric',
                     section: 'reports',
                     label: `${metric.artist || 'Artist'} audience`,
-                    sub: `${metric.period || ''} - Social ${(Number(metric.socialFollowers) || 0).toLocaleString()}`,
+                    sub: `${metric.period || ''} - Social Media ${(Number(metric.socialFollowers) || 0).toLocaleString()}`,
                     searchText: `${metric.artist || ''} ${metric.period || ''} ${metric.socialFollowers || ''} ${metric.spotifyListeners || ''} ${metric.youtubeListeners || ''}`.toLowerCase()
                 });
             });
@@ -4175,6 +3649,8 @@ function showLoginForm(options = {}) {
             const flowId = instantPublicReveal
                 ? null
                 : (options.flowId || beginBootTransition('show-login', 'auth-required'));
+            // Lock body scroll while the auth screen is open.
+            document.body.classList.add('sp-auth-open');
             document.getElementById('loginForm').style.display = 'block';
             document.getElementById('signupForm').style.display = 'none';
             document.getElementById('forgotPasswordForm').style.display = 'none';
@@ -4201,6 +3677,8 @@ function showLoginForm(options = {}) {
             const flowId = instantPublicReveal
                 ? null
                 : (options.flowId || beginBootTransition('show-signup', 'auth-required'));
+            // Lock body scroll while the auth screen is open.
+            document.body.classList.add('sp-auth-open');
             document.getElementById('signupForm').style.display = 'block';
             document.getElementById('loginForm').style.display = 'none';
             document.getElementById('forgotPasswordForm').style.display = 'none';
@@ -4226,6 +3704,8 @@ function showLoginForm(options = {}) {
                     text: options.text,
                     subtext: options.subtext
                 }));
+            // Release the body scroll lock — the landing scrolls again.
+            document.body.classList.remove('sp-auth-open');
             clearForms();
             if (instantPublicReveal) {
                 revealPublicScreenInstant('landingScreen');
@@ -4241,20 +3721,6 @@ function showLoginForm(options = {}) {
             document.getElementById('signupPassword').value = '';
             document.getElementById('signupEmail').value = '';
             document.getElementById('signupPhone').value = '';
-        }
-
-        async function attemptBackendLogin(username, password) {
-            const apiBase = Storage.loadSync('starPaperApiBaseUrl', '');
-            if (!apiBase) return null;
-            const response = await fetch(`${apiBase.replace(/\/$/, '')}/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
-            });
-            if (!response.ok) {
-                throw new Error(`Backend login failed (${response.status})`);
-            }
-            return response.json();
         }
 
         function ensureSessionUserExists(username, profile = {}) {
@@ -4402,7 +3868,6 @@ function showLoginForm(options = {}) {
         window.bookArtistFromAvailability ||= bookArtistFromAvailability;
 
         // Reports
-        window.generateCleanReport ||= generateCleanReport;
         window.exportCSV ||= exportCSV;
         window.getReportPeriodSelection ||= getReportPeriodSelection;
         window.getReportPeriodData ||= getReportPeriodData;
@@ -4418,10 +3883,6 @@ function showLoginForm(options = {}) {
         window.saveAudienceMetricEntry ||= saveAudienceMetricEntry;
         window.renderAudienceMetrics ||= renderAudienceMetrics;
         window.populateAudienceArtistDropdown ||= populateAudienceArtistDropdown;
-
-        // Data management
-        window.loadMockPortfolioData ||= loadMockPortfolioData;
-        window.clearMockData         ||= clearMockData;
 
         // Admin
         window.adminApproveUser ||= adminApproveUser;
@@ -4497,144 +3958,16 @@ function showLoginForm(options = {}) {
         };
 
         // Login System
-        // NOTE: This is the LOCAL-ONLY fallback login function.
-        // When Supabase is configured, patchAppAuth() in supabase.js replaces
-        // window.login ~100ms after DOMContentLoaded. That patched version handles
-        // all cloud auth. This function is only invoked when Supabase is unavailable
-        // (offline, not configured, or network error). Do NOT add Supabase calls here.
+        // Supabase owns auth. These stubs exist only so early clicks fail closed
+        // before supabase.js patches window.login/window.signup.
         async function login() {
-            if (window.__spCloudOnly) {
-                toastError('Cloud login is managed by Supabase. Please try again in a moment.');
-                return;
-            }
             clearLoginValidation();
-            const name = getInput('loginName');
-            const password = getInput('loginPassword');
-
-            let isValid = true;
-            if (!name) {
-                setValidationMessage('loginNameError', 'Name or email is required');
-                setInputError('loginName', true);
-                isValid = false;
-            }
-            if (!password) {
-                setValidationMessage('loginPasswordError', 'Password is required');
-                setInputError('loginPassword', true);
-                isValid = false;
-            }
-            if (!isValid) return;
-
-            setLoginLoading(true);
-            try {
-                const remember = document.getElementById('rememberMe')?.checked;
-
-                // ── LOCAL FALLBACK (offline / Supabase not configured) ────────────────
-                const user = findUserByUsername(name) || findUserByUsernameInsensitive(name);
-                const credMatch = (user ? findCredentialByUsername(user.username) : null) || findCredentialByUsername(name);
-                const cred = credMatch?.record;
-                if (!user || !cred) {
-                    toastError('Invalid credentials. Please try again.');
-                    return;
-                }
-                let isPasswordValid = false;
-                try {
-                    isPasswordValid = await verifyCredentialPassword(cred, password);
-                } catch (verificationError) {
-                    console.error('Credential verification failed:', verificationError);
-                    toastError('Secure password verification failed on this device.');
-                    return;
-                }
-                if (!isPasswordValid) {
-                    toastError('Invalid credentials. Please try again.');
-                    return;
-                }
-                applyAuthSession(user.username, { remember: Boolean(remember) });
-                loadUserData();
-                showApp();
-                showWelcomeMessage();
-
-            } catch (err) {
-                console.error(err);
-                toastError('Login failed. Please try again.');
-            } finally {
-                setLoginLoading(false);
-            }
+            setLoginLoading(false);
+            toastError('Cloud login is managed by Supabase. Please try again in a moment.');
         }
 
         async function signup() {
-            if (window.__spCloudOnly) {
-                toastError('Cloud signup is managed by Supabase. Please try again in a moment.');
-                return;
-            }
-            try {
-                const name = document.getElementById('signupName').value.trim();
-                const password = document.getElementById('signupPassword').value;
-                const email = document.getElementById('signupEmail').value.trim();
-                const phone = document.getElementById('signupPhone').value.trim();
-
-                if (!name || !password) {
-                    toastError('Name and password are required.');
-                    return;
-                }
-                if (!email) {
-                    toastError('Email is required to create an account.');
-                    return;
-                }
-
-                // ── SUPABASE PATH (primary) ───────────────────────────────────────────
-                if (window.SP?.signup) {
-                    try {
-                        const data = await window.SP.signup(name, email, password, phone);
-                        const needsConfirmation = data?.user && !data?.session;
-                        if (needsConfirmation) {
-                            toastSuccess('Account created! Check your email to confirm before logging in.');
-                        } else if (data?.session) {
-                            toastSuccess('Account created! Welcome to Star Paper.');
-                            // Session is live — bootstrap will fire via onAuthStateChange.
-                        } else {
-                            toastSuccess('Account created! You can now log in.');
-                        }
-                        showLoginForm();
-                        return;
-                    } catch (spErr) {
-                        const msg = spErr?.message || '';
-                        if (msg.toLowerCase().includes('already')) {
-                            toastError('An account with that email already exists.');
-                        } else {
-                            toastError(msg || 'Sign up failed. Please try again.');
-                        }
-                        return;
-                    }
-                }
-
-                // ── LOCAL FALLBACK (offline / no Supabase) ────────────────────────────
-                if (!hasSecureCredentialCrypto()) {
-                    toastError('Secure password storage is not available in this browser.');
-                    return;
-                }
-                if (findUserByUsername(name) || findUserByUsernameInsensitive(name)) {
-                    toastError('That username is already taken.');
-                    return;
-                }
-                const createdAt = new Date().toISOString();
-                users.push({
-                    id: createRuntimeId('mgr', name),
-                    username: name,
-                    email: email || '',
-                    phone: phone || '',
-                    bio: '',
-                    avatar: '',
-                    createdAt
-                });
-                credentials[name] = await createHashedCredentialRecord(password, { createdAt });
-                saveIdentityStores();
-                toastSuccess('Account created! You can now log in.');
-                showLoginForm();
-
-            } catch (error) {
-                console.error('Signup failed:', error);
-                toastError('Sign up failed. Please try again.');
-            }
+            toastError('Cloud signup is managed by Supabase. Please try again in a moment.');
         }
 
         function showWelcomeMessage() {
@@ -4843,6 +4176,7 @@ function showLoginForm(options = {}) {
                 renderOtherIncome();
                 renderArtists();
                 populateArtistDropdown();
+                populateFinanceArtistDropdowns();
                 toggleAdminOnlyUI();
 
                 window.__spAppBooted = true;
@@ -4980,7 +4314,6 @@ function showLoginForm(options = {}) {
 
         function hasAuthenticatedCloudSession() {
             return Boolean(window.__spSupabaseConfigured) &&
-                !window.__spAllowLocalFallback &&
                 Boolean(window.SP?.getOwnerId?.());
         }
 
@@ -5053,57 +4386,6 @@ function showLoginForm(options = {}) {
             window.currentUser = currentUser;
         }
 
-        function cloneRuntimeRecordList(records) {
-            if (!Array.isArray(records)) return [];
-            return records.map((record) => {
-                if (!record || typeof record !== 'object') return record;
-                return { ...record };
-            });
-        }
-
-        function captureRuntimeDataSnapshot() {
-            const scopeKey = getActiveDataScopeKey();
-            return {
-                ...getActiveWorkspaceSnapshotMeta(scopeKey),
-                artists: cloneRuntimeRecordList(artists),
-                bookings: cloneRuntimeRecordList(bookings),
-                expenses: cloneRuntimeRecordList(expenses),
-                otherIncome: cloneRuntimeRecordList(otherIncome),
-                audienceMetrics: cloneRuntimeRecordList(audienceMetrics),
-            };
-        }
-
-        function restoreRuntimeDataSnapshot(snapshot) {
-            if (!snapshot) return;
-            artists = cloneRuntimeRecordList(snapshot.artists);
-            bookings = cloneRuntimeRecordList(snapshot.bookings);
-            expenses = cloneRuntimeRecordList(snapshot.expenses);
-            otherIncome = cloneRuntimeRecordList(snapshot.otherIncome);
-            audienceMetrics = cloneRuntimeRecordList(snapshot.audienceMetrics);
-            if (snapshot.scopeKey) {
-                saveAudienceMetricsForScope(snapshot.scopeKey, audienceMetrics);
-            }
-            Storage.saveSync('starPaperArtists', artists);
-            syncWindowState();
-        }
-
-        function renderPortfolioDataSurfaces() {
-            renderArtists();
-            populateArtistDropdown();
-            updateAvailabilityArtists();
-            renderBookings();
-            renderExpenses();
-            renderOtherIncome();
-            renderCalendar();
-            renderPerformanceMap();
-            updateDashboard();
-            updateReportStatistics();
-            renderAudienceMetrics();
-            if (typeof window.renderMomentumDashboard === 'function') {
-                window.renderMomentumDashboard();
-            }
-        }
-
         function applyCloudSnapshotToRuntime(cloudData, activeScopeKey, options = {}) {
             if (!cloudData) {
                 syncWindowState();
@@ -5129,10 +4411,10 @@ function showLoginForm(options = {}) {
                     : bookings;
             }
             if (hasOwnCloudField(cloudData, 'expenses')) {
-                expenses = Array.isArray(cloudData.expenses) ? cloudData.expenses : expenses;
+                expenses = Array.isArray(cloudData.expenses) ? ensureFinanceArtistRefs(cloudData.expenses) : expenses;
             }
             if (hasOwnCloudField(cloudData, 'otherIncome')) {
-                otherIncome = Array.isArray(cloudData.otherIncome) ? cloudData.otherIncome : otherIncome;
+                otherIncome = Array.isArray(cloudData.otherIncome) ? ensureFinanceArtistRefs(cloudData.otherIncome) : otherIncome;
             }
             if (hasOwnCloudField(cloudData, 'artists')) {
                 artists = Array.isArray(cloudData.artists) ? cloudData.artists : artists;
@@ -5218,6 +4500,8 @@ function showLoginForm(options = {}) {
                 return hydrationBlock;
             }
             bookings = ensureBookingArtistRefs(bookings, currentManagerId);
+            expenses = ensureFinanceArtistRefs(expenses);
+            otherIncome = ensureFinanceArtistRefs(otherIncome);
             markSearchIndexDirty();
             // Update window references
             window.bookings    = bookings;
@@ -5270,8 +4554,8 @@ function showLoginForm(options = {}) {
 
             const payload = {
                 bookings: Array.isArray(bookings) ? bookings : [],
-                expenses: Array.isArray(expenses) ? expenses : [],
-                otherIncome: Array.isArray(otherIncome) ? otherIncome : [],
+                expenses: ensureFinanceArtistRefs(expenses),
+                otherIncome: ensureFinanceArtistRefs(otherIncome),
                 artists: Array.isArray(artists) ? artists : [],
                 audienceMetrics: Array.isArray(audienceMetrics) ? audienceMetrics : [],
                 tasks: Array.isArray(tasks) ? tasks : [],
@@ -5379,603 +4663,6 @@ function showLoginForm(options = {}) {
             const error = result?.error instanceof Error ? result.error : new Error(message);
             error.syncResult = result || null;
             throw error;
-        }
-
-        function getNextNumericRecordId(records) {
-            if (!Array.isArray(records) || records.length === 0) {
-                return Date.now();
-            }
-            const maxId = records.reduce((max, item) => {
-                const value = Number(item?.id);
-                return Number.isFinite(value) ? Math.max(max, value) : max;
-            }, 0);
-            return maxId > 0 ? (maxId + 1) : Date.now();
-        }
-
-        function dateOffsetFromToday(offsetDays) {
-            const date = new Date();
-            date.setHours(12, 0, 0, 0);
-            date.setDate(date.getDate() + offsetDays);
-            return date.toISOString().split('T')[0];
-        }
-
-        async function loadMockPortfolioData() {
-            updateCurrentManagerContext();
-            if (!currentManagerId) {
-                toastError('Please sign in first.');
-                return;
-            }
-            if (guardReadOnly('load mock data into this team')) {
-                return;
-            }
-            if (guardWorkspaceHydrated('load mock data')) {
-                return;
-            }
-            const runtimeSnapshot = captureRuntimeDataSnapshot();
-
-            const mockArtists = [
-                {
-                    name: 'Cindy Sanyu',
-                    email: 'cindy@starpaperdemo.com',
-                    phone: '+256 770 112233',
-                    specialty: 'Dancehall / Pop',
-                    bio: 'Ugandan singer-songwriter and actress, widely known as \"The King Herself,\" a former Blu*3 member and an established solo dancehall-pop performer.',
-                    strategicGoal: 'Secure 3 regional festival slots and two brand partnerships this quarter.',
-                    avatar: avatarDataUriFromSymbol('C')
-                },
-                {
-                    name: 'Kvan',
-                    email: 'kvan@starpaperdemo.com',
-                    phone: '+256 772 904411',
-                    specialty: 'Dancehall / Afro-Fusion',
-                    bio: 'Dancehall artist from Jinja (Bugisu origin), known as KVAN, a songwriter-performer active since age 8 with studio releases and regional collaborations.',
-                    strategicGoal: 'Expand regional tour pipeline and secure 4 cross-border shows.',
-                    avatar: avatarDataUriFromSymbol('K')
-                },
-                {
-                    name: 'Spice Diana',
-                    email: 'spice@starpaperdemo.com',
-                    phone: '+256 774 563210',
-                    specialty: 'Dancehall / Pop',
-                    bio: 'Consistent chart performer with strong regional demand and repeat bookings for club and corporate circuits.',
-                    strategicGoal: 'Strengthen corporate circuit bookings and grow streaming audience by 10%.',
-                    avatar: avatarDataUriFromSymbol('S')
-                },
-                {
-                    name: 'Cieska Lites',
-                    email: 'cieska@starpaperdemo.com',
-                    phone: '+256 780 553714',
-                    specialty: 'Reggae / Ragga Dancehall',
-                    bio: 'Ugandan reggae-ragga dancehall artist active since 2014, known for high-energy stage delivery, writing his own music, and recent releases in regional riddim projects.',
-                    strategicGoal: 'Launch a new single run and lock two brand activations.',
-                    avatar: avatarDataUriFromSymbol('C')
-                }
-            ];
-
-            const monthOffset = (offsetMonths) => {
-                const d = new Date();
-                d.setDate(1);
-                d.setMonth(d.getMonth() + offsetMonths);
-                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-            };
-
-            const mockAudienceMetrics = [
-                { artist: 'Cindy Sanyu', period: monthOffset(-2), socialFollowers: 1180000, spotifyListeners: 520000, youtubeListeners: 205000 },
-                { artist: 'Cindy Sanyu', period: monthOffset(-1), socialFollowers: 1215000, spotifyListeners: 548000, youtubeListeners: 214000 },
-                { artist: 'Kvan', period: monthOffset(-2), socialFollowers: 640000, spotifyListeners: 310000, youtubeListeners: 120000 },
-                { artist: 'Kvan', period: monthOffset(-1), socialFollowers: 685000, spotifyListeners: 335000, youtubeListeners: 128000 },
-                { artist: 'Spice Diana', period: monthOffset(-2), socialFollowers: 1920000, spotifyListeners: 610000, youtubeListeners: 285000 },
-                { artist: 'Spice Diana', period: monthOffset(-1), socialFollowers: 1995000, spotifyListeners: 645000, youtubeListeners: 301000 },
-                { artist: 'Cieska Lites', period: monthOffset(-2), socialFollowers: 420000, spotifyListeners: 145000, youtubeListeners: 68000 },
-                { artist: 'Cieska Lites', period: monthOffset(-1), socialFollowers: 452000, spotifyListeners: 159000, youtubeListeners: 74200 }
-            ];
-
-            const mockBookings = [
-                {
-                    mockKey: 'seed-booking-cindy-crown-grounds',
-                    event: 'Crown Grounds Live',
-                    artist: 'Cindy Sanyu',
-                    dateOffset: -19,
-                    fee: 17600000,
-                    deposit: 9000000,
-                    capacity: 3500,
-                    contact: 'Crown Grounds Team: 0701 118244',
-                    status: 'confirmed',
-                    notes: 'Headline dancehall set with full band and media pullout.',
-                    locationType: 'uganda',
-                    location: 'Kampala'
-                },
-                {
-                    mockKey: 'seed-booking-cindy-victoria-nights',
-                    event: 'Victoria Nights Showcase',
-                    artist: 'Cindy Sanyu',
-                    dateOffset: -7,
-                    fee: 13200000,
-                    deposit: 5400000,
-                    capacity: 2200,
-                    contact: 'Victoria Nights Desk: 0754 209611',
-                    status: 'pending',
-                    notes: 'Prime-time performance pending sponsor remittance.',
-                    locationType: 'uganda',
-                    location: 'Entebbe'
-                },
-                {
-                    mockKey: 'seed-booking-azawi-kigali-crossroads',
-                    event: 'Kigali Crossroads Sessions',
-                    artist: 'Kvan',
-                    dateOffset: -21,
-                    fee: 16000000,
-                    deposit: 8000000,
-                    capacity: 2800,
-                    contact: 'Rwanda Touring: +250 788 220100',
-                    status: 'confirmed',
-                    notes: 'Regional showcase appearance with media syndication.',
-                    locationType: 'abroad',
-                    location: 'Rwanda'
-                },
-                {
-                    mockKey: 'seed-booking-azawi-acoustic-nexus',
-                    event: 'Nexus Acoustic Night',
-                    artist: 'Kvan',
-                    dateOffset: -6,
-                    fee: 9600000,
-                    deposit: 3200000,
-                    capacity: 1500,
-                    contact: 'Nexus Promoter: 0788 450021',
-                    status: 'pending',
-                    notes: 'Soft ticket hold pending final sponsor confirmation.',
-                    locationType: 'uganda',
-                    location: 'Entebbe'
-                },
-                {
-                    mockKey: 'seed-booking-spice-cityfest',
-                    event: 'Mbarara City Fest',
-                    artist: 'Spice Diana',
-                    dateOffset: -12,
-                    fee: 14000000,
-                    deposit: 7000000,
-                    capacity: 4000,
-                    contact: 'City Fest Team: 0774 932201',
-                    status: 'confirmed',
-                    notes: 'Prime-time set with choreography team and pyros.',
-                    locationType: 'uganda',
-                    location: 'Mbarara'
-                },
-                {
-                    mockKey: 'seed-booking-spice-youth-grounds',
-                    event: 'Gulu Youth Grounds Concert',
-                    artist: 'Spice Diana',
-                    dateOffset: -4,
-                    fee: 7200000,
-                    deposit: 2600000,
-                    capacity: 2500,
-                    contact: 'Northern Stage Admin: 0762 600178',
-                    status: 'pending',
-                    notes: 'Outdoor youth concert with radio partner promotions.',
-                    locationType: 'uganda',
-                    location: 'Gulu'
-                },
-                {
-                    mockKey: 'seed-booking-cieska-ragga-heights',
-                    event: 'Ragga Heights Live',
-                    artist: 'Cieska Lites',
-                    dateOffset: -16,
-                    fee: 11200000,
-                    deposit: 5200000,
-                    capacity: 1800,
-                    contact: 'Ragga Heights Team: 0776 301144',
-                    status: 'confirmed',
-                    notes: 'Prime dancehall set with live MC and full sound package.',
-                    locationType: 'uganda',
-                    location: 'Kampala'
-                },
-                {
-                    mockKey: 'seed-booking-cieska-lake-vibes',
-                    event: 'Jinja Lake Vibes',
-                    artist: 'Cieska Lites',
-                    dateOffset: -2,
-                    fee: 9800000,
-                    deposit: 4000000,
-                    capacity: 2000,
-                    contact: 'Lake Vibes Coordinator: 0709 640880',
-                    status: 'pending',
-                    notes: 'Late-month headliner with dancehall showcase lineup.',
-                    locationType: 'uganda',
-                    location: 'Jinja'
-                }
-            ];
-
-            const mockExpenses = [
-                {
-                    mockKey: 'seed-expense-stage-tech-package',
-                    description: 'Stage technology package',
-                    amount: 2400000,
-                    dateOffset: -10,
-                    category: 'equipment'
-                },
-                {
-                    mockKey: 'seed-expense-kigali-travel-block',
-                    description: 'Kigali travel and visa facilitation',
-                    amount: 1800000,
-                    dateOffset: -24,
-                    category: 'transport'
-                },
-                {
-                    mockKey: 'seed-expense-rehearsal-studio',
-                    description: 'Band rehearsal studio blocks',
-                    amount: 980000,
-                    dateOffset: -5,
-                    category: 'other'
-                },
-                {
-                    mockKey: 'seed-expense-digital-campaign',
-                    description: 'Digital campaign for March events',
-                    amount: 1550000,
-                    dateOffset: 1,
-                    category: 'marketing'
-                },
-                {
-                    mockKey: 'seed-expense-artist-accommodation',
-                    description: 'Artist and crew accommodation',
-                    amount: 1320000,
-                    dateOffset: 14,
-                    category: 'accommodation'
-                },
-                {
-                    mockKey: 'seed-expense-tour-catering',
-                    description: 'Backstage catering and rider supplies',
-                    amount: 760000,
-                    dateOffset: 17,
-                    category: 'food'
-                }
-            ];
-
-            const mockOtherIncome = [
-                {
-                    mockKey: 'seed-income-brand-integration',
-                    source: 'Brand integration retainer',
-                    amount: 4200000,
-                    dateOffset: -12,
-                    type: 'endorsement',
-                    payer: 'City Spark Beverage',
-                    method: 'bank',
-                    status: 'received',
-                    notes: 'Quarterly activation agreement.'
-                },
-                {
-                    mockKey: 'seed-income-merch-drop',
-                    source: 'Limited merch drop revenue',
-                    amount: 2350000,
-                    dateOffset: -7,
-                    type: 'merch',
-                    payer: 'Online fan store',
-                    method: 'online',
-                    status: 'received',
-                    notes: 'Hoodies, jerseys, and caps.'
-                },
-                {
-                    mockKey: 'seed-income-vip-upgrades',
-                    source: 'VIP table upgrades',
-                    amount: 1100000,
-                    dateOffset: 6,
-                    type: 'gift',
-                    payer: 'Corporate hospitality desk',
-                    method: 'cash',
-                    status: 'pending',
-                    notes: 'Pending final reconciliation.'
-                },
-                {
-                    mockKey: 'seed-income-fan-support-pool',
-                    source: 'Fan support pool',
-                    amount: 680000,
-                    dateOffset: 9,
-                    type: 'donation',
-                    payer: 'Community supporters',
-                    method: 'mobile',
-                    status: 'received',
-                    notes: 'Collected during livestream campaign.'
-                },
-                {
-                    mockKey: 'seed-income-tour-sponsor-bonus',
-                    source: 'Regional tour sponsor bonus',
-                    amount: 3600000,
-                    dateOffset: 22,
-                    type: 'sponsorship',
-                    payer: 'Eastern Route Telecom',
-                    method: 'bank',
-                    status: 'pending',
-                    notes: 'Payable after event settlement.'
-                }
-            ];
-
-            const added = { artists: 0, bookings: 0, expenses: 0, otherIncome: 0, audienceMetrics: 0 };
-            let artistsMutated = false;
-            const replacementSeedProfile = mockArtists.find((profile) => profile.name === 'Kvan');
-            if (replacementSeedProfile) {
-                const legacySeedName = 'Azawi';
-                const existingKvanRecord = artists.find((artist) =>
-                    artist &&
-                    artist.managerId === currentManagerId &&
-                    artist.name === replacementSeedProfile.name
-                );
-                const removedLegacyArtistIds = new Set();
-
-                for (let index = artists.length - 1; index >= 0; index -= 1) {
-                    const artist = artists[index];
-                    if (!artist || artist.managerId !== currentManagerId) continue;
-                    if (artist.name !== legacySeedName || artist.mockSeedVersion !== MOCK_PORTFOLIO_VERSION) continue;
-
-                    if (existingKvanRecord && existingKvanRecord.id !== artist.id) {
-                        removedLegacyArtistIds.add(artist.id);
-                        artists.splice(index, 1);
-                        artistsMutated = true;
-                        continue;
-                    }
-
-                    artist.name = replacementSeedProfile.name;
-                    artist.email = replacementSeedProfile.email;
-                    artist.phone = replacementSeedProfile.phone;
-                    artist.specialty = replacementSeedProfile.specialty;
-                    artist.bio = replacementSeedProfile.bio;
-                    artistsMutated = true;
-                }
-
-                bookings.forEach((entry) => {
-                    if (!entry || entry.mockSeedVersion !== MOCK_PORTFOLIO_VERSION) return;
-                    if (entry.artist !== legacySeedName && !removedLegacyArtistIds.has(entry.artistId)) return;
-                    entry.artist = replacementSeedProfile.name;
-                    if (existingKvanRecord?.id) {
-                        entry.artistId = existingKvanRecord.id;
-                    }
-                });
-            }
-            const retiredSeedArtistNames = new Set(['Cinderella Sanyu']);
-            const removedRetiredArtistIds = new Set();
-            for (let index = artists.length - 1; index >= 0; index -= 1) {
-                const artist = artists[index];
-                if (!artist || artist.managerId !== currentManagerId) continue;
-                if (artist.mockSeedVersion !== MOCK_PORTFOLIO_VERSION) continue;
-                if (!retiredSeedArtistNames.has(String(artist.name || '').trim())) continue;
-                removedRetiredArtistIds.add(artist.id);
-                artists.splice(index, 1);
-                artistsMutated = true;
-            }
-            const previousBookingCount = bookings.length;
-            bookings = bookings.filter((entry) => {
-                if (!entry) return false;
-                if (entry.mockSeedVersion !== MOCK_PORTFOLIO_VERSION) return true;
-                const artistName = String(entry.artist || '').trim();
-                if (retiredSeedArtistNames.has(artistName)) return false;
-                if (removedRetiredArtistIds.has(entry.artistId)) return false;
-                return true;
-            });
-            if (bookings.length !== previousBookingCount) {
-                window.bookings = bookings;
-            }
-
-            mockArtists.forEach((profile) => {
-                const existingArtist = findArtistByName(profile.name);
-                if (existingArtist) {
-                    const fields = ['email', 'phone', 'specialty', 'bio', 'strategicGoal', 'avatar'];
-                    fields.forEach((field) => {
-                        if (!existingArtist[field] && profile[field]) {
-                            existingArtist[field] = profile[field];
-                            artistsMutated = true;
-                        }
-                    });
-                    return;
-                }
-
-                artists.push({
-                    id: createRuntimeId('artist', profile.name),
-                    name: profile.name,
-                    managerId: currentManagerId,
-                    createdAt: new Date().toISOString(),
-                    email: profile.email,
-                    phone: profile.phone,
-                    specialty: profile.specialty,
-                    bio: profile.bio,
-                    strategicGoal: profile.strategicGoal || '',
-                    avatar: profile.avatar || '',
-                    mockSeedVersion: MOCK_PORTFOLIO_VERSION
-                });
-                added.artists += 1;
-                artistsMutated = true;
-            });
-
-            const scopeKey = getActiveDataScopeKey();
-            let scopedMetrics = getAudienceMetricsForScope(scopeKey);
-            if (!Array.isArray(scopedMetrics)) scopedMetrics = [];
-            const metricKeys = new Set(scopedMetrics.map((entry) => `${entry?.artistId || entry?.artist || ''}|${entry?.period || ''}`));
-            mockAudienceMetrics.forEach((template) => {
-                const artist = findArtistByName(template.artist);
-                if (!artist || !template.period) return;
-                const key = `${artist.id}|${template.period}`;
-                if (metricKeys.has(key)) return;
-                scopedMetrics.push({
-                    id: createRuntimeId('aud', `${artist.id}-${template.period}`),
-                    artistId: artist.id,
-                    artist: artist.name,
-                    period: template.period,
-                    socialFollowers: Math.round(Number(template.socialFollowers) || 0),
-                    spotifyListeners: Math.round(Number(template.spotifyListeners) || 0),
-                    youtubeListeners: Math.round(Number(template.youtubeListeners) || 0),
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                    mockSeedVersion: MOCK_PORTFOLIO_VERSION
-                });
-                metricKeys.add(key);
-                added.audienceMetrics += 1;
-            });
-            if (added.audienceMetrics > 0) {
-                audienceMetrics = scopedMetrics;
-                saveAudienceMetricsForScope(scopeKey, audienceMetrics);
-                window.audienceMetrics = audienceMetrics;
-            }
-
-            const bookingKeys = new Set(bookings.map((entry) => entry?.mockKey).filter(Boolean));
-            let nextBookingId = getNextNumericRecordId(bookings);
-            mockBookings.forEach((template) => {
-                if (bookingKeys.has(template.mockKey)) return;
-                const fee = Number(template.fee) || 0;
-                const deposit = Number(template.deposit) || 0;
-                const linkedArtist = ensureArtistForBookingName(template.artist, currentManagerId);
-                bookings.push({
-                    id: nextBookingId++,
-                    mockKey: template.mockKey,
-                    mockSeedVersion: MOCK_PORTFOLIO_VERSION,
-                    event: template.event,
-                    artist: template.artist,
-                    artistId: linkedArtist?.id || null,
-                    date: dateOffsetFromToday(template.dateOffset),
-                    fee,
-                    deposit,
-                    balance: Math.max(0, fee - deposit),
-                    capacity: Math.round(Number(template.capacity) || 0),
-                    contact: template.contact,
-                    status: template.status,
-                    notes: template.notes,
-                    locationType: template.locationType,
-                    location: template.location,
-                    createdAt: Date.now()
-                });
-                bookingKeys.add(template.mockKey);
-                added.bookings += 1;
-            });
-
-            const expenseKeys = new Set(expenses.map((entry) => entry?.mockKey).filter(Boolean));
-            let nextExpenseId = getNextNumericRecordId(expenses);
-            mockExpenses.forEach((template) => {
-                if (expenseKeys.has(template.mockKey)) return;
-                expenses.push({
-                    id: nextExpenseId++,
-                    mockKey: template.mockKey,
-                    mockSeedVersion: MOCK_PORTFOLIO_VERSION,
-                    description: template.description,
-                    amount: Number(template.amount) || 0,
-                    date: dateOffsetFromToday(template.dateOffset),
-                    category: template.category,
-                    receipt: null,
-                    createdAt: Date.now()
-                });
-                expenseKeys.add(template.mockKey);
-                added.expenses += 1;
-            });
-
-            const incomeKeys = new Set(otherIncome.map((entry) => entry?.mockKey).filter(Boolean));
-            let nextOtherIncomeId = getNextNumericRecordId(otherIncome);
-            mockOtherIncome.forEach((template) => {
-                if (incomeKeys.has(template.mockKey)) return;
-                otherIncome.push({
-                    id: nextOtherIncomeId++,
-                    mockKey: template.mockKey,
-                    mockSeedVersion: MOCK_PORTFOLIO_VERSION,
-                    source: template.source,
-                    amount: Number(template.amount) || 0,
-                    date: dateOffsetFromToday(template.dateOffset),
-                    type: template.type,
-                    payer: template.payer,
-                    method: template.method,
-                    status: template.status,
-                    notes: template.notes,
-                    proof: null,
-                    createdAt: Date.now()
-                });
-                incomeKeys.add(template.mockKey);
-                added.otherIncome += 1;
-            });
-
-            if (artistsMutated) {
-                Storage.saveSync('starPaperArtists', artists);
-            }
-            try {
-                await persistMutationWithCloudFeedback(() => saveUserData(), {
-                    suppressSuccessToast: true,
-                    failureMessage: 'Mock data could not be saved to cloud.'
-                });
-            } catch (error) {
-                restoreRuntimeDataSnapshot(runtimeSnapshot);
-                renderPortfolioDataSurfaces();
-                toastError(error?.message || 'Mock data could not be saved to cloud. Try again.');
-                return;
-            }
-
-            renderPortfolioDataSurfaces();
-
-            const periodEl = document.getElementById('reportPeriod');
-            if (periodEl && typeof getReportPeriodData === 'function') {
-                const currentPeriod = periodEl.value || 'month';
-                const periodData = getReportPeriodData(currentPeriod, { sortNewestFirst: false });
-                const hasPeriodData = (periodData.totalBookings || 0) + (periodData.totalExpenses || 0) + (periodData.totalOtherIncome || 0) > 0;
-                const hasAnyData = bookings.length + expenses.length + otherIncome.length > 0;
-                if (!hasPeriodData && hasAnyData) {
-                    periodEl.value = 'all';
-                    updateReportStatistics();
-                    if (typeof window.renderMomentumDashboard === 'function') {
-                        window.renderMomentumDashboard();
-                    }
-                }
-            }
-
-            const totalAdded = added.artists + added.bookings + added.expenses + added.otherIncome + added.audienceMetrics;
-            if (totalAdded === 0) {
-                toastInfo('Mock portfolio data is already loaded for this account.');
-                return;
-            }
-
-            toastSuccess(`Mock data loaded: ${added.artists} artists, ${added.bookings} bookings, ${added.expenses} expenses, ${added.otherIncome} income entries, ${added.audienceMetrics} audience metrics.`);
-        }
-
-        async function clearMockData() {
-            updateCurrentManagerContext();
-            if (!currentManagerId) {
-                toastError('Please sign in first.');
-                return;
-            }
-            if (guardReadOnly('clear mock data from this team')) {
-                return;
-            }
-            if (guardWorkspaceHydrated('clear mock data')) {
-                return;
-            }
-            const before = {
-                artists: artists.filter(a => a.mockSeedVersion === MOCK_PORTFOLIO_VERSION && a.managerId === currentManagerId).length,
-                bookings: bookings.filter(b => b.mockSeedVersion === MOCK_PORTFOLIO_VERSION).length,
-                expenses: expenses.filter(e => e.mockSeedVersion === MOCK_PORTFOLIO_VERSION).length,
-                otherIncome: otherIncome.filter(o => o.mockSeedVersion === MOCK_PORTFOLIO_VERSION).length,
-                audienceMetrics: audienceMetrics.filter(m => m.mockSeedVersion === MOCK_PORTFOLIO_VERSION).length
-            };
-            const total = before.artists + before.bookings + before.expenses + before.otherIncome + before.audienceMetrics;
-            if (total === 0) {
-                toastInfo('No mock data found to clear.');
-                return;
-            }
-            if (!confirm(`Remove ${total} mock item(s): ${before.artists} artist(s), ${before.bookings} booking(s), ${before.expenses} expense(s), ${before.otherIncome} income entry/entries, ${before.audienceMetrics} audience metric(s). Continue?`)) return;
-            const runtimeSnapshot = captureRuntimeDataSnapshot();
-
-            artists = artists.filter(a => !(a.mockSeedVersion === MOCK_PORTFOLIO_VERSION && a.managerId === currentManagerId));
-            Storage.saveSync('starPaperArtists', artists);
-            bookings = bookings.filter(b => b.mockSeedVersion !== MOCK_PORTFOLIO_VERSION);
-            expenses = expenses.filter(e => e.mockSeedVersion !== MOCK_PORTFOLIO_VERSION);
-            otherIncome = otherIncome.filter(o => o.mockSeedVersion !== MOCK_PORTFOLIO_VERSION);
-            audienceMetrics = audienceMetrics.filter(m => m.mockSeedVersion !== MOCK_PORTFOLIO_VERSION);
-            saveAudienceMetricsForScope(getActiveDataScopeKey(), audienceMetrics);
-            window.audienceMetrics = audienceMetrics;
-            try {
-                await persistMutationWithCloudFeedback(() => saveUserData(), {
-                    suppressSuccessToast: true,
-                    failureMessage: 'Mock data changes could not be saved to cloud.'
-                });
-            } catch (error) {
-                restoreRuntimeDataSnapshot(runtimeSnapshot);
-                renderPortfolioDataSurfaces();
-                toastError(error?.message || 'Mock data changes could not be saved to cloud. Try again.');
-                return;
-            }
-
-            renderPortfolioDataSurfaces();
-
-            toastSuccess(`Mock data cleared: ${before.artists} artist(s), ${before.bookings} booking(s), ${before.expenses} expense(s), ${before.otherIncome} income entry/entries, ${before.audienceMetrics} audience metric(s) removed.`);
         }
 
         // Navigation
@@ -6156,6 +4843,7 @@ function showLoginForm(options = {}) {
                     desc: document.getElementById('expenseDesc')?.value || '',
                     amount: document.getElementById('expenseAmount')?.value || '',
                     date: document.getElementById('expenseDate')?.value || '',
+                    artist: document.getElementById('expenseArtist')?.value || '',
                     category: document.getElementById('expenseCategory')?.value || 'transport',
                     formOpen: document.getElementById('addExpenseForm')?.style.display === 'block'
                 },
@@ -6163,6 +4851,7 @@ function showLoginForm(options = {}) {
                     source: document.getElementById('otherIncomeSource')?.value || '',
                     amount: document.getElementById('otherIncomeAmount')?.value || '',
                     date: document.getElementById('otherIncomeDate')?.value || '',
+                    artist: document.getElementById('otherIncomeArtist')?.value || '',
                     type: document.getElementById('otherIncomeType')?.value || 'tips',
                     payer: document.getElementById('otherIncomePayer')?.value || '',
                     method: document.getElementById('otherIncomeMethod')?.value || 'cash',
@@ -6210,6 +4899,7 @@ function showLoginForm(options = {}) {
                 setVal('expenseDesc', drafts.expense.desc || '');
                 setVal('expenseAmount', drafts.expense.amount || '');
                 setVal('expenseDate', drafts.expense.date || '');
+                populateFinanceArtistDropdown(document.getElementById('expenseArtist'), drafts.expense.artist || '');
                 setVal('expenseCategory', drafts.expense.category || 'transport');
                 if (drafts.expense.formOpen) {
                     showSection('expenses');
@@ -6225,6 +4915,7 @@ function showLoginForm(options = {}) {
                 setVal('otherIncomeSource', drafts.otherIncome.source || '');
                 setVal('otherIncomeAmount', drafts.otherIncome.amount || '');
                 setVal('otherIncomeDate', drafts.otherIncome.date || '');
+                populateFinanceArtistDropdown(document.getElementById('otherIncomeArtist'), drafts.otherIncome.artist || '');
                 setVal('otherIncomeType', drafts.otherIncome.type || 'tips');
                 setVal('otherIncomePayer', drafts.otherIncome.payer || '');
                 setVal('otherIncomeMethod', drafts.otherIncome.method || 'cash');
@@ -6653,39 +5344,45 @@ function showLoginForm(options = {}) {
                 dateStart = '',
                 dateEnd = ''
             } = options;
+            const normalizedDateStart = String(dateStart || '').trim();
+            const normalizedDateEnd = String(dateEnd || '').trim();
+            const hasExplicitDateRange = Boolean(normalizedDateStart || normalizedDateEnd);
             const maybeSort = (items) => {
                 if (!sortNewestFirst) return items;
                 return [...items].sort((a, b) => new Date(b.date) - new Date(a.date));
             };
 
             const filterDateRange = (items, dateField = 'date') => {
-                if (!dateStart && !dateEnd) return items;
+                if (!hasExplicitDateRange) return items;
                 return items.filter((item) => {
                     const value = String(item?.[dateField] || '').trim();
                     if (!value) return false;
-                    if (dateStart && value < dateStart) return false;
-                    if (dateEnd && value > dateEnd) return false;
+                    if (normalizedDateStart && value < normalizedDateStart) return false;
+                    if (normalizedDateEnd && value > normalizedDateEnd) return false;
                     return true;
                 });
             };
 
-            let filteredBookings = filterByPeriod(bookings, period);
-            let filteredExpenses = filterByPeriod(expenses, period);
-            let filteredOtherIncome = filterByPeriod(otherIncome, period);
+            let filteredBookings = hasExplicitDateRange ? [...bookings] : filterByPeriod(bookings, period);
+            let filteredExpenses = hasExplicitDateRange ? [...expenses] : filterByPeriod(expenses, period);
+            let filteredOtherIncome = hasExplicitDateRange ? [...otherIncome] : filterByPeriod(otherIncome, period);
 
-            const selectedArtistName = String(
-                artistName ||
-                selectedArtist ||
-                artist?.name ||
-                ''
-            ).trim();
-            if (selectedArtistName) {
-                filteredBookings = filteredBookings.filter((booking) => String(booking?.artist || '').trim() === selectedArtistName);
+            const artistScope = resolveArtistScope({
+                selectedArtist,
+                artist,
+                artistId,
+                artistName
+            });
+            const selectedArtistName = artistScope.artistName;
+            if (artistScope.hasArtist) {
+                filteredBookings = filteredBookings.filter((booking) => financeRecordMatchesArtist(booking, artistScope));
+                filteredExpenses = filteredExpenses.filter((expense) => financeRecordMatchesArtist(expense, artistScope));
+                filteredOtherIncome = filteredOtherIncome.filter((income) => financeRecordMatchesArtist(income, artistScope));
             }
 
             filteredBookings = maybeSort(filterDateRange(filteredBookings, 'date'));
-            filteredExpenses = maybeSort(filterDateRange(filteredExpenses, 'date'));
-            filteredOtherIncome = maybeSort(filterDateRange(filteredOtherIncome, 'date'));
+            filteredExpenses = maybeSort(filterDateRange(ensureFinanceArtistRefs(filteredExpenses), 'date'));
+            filteredOtherIncome = maybeSort(filterDateRange(ensureFinanceArtistRefs(filteredOtherIncome), 'date'));
 
             const totalBookings = filteredBookings.length;
             const totalIncome = filteredBookings.reduce((sum, b) => sum + (Math.round(Number(b.fee) || 0)), 0);
@@ -6694,13 +5391,14 @@ function showLoginForm(options = {}) {
             const periodNetProfit = (totalIncome + totalOtherIncome) - totalExpenses;
             const balancesDue = filteredBookings.reduce((sum, b) => sum + (Math.round(Number(b.balance) || 0)), 0);
             const reportStartPeriod = typeof window.getReportStartPeriodKey === 'function'
-                ? window.getReportStartPeriodKey(period, dateStart, {
+                ? window.getReportStartPeriodKey(period, normalizedDateStart, {
                     filteredBookings,
                     filteredExpenses,
                     filteredOtherIncome
                 })
-                : (dateStart ? String(dateStart).slice(0, 7) : new Date().toISOString().slice(0, 7));
+                : (normalizedDateStart ? normalizedDateStart.slice(0, 7) : new Date().toISOString().slice(0, 7));
             const resolvedArtist = artist
+                || artistScope.artist
                 || (artistId ? findArtistById(artistId) : null)
                 || (selectedArtistName ? findArtistByName(selectedArtistName) : null);
             const bbfContext = typeof getActiveBBFContext === 'function'
@@ -6709,7 +5407,7 @@ function showLoginForm(options = {}) {
                     artist: resolvedArtist,
                     artistId: artistId || resolvedArtist?.id,
                     artistName: selectedArtistName || resolvedArtist?.name,
-                    fallbackToGlobal: true
+                    fallbackToGlobal: !artistScope.hasArtist
                 })
                 : null;
             const bbf = bbfContext
@@ -6719,7 +5417,7 @@ function showLoginForm(options = {}) {
                         period: reportStartPeriod,
                         artistId: artistId || resolvedArtist?.id,
                         artistName: selectedArtistName || resolvedArtist?.name,
-                        fallbackToGlobal: true
+                        fallbackToGlobal: !artistScope.hasArtist
                     })) || 0
                     : 0);
             const closingBalance = bbf + periodNetProfit;
@@ -6747,6 +5445,8 @@ function showLoginForm(options = {}) {
             const periodEl = document.getElementById('reportPeriod');
             if (!periodEl) return;
             const period = periodEl.value;
+            const selectedArtist = String(document.getElementById('spRptArtistFilter')?.value || document.getElementById('spPdfArtistSelect')?.value || '').trim();
+            const selectedArtistId = selectedArtist ? (findArtistByName(selectedArtist)?.id || '') : '';
             const {
                 totalBookings,
                 totalIncome,
@@ -6754,7 +5454,7 @@ function showLoginForm(options = {}) {
                 totalOtherIncome,
                 netProfit,
                 balancesDue
-            } = getReportPeriodData(period, { sortNewestFirst: false });
+            } = getReportPeriodData(period, { sortNewestFirst: false, selectedArtist, artistId: selectedArtistId });
             
             const reportBookings = document.getElementById('reportBookings');
             const reportIncome = document.getElementById('reportIncome');
@@ -6959,7 +5659,7 @@ function showLoginForm(options = {}) {
                             <span class="audience-metric-row__period sp-inline-editable" ${inlineEditAttrs('audienceMetric', metricId, 'period', 'Period')}>${periodLabel}</span>
                         </div>
                         <div class="audience-metric-row__stats">
-                            <span class="audience-metric-row__stat"><span class="audience-metric-row__label">Social</span> <span class="audience-metric-row__value sp-inline-editable" ${inlineEditAttrs('audienceMetric', metricId, 'socialFollowers', 'Social Followers')}>${social.toLocaleString()}</span></span>
+                            <span class="audience-metric-row__stat"><span class="audience-metric-row__label">Social Media</span> <span class="audience-metric-row__value sp-inline-editable" ${inlineEditAttrs('audienceMetric', metricId, 'socialFollowers', 'Social Media Followers')}>${social.toLocaleString()}</span></span>
                             <span class="audience-metric-row__stat"><span class="audience-metric-row__label">Spotify</span> <span class="audience-metric-row__value sp-inline-editable" ${inlineEditAttrs('audienceMetric', metricId, 'spotifyListeners', 'Spotify Listeners')}>${spotify.toLocaleString()}</span></span>
                             <span class="audience-metric-row__stat"><span class="audience-metric-row__label">YouTube</span> <span class="audience-metric-row__value sp-inline-editable" ${inlineEditAttrs('audienceMetric', metricId, 'youtubeListeners', 'YouTube Listeners')}>${youtube.toLocaleString()}</span></span>
                         </div>
@@ -6970,6 +5670,9 @@ function showLoginForm(options = {}) {
         }
 
         function saveAudienceMetricEntry() {
+            if (saveAudienceMetricEntry._busy) return;
+            saveAudienceMetricEntry._busy = true;
+            setTimeout(() => { saveAudienceMetricEntry._busy = false; }, 0);
             if (guardReadOnly('save audience metrics')) return;
             const artistSelect = document.getElementById('audienceArtistSelect');
             const periodEl = document.getElementById('audienceMetricPeriod');
@@ -7060,7 +5763,7 @@ function showLoginForm(options = {}) {
             });
         }
 
-        // Get period string for PDF filename
+        // Get period string for report period labels
         function getPeriodString(period) {
             const today = new Date();
             const currentMonth = today.getMonth();
@@ -7283,8 +5986,8 @@ function showLoginForm(options = {}) {
             syncCloudExtras();
         }
 
-        let reportLogoDataUrlCache = null;
-        let reportLogoDataUrlPromise = null;
+        const reportLogoDataUrlCache = new Map();
+        const reportLogoDataUrlPromise = new Map();
 
         function blobToDataUrl(blob) {
             return new Promise((resolve, reject) => {
@@ -7325,45 +6028,46 @@ function showLoginForm(options = {}) {
             });
         }
 
-        async function getReportLogoDataUrl() {
-            if (reportLogoDataUrlCache) return reportLogoDataUrlCache;
-            if (reportLogoDataUrlPromise) return reportLogoDataUrlPromise;
+        function normalizeReportLogoTheme(options = {}) {
+            const normalizedOptions = options || {};
+            const rawTheme = typeof normalizedOptions === 'string'
+                ? normalizedOptions
+                : (normalizedOptions.themeMode || normalizedOptions.theme || normalizedOptions.mode || '');
+            return String(rawTheme).toLowerCase() === 'light' ? 'light' : 'dark';
+        }
 
-            reportLogoDataUrlPromise = (async () => {
+        function buildReportLogoCandidates(themeMode, withOrigin) {
+            const primaryLogo = themeMode === 'light' ? 'star_paper_black.png' : 'star_paper_white.png';
+            const candidateNames = [primaryLogo, 'star_paper_transparent.png', 'star_paper_512.png'];
+            return [
+                ...candidateNames.map((name) => withOrigin(`/star_paper_logo_pack/${name}?v=${REPORT_LOGO_ASSET_VERSION}`)),
+                ...candidateNames.map((name) => `./star_paper_logo_pack/${name}?v=${REPORT_LOGO_ASSET_VERSION}`)
+            ];
+        }
+
+        async function getReportLogoDataUrl(options = {}) {
+            const themeMode = normalizeReportLogoTheme(options);
+            if (reportLogoDataUrlCache.has(themeMode)) return reportLogoDataUrlCache.get(themeMode);
+            if (reportLogoDataUrlPromise.has(themeMode)) return reportLogoDataUrlPromise.get(themeMode);
+
+            const pendingLogoLoad = (async () => {
                 try {
                     const origin = window.location.origin && window.location.origin !== 'null'
                         ? window.location.origin
                         : '';
                     const withOrigin = (path) => origin ? `${origin}${path}` : path;
-                    const logoCandidates = [
-                        withOrigin('/logo-report.png?v=21'),
-                        withOrigin('/logo.png?v=21'),
-                        withOrigin('/logo-192.png?v=21'),
-                        withOrigin('/logo-report.png'),
-                        withOrigin('/logo.png'),
-                        withOrigin('/logo-192.png'),
-                        withOrigin('/log.jpg')
-                    ];
-                    const relativeFallbacks = [
-                        './logo-report.png?v=21',
-                        './logo.png?v=21',
-                        './logo-192.png?v=21',
-                        './logo-report.png',
-                        './logo.png',
-                        './logo-192.png',
-                        './log.jpg'
-                    ];
-                    const candidateList = [...logoCandidates, ...relativeFallbacks];
+                    const candidateList = buildReportLogoCandidates(themeMode, withOrigin);
                     const isFileProtocol = window.location.protocol === 'file:';
                     for (const logoSrc of candidateList) {
                         if (!isFileProtocol) {
                             try {
-                                const response = await fetch(logoSrc, { cache: 'force-cache' });
+                                const response = await fetch(logoSrc, { cache: 'reload' });
                                 if (response.ok) {
                                     const blob = await response.blob();
-                                    reportLogoDataUrlCache = await blobToDataUrl(blob);
-                                    if (reportLogoDataUrlCache) {
-                                        return reportLogoDataUrlCache;
+                                    const logoDataUrl = await blobToDataUrl(blob);
+                                    if (logoDataUrl) {
+                                        reportLogoDataUrlCache.set(themeMode, logoDataUrl);
+                                        return logoDataUrl;
                                     }
                                 }
                             } catch (err) {
@@ -7373,23 +6077,19 @@ function showLoginForm(options = {}) {
 
                         const imageDataUrl = await loadLogoDataUrlFromImage(logoSrc);
                         if (imageDataUrl) {
-                            reportLogoDataUrlCache = imageDataUrl;
-                            return reportLogoDataUrlCache;
+                            reportLogoDataUrlCache.set(themeMode, imageDataUrl);
+                            return imageDataUrl;
                         }
-                    }
-                    if (EMBEDDED_REPORT_LOGO_DATA_URL && EMBEDDED_REPORT_LOGO_DATA_URL.startsWith('data:image/')) {
-                        reportLogoDataUrlCache = EMBEDDED_REPORT_LOGO_DATA_URL;
-                        console.warn('Report logo loaded from embedded fallback.');
-                        return reportLogoDataUrlCache;
                     }
                     console.warn('Report logo unavailable: all logo candidates failed.');
                     return '';
                 } finally {
-                    reportLogoDataUrlPromise = null;
+                    reportLogoDataUrlPromise.delete(themeMode);
                 }
             })();
+            reportLogoDataUrlPromise.set(themeMode, pendingLogoLoad);
 
-            return reportLogoDataUrlPromise;
+            return pendingLogoLoad;
         }
 
         // ── CSV Export ──────────────────────────────────────────────────────
@@ -7411,7 +6111,9 @@ function showLoginForm(options = {}) {
 
         function exportCSV() {
             const { period } = getReportPeriodSelection();
-            const data = getReportPeriodData(period, { sortNewestFirst: true });
+            const selectedArtist = String(document.getElementById('spRptArtistFilter')?.value || document.getElementById('spPdfArtistSelect')?.value || '').trim();
+            const selectedArtistId = selectedArtist ? (findArtistByName(selectedArtist)?.id || '') : '';
+            const data = getReportPeriodData(period, { sortNewestFirst: true, selectedArtist, artistId: selectedArtistId });
             const fmtMoney = (v) => Math.round(Number(v) || 0);
             const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '';
 
@@ -7429,6 +6131,7 @@ function showLoginForm(options = {}) {
 
             const expensesCSV = arrayToCSV(data.filteredExpenses, [
                 { label: 'Date',     value: e => fmtDate(e.date) },
+                { label: 'Artist',   value: e => getFinanceArtistLabel(e) },
                 { label: 'Category', value: e => e.category || '' },
                 { label: 'Description', value: e => e.description || e.name || '' },
                 { label: 'Amount (UGX)', value: e => fmtMoney(e.amount) },
@@ -7436,6 +6139,7 @@ function showLoginForm(options = {}) {
 
             const otherIncomeCSV = arrayToCSV(data.filteredOtherIncome, [
                 { label: 'Date',   value: i => fmtDate(i.date) },
+                { label: 'Artist', value: i => getFinanceArtistLabel(i) },
                 { label: 'Source', value: i => i.source || i.name || '' },
                 { label: 'Description', value: i => i.description || '' },
                 { label: 'Amount (UGX)', value: i => fmtMoney(i.amount) },
@@ -7466,582 +6170,12 @@ function showLoginForm(options = {}) {
             }
         }
 
-        // Clean Report Generation (without +P)
-        async function generateCleanReport() {
-            if (generateCleanReport._busy) return;
-            generateCleanReport._busy = true;
-            try {
-                if (typeof window.generateMomentumPDF === 'function' && window.generateMomentumPDF !== generateCleanReport) {
-                    return await window.generateMomentumPDF();
-                }
-                if ((!window.jspdf?.jsPDF || !window.html2canvas) && typeof window.__spLoadDeferredLibrary === 'function') {
-                    await window.__spLoadDeferredLibrary('pdf');
-                }
-                if (typeof window.Chart === 'undefined' && typeof window.__spLoadDeferredLibrary === 'function') {
-                    await window.__spLoadDeferredLibrary('chart').catch(() => null);
-                }
-                const { period } = getReportPeriodSelection();
-                const { jsPDF } = window.jspdf || {};
-                if (!jsPDF) {
-                    toastError('PDF library not loaded. Please try again.');
-                    return;
-                }
-                const isMobileReportLayout = window.matchMedia('(max-width: 900px), (pointer: coarse)').matches;
-
-                const pdf = new jsPDF({
-                    orientation: isMobileReportLayout ? 'portrait' : 'landscape',
-                    unit: 'mm',
-                    format: 'a4',
-                    putOnlyUsedFonts: true,
-                    floatPrecision: 16
-                });
-                const reportLogoDataUrl = await getReportLogoDataUrl();
-                const pageWidth = pdf.internal.pageSize.getWidth();
-                const pageHeight = pdf.internal.pageSize.getHeight();
-                const margin = isMobileReportLayout ? 10 : 12;
-                const contentWidth = pageWidth - (margin * 2);
-                const periodLabel = getPeriodString(period).replace(/-/g, ' ');
-                const generatedLabel = formatDisplayDate(new Date());
-                const closingThoughtsInput = document.getElementById('closingThoughtsInput');
-                const draftClosingThoughts = String(closingThoughtsInput?.value || '').trim();
-                const closingThoughts = draftClosingThoughts || getClosingThoughtsForPeriod(period).trim();
-                const formatMoney = (value) => `UGX ${Math.round(Number(value) || 0).toLocaleString()}`;
-                const palette = {
-                    black: [20, 20, 20],
-                    white: [255, 255, 255],
-                    gold: [255, 179, 0],
-                    goldDark: [198, 140, 0],
-                    paper: [251, 247, 238],
-                    line: [227, 217, 198],
-                    text: [33, 33, 33],
-                    muted: [105, 105, 105],
-                    income: [46, 125, 50],
-                    expense: [198, 40, 40],
-                    neutral: [44, 62, 80]
-                };
-    
-                const {
-                    filteredBookings,
-                    filteredExpenses,
-                    filteredOtherIncome,
-                    totalBookings,
-                    totalIncome,
-                    totalExpenses,
-                    totalOtherIncome,
-                    netProfit,
-                    periodNetProfit,
-                    balancesDue,
-                    bbf,
-                    closingBalance,
-                    bbfSourcePeriodLabel
-                } = getReportPeriodData(period, { sortNewestFirst: true });
-    
-                const drawHeader = (subtitle = 'Activity Report') => {
-                    const headerHeight = isMobileReportLayout ? 26 : 24;
-                    pdf.setFillColor(...palette.black);
-                    pdf.rect(0, 0, pageWidth, headerHeight, 'F');
-    
-                    pdf.setFont('helvetica', 'bold');
-                    pdf.setFontSize(isMobileReportLayout ? 15 : 16);
-                    pdf.setTextColor(...palette.gold);
-                    pdf.text('Star Paper', margin, 10);
-    
-                    pdf.setFont('helvetica', 'normal');
-                    pdf.setFontSize(isMobileReportLayout ? 8.5 : 10);
-                    pdf.setTextColor(...palette.white);
-                    const subtitleWidth = contentWidth - 24;
-                    const subtitleLines = pdf.splitTextToSize(`${subtitle}  |  Period: ${periodLabel}`, subtitleWidth);
-                    const subtitleStartY = isMobileReportLayout ? 14.8 : 16;
-                    subtitleLines.slice(0, 2).forEach((line, index) => {
-                        pdf.text(String(line), margin, subtitleStartY + (index * 3.7));
-                    });
-    
-                    pdf.setFontSize(isMobileReportLayout ? 7.4 : 8.5);
-                    pdf.setTextColor(224, 224, 224);
-                    pdf.text(`Generated: ${generatedLabel}   User: ${currentUser || 'Manager'}`, margin, isMobileReportLayout ? 24 : 21);
-                };
-    
-                const drawLogoOnCurrentPage = () => {
-                    if (!reportLogoDataUrl) return;
-                    try {
-                        const logoSize = isMobileReportLayout ? 14 : 16;
-                        const logoX = pageWidth - margin - logoSize;
-                        const logoY = isMobileReportLayout ? 5 : 4;
-                        const imageFormat = /^data:image\/jpe?g/i.test(reportLogoDataUrl) ? 'JPEG' : 'PNG';
-                        pdf.addImage(reportLogoDataUrl, imageFormat, logoX, logoY, logoSize, logoSize);
-                    } catch (err) {
-                        console.warn('Report logo failed to render:', err);
-                    }
-                };
-    
-                const drawSectionTitle = (title, y) => {
-                    pdf.setFont('helvetica', 'bold');
-                    pdf.setFontSize(11);
-                    pdf.setTextColor(...palette.goldDark);
-                    pdf.text(title, margin, y);
-                    pdf.setDrawColor(...palette.line);
-                    pdf.setLineWidth(0.5);
-                    pdf.line(margin, y + 2, pageWidth - margin, y + 2);
-                };
-    
-                const drawPanelFrame = (title, x, y, width, height) => {
-                    pdf.setFillColor(...palette.paper);
-                    pdf.roundedRect(x, y, width, height, 2, 2, 'F');
-                    pdf.setDrawColor(...palette.line);
-                    pdf.setLineWidth(0.35);
-                    pdf.roundedRect(x, y, width, height, 2, 2, 'S');
-                    pdf.setFont('helvetica', 'bold');
-                    pdf.setFontSize(9.5);
-                    pdf.setTextColor(...palette.goldDark);
-                    pdf.text(title, x + 3, y + 6);
-                    return {
-                        x: x + 2.5,
-                        y: y + 8,
-                        width: width - 5,
-                        height: height - 10
-                    };
-                };
-    
-                drawHeader('Activity Report');
-    
-                const cards = [
-                    { label: 'Total Bookings', value: `${totalBookings}`, color: palette.neutral },
-                    { label: 'Show Income', value: formatMoney(totalIncome), color: palette.income },
-                    { label: 'Other Income', value: formatMoney(totalOtherIncome), color: palette.income },
-                    { label: 'Total Expenses', value: formatMoney(totalExpenses), color: palette.expense },
-                    { label: 'Opening Balance (BBF)', value: formatMoney(bbf), color: palette.neutral },
-                    { label: 'Period Net Profit', value: formatMoney(periodNetProfit), color: periodNetProfit >= 0 ? palette.income : palette.expense },
-                    { label: 'Closing Balance', value: formatMoney(closingBalance), color: closingBalance >= 0 ? palette.income : palette.expense }
-                ];
-    
-                const cardGap = 4;
-                const cardColumns = isMobileReportLayout ? 2 : 3;
-                const cardWidth = (contentWidth - (cardGap * (cardColumns - 1))) / cardColumns;
-                const cardHeight = isMobileReportLayout ? 22 : 20;
-                const cardRowGap = isMobileReportLayout ? 5 : 4;
-                const cardY = 30;
-    
-                cards.forEach((card, index) => {
-                    const col = index % cardColumns;
-                    const row = Math.floor(index / cardColumns);
-                    const x = margin + ((cardWidth + cardGap) * col);
-                    const y = cardY + ((cardHeight + cardRowGap) * row);
-    
-                    pdf.setFillColor(...palette.paper);
-                    pdf.roundedRect(x, y, cardWidth, cardHeight, 2, 2, 'F');
-                    pdf.setDrawColor(...palette.line);
-                    pdf.setLineWidth(0.35);
-                    pdf.roundedRect(x, y, cardWidth, cardHeight, 2, 2, 'S');
-    
-                    pdf.setFont('helvetica', 'normal');
-                    pdf.setFontSize(8);
-                    pdf.setTextColor(...palette.muted);
-                    pdf.text(card.label, x + 3, y + 6);
-    
-                    pdf.setFont('helvetica', 'bold');
-                    pdf.setFontSize(11);
-                    pdf.setTextColor(...card.color);
-                    pdf.text(card.value, x + 3, y + 14);
-                });
-    
-                const activityRows = [];
-                filteredBookings.forEach((entry) => {
-                    activityRows.push({
-                        date: entry.date,
-                        type: 'Booking',
-                        detail: `${entry.event || 'Event'} (${entry.artist || 'Artist'})`,
-                        amount: Number(entry.fee) || 0,
-                        amountClass: 'income'
-                    });
-                });
-                filteredExpenses.forEach((entry) => {
-                    activityRows.push({
-                        date: entry.date,
-                        type: 'Expense',
-                        detail: `${entry.description || 'Expense'} (${entry.category || 'other'})`,
-                        amount: Number(entry.amount) || 0,
-                        amountClass: 'expense'
-                    });
-                });
-                filteredOtherIncome.forEach((entry) => {
-                    activityRows.push({
-                        date: entry.date,
-                        type: 'Other Income',
-                        detail: `${entry.source || 'Income'} (${entry.type || 'other'})`,
-                        amount: Number(entry.amount) || 0,
-                        amountClass: 'income'
-                    });
-                });
-                activityRows.sort((a, b) => new Date(b.date) - new Date(a.date));
-    
-                const cardRows = Math.ceil(cards.length / cardColumns);
-                const cardsBottom = cardY + (cardRows * cardHeight) + ((cardRows - 1) * cardRowGap);
-                let tableY = cardsBottom + 13;
-                drawSectionTitle('Transaction Ledger', tableY);
-                tableY += 5;
-    
-                const columnDate = margin + 2;
-                const columnType = margin + (isMobileReportLayout ? 24 : 32);
-                const columnDetail = margin + (isMobileReportLayout ? 47 : 63);
-                const columnAmountRight = pageWidth - margin - 2;
-                const detailWidth = isMobileReportLayout ? Math.max(45, contentWidth - 78) : 118;
-                const rowHeight = isMobileReportLayout ? 7 : 6;
-                const tableBottomLimit = pageHeight - margin - (isMobileReportLayout ? 10 : 8);
-    
-                const drawLedgerHeader = (y) => {
-                    pdf.setFillColor(245, 239, 226);
-                    pdf.rect(margin, y - 4.2, contentWidth, rowHeight, 'F');
-                    pdf.setFont('helvetica', 'bold');
-                    pdf.setFontSize(isMobileReportLayout ? 8 : 8.5);
-                    pdf.setTextColor(...palette.text);
-                    pdf.text('Date', columnDate, y);
-                    pdf.text(isMobileReportLayout ? 'Type' : 'Type', columnType, y);
-                    pdf.text('Description', columnDetail, y);
-                    const amountWidth = pdf.getTextWidth('Amount');
-                    pdf.text('Amount', columnAmountRight - amountWidth, y);
-                    pdf.setDrawColor(...palette.line);
-                    pdf.setLineWidth(0.3);
-                    pdf.line(margin, y + 1.5, pageWidth - margin, y + 1.5);
-                };
-    
-                drawLedgerHeader(tableY);
-                tableY += 6;
-    
-                if (activityRows.length === 0) {
-                    pdf.setFont('helvetica', 'normal');
-                    pdf.setFontSize(9);
-                    pdf.setTextColor(...palette.muted);
-                    pdf.text('No records for the selected period.', margin + 2, tableY + 2);
-                } else {
-                    activityRows.forEach((row) => {
-                        if ((tableY + rowHeight) > tableBottomLimit) {
-                            pdf.addPage();
-                            drawHeader('Activity Report (Continued)');
-                            drawSectionTitle('Transaction Ledger (Continued)', 30);
-                            tableY = isMobileReportLayout ? 34 : 35;
-                            drawLedgerHeader(tableY);
-                            tableY += 6;
-                        }
-    
-                        const safeDetail = String(row.detail || '-');
-                        const compactDetail = pdf.splitTextToSize(safeDetail, detailWidth)[0] || '-';
-                        const typeLabel = (isMobileReportLayout && row.type === 'Other Income') ? 'Other' : row.type;
-                        const amountText = `${row.amountClass === 'expense' ? '-' : '+'}${formatMoney(row.amount).replace('UGX ', '')}`;
-    
-                        pdf.setFont('helvetica', 'normal');
-                        pdf.setFontSize(isMobileReportLayout ? 8 : 8.5);
-                        pdf.setTextColor(...palette.text);
-                        pdf.text(formatDisplayDate(row.date), columnDate, tableY);
-                        pdf.text(typeLabel, columnType, tableY);
-                        pdf.text(compactDetail, columnDetail, tableY);
-    
-                        pdf.setFont('helvetica', 'bold');
-                        if (row.amountClass === 'expense') {
-                            pdf.setTextColor(...palette.expense);
-                        } else {
-                            pdf.setTextColor(...palette.income);
-                        }
-                        const amountWidth = pdf.getTextWidth(amountText);
-                        pdf.text(amountText, columnAmountRight - amountWidth, tableY);
-    
-                        pdf.setDrawColor(236, 230, 217);
-                        pdf.setLineWidth(0.2);
-                        pdf.line(margin, tableY + 1.5, pageWidth - margin, tableY + 1.5);
-                        tableY += rowHeight;
-                    });
-                }
-    
-                pdf.addPage();
-                drawHeader('Visual Insights');
-    
-                const panelY = 30;
-                const panelGap = isMobileReportLayout ? 5 : 6;
-                const panelWidth = isMobileReportLayout ? contentWidth : (contentWidth - panelGap) / 2;
-                const panelHeight = isMobileReportLayout ? 64 : 76;
-    
-                const chartPanel = drawPanelFrame('Financial Performance', margin, panelY, panelWidth, panelHeight);
-                const mapPanel = drawPanelFrame(
-                    'Tour Map Coverage',
-                    isMobileReportLayout ? margin : (margin + panelWidth + panelGap),
-                    isMobileReportLayout ? (panelY + panelHeight + panelGap) : panelY,
-                    panelWidth,
-                    panelHeight
-                );
-    
-                const monthTotals = new Map();
-                const addToMonth = (dateStr, amount, key) => {
-                    if (!dateStr) return;
-                    const date = new Date(dateStr);
-                    if (Number.isNaN(date.getTime())) return;
-                    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                    if (!monthTotals.has(monthKey)) {
-                        monthTotals.set(monthKey, { income: 0, expenses: 0, other: 0 });
-                    }
-                    monthTotals.get(monthKey)[key] += amount;
-                };
-                filteredBookings.forEach((entry) => addToMonth(entry.date, Number(entry.fee) || 0, 'income'));
-                filteredExpenses.forEach((entry) => addToMonth(entry.date, Number(entry.amount) || 0, 'expenses'));
-                filteredOtherIncome.forEach((entry) => addToMonth(entry.date, Number(entry.amount) || 0, 'other'));
-    
-                const chartKeys = Array.from(monthTotals.keys()).sort().slice(-6);
-                if (typeof Chart !== 'undefined' && chartKeys.length > 0) {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = 900;
-                    canvas.height = 420;
-                    const ctx = canvas.getContext('2d');
-                    const chart = new Chart(ctx, {
-                        type: 'line',
-                        data: {
-                            labels: chartKeys,
-                            datasets: [
-                                {
-                                    label: 'Show Income',
-                                    data: chartKeys.map((key) => monthTotals.get(key).income),
-                                    borderColor: '#ffb300',
-                                    backgroundColor: 'rgba(255, 179, 0, 0.12)',
-                                    tension: 0.3,
-                                    fill: true,
-                                    borderWidth: 2
-                                },
-                                {
-                                    label: 'Other Income',
-                                    data: chartKeys.map((key) => monthTotals.get(key).other),
-                                    borderColor: '#2e7d32',
-                                    backgroundColor: 'rgba(46, 125, 50, 0.10)',
-                                    tension: 0.3,
-                                    fill: true,
-                                    borderWidth: 2
-                                },
-                                {
-                                    label: 'Expenses',
-                                    data: chartKeys.map((key) => monthTotals.get(key).expenses),
-                                    borderColor: '#c62828',
-                                    backgroundColor: 'rgba(198, 40, 40, 0.10)',
-                                    tension: 0.3,
-                                    fill: true,
-                                    borderWidth: 2
-                                }
-                            ]
-                        },
-                        options: {
-                            responsive: false,
-                            maintainAspectRatio: false,
-                            animation: { duration: 0 },
-                            plugins: {
-                                legend: {
-                                    labels: {
-                                        color: '#2b2b2b',
-                                        font: { size: 11 }
-                                    }
-                                }
-                            },
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    ticks: { color: '#444' },
-                                    grid: { color: 'rgba(0,0,0,0.08)' }
-                                },
-                                x: {
-                                    ticks: { color: '#444' },
-                                    grid: { color: 'rgba(0,0,0,0.05)' }
-                                }
-                            }
-                        }
-                    });
-                    chart.update();
-                    await new Promise((resolve) => requestAnimationFrame(resolve));
-                    const chartImg = canvas.toDataURL('image/png', 1.0);
-                    pdf.addImage(chartImg, 'PNG', chartPanel.x, chartPanel.y, chartPanel.width, chartPanel.height);
-                    chart.destroy();
-                } else {
-                    pdf.setFont('helvetica', 'normal');
-                    pdf.setFontSize(9);
-                    pdf.setTextColor(...palette.muted);
-                    pdf.text('No chart data available for this period.', chartPanel.x + 2, chartPanel.y + 18);
-                }
-    
-                const mapContainer = document.getElementById('performanceMap');
-                if (mapContainer && window.html2canvas) {
-                    const clone = mapContainer.cloneNode(true);
-                    clone.style.width = '900px';
-                    clone.style.height = '420px';
-                    clone.style.position = 'fixed';
-                    clone.style.left = '-9999px';
-                    clone.style.top = '0';
-                    document.body.appendChild(clone);
-    
-                    const originalMapHtml = mapContainer.innerHTML;
-                    renderPerformanceMap(filteredBookings, { showLabels: false, showLocationList: true, showPinnedPanel: false });
-                    clone.innerHTML = mapContainer.innerHTML;
-                    mapContainer.innerHTML = originalMapHtml;
-    
-                    const mapCanvas = await html2canvas(clone, { backgroundColor: '#f6f0e2', scale: 2 });
-                    const mapImg = mapCanvas.toDataURL('image/png', 0.95);
-                    document.body.removeChild(clone);
-                    pdf.addImage(mapImg, 'PNG', mapPanel.x, mapPanel.y, mapPanel.width, mapPanel.height);
-    
-                    // Restore the live map card to current dashboard state.
-                    renderPerformanceMap();
-                } else {
-                    pdf.setFont('helvetica', 'normal');
-                    pdf.setFontSize(9);
-                    pdf.setTextColor(...palette.muted);
-                    pdf.text('Map preview unavailable.', mapPanel.x + 2, mapPanel.y + 18);
-                }
-    
-                let artistsPanel;
-                let statusPanel;
-                if (isMobileReportLayout) {
-                    pdf.addPage();
-                    drawHeader('Visual Insights (Continued)');
-                    artistsPanel = drawPanelFrame('Top Artists by Show Income', margin, 30, contentWidth, 78);
-                    statusPanel = drawPanelFrame('Booking Status Mix', margin, 116, contentWidth, 74);
-                } else {
-                    const bottomY = panelY + panelHeight + 10;
-                    const lowerPanelHeight = 68;
-                    artistsPanel = drawPanelFrame('Top Artists by Show Income', margin, bottomY, panelWidth, lowerPanelHeight);
-                    statusPanel = drawPanelFrame('Booking Status Mix', margin + panelWidth + panelGap, bottomY, panelWidth, lowerPanelHeight);
-                }
-    
-                const artistTotals = {};
-                filteredBookings.forEach((entry) => {
-                    const name = String(entry.artist || 'Unknown Artist');
-                    artistTotals[name] = (artistTotals[name] || 0) + (Number(entry.fee) || 0);
-                });
-                const topArtists = Object.entries(artistTotals)
-                    .sort((a, b) => b[1] - a[1])
-                    .slice(0, 5);
-    
-                if (topArtists.length === 0) {
-                    pdf.setFont('helvetica', 'normal');
-                    pdf.setFontSize(9);
-                    pdf.setTextColor(...palette.muted);
-                    pdf.text('No booking income records available.', artistsPanel.x + 2, artistsPanel.y + 12);
-                } else {
-                    let lineY = artistsPanel.y + 8;
-                    topArtists.forEach(([name, amount], index) => {
-                        const label = `${index + 1}. ${name}`;
-                        const labelWidthLimit = Math.max(35, artistsPanel.width - 46);
-                        const compactLabel = pdf.splitTextToSize(label, labelWidthLimit)[0] || label;
-                        const value = formatMoney(amount);
-                        pdf.setFont('helvetica', 'normal');
-                        pdf.setFontSize(8.5);
-                        pdf.setTextColor(...palette.text);
-                        pdf.text(compactLabel, artistsPanel.x + 1, lineY);
-                        pdf.setFont('helvetica', 'bold');
-                        pdf.setTextColor(...palette.income);
-                        const valueWidth = pdf.getTextWidth(value);
-                        pdf.text(value, (artistsPanel.x + artistsPanel.width - 2) - valueWidth, lineY);
-                        lineY += 9;
-                    });
-                }
-    
-                const statusCounts = filteredBookings.reduce((acc, entry) => {
-                    const key = String(entry.status || 'pending').toLowerCase();
-                    acc[key] = (acc[key] || 0) + 1;
-                    return acc;
-                }, {});
-                const statusRows = [
-                    ['Confirmed', statusCounts.confirmed || 0, palette.income],
-                    ['Pending', statusCounts.pending || 0, palette.goldDark],
-                    ['Cancelled', statusCounts.cancelled || 0, palette.expense]
-                ];
-    
-                let statusY = statusPanel.y + 8;
-                statusRows.forEach(([label, count, tone]) => {
-                    pdf.setFont('helvetica', 'normal');
-                    pdf.setFontSize(9);
-                    pdf.setTextColor(...palette.text);
-                    pdf.text(String(label), statusPanel.x + 1, statusY);
-                    pdf.setFont('helvetica', 'bold');
-                    pdf.setTextColor(...tone);
-                    const valueText = String(count);
-                    const valueWidth = pdf.getTextWidth(valueText);
-                    pdf.text(valueText, (statusPanel.x + statusPanel.width - 2) - valueWidth, statusY);
-                    statusY += 10;
-                });
-    
-                pdf.setFont('helvetica', 'normal');
-                pdf.setFontSize(8.5);
-                pdf.setTextColor(...palette.muted);
-                pdf.text(`Opening balance (BBF): ${formatMoney(bbf)}${bbfSourcePeriodLabel ? ` from ${bbfSourcePeriodLabel}` : ''}`, statusPanel.x + 1, statusY + 4);
-                pdf.text(`Closing balance = BBF + income + other income - expenses = ${formatMoney(closingBalance)}`, statusPanel.x + 1, statusY + 11);
-    
-                if (closingThoughts) {
-                    const frameTop = 34;
-                    const frameHeight = pageHeight - frameTop - margin - 3;
-                    const textX = margin + 4;
-                    const textWidth = contentWidth - 8;
-                    const lineHeight = 5;
-                    const maxTextY = pageHeight - margin - 6;
-    
-                    const startClosingThoughtsPage = (continued = false) => {
-                        pdf.addPage();
-                        drawHeader(continued ? 'Closing Thoughts (Continued)' : 'Closing Thoughts');
-                        drawSectionTitle(continued ? 'Manager Closing Thoughts (Continued)' : 'Manager Closing Thoughts', 30);
-                        pdf.setFillColor(...palette.paper);
-                        pdf.roundedRect(margin, frameTop, contentWidth, frameHeight, 2, 2, 'F');
-                        pdf.setDrawColor(...palette.line);
-                        pdf.setLineWidth(0.35);
-                        pdf.roundedRect(margin, frameTop, contentWidth, frameHeight, 2, 2, 'S');
-                        pdf.setFont('helvetica', 'normal');
-                        pdf.setFontSize(9);
-                        pdf.setTextColor(...palette.text);
-                        return frameTop + 8;
-                    };
-    
-                    let thoughtsY = startClosingThoughtsPage(false);
-                    const paragraphs = closingThoughts.split(/\r?\n/);
-                    paragraphs.forEach((paragraph, paragraphIndex) => {
-                        const lines = paragraph.trim()
-                            ? pdf.splitTextToSize(paragraph.trim(), textWidth)
-                            : [''];
-    
-                        lines.forEach((line) => {
-                            if (thoughtsY > maxTextY) {
-                                thoughtsY = startClosingThoughtsPage(true);
-                            }
-                            if (line) {
-                                pdf.text(String(line), textX, thoughtsY);
-                            }
-                            thoughtsY += lineHeight;
-                        });
-    
-                        if (paragraphIndex < paragraphs.length - 1) {
-                            thoughtsY += 1.5;
-                        }
-                    });
-                }
-    
-                const totalPages = pdf.getNumberOfPages();
-                for (let page = 1; page <= totalPages; page += 1) {
-                    pdf.setPage(page);
-                    drawLogoOnCurrentPage();
-                }
-                for (let page = 1; page <= totalPages; page += 1) {
-                    pdf.setPage(page);
-                    pdf.setDrawColor(...palette.line);
-                    pdf.setLineWidth(0.25);
-                    pdf.line(margin, pageHeight - 7, pageWidth - margin, pageHeight - 7);
-                    pdf.setFont('helvetica', 'normal');
-                    pdf.setFontSize(8);
-                    pdf.setTextColor(...palette.muted);
-                    const pageLabel = `Page ${page} of ${totalPages}`;
-                    const pageLabelWidth = pdf.getTextWidth(pageLabel);
-                    pdf.text(pageLabel, pageWidth - margin - pageLabelWidth, pageHeight - 3.6);
-                }
-    
-                pdf.save(`StarPaper-Report-${getPeriodString(period).replace(/\s+/g, '-')}.pdf`);
-            } finally {
-                generateCleanReport._busy = false;
-            }
-        }
-
         function showAddExpense() {
             if (guardTeamPermission('finance', 'add expenses')) return;
             // Ensure money section + expenses tab are active before showing form
             if (typeof showSection === 'function') showSection('expenses');
             if (typeof switchMoneyTab === 'function') switchMoneyTab('expenses');
+            populateFinanceArtistDropdown(document.getElementById('expenseArtist'));
             document.getElementById('addExpenseForm').style.display = 'block';
             const listCard = document.getElementById('expensesListCard');
             if (listCard) listCard.style.display = 'none';
@@ -8068,6 +6202,8 @@ function showLoginForm(options = {}) {
             document.getElementById('expenseAmount').value = '';
             document.getElementById('expenseDate').value = '';
             document.getElementById('expenseCategory').value = 'transport';
+            const artistSelect = document.getElementById('expenseArtist');
+            if (artistSelect) artistSelect.value = '';
             document.getElementById('expenseReceipt').value = '';
             document.getElementById('receiptPreview').style.display = 'none';
             document.getElementById('receiptPreview').src = '';
@@ -8095,7 +6231,7 @@ function showLoginForm(options = {}) {
                 const receiptSrc = document.getElementById('receiptPreview').src || null;
                 const existingExpense = editingExpenseId ? expenses.find(e => isSameRecordId(e.id, editingExpenseId)) : null;
                 const isEdit = Boolean(editingExpenseId);
-                const expense = {
+                let expense = {
                     id: editingExpenseId || Date.now(),
                     description: sanitizeTextInput(document.getElementById('expenseDesc').value),
                     amount: Math.round(Number(document.getElementById('expenseAmount').value) || 0),
@@ -8104,6 +6240,7 @@ function showLoginForm(options = {}) {
                     receipt: receiptSrc,
                     createdAt: existingExpense?.createdAt || Date.now()
                 };
+                expense = applyFinanceArtistSelection(expense, getFinanceArtistSelection('expenseArtist'));
 
                 if (!expense.description || !expense.amount || !expense.date) {
                     toastError('Please fill in all required fields.');
@@ -8152,10 +6289,10 @@ function showLoginForm(options = {}) {
 
         function renderExpenses() {
             const tbody = document.querySelector('#expensesTable tbody');
-            const sortedExpenses = sortNewestFirst(expenses);
+            const sortedExpenses = sortNewestFirst(ensureFinanceArtistRefs(expenses));
 
             if (sortedExpenses.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5">${emptyState({
+                tbody.innerHTML = `<tr><td colspan="6">${emptyState({
                     icon: 'ph-receipt',
                     title: 'No expenses yet',
                     sub: 'Track your costs - travel, equipment, studio time, and more.',
@@ -8176,6 +6313,7 @@ function showLoginForm(options = {}) {
             tbody.innerHTML = sortedExpenses.map(expense => `
                 <tr class="expense-edit-trigger" data-expense-id="${escapeHtml(expense.id)}">
                     <td class="sp-inline-editable" ${inlineEditAttrs('expense', expense.id, 'description', 'Description')}>${escapeHtml(expense.description || '-')}</td>
+                    <td>${escapeHtml(getFinanceArtistLabel(expense))}</td>
                     <td class="sp-inline-editable" ${inlineEditAttrs('expense', expense.id, 'category', 'Category')}>${escapeHtml(formatInlineTitle(expense.category))}</td>
                     <td class="expense-red sp-inline-editable" ${inlineEditAttrs('expense', expense.id, 'amount', 'Amount')}>${escapeHtml(formatInlineMoney(expense.amount))}</td>
                     <td class="sp-inline-editable" ${inlineEditAttrs('expense', expense.id, 'date', 'Date')}>${escapeHtml(formatDisplayDate(expense.date))}</td>
@@ -8196,6 +6334,7 @@ function showLoginForm(options = {}) {
                             <span class="status-badge status-pending sp-inline-editable" ${inlineEditAttrs('expense', expense.id, 'category', 'Category')}>${escapeHtml(expense.category || 'other')}</span>
                         </div>
                         <div class="expense-meta">
+                            <div class="expense-field"><span>Artist</span>${escapeHtml(getFinanceArtistLabel(expense))}</div>
                             <div class="expense-field sp-inline-editable" ${inlineEditAttrs('expense', expense.id, 'category', 'Category')}><span>Category</span>${escapeHtml(formatInlineTitle(expense.category))}</div>
                             <div class="expense-field expense-red sp-inline-editable" ${inlineEditAttrs('expense', expense.id, 'amount', 'Amount')}><span>Amount</span>${escapeHtml(formatInlineMoney(expense.amount))}</div>
                             <div class="expense-field sp-inline-editable" ${inlineEditAttrs('expense', expense.id, 'date', 'Date')}><span>Date</span>${escapeHtml(formatDisplayDate(expense.date))}</div>
@@ -8254,6 +6393,7 @@ function showLoginForm(options = {}) {
             document.getElementById('expenseAmount').value = expense.amount;
             document.getElementById('expenseDate').value = expense.date;
             document.getElementById('expenseCategory').value = expense.category;
+            setFinanceArtistSelectValue('expenseArtist', expense);
 
             if (expense.receipt) {
                 document.getElementById('receiptPreview').src = expense.receipt;
@@ -8292,6 +6432,7 @@ function showLoginForm(options = {}) {
             // Ensure money section + otherIncome tab are active before showing form
             if (typeof showSection === 'function') showSection('otherIncome');
             if (typeof switchMoneyTab === 'function') switchMoneyTab('otherIncome');
+            populateFinanceArtistDropdown(document.getElementById('otherIncomeArtist'));
             document.getElementById('addOtherIncomeForm').style.display = 'block';
             const listCard = document.getElementById('otherIncomeListCard');
             if (listCard) listCard.style.display = 'none';
@@ -8317,6 +6458,8 @@ function showLoginForm(options = {}) {
             document.getElementById('otherIncomeSource').value = '';
             document.getElementById('otherIncomeAmount').value = '';
             document.getElementById('otherIncomeDate').value = '';
+            const artistSelect = document.getElementById('otherIncomeArtist');
+            if (artistSelect) artistSelect.value = '';
             document.getElementById('otherIncomeType').value = 'tips';
             document.getElementById('otherIncomePayer').value = '';
             document.getElementById('otherIncomeMethod').value = 'cash';
@@ -8349,7 +6492,7 @@ function showLoginForm(options = {}) {
                 const proofSrc = document.getElementById('otherIncomeProofPreview').src || null;
                 const existingIncome = editingOtherIncomeId ? otherIncome.find(i => isSameRecordId(i.id, editingOtherIncomeId)) : null;
                 const isEdit = Boolean(editingOtherIncomeId);
-                const incomeItem = {
+                let incomeItem = {
                     id: editingOtherIncomeId || Date.now(),
                     source: sanitizeTextInput(document.getElementById('otherIncomeSource').value),
                     amount: Math.round(Number(document.getElementById('otherIncomeAmount').value) || 0),
@@ -8362,6 +6505,7 @@ function showLoginForm(options = {}) {
                     proof: proofSrc,
                     createdAt: existingIncome?.createdAt || Date.now()
                 };
+                incomeItem = applyFinanceArtistSelection(incomeItem, getFinanceArtistSelection('otherIncomeArtist'));
 
                 if (!incomeItem.source || !incomeItem.amount || !incomeItem.date) {
                     toastError('Please fill in all required fields.');
@@ -8412,10 +6556,10 @@ function showLoginForm(options = {}) {
             const tbody = document.querySelector('#otherIncomeTable tbody');
             if (!tbody) return;
 
-            const sortedOtherIncome = sortNewestFirst(otherIncome);
+            const sortedOtherIncome = sortNewestFirst(ensureFinanceArtistRefs(otherIncome));
 
             if (sortedOtherIncome.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8">${emptyState({
+                tbody.innerHTML = `<tr><td colspan="9">${emptyState({
                     icon: 'ph-plus-circle',
                     title: 'No other income yet',
                     sub: 'Log sponsorships, royalties, merch sales, and other revenue streams.',
@@ -8438,6 +6582,7 @@ function showLoginForm(options = {}) {
                 return `
                     <tr class="other-income-edit-trigger" data-other-income-id="${escapeHtml(item.id)}">
                         <td class="sp-inline-editable" ${inlineEditAttrs('otherIncome', item.id, 'source', 'Source')}>${escapeHtml(item.source || '-')}</td>
+                        <td>${escapeHtml(getFinanceArtistLabel(item))}</td>
                         <td class="sp-inline-editable" ${inlineEditAttrs('otherIncome', item.id, 'type', 'Type')}>${escapeHtml(formatInlineTitle(item.type))}</td>
                         <td class="income-green sp-inline-editable" ${inlineEditAttrs('otherIncome', item.id, 'amount', 'Amount')}>${escapeHtml(formatInlineMoney(item.amount))}</td>
                         <td class="sp-inline-editable" ${inlineEditAttrs('otherIncome', item.id, 'date', 'Date')}>${escapeHtml(formatDisplayDate(item.date))}</td>
@@ -8464,6 +6609,7 @@ function showLoginForm(options = {}) {
                                 <span class="status-badge ${statusClass} sp-inline-editable" ${inlineEditAttrs('otherIncome', item.id, 'status', 'Status')}>${escapeHtml(item.status || 'received')}</span>
                             </div>
                             <div class="expense-meta">
+                                <div class="expense-field"><span>Artist</span>${escapeHtml(getFinanceArtistLabel(item))}</div>
                                 <div class="expense-field sp-inline-editable" ${inlineEditAttrs('otherIncome', item.id, 'type', 'Type')}><span>Type</span>${escapeHtml(formatInlineTitle(item.type))}</div>
                                 <div class="expense-field income-green sp-inline-editable" ${inlineEditAttrs('otherIncome', item.id, 'amount', 'Amount')}><span>Amount</span>${escapeHtml(formatInlineMoney(item.amount))}</div>
                                 <div class="expense-field sp-inline-editable" ${inlineEditAttrs('otherIncome', item.id, 'date', 'Date')}><span>Date</span>${escapeHtml(formatDisplayDate(item.date))}</div>
@@ -8529,6 +6675,7 @@ function showLoginForm(options = {}) {
             document.getElementById('otherIncomeMethod').value = item.method || 'cash';
             document.getElementById('otherIncomeStatus').value = item.status || 'received';
             document.getElementById('otherIncomeNotes').value = item.notes || '';
+            setFinanceArtistSelectValue('otherIncomeArtist', item);
 
             if (item.proof) {
                 document.getElementById('otherIncomeProofPreview').src = item.proof;
@@ -8680,6 +6827,21 @@ function showLoginForm(options = {}) {
                                 artistId: existingArtist.id || booking.artistId || null
                             };
                         });
+                        const renameFinanceRows = (rows) => (Array.isArray(rows) ? rows.map((entry) => {
+                            if (!entry || typeof entry !== 'object') return entry;
+                            const sameArtistId = String(entry.artistId || '') === String(existingArtist.id || '');
+                            const sameArtistName = String(entry.artist || entry.artistName || '').trim().toLowerCase() === String(previousName || '').trim().toLowerCase();
+                            if (!sameArtistId && !sameArtistName) return entry;
+                            return {
+                                ...entry,
+                                artist: artistName,
+                                artistId: existingArtist.id || entry.artistId || null
+                            };
+                        }) : []);
+                        expenses = renameFinanceRows(expenses);
+                        otherIncome = renameFinanceRows(otherIncome);
+                        window.expenses = expenses;
+                        window.otherIncome = otherIncome;
                         saveUserData();
                     }
 
@@ -8805,6 +6967,7 @@ function showLoginForm(options = {}) {
             select.innerHTML = '<option value="">Select Artist</option>' + 
                 artistList.map(artist => `<option value="${artist.name}">${artist.name}</option>`).join('');
             populateAudienceArtistDropdown();
+            populateFinanceArtistDropdowns();
         }
 
         // Bookings Functions
@@ -9312,8 +7475,17 @@ function showLoginForm(options = {}) {
             if (!select) return;
             
             const artists = getArtists().map((artist) => artist.name);
-            select.innerHTML = '<option value="">Select Artist</option>' + 
-                artists.map(artist => `<option value="${artist}">${artist}</option>`).join('');
+            select.textContent = '';
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = 'Select Artist';
+            select.appendChild(placeholder);
+            artists.forEach((artist) => {
+                const option = document.createElement('option');
+                option.value = String(artist || '');
+                option.textContent = String(artist || '');
+                select.appendChild(option);
+            });
         }
 
         function checkAvailability() {
@@ -9322,7 +7494,11 @@ function showLoginForm(options = {}) {
             const resultDiv = document.getElementById('availabilityResult');
 
             if (!artistName || !date) {
-                resultDiv.innerHTML = '<p style="color: #ff9800;">Please select both artist and date</p>';
+                resultDiv.textContent = '';
+                const message = document.createElement('p');
+                message.style.color = '#ff9800';
+                message.textContent = 'Please select both artist and date';
+                resultDiv.appendChild(message);
                 return;
             }
 
@@ -9333,28 +7509,50 @@ function showLoginForm(options = {}) {
             const artistBookings = allBookings.filter(b => b.artist === artistName && b.date === date);
 
             if (artistBookings.length > 0) {
-                resultDiv.innerHTML = `
-                    <div style="background: rgba(244, 67, 54, 0.1); border-left: 3px solid #f44336; padding: 15px; border-radius: 5px;">
-                        <strong style="color: #f44336;">NOT AVAILABLE</strong>
-                        <p style="color: #ccc; margin-top: 10px;">${artistName} is already booked on ${formatDisplayDate(date)}</p>
-                        ${artistBookings.map(b => `
-                            <div style="margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px;">
-                                <div><strong>${b.event}</strong></div>
-                                <div style="font-size: 12px; color: #888;">
-                                    ${b.location ? `${b.location} ${b.locationType === 'abroad' ? '(Abroad)' : '(Uganda)'}` : 'Location not set'}
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
+                resultDiv.textContent = '';
+                const panel = document.createElement('div');
+                panel.style.cssText = 'background: rgba(244, 67, 54, 0.1); border-left: 3px solid #f44336; padding: 15px; border-radius: 5px;';
+                const status = document.createElement('strong');
+                status.style.color = '#f44336';
+                status.textContent = 'NOT AVAILABLE';
+                const summary = document.createElement('p');
+                summary.style.cssText = 'color: #ccc; margin-top: 10px;';
+                summary.textContent = `${artistName} is already booked on ${formatDisplayDate(date)}`;
+                panel.append(status, summary);
+                artistBookings.forEach((booking) => {
+                    const item = document.createElement('div');
+                    item.style.cssText = 'margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px;';
+                    const eventLine = document.createElement('div');
+                    const eventName = document.createElement('strong');
+                    eventName.textContent = booking.event || 'Untitled booking';
+                    eventLine.appendChild(eventName);
+                    const locationLine = document.createElement('div');
+                    locationLine.style.cssText = 'font-size: 12px; color: #888;';
+                    locationLine.textContent = booking.location
+                        ? `${booking.location} ${booking.locationType === 'abroad' ? '(Abroad)' : '(Uganda)'}`
+                        : 'Location not set';
+                    item.append(eventLine, locationLine);
+                    panel.appendChild(item);
+                });
+                resultDiv.appendChild(panel);
             } else {
-                resultDiv.innerHTML = `
-                    <div style="background: rgba(76, 175, 80, 0.1); border-left: 3px solid #4caf50; padding: 15px; border-radius: 5px;">
-                        <strong style="color: #4caf50;">AVAILABLE</strong>
-                        <p style="color: #ccc; margin-top: 10px;">${artistName} is free on ${formatDisplayDate(date)}</p>
-                        <button class="add-btn" onclick="bookArtistFromAvailability('${artistName}', '${date}')" style="margin-top: 10px; width: auto;">Book Now</button>
-                    </div>
-                `;
+                resultDiv.textContent = '';
+                const panel = document.createElement('div');
+                panel.style.cssText = 'background: rgba(76, 175, 80, 0.1); border-left: 3px solid #4caf50; padding: 15px; border-radius: 5px;';
+                const status = document.createElement('strong');
+                status.style.color = '#4caf50';
+                status.textContent = 'AVAILABLE';
+                const summary = document.createElement('p');
+                summary.style.cssText = 'color: #ccc; margin-top: 10px;';
+                summary.textContent = `${artistName} is free on ${formatDisplayDate(date)}`;
+                const bookButton = document.createElement('button');
+                bookButton.className = 'add-btn';
+                bookButton.type = 'button';
+                bookButton.style.cssText = 'margin-top: 10px; width: auto;';
+                bookButton.textContent = 'Book Now';
+                bookButton.addEventListener('click', () => bookArtistFromAvailability(artistName, date));
+                panel.append(status, summary, bookButton);
+                resultDiv.appendChild(panel);
             }
         }
 
@@ -9989,8 +8187,8 @@ function showLoginForm(options = {}) {
                     if (reg) {
                         reg.showNotification(title, {
                             body,
-                            icon: 'StarPaperLogo-transparent.png',
-                            badge: 'StarPaperLogo-transparent.png'
+                            icon: './star_paper_logo_pack/star_paper_transparent.png?v=2',
+                            badge: './star_paper_logo_pack/star_paper_transparent.png?v=2'
                         });
                     } else {
                         new Notification(title, { body });
@@ -11744,16 +9942,47 @@ function showLoginForm(options = {}) {
 
         (function initTypewriter() {
             const heading = document.querySelector('#landingScreen .landing-hero-heading');
-            if (heading && !heading.dataset.twDone && heading.dataset.twStatic !== '1') {
+            if (heading && !heading.dataset.twDone) {
                 heading.dataset.twDone = '1';
-                const words = heading.textContent.trim().split(/\s+/);
-                heading.innerHTML = words.map((word, index) =>
-                    `<span class="tw-word" style="animation-delay:${(index * 0.09).toFixed(2)}s">${word}&nbsp;</span>`
-                ).join('');
+                const textNodes = [];
+                const walker = document.createTreeWalker(
+                    heading,
+                    NodeFilter.SHOW_TEXT,
+                    {
+                        acceptNode(node) {
+                            return node.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+                        }
+                    }
+                );
+                while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+                let wordIndex = 0;
+                textNodes.forEach(node => {
+                    const parts = node.nodeValue.split(/(\s+)/);
+                    const fragment = document.createDocumentFragment();
+                    parts.forEach(part => {
+                        if (!part) return;
+                        if (/^\s+$/.test(part)) {
+                            fragment.appendChild(document.createTextNode(part));
+                            return;
+                        }
+                        const word = document.createElement('span');
+                        word.className = 'tw-word';
+                        word.style.setProperty('--tw-word-delay', `${(wordIndex * 0.08).toFixed(2)}s`);
+                        word.textContent = part;
+                        fragment.appendChild(word);
+                        wordIndex += 1;
+                    });
+                    node.parentNode.replaceChild(fragment, node);
+                });
             }
 
             const subtitle = document.querySelector('#landingScreen .landing-hero-subtitle');
-            if (!subtitle || subtitle.dataset.twRotatorDone || subtitle.dataset.twStatic === '1') return;
+            if (!subtitle || subtitle.dataset.twRotatorDone) return;
+            // Pages can opt out of the rotating typewriter by marking the
+            // subtitle with data-tw-static="1". Used on the home page so the
+            // headline reads as a single confident anchor instead of cycling.
+            if (subtitle.dataset.twStatic === '1') return;
             subtitle.dataset.twRotatorDone = '1';
 
             const originalText = subtitle.textContent.trim();
@@ -11766,16 +9995,9 @@ function showLoginForm(options = {}) {
             const uniqueLines = Array.from(new Set(lines));
             if (!uniqueLines.length) return;
 
-            const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
             if (prefersReducedMotion) {
-                let index = 0;
-                subtitle.textContent = uniqueLines[index];
-                setInterval(() => {
-                    const landing = document.getElementById('landingScreen');
-                    if (!landing || landing.style.display === 'none') return;
-                    index = (index + 1) % uniqueLines.length;
-                    subtitle.textContent = uniqueLines[index];
-                }, 3600);
+                subtitle.textContent = originalText;
                 return;
             }
 
@@ -11784,7 +10006,34 @@ function showLoginForm(options = {}) {
             subtitle.classList.add('landing-hero-subtitle--typing');
             subtitle.innerHTML = '<span class="tw-text"></span><i class="ph ph-cursor-text tw-cursor" aria-hidden="true"></i>';
             const textEl   = subtitle.querySelector('.tw-text');
-            const cursorEl = subtitle.querySelector('.tw-cursor');
+
+            function setStableSubtitleHeight() {
+                if (!textEl || !subtitle.isConnected) return;
+                const probe = document.createElement('span');
+                probe.className = 'tw-text';
+                probe.setAttribute('aria-hidden', 'true');
+                probe.style.position = 'absolute';
+                probe.style.visibility = 'hidden';
+                probe.style.pointerEvents = 'none';
+                probe.style.left = '0';
+                probe.style.right = '0';
+                probe.style.top = '0';
+                probe.style.display = 'block';
+                probe.style.width = '100%';
+                probe.style.whiteSpace = 'normal';
+                subtitle.appendChild(probe);
+
+                let maxHeight = 0;
+                uniqueLines.forEach(line => {
+                    probe.textContent = line;
+                    maxHeight = Math.max(maxHeight, Math.ceil(probe.getBoundingClientRect().height));
+                });
+                probe.remove();
+
+                const computed = window.getComputedStyle(subtitle);
+                const lineHeight = Number.parseFloat(computed.lineHeight) || 24;
+                subtitle.style.setProperty('--tw-subtitle-min-height', `${Math.max(maxHeight, Math.ceil(lineHeight * 2))}px`);
+            }
 
             let lineIndex = 0;
             let charIndex = 0;
@@ -11798,6 +10047,13 @@ function showLoginForm(options = {}) {
             function schedule(delay) {
                 setTimeout(tick, delay);
             }
+
+            setStableSubtitleHeight();
+            let resizeTimer = null;
+            window.addEventListener('resize', () => {
+                window.clearTimeout(resizeTimer);
+                resizeTimer = window.setTimeout(setStableSubtitleHeight, 120);
+            }, { passive: true });
 
             function tick() {
                 const landing = document.getElementById('landingScreen');
@@ -11899,7 +10155,7 @@ function showLoginForm(options = {}) {
             // regression risk. Reverted to the canonical CLAUDE.md §2 approach: users
             // get a fresh shell on next manual reload after the new SW activates.
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=128').then((registration) => {
+                navigator.serviceWorker.register('sw.js?v=138').then((registration) => {
                     registration?.update?.().catch(() => {});
                 }).catch((error) => {
                     console.warn('Service worker registration failed:', error);

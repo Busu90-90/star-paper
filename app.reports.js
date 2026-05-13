@@ -19,6 +19,8 @@
   const RED = '#ef4444';
   const GLASS_BG = 'rgba(255,255,255,0.06)';
   const CHART_COLORS = [GOLD, '#60a5fa', GREEN, '#f97316', '#a78bfa', '#ec4899', '#14b8a6', '#f43f5e'];
+  const REPORT_RUNTIME_VERSION = 'report-runtime-v17';
+  window.SP_REPORT_RUNTIME_VERSION = REPORT_RUNTIME_VERSION;
 
   function buildStarPaperChartTheme(mode = 'dark') {
     const light = mode === 'light';
@@ -147,6 +149,27 @@
     return `${n}`;
   }
 
+  function getAudiencePlatformRows(audienceTrend) {
+    const totals = audienceTrend?.latestTotals || {};
+    return [
+      { key: 'social', platform: 'Social Media', summaryLabel: 'Social Media:', pdfPrefix: 'Social media followers:', value: totals.social, unit: 'social media followers', compactUnit: 'followers' },
+      { key: 'spotify', platform: 'Spotify', summaryLabel: 'Spotify:', pdfPrefix: 'Spotify:', value: totals.spotify, unit: 'monthly listeners', compactUnit: 'listeners' },
+      { key: 'youtube', platform: 'YouTube', summaryLabel: 'YouTube:', pdfPrefix: 'YouTube:', value: totals.youtube, unit: 'monthly listeners', compactUnit: 'listeners' },
+    ].map((row) => ({
+      ...row,
+      value: Math.round(Number(row.value) || 0)
+    })).filter((row) => row.value > 0);
+  }
+
+  function formatAudiencePlatformSummary(audienceTrend, { compact = false } = {}) {
+    const rows = getAudiencePlatformRows(audienceTrend);
+    if (!rows.length) return '';
+    return rows.map((row) => {
+      const count = compact ? fmtCompactCount(row.value) : row.value.toLocaleString();
+      return `${row.summaryLabel} ${count} ${row.unit}`;
+    }).join(' | ');
+  }
+
   function getCurrentThemeMode() {
     if (document.body.classList.contains('light-theme')) return 'light';
     try {
@@ -160,6 +183,18 @@
       || document.getElementById('spPdfArtistSelect')?.value
       || '';
     return String(currentFilter || '').trim();
+  }
+
+  function reportRecordMatchesArtist(record, artistName = '', artistId = '') {
+    const normalizedId = String(artistId || '').trim();
+    const normalizedName = String(artistName || '').trim().toLowerCase();
+    if (!normalizedId && !normalizedName) return true;
+    if (!record || typeof record !== 'object') return false;
+    const recordArtistId = String(record.artistId || '').trim();
+    const recordArtistName = String(record.artist || record.artistName || '').trim().toLowerCase();
+    if (normalizedId && recordArtistId && recordArtistId === normalizedId) return true;
+    if (normalizedName && recordArtistName && recordArtistName === normalizedName) return true;
+    return false;
   }
 
   function getAudienceTrend(metrics, artistName, artistId) {
@@ -199,12 +234,12 @@
     };
   }
 
-  function buildPdfNextOnStage(bookings, artistName, maxItems = 3) {
+  function buildPdfNextOnStage(bookings, artistName, maxItems = 3, artistId = '') {
     const allBookings = Array.isArray(bookings) ? bookings : [];
     const today = new Date().toISOString().slice(0, 10);
     const relevant = allBookings
       .filter((booking) => booking && booking.date)
-      .filter((booking) => !artistName || booking.artist === artistName)
+      .filter((booking) => reportRecordMatchesArtist(booking, artistName, artistId))
       .filter((booking) => String(booking.status || '').toLowerCase() !== 'cancelled');
 
     const future = relevant
@@ -218,7 +253,7 @@
       .slice(0, maxItems);
   }
 
-  function buildPdfForecastBookings(bookings, artistName, anchorDateIso, maxDays = 31) {
+  function buildPdfForecastBookings(bookings, artistName, anchorDateIso, maxDays = 31, artistId = '') {
     const allBookings = Array.isArray(bookings) ? bookings : [];
     const anchorDate = new Date(anchorDateIso || new Date().toISOString().slice(0, 10));
     if (Number.isNaN(anchorDate.getTime())) return [];
@@ -229,7 +264,7 @@
 
     return allBookings
       .filter((booking) => booking && booking.date)
-      .filter((booking) => !artistName || booking.artist === artistName)
+      .filter((booking) => reportRecordMatchesArtist(booking, artistName, artistId))
       .filter((booking) => String(booking.status || '').toLowerCase() !== 'cancelled')
       .filter((booking) => booking.date > startIso && booking.date <= endIso)
       .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
@@ -380,12 +415,12 @@
     const audienceTrend = ctx.audienceTrend;
     if (audienceTrend && audienceTrend.deltas) {
       const { social, spotify, youtube } = audienceTrend.deltas;
-      if (social !== 0) insights.push(`Social followers ${formatDelta(social)} since last month`);
+      if (social !== 0) insights.push(`Social media followers ${formatDelta(social)} since last month`);
       if (spotify !== 0) insights.push(`Spotify listeners ${formatDelta(spotify)} since last month`);
       if (youtube !== 0) insights.push(`YouTube listeners ${formatDelta(youtube)} since last month`);
     } else if (audienceTrend && audienceTrend.latestTotals) {
-      const totals = audienceTrend.latestTotals;
-      insights.push(`Audience snapshot: ${totals.social.toLocaleString()} followers`);
+      const audienceSummary = formatAudiencePlatformSummary(audienceTrend);
+      if (audienceSummary) insights.push(`Audience snapshot: ${audienceSummary}`);
     } else if (ctx.wantAudiencePrompt) {
       insights.push('Add audience metrics to unlock growth insights');
     }
@@ -523,8 +558,9 @@
     }
 
     const audienceTrend = ctx.audienceTrend;
-    if (audienceTrend?.latestTotals?.social) {
-      notes.push(`Audience snapshot: ${audienceTrend.latestTotals.social.toLocaleString()} followers.`);
+    const audienceSummary = formatAudiencePlatformSummary(audienceTrend);
+    if (audienceSummary) {
+      notes.push(`Audience snapshot: ${audienceSummary}.`);
     }
 
     const closingBalance = Math.round(Number(ctx.closingBalance) || 0);
@@ -807,12 +843,14 @@
     const { period, periodLabel } = getPeriod();
     const artists = Array.isArray(window.artists) ? window.artists : [];
     const selectedArtist = artists.some(a => a.name === previousArtistFilter) ? previousArtistFilter : '';
-    let data = getData(period, { sortNewestFirst: true, selectedArtist });
+    const selectedArtistObj = selectedArtist ? artists.find(a => a.name === selectedArtist) : null;
+    const selectedArtistId = selectedArtistObj?.id || '';
+    let data = getData(period, { sortNewestFirst: true, selectedArtist, artistId: selectedArtistId });
 
     // Previous period data for trend
     const prevPeriodMap = { month: 'prevMonth', year: 'prevYear', quarter: 'all', prevMonth: 'month', prevYear: 'year', all: 'all' };
     const prevPeriod = prevPeriodMap[period] || 'all';
-    const prevData = getData(prevPeriod, { sortNewestFirst: false, selectedArtist });
+    const prevData = getData(prevPeriod, { sortNewestFirst: false, selectedArtist, artistId: selectedArtistId });
 
     const m = computeMetrics(data, prevData);
     const artistOptions = artists.map(a => {
@@ -820,12 +858,12 @@
       const selectedAttr = a.name === selectedArtist ? ' selected' : '';
       return `<option value="${name}"${selectedAttr}>${name}</option>`;
     }).join('');
-    const artistObj = selectedArtist ? artists.find(a => a.name === selectedArtist) : null;
+    const artistObj = selectedArtistObj;
     const audienceTrend = getAudienceTrend(Array.isArray(window.audienceMetrics) ? window.audienceMetrics : [], selectedArtist, artistObj?.id);
     const upcomingShows = (Array.isArray(window.bookings) ? window.bookings : [])
       .filter(b => b && b.date)
       .filter(b => b.status !== 'cancelled')
-      .filter(b => !selectedArtist || b.artist === selectedArtist)
+      .filter(b => reportRecordMatchesArtist(b, selectedArtist, selectedArtistId))
       .filter(b => b.date >= new Date().toISOString().slice(0, 10))
       .sort((a, b) => a.date.localeCompare(b.date))
       .slice(0, 4);
@@ -1112,7 +1150,7 @@
       try {
         const origin = window.location.origin !== 'null' ? window.location.origin : '';
         const url = src.startsWith('http') ? src : `${origin}${src.startsWith('.') ? src.slice(1) : src}`;
-        const resp = await fetch(url, { cache: 'force-cache', mode: 'cors' });
+        const resp = await fetch(url, { cache: 'reload', mode: 'cors' });
         if (!resp.ok) return '';
         const blob = await resp.blob();
         return await new Promise((resolve) => {
@@ -1285,6 +1323,83 @@
 
   // ── PDF GENERATION (DARK GLASSMORPHISM THEME) ──────────────────────────────
 
+  function parseIsoDateOnly(value) {
+    const normalized = String(value || '').trim();
+    return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : '';
+  }
+
+  function isoToLocalDate(value) {
+    const iso = parseIsoDateOnly(value);
+    if (!iso) return null;
+    const [year, month, day] = iso.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }
+
+  function localDateToIso(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  function getPreviousExplicitDateRange(dateStart, dateEnd) {
+    const start = isoToLocalDate(dateStart);
+    const end = isoToLocalDate(dateEnd);
+    if (!start || !end || end < start) return null;
+
+    const dayMs = 24 * 60 * 60 * 1000;
+    const inclusiveDays = Math.max(1, Math.round((end - start) / dayMs) + 1);
+    const previousEnd = new Date(start);
+    previousEnd.setDate(previousEnd.getDate() - 1);
+    const previousStart = new Date(previousEnd);
+    previousStart.setDate(previousStart.getDate() - (inclusiveDays - 1));
+
+    return {
+      dateStart: localDateToIso(previousStart),
+      dateEnd: localDateToIso(previousEnd)
+    };
+  }
+
+  function hasReportActivity(data) {
+    if (!data) return false;
+    return Boolean(
+      (Array.isArray(data.filteredBookings) && data.filteredBookings.length) ||
+      (Array.isArray(data.filteredExpenses) && data.filteredExpenses.length) ||
+      (Array.isArray(data.filteredOtherIncome) && data.filteredOtherIncome.length)
+    );
+  }
+
+  function hasPdfDataHydrationPending() {
+    return Boolean(
+      window.__spCloudBootstrapPending ||
+      window.__spAuthRedirectInProgress ||
+      window.__spSupabaseBootPromise ||
+      (window.__spCloudOnly && window.__spWorkspaceDataHydrated === false)
+    );
+  }
+
+  function waitMs(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  async function waitForPdfDataHydration(timeoutMs = 6500) {
+    const startedAt = Date.now();
+    const bootPromise = window.__spSupabaseBootPromise;
+    if (bootPromise && typeof bootPromise.then === 'function') {
+      await Promise.race([
+        bootPromise.catch(() => null),
+        waitMs(timeoutMs)
+      ]);
+    }
+
+    while (hasPdfDataHydrationPending() && Date.now() - startedAt < timeoutMs) {
+      await waitMs(200);
+    }
+
+    return !hasPdfDataHydrationPending();
+  }
+
   async function generateMomentumPDF() {
     if (generateMomentumPDF._busy) return;
     generateMomentumPDF._busy = true;
@@ -1293,7 +1408,13 @@
     closePdfExportModal();
 
     try {
-      if ((!window.jspdf?.jsPDF || !window.html2canvas) && typeof window.__spLoadDeferredLibrary === 'function') {
+      const dataReady = await waitForPdfDataHydration();
+      if (!dataReady) {
+        window.toastWarn?.('Cloud data is still loading. Wait a moment, then generate the PDF again.');
+        return;
+      }
+
+      if (!window.jspdf?.jsPDF && typeof window.__spLoadDeferredLibrary === 'function') {
         await window.__spLoadDeferredLibrary('pdf');
       }
       if (typeof window.Chart === 'undefined' && typeof window.__spLoadDeferredLibrary === 'function') {
@@ -1324,12 +1445,30 @@
         dateStart,
         dateEnd
       });
+      const hasCustomDateRange = Boolean(dateStart || dateEnd);
       const prevPeriodMap = { month: 'prevMonth', year: 'prevYear', quarter: 'all', prevMonth: 'month', prevYear: 'year', all: 'all' };
-      const prevData = getData(prevPeriodMap[period] || 'all', {
-        sortNewestFirst: false,
-        selectedArtist,
-        artistId: selectedArtistId
-      });
+      let prevData = null;
+      let hasComparablePreviousData = false;
+      if (hasCustomDateRange) {
+        const previousRange = getPreviousExplicitDateRange(dateStart, dateEnd);
+        if (previousRange) {
+          prevData = getData('all', {
+            sortNewestFirst: false,
+            selectedArtist,
+            artistId: selectedArtistId,
+            dateStart: previousRange.dateStart,
+            dateEnd: previousRange.dateEnd
+          });
+          hasComparablePreviousData = hasReportActivity(prevData);
+        }
+      } else {
+        prevData = getData(prevPeriodMap[period] || 'all', {
+          sortNewestFirst: false,
+          selectedArtist,
+          artistId: selectedArtistId
+        });
+        hasComparablePreviousData = true;
+      }
 
       const artistObj = selectedArtist ? artists.find(a => a.name === selectedArtist) : null;
       const artistName = artistObj ? artistObj.name : (selectedArtist || (window.currentUser || 'Manager'));
@@ -1337,7 +1476,7 @@
       const upcomingForContext = (Array.isArray(window.bookings) ? window.bookings : [])
         .filter(b => b && b.date)
         .filter(b => b.status !== 'cancelled')
-        .filter(b => !selectedArtist || b.artist === selectedArtist)
+        .filter(b => reportRecordMatchesArtist(b, selectedArtist, selectedArtistId))
         .filter(b => b.date >= new Date().toISOString().slice(0, 10))
         .sort((a, b) => a.date.localeCompare(b.date))
         .slice(0, 4);
@@ -1349,7 +1488,7 @@
         wantAudiencePrompt: true
       };
       const allBookings = Array.isArray(window.bookings) ? window.bookings : [];
-      const pdfNextOnStage = buildPdfNextOnStage(allBookings, selectedArtist, 3);
+      const pdfNextOnStage = buildPdfNextOnStage(allBookings, selectedArtist, 3, selectedArtistId);
       const periodDates = [
         ...data.filteredBookings.map((entry) => entry?.date),
         ...data.filteredExpenses.map((entry) => entry?.date),
@@ -1358,18 +1497,22 @@
       const forecastAnchorIso = dateEnd
         || periodDates[periodDates.length - 1]
         || new Date().toISOString().slice(0, 10);
-      const pdfForecastBookings = buildPdfForecastBookings(allBookings, selectedArtist, forecastAnchorIso, 31);
+      const pdfForecastBookings = buildPdfForecastBookings(allBookings, selectedArtist, forecastAnchorIso, 31, selectedArtistId);
 
       const m = computeMetrics(data, prevData);
+      if (hasCustomDateRange && !hasComparablePreviousData) {
+        m.trendPct = null;
+      }
       const insights = generateInsights(m, ctx);
 
       // ── Artist info ──
       const reportTitle = `MONEY MOVES: ${(artistName || 'ROSTER').toUpperCase()}`;
       const actualPeriodLabel = getActualPeriodLabel(dateStart, dateEnd, periodLabel);
+      const reportThemeMode = getCurrentThemeMode();
       // ── Load assets ──
       let logoDataUrl = '';
       if (typeof window.getReportLogoDataUrl === 'function') {
-        try { logoDataUrl = await window.getReportLogoDataUrl(); } catch (_e) { /* skip */ }
+        try { logoDataUrl = await window.getReportLogoDataUrl({ themeMode: reportThemeMode }); } catch (_e) { /* skip */ }
       }
 
       let avatarDataUrl = '';
@@ -1419,7 +1562,7 @@
           period,
           periodLabel: actualPeriodLabel
         },
-        themeMode: getCurrentThemeMode(),
+        themeMode: reportThemeMode,
         raw: {
           ...data,
           bbf: Math.round(Number(data.bbf) || 0),
@@ -1449,6 +1592,13 @@
         orientation: 'landscape',
         unit: 'mm', format: 'a4', putOnlyUsedFonts: true, floatPrecision: 16
       });
+      if (typeof pdf.setProperties === 'function') {
+        pdf.setProperties({
+          title: 'Star Paper Money Moves Report',
+          subject: `Generated with ${REPORT_RUNTIME_VERSION}`,
+          creator: `Star Paper ${REPORT_RUNTIME_VERSION}`
+        });
+      }
 
       const W = pdf.internal.pageSize.getWidth();
       const H = pdf.internal.pageSize.getHeight();
@@ -1930,9 +2080,12 @@
       const balanceChangePct = pdfData.metrics.bbf > 0
         ? ((closingBalance - pdfData.metrics.bbf) / pdfData.metrics.bbf) * 100
         : null;
-      const trendChangePct = Number.isFinite(Number(pdfData.metrics.trendPct))
-        ? Number(pdfData.metrics.trendPct)
-        : null;
+      const trendPctRaw = pdfData.metrics.trendPct;
+      const trendChangePct = trendPctRaw !== null &&
+        typeof trendPctRaw !== 'undefined' &&
+        Number.isFinite(Number(trendPctRaw))
+          ? Number(trendPctRaw)
+          : null;
       const closingInsightValue = trendChangePct ?? balanceChangePct;
       const closingInsightText = closingInsightValue !== null
         ? `${fmtPct(closingInsightValue)} ${trendChangePct !== null ? 'vs previous' : 'vs BBF'}`
@@ -2615,11 +2768,12 @@
         const topShare = topMarket && pdfData.metrics.totalIncome > 0
           ? Math.round((topMarket.revenue / pdfData.metrics.totalIncome) * 100)
           : 0;
+        const audienceRows = getAudiencePlatformRows(audienceTrend);
         const items = [
           { label: 'Run Type', value: getPdfRunTypeLabel(venueRows) },
           { label: 'Top Market', value: topMarket ? `${topMarket.location} - ${topShare}% Rev` : 'No market yet' },
           { label: 'Shows', value: String(totalShows) },
-          { label: 'Audience', value: audienceTrend?.latestTotals?.social ? `${fmtCompactCount(audienceTrend.latestTotals.social)}+ Followers` : 'Live demand active' }
+          { label: 'Audience', value: audienceRows.length ? 'Platform breakdown' : 'Live demand active', audienceRows }
         ];
 
         const gap = 4;
@@ -2631,6 +2785,18 @@
           pdf.setFontSize(6.8);
           pdf.setTextColor(...P.textMuted);
           pdf.text(item.label.toUpperCase(), ix + 6, yTop + 6.2);
+          if (Array.isArray(item.audienceRows) && item.audienceRows.length) {
+            item.audienceRows.slice(0, 3).forEach((row, lineIdx) => {
+              const count = fmtCompactCount(row.value);
+              const line = `${row.pdfPrefix} ${count} ${row.compactUnit}`;
+              const lineFit = fitSingleLineText(line, itemW - 12, 'courier', 'bold', 7.6, 5.4);
+              pdf.setFont('courier', 'bold');
+              pdf.setFontSize(lineFit.fontSize);
+              pdf.setTextColor(...P.textPrimary);
+              pdf.text(lineFit.text, ix + 6, yTop + 11.2 + (lineIdx * 4.2));
+            });
+            return;
+          }
           const valueFit = fitSingleLineText(String(item.value || '-'), itemW - 12, 'courier', 'bold', 10.5, 7);
           pdf.setFont('courier', 'bold');
           pdf.setFontSize(valueFit.fontSize);
@@ -2640,7 +2806,7 @@
       }
 
       const worldTourH = 74;
-      const snapshotH = 18;
+      const snapshotH = 24;
       const bottomRowH = Math.max(36, (H - mg - footerH) - (y + worldTourH + snapshotH + (sectionGap * 2)));
       const bottomGap = 4;
       const venueCardW = (cw - bottomGap) * 0.58;

@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.example
+
+.codex-visual/
+.codex-inspect/
+.codex-video-review/
+.codex-npm-cache/
+.codex-proof-html-*.png
+.codex-testimonials-html-*.png
+.local-server.*.log
+
+node_modules/
+dist/

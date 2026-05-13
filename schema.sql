@@ -130,25 +130,13 @@ AS $$
   );
 $$;
 
--- Resolve an email by username to support username-based login.
-CREATE OR REPLACE FUNCTION public.get_email_for_username(p_username TEXT)
-RETURNS TEXT
-LANGUAGE sql
-SECURITY DEFINER
-STABLE
-SET search_path = public
-AS $$
-  SELECT email
-  FROM public.profiles
-  WHERE lower(username) = lower(p_username)
-  LIMIT 1;
-$$;
+-- Email lookup by username is intentionally disabled client-side. It leaks
+-- account existence and email addresses to anonymous callers.
+DROP FUNCTION IF EXISTS public.get_email_for_username(TEXT);
 
--- These two helpers are intentionally anonymous because signup/username-login run before auth.
+-- Username availability is intentionally anonymous because signup runs before auth.
 REVOKE EXECUTE ON FUNCTION public.is_username_available(TEXT) FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.get_email_for_username(TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.is_username_available(TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.get_email_for_username(TEXT) TO anon, authenticated;
 
 -- ============================================================
 -- TEAMS
@@ -325,9 +313,9 @@ $$;
 REVOKE EXECUTE ON FUNCTION public.get_my_team_context(UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.get_my_team_context(UUID) TO authenticated;
 
--- One-call authenticated bootstrap payload for fast refresh/OAuth return.
--- This avoids the client doing profile -> teams -> every data table as separate
--- auth-bearing requests during the loader path.
+-- One-call authenticated bootstrap payload for deterministic login/refresh first paint.
+-- The client treats this RPC as the authoritative loader-blocking snapshot; broader
+-- table sync belongs after the app shell is visible.
 CREATE OR REPLACE FUNCTION public.get_bootstrap_payload(uid UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -531,7 +519,10 @@ BEGIN
       'closingThoughts', v_closing_thoughts
     ),
     'meta', jsonb_build_object(
+      'source', 'get_bootstrap_payload',
       'complete', TRUE,
+      'firstPaintKeys', jsonb_build_array('bookings', 'expenses', 'otherIncome', 'artists'),
+      'backgroundKeys', jsonb_build_array('audienceMetrics', 'tasks', 'revenueGoal', 'bbfEntries', 'closingThoughts'),
       'missingKeys', '[]'::jsonb,
       'generatedAt', now()
     )
@@ -711,12 +702,8 @@ CREATE POLICY "Team owners can delete members"
   );
 
 DROP POLICY IF EXISTS "Users can join teams (insert themselves)" ON public.team_members;
-CREATE POLICY "Users can join teams (insert themselves)"
-  ON public.team_members FOR INSERT
-  WITH CHECK (
-    user_id = auth.uid()
-    AND role = 'viewer'
-  );
+-- Direct self-join is intentionally disabled. Users must join teams through
+-- public.join_team_by_code(), which validates the invite code before inserting.
 
 DROP POLICY IF EXISTS "Team members can view their teams" ON public.teams;
 CREATE POLICY "Team members can view their teams"
@@ -766,7 +753,7 @@ DROP POLICY IF EXISTS "Users can read artists" ON public.artists;
 CREATE POLICY "Users can read artists"
   ON public.artists FOR SELECT
   USING (
-    owner_id = auth.uid() OR
+    (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND EXISTS (
       SELECT 1 FROM public.team_members
       WHERE team_members.team_id = artists.team_id
@@ -778,27 +765,27 @@ DROP POLICY IF EXISTS "Managers can insert artists" ON public.artists;
 CREATE POLICY "Managers can insert artists"
   ON public.artists FOR INSERT
   WITH CHECK (
-    owner_id = auth.uid() OR
-    (team_id IS NOT NULL AND public.has_team_permission(artists.team_id, 'edit'))
+    (team_id IS NULL AND owner_id = auth.uid()) OR
+    (team_id IS NOT NULL AND owner_id = auth.uid() AND public.has_team_permission(artists.team_id, 'edit'))
   );
 
 DROP POLICY IF EXISTS "Managers can update artists" ON public.artists;
 CREATE POLICY "Managers can update artists"
   ON public.artists FOR UPDATE
   USING (
-    owner_id = auth.uid() OR
+    (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(artists.team_id, 'edit'))
   )
   WITH CHECK (
-    owner_id = auth.uid() OR
-    (team_id IS NOT NULL AND public.has_team_permission(artists.team_id, 'edit'))
+    (team_id IS NULL AND owner_id = auth.uid()) OR
+    (team_id IS NOT NULL AND owner_id = auth.uid() AND public.has_team_permission(artists.team_id, 'edit'))
   );
 
 DROP POLICY IF EXISTS "Managers can delete artists" ON public.artists;
 CREATE POLICY "Managers can delete artists"
   ON public.artists FOR DELETE
   USING (
-    owner_id = auth.uid() OR
+    (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(artists.team_id, 'edit'))
   );
 
@@ -823,7 +810,6 @@ CREATE TABLE IF NOT EXISTS public.bookings (
   notes          TEXT DEFAULT '',
   location_type  TEXT DEFAULT 'uganda',
   location       TEXT DEFAULT '',
-  mock_key       TEXT,
   created_at     TIMESTAMPTZ DEFAULT NOW(),
   updated_at     TIMESTAMPTZ DEFAULT NOW()
 );
@@ -837,7 +823,7 @@ DROP POLICY IF EXISTS "Users can read bookings" ON public.bookings;
 CREATE POLICY "Users can read bookings"
   ON public.bookings FOR SELECT
   USING (
-    owner_id = auth.uid() OR
+    (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND EXISTS (
       SELECT 1 FROM public.team_members
       WHERE team_members.team_id = bookings.team_id
@@ -849,27 +835,27 @@ DROP POLICY IF EXISTS "Managers can insert bookings" ON public.bookings;
 CREATE POLICY "Managers can insert bookings"
   ON public.bookings FOR INSERT
   WITH CHECK (
-    owner_id = auth.uid() OR
-    (team_id IS NOT NULL AND public.has_team_permission(bookings.team_id, 'edit'))
+    (team_id IS NULL AND owner_id = auth.uid()) OR
+    (team_id IS NOT NULL AND owner_id = auth.uid() AND public.has_team_permission(bookings.team_id, 'edit'))
   );
 
 DROP POLICY IF EXISTS "Managers can update bookings" ON public.bookings;
 CREATE POLICY "Managers can update bookings"
   ON public.bookings FOR UPDATE
   USING (
-    owner_id = auth.uid() OR
+    (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(bookings.team_id, 'edit'))
   )
   WITH CHECK (
-    owner_id = auth.uid() OR
-    (team_id IS NOT NULL AND public.has_team_permission(bookings.team_id, 'edit'))
+    (team_id IS NULL AND owner_id = auth.uid()) OR
+    (team_id IS NOT NULL AND owner_id = auth.uid() AND public.has_team_permission(bookings.team_id, 'edit'))
   );
 
 DROP POLICY IF EXISTS "Managers can delete bookings" ON public.bookings;
 CREATE POLICY "Managers can delete bookings"
   ON public.bookings FOR DELETE
   USING (
-    owner_id = auth.uid() OR
+    (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(bookings.team_id, 'edit'))
   );
 
@@ -881,23 +867,29 @@ CREATE TABLE IF NOT EXISTS public.expenses (
   legacy_id   TEXT,
   owner_id    UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   team_id     UUID REFERENCES public.teams(id) ON DELETE CASCADE,
+  artist_id   UUID REFERENCES public.artists(id) ON DELETE SET NULL,
+  artist_name TEXT NOT NULL DEFAULT '',
   description TEXT NOT NULL,
   amount      NUMERIC DEFAULT 0,
   date        DATE,
   category    TEXT DEFAULT 'other',
   receipt     TEXT DEFAULT '',
-  mock_key    TEXT,
   created_at  TIMESTAMPTZ DEFAULT NOW(),
   updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
 ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
 
+ALTER TABLE public.expenses
+  ADD COLUMN IF NOT EXISTS artist_id UUID REFERENCES public.artists(id) ON DELETE SET NULL;
+ALTER TABLE public.expenses
+  ADD COLUMN IF NOT EXISTS artist_name TEXT NOT NULL DEFAULT '';
+
 DROP POLICY IF EXISTS "Users can read expenses" ON public.expenses;
 CREATE POLICY "Users can read expenses"
   ON public.expenses FOR SELECT
   USING (
-    owner_id = auth.uid() OR
+    (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND (
       public.has_team_permission(expenses.team_id, 'finance') OR
       public.has_team_permission(expenses.team_id, 'reports')
@@ -908,27 +900,27 @@ DROP POLICY IF EXISTS "Managers can insert expenses" ON public.expenses;
 CREATE POLICY "Managers can insert expenses"
   ON public.expenses FOR INSERT
   WITH CHECK (
-    owner_id = auth.uid() OR
-    (team_id IS NOT NULL AND public.has_team_permission(expenses.team_id, 'finance'))
+    (team_id IS NULL AND owner_id = auth.uid()) OR
+    (team_id IS NOT NULL AND owner_id = auth.uid() AND public.has_team_permission(expenses.team_id, 'finance'))
   );
 
 DROP POLICY IF EXISTS "Managers can update expenses" ON public.expenses;
 CREATE POLICY "Managers can update expenses"
   ON public.expenses FOR UPDATE
   USING (
-    owner_id = auth.uid() OR
+    (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(expenses.team_id, 'finance'))
   )
   WITH CHECK (
-    owner_id = auth.uid() OR
-    (team_id IS NOT NULL AND public.has_team_permission(expenses.team_id, 'finance'))
+    (team_id IS NULL AND owner_id = auth.uid()) OR
+    (team_id IS NOT NULL AND owner_id = auth.uid() AND public.has_team_permission(expenses.team_id, 'finance'))
   );
 
 DROP POLICY IF EXISTS "Managers can delete expenses" ON public.expenses;
 CREATE POLICY "Managers can delete expenses"
   ON public.expenses FOR DELETE
   USING (
-    owner_id = auth.uid() OR
+    (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(expenses.team_id, 'finance'))
   );
 
@@ -940,6 +932,8 @@ CREATE TABLE IF NOT EXISTS public.other_income (
   legacy_id   TEXT,
   owner_id    UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   team_id     UUID REFERENCES public.teams(id) ON DELETE CASCADE,
+  artist_id   UUID REFERENCES public.artists(id) ON DELETE SET NULL,
+  artist_name TEXT NOT NULL DEFAULT '',
   source      TEXT NOT NULL,
   amount      NUMERIC DEFAULT 0,
   date        DATE,
@@ -948,18 +942,22 @@ CREATE TABLE IF NOT EXISTS public.other_income (
   method      TEXT DEFAULT 'cash',
   status      TEXT DEFAULT 'received',
   notes       TEXT DEFAULT '',
-  mock_key    TEXT,
   created_at  TIMESTAMPTZ DEFAULT NOW(),
   updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
 ALTER TABLE public.other_income ENABLE ROW LEVEL SECURITY;
 
+ALTER TABLE public.other_income
+  ADD COLUMN IF NOT EXISTS artist_id UUID REFERENCES public.artists(id) ON DELETE SET NULL;
+ALTER TABLE public.other_income
+  ADD COLUMN IF NOT EXISTS artist_name TEXT NOT NULL DEFAULT '';
+
 DROP POLICY IF EXISTS "Users can read other income" ON public.other_income;
 CREATE POLICY "Users can read other income"
   ON public.other_income FOR SELECT
   USING (
-    owner_id = auth.uid() OR
+    (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND (
       public.has_team_permission(other_income.team_id, 'finance') OR
       public.has_team_permission(other_income.team_id, 'reports')
@@ -970,29 +968,147 @@ DROP POLICY IF EXISTS "Managers can insert other income" ON public.other_income;
 CREATE POLICY "Managers can insert other income"
   ON public.other_income FOR INSERT
   WITH CHECK (
-    owner_id = auth.uid() OR
-    (team_id IS NOT NULL AND public.has_team_permission(other_income.team_id, 'finance'))
+    (team_id IS NULL AND owner_id = auth.uid()) OR
+    (team_id IS NOT NULL AND owner_id = auth.uid() AND public.has_team_permission(other_income.team_id, 'finance'))
   );
 
 DROP POLICY IF EXISTS "Managers can update other income" ON public.other_income;
 CREATE POLICY "Managers can update other income"
   ON public.other_income FOR UPDATE
   USING (
-    owner_id = auth.uid() OR
+    (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(other_income.team_id, 'finance'))
   )
   WITH CHECK (
-    owner_id = auth.uid() OR
-    (team_id IS NOT NULL AND public.has_team_permission(other_income.team_id, 'finance'))
+    (team_id IS NULL AND owner_id = auth.uid()) OR
+    (team_id IS NOT NULL AND owner_id = auth.uid() AND public.has_team_permission(other_income.team_id, 'finance'))
   );
 
 DROP POLICY IF EXISTS "Managers can delete other income" ON public.other_income;
 CREATE POLICY "Managers can delete other income"
   ON public.other_income FOR DELETE
   USING (
-    owner_id = auth.uid() OR
+    (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(other_income.team_id, 'finance'))
   );
+
+-- ============================================================
+-- FINANCE ARTIST SCOPING
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.sync_finance_artist_fields()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_artist_owner UUID;
+  v_artist_team UUID;
+  v_artist_name TEXT;
+BEGIN
+  NEW.artist_name := COALESCE(BTRIM(NEW.artist_name), '');
+
+  IF NEW.artist_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT a.owner_id, a.team_id, a.name
+  INTO v_artist_owner, v_artist_team, v_artist_name
+  FROM public.artists a
+  WHERE a.id = NEW.artist_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Finance row references an unknown artist';
+  END IF;
+
+  IF NEW.team_id IS NULL THEN
+    IF v_artist_team IS NOT NULL OR v_artist_owner IS DISTINCT FROM NEW.owner_id THEN
+      RAISE EXCEPTION 'Finance row artist must belong to the same personal workspace';
+    END IF;
+  ELSE
+    IF v_artist_team IS DISTINCT FROM NEW.team_id THEN
+      RAISE EXCEPTION 'Finance row artist must belong to the same team workspace';
+    END IF;
+  END IF;
+
+  NEW.artist_name := COALESCE(v_artist_name, '');
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS sync_expenses_artist_fields ON public.expenses;
+CREATE TRIGGER sync_expenses_artist_fields
+  BEFORE INSERT OR UPDATE OF artist_id, artist_name, owner_id, team_id
+  ON public.expenses
+  FOR EACH ROW
+  EXECUTE FUNCTION public.sync_finance_artist_fields();
+
+DROP TRIGGER IF EXISTS sync_other_income_artist_fields ON public.other_income;
+CREATE TRIGGER sync_other_income_artist_fields
+  BEFORE INSERT OR UPDATE OF artist_id, artist_name, owner_id, team_id
+  ON public.other_income
+  FOR EACH ROW
+  EXECUTE FUNCTION public.sync_finance_artist_fields();
+
+-- Safe backfill: only rows that already carry an explicit artist_name are linked.
+-- Legacy rows with no artist signal remain unassigned/shared at roster level.
+WITH matched_expense_artists AS (
+  SELECT
+    e.id AS expense_id,
+    a.id AS artist_id,
+    a.name AS artist_name,
+    COUNT(*) OVER (PARTITION BY e.id) AS match_count
+  FROM public.expenses e
+  JOIN public.artists a
+    ON LOWER(BTRIM(a.name)) = LOWER(BTRIM(e.artist_name))
+   AND (
+     (e.team_id IS NULL AND a.team_id IS NULL AND a.owner_id = e.owner_id)
+     OR (e.team_id IS NOT NULL AND a.team_id = e.team_id)
+   )
+  WHERE e.artist_id IS NULL
+    AND NULLIF(BTRIM(e.artist_name), '') IS NOT NULL
+)
+UPDATE public.expenses e
+SET artist_id = m.artist_id,
+    artist_name = m.artist_name
+FROM matched_expense_artists m
+WHERE e.id = m.expense_id
+  AND m.match_count = 1;
+
+UPDATE public.expenses e
+SET artist_name = a.name
+FROM public.artists a
+WHERE e.artist_id = a.id
+  AND NULLIF(BTRIM(e.artist_name), '') IS NULL;
+
+WITH matched_income_artists AS (
+  SELECT
+    oi.id AS income_id,
+    a.id AS artist_id,
+    a.name AS artist_name,
+    COUNT(*) OVER (PARTITION BY oi.id) AS match_count
+  FROM public.other_income oi
+  JOIN public.artists a
+    ON LOWER(BTRIM(a.name)) = LOWER(BTRIM(oi.artist_name))
+   AND (
+     (oi.team_id IS NULL AND a.team_id IS NULL AND a.owner_id = oi.owner_id)
+     OR (oi.team_id IS NOT NULL AND a.team_id = oi.team_id)
+   )
+  WHERE oi.artist_id IS NULL
+    AND NULLIF(BTRIM(oi.artist_name), '') IS NOT NULL
+)
+UPDATE public.other_income oi
+SET artist_id = m.artist_id,
+    artist_name = m.artist_name
+FROM matched_income_artists m
+WHERE oi.id = m.income_id
+  AND m.match_count = 1;
+
+UPDATE public.other_income oi
+SET artist_name = a.name
+FROM public.artists a
+WHERE oi.artist_id = a.id
+  AND NULLIF(BTRIM(oi.artist_name), '') IS NULL;
 
 -- ============================================================
 -- AUDIENCE METRICS (per-artist monthly growth)
@@ -1018,7 +1134,7 @@ DROP POLICY IF EXISTS "Users can read audience metrics" ON public.audience_metri
 CREATE POLICY "Users can read audience metrics"
   ON public.audience_metrics FOR SELECT
   USING (
-    owner_id = auth.uid() OR
+    (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND EXISTS (
       SELECT 1 FROM public.team_members
       WHERE team_members.team_id = audience_metrics.team_id
@@ -1030,27 +1146,27 @@ DROP POLICY IF EXISTS "Managers can insert audience metrics" ON public.audience_
 CREATE POLICY "Managers can insert audience metrics"
   ON public.audience_metrics FOR INSERT
   WITH CHECK (
-    owner_id = auth.uid() OR
-    (team_id IS NOT NULL AND public.has_team_permission(audience_metrics.team_id, 'edit'))
+    (team_id IS NULL AND owner_id = auth.uid()) OR
+    (team_id IS NOT NULL AND owner_id = auth.uid() AND public.has_team_permission(audience_metrics.team_id, 'edit'))
   );
 
 DROP POLICY IF EXISTS "Managers can update audience metrics" ON public.audience_metrics;
 CREATE POLICY "Managers can update audience metrics"
   ON public.audience_metrics FOR UPDATE
   USING (
-    owner_id = auth.uid() OR
+    (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(audience_metrics.team_id, 'edit'))
   )
   WITH CHECK (
-    owner_id = auth.uid() OR
-    (team_id IS NOT NULL AND public.has_team_permission(audience_metrics.team_id, 'edit'))
+    (team_id IS NULL AND owner_id = auth.uid()) OR
+    (team_id IS NOT NULL AND owner_id = auth.uid() AND public.has_team_permission(audience_metrics.team_id, 'edit'))
   );
 
 DROP POLICY IF EXISTS "Managers can delete audience metrics" ON public.audience_metrics;
 CREATE POLICY "Managers can delete audience metrics"
   ON public.audience_metrics FOR DELETE
   USING (
-    owner_id = auth.uid() OR
+    (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(audience_metrics.team_id, 'edit'))
   );
 
@@ -1091,7 +1207,7 @@ DROP POLICY IF EXISTS "Users can read revenue goals" ON public.revenue_goals;
 CREATE POLICY "Users can read revenue goals"
   ON public.revenue_goals FOR SELECT
   USING (
-    user_id = auth.uid() OR
+    (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND (
       public.has_team_permission(revenue_goals.team_id, 'finance') OR
       public.has_team_permission(revenue_goals.team_id, 'reports')
@@ -1102,7 +1218,7 @@ DROP POLICY IF EXISTS "Managers can insert revenue goals" ON public.revenue_goal
 CREATE POLICY "Managers can insert revenue goals"
   ON public.revenue_goals FOR INSERT
   WITH CHECK (
-    user_id = auth.uid() OR
+    (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(revenue_goals.team_id, 'finance'))
   );
 
@@ -1110,11 +1226,11 @@ DROP POLICY IF EXISTS "Managers can update revenue goals" ON public.revenue_goal
 CREATE POLICY "Managers can update revenue goals"
   ON public.revenue_goals FOR UPDATE
   USING (
-    user_id = auth.uid() OR
+    (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(revenue_goals.team_id, 'finance'))
   )
   WITH CHECK (
-    user_id = auth.uid() OR
+    (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(revenue_goals.team_id, 'finance'))
   );
 
@@ -1122,7 +1238,7 @@ DROP POLICY IF EXISTS "Managers can delete revenue goals" ON public.revenue_goal
 CREATE POLICY "Managers can delete revenue goals"
   ON public.revenue_goals FOR DELETE
   USING (
-    user_id = auth.uid() OR
+    (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(revenue_goals.team_id, 'finance'))
   );
 
@@ -1163,7 +1279,7 @@ DROP POLICY IF EXISTS "Users can read BBF" ON public.bbf_entries;
 CREATE POLICY "Users can read BBF"
   ON public.bbf_entries FOR SELECT
   USING (
-    user_id = auth.uid() OR
+    (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND (
       public.has_team_permission(bbf_entries.team_id, 'finance') OR
       public.has_team_permission(bbf_entries.team_id, 'reports')
@@ -1174,7 +1290,7 @@ DROP POLICY IF EXISTS "Managers can insert BBF" ON public.bbf_entries;
 CREATE POLICY "Managers can insert BBF"
   ON public.bbf_entries FOR INSERT
   WITH CHECK (
-    user_id = auth.uid() OR
+    (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(bbf_entries.team_id, 'finance'))
   );
 
@@ -1182,11 +1298,11 @@ DROP POLICY IF EXISTS "Managers can update BBF" ON public.bbf_entries;
 CREATE POLICY "Managers can update BBF"
   ON public.bbf_entries FOR UPDATE
   USING (
-    user_id = auth.uid() OR
+    (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(bbf_entries.team_id, 'finance'))
   )
   WITH CHECK (
-    user_id = auth.uid() OR
+    (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(bbf_entries.team_id, 'finance'))
   );
 
@@ -1194,7 +1310,7 @@ DROP POLICY IF EXISTS "Managers can delete BBF" ON public.bbf_entries;
 CREATE POLICY "Managers can delete BBF"
   ON public.bbf_entries FOR DELETE
   USING (
-    user_id = auth.uid() OR
+    (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(bbf_entries.team_id, 'finance'))
   );
 
@@ -1218,7 +1334,7 @@ DROP POLICY IF EXISTS "Users can read tasks" ON public.tasks;
 CREATE POLICY "Users can read tasks"
   ON public.tasks FOR SELECT
   USING (
-    user_id = auth.uid() OR
+    (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND EXISTS (
       SELECT 1 FROM public.team_members
       WHERE team_members.team_id = tasks.team_id
@@ -1230,28 +1346,27 @@ DROP POLICY IF EXISTS "Managers can insert tasks" ON public.tasks;
 CREATE POLICY "Managers can insert tasks"
   ON public.tasks FOR INSERT
   WITH CHECK (
-    user_id = auth.uid() AND (
-      team_id IS NULL OR public.has_team_permission(tasks.team_id, 'edit')
-    )
+    (team_id IS NULL AND user_id = auth.uid()) OR
+    (team_id IS NOT NULL AND user_id = auth.uid() AND public.has_team_permission(tasks.team_id, 'edit'))
   );
 
 DROP POLICY IF EXISTS "Managers can update tasks" ON public.tasks;
 CREATE POLICY "Managers can update tasks"
   ON public.tasks FOR UPDATE
   USING (
-    user_id = auth.uid() OR
+    (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(tasks.team_id, 'edit'))
   )
   WITH CHECK (
-    user_id = auth.uid() OR
-    (team_id IS NOT NULL AND public.has_team_permission(tasks.team_id, 'edit'))
+    (team_id IS NULL AND user_id = auth.uid()) OR
+    (team_id IS NOT NULL AND user_id = auth.uid() AND public.has_team_permission(tasks.team_id, 'edit'))
   );
 
 DROP POLICY IF EXISTS "Managers can delete tasks" ON public.tasks;
 CREATE POLICY "Managers can delete tasks"
   ON public.tasks FOR DELETE
   USING (
-    user_id = auth.uid() OR
+    (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(tasks.team_id, 'edit'))
   );
 
@@ -1292,7 +1407,7 @@ DROP POLICY IF EXISTS "Users can read closing thoughts" ON public.closing_though
 CREATE POLICY "Users can read closing thoughts"
   ON public.closing_thoughts FOR SELECT
   USING (
-    user_id = auth.uid() OR
+    (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND EXISTS (
       SELECT 1 FROM public.team_members
       WHERE team_members.team_id = closing_thoughts.team_id
@@ -1304,20 +1419,19 @@ DROP POLICY IF EXISTS "Managers can insert closing thoughts" ON public.closing_t
 CREATE POLICY "Managers can insert closing thoughts"
   ON public.closing_thoughts FOR INSERT
   WITH CHECK (
-    user_id = auth.uid() AND (
-      team_id IS NULL OR public.has_team_permission(closing_thoughts.team_id, 'edit')
-    )
+    (team_id IS NULL AND user_id = auth.uid()) OR
+    (team_id IS NOT NULL AND public.has_team_permission(closing_thoughts.team_id, 'edit'))
   );
 
 DROP POLICY IF EXISTS "Managers can update closing thoughts" ON public.closing_thoughts;
 CREATE POLICY "Managers can update closing thoughts"
   ON public.closing_thoughts FOR UPDATE
   USING (
-    user_id = auth.uid() OR
+    (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(closing_thoughts.team_id, 'edit'))
   )
   WITH CHECK (
-    user_id = auth.uid() OR
+    (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(closing_thoughts.team_id, 'edit'))
   );
 
@@ -1325,7 +1439,7 @@ DROP POLICY IF EXISTS "Managers can delete closing thoughts" ON public.closing_t
 CREATE POLICY "Managers can delete closing thoughts"
   ON public.closing_thoughts FOR DELETE
   USING (
-    user_id = auth.uid() OR
+    (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(closing_thoughts.team_id, 'edit'))
   );
 
@@ -1382,8 +1496,14 @@ CREATE INDEX IF NOT EXISTS idx_bookings_date    ON public.bookings(date);
 CREATE INDEX IF NOT EXISTS idx_expenses_owner   ON public.expenses(owner_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_team    ON public.expenses(team_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_date    ON public.expenses(date);
+CREATE INDEX IF NOT EXISTS idx_expenses_artist ON public.expenses(artist_id);
+CREATE INDEX IF NOT EXISTS idx_expenses_owner_artist_date ON public.expenses(owner_id, artist_id, date DESC);
+CREATE INDEX IF NOT EXISTS idx_expenses_team_artist_date ON public.expenses(team_id, artist_id, date DESC);
 CREATE INDEX IF NOT EXISTS idx_other_income_owner ON public.other_income(owner_id);
 CREATE INDEX IF NOT EXISTS idx_other_income_team  ON public.other_income(team_id);
+CREATE INDEX IF NOT EXISTS idx_other_income_artist ON public.other_income(artist_id);
+CREATE INDEX IF NOT EXISTS idx_other_income_owner_artist_date ON public.other_income(owner_id, artist_id, date DESC);
+CREATE INDEX IF NOT EXISTS idx_other_income_team_artist_date ON public.other_income(team_id, artist_id, date DESC);
 CREATE INDEX IF NOT EXISTS idx_artists_owner    ON public.artists(owner_id);
 CREATE INDEX IF NOT EXISTS idx_artists_team     ON public.artists(team_id);
 CREATE INDEX IF NOT EXISTS idx_audience_metrics_owner  ON public.audience_metrics(owner_id);

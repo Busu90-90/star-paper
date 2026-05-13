@@ -48,39 +48,59 @@ if (IS_LEGACY_NETLIFY_WORKER) {
     event.respondWith(Response.redirect(toCanonicalUrl(event.request.url), 302));
   });
 } else {
-const CACHE_NAME = "star-paper-shell-v128";
+const SHELL_VERSION = "138";
+const REPORT_BUNDLE_VERSION = "17";
+const APP_BUNDLE_VERSION = "118";
+const CACHE_NAME = `star-paper-shell-v${SHELL_VERSION}`;
+const REPORT_RUNTIME_ASSETS = new Set(
+  [
+    `./app.reports.js?v=${REPORT_BUNDLE_VERSION}`,
+    `./app.js?v=${APP_BUNDLE_VERSION}`,
+  ].map((asset) => {
+    const url = new URL(asset, self.location.href);
+    return `${url.pathname}${url.search}`;
+  })
+);
+const PUBLIC_LANDING_PAGES = new Map([
+  ["/how-it-works", "./how-it-works.html"],
+  ["/how-it-works.html", "./how-it-works.html"],
+  ["/proof", "./proof.html"],
+  ["/proof.html", "./proof.html"],
+  ["/testimonials", "./testimonials.html"],
+  ["/testimonials.html", "./testimonials.html"],
+]);
 const APP_SHELL = [
-  "./",
   "./index.html",
-  "./styles.css?v=50",
+  "./how-it-works.html",
+  "./proof.html",
+  "./testimonials.html",
+  "./styles.css?v=51",
   "./styles.premium.css?v=8",
   "./styles.shell.css?v=11",
+  "./styles.handcraft.css?v=31",
   "./star-paper-tokens.css?v=21",
-  "./supabase.js?v=64",
+  "./supabase.js?v=66",
   "./app.migrations.js?v=10",
   "./app.actions.js?v=8",
   "./app.todayboard.js?v=1",
   "./app.tasks.js?v=4",
-  "./app.reports.js?v=13",
-  "./app.js?v=106",
+  `./app.reports.js?v=${REPORT_BUNDLE_VERSION}`,
+  `./app.js?v=${APP_BUNDLE_VERSION}`,
+  "./app.handcraft.js?v=18",
   "./app.globe.js?v=6",
   "./app.premium.js?v=4",
-  "./sw.js?v=128",
-  "./manifest.json",
-  "./manifest.json?v=21",
-  "./logo-ui.png",
-  "./logo-ui.png?v=21",
-  "./logo.png",
-  "./logo.png?v=21",
-  "./logo-192.png",
-  "./logo-192.png?v=21",
-  "./logo-32.png",
-  "./logo-32.png?v=21",
-  "./apple-touch-icon.png",
-  "./apple-touch-icon.png?v=21",
-  "./logo-report.png",
-  "./logo-report.png?v=21",
-  "./favicon.ico?v=21",
+  "./assets/landing/notebook-board-desktop.webp?v=3",
+  "./assets/landing/notebook-board-mobile.webp?v=3",
+  "./manifest.json?v=23",
+  "./star_paper_logo_pack/star_paper_32.png?v=2",
+  "./star_paper_logo_pack/star_paper_64.png?v=2",
+  "./star_paper_logo_pack/star_paper_128.png?v=2",
+  "./star_paper_logo_pack/star_paper_256.png?v=2",
+  "./star_paper_logo_pack/star_paper_512.png?v=2",
+  "./star_paper_logo_pack/star_paper_1024.png?v=2",
+  "./star_paper_logo_pack/star_paper_transparent.png?v=2",
+  "./star_paper_logo_pack/star_paper_black.png?v=2",
+  "./star_paper_logo_pack/star_paper_white.png?v=2",
 ];
 
 const APP_SHELL_URLS = new Set(
@@ -99,13 +119,46 @@ function looksLikeFilePath(pathname) {
   return last.includes(".");
 }
 
-// Treat extension-less same-origin navigations as SPA routes and serve the app shell.
+// Treat extension-less same-origin app navigations as SPA routes and serve the app shell.
 function isSpaNavigation(url) {
   if (!isSameOrigin(url)) return false;
   const pathname = url.pathname || "/";
+  if (getPublicLandingPageShell(url)) return false;
   if (pathname === "/" || pathname.endsWith("/")) return true;
   if (looksLikeFilePath(pathname)) return false;
   return true;
+}
+
+function getPublicLandingPageShell(url) {
+  if (!isSameOrigin(url)) return null;
+  const pathname = (url.pathname || "/").replace(/\/$/, "");
+  return PUBLIC_LANDING_PAGES.get(pathname) || null;
+}
+
+function freshRequest(request) {
+  return new Request(request, { cache: "reload" });
+}
+
+function isFreshOnlyReportRuntimeAsset(url) {
+  return REPORT_RUNTIME_ASSETS.has(`${url.pathname}${url.search}`);
+}
+
+function networkFirstNavigation(request, fallbackShell) {
+  const networkRequest = fallbackShell || request;
+  return fetch(freshRequest(networkRequest))
+    .then((response) => {
+      if (response && response.ok) {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+      }
+      return response;
+    })
+    .catch(() =>
+      caches.match(request).then((cached) => {
+        if (cached || !fallbackShell) return cached || Response.error();
+        return caches.match(fallbackShell).then((fallback) => fallback || Response.error());
+      })
+    );
 }
 
 function isCacheableAppShellRequest(request) {
@@ -149,28 +202,46 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (request.mode === "navigate") {
-    // Stale-while-revalidate: serve the cached app shell immediately so first
-    // paint is ~0 ms, and refresh the cache from the network in the background
-    // for the next visit. Auth-bearing requests still bypass the cache via
-    // isCacheableAppShellRequest() below.
+    const publicLandingPageShell = getPublicLandingPageShell(url);
+    if (publicLandingPageShell) {
+      event.respondWith(networkFirstNavigation(request, publicLandingPageShell));
+      return;
+    }
+
+    if (!isSpaNavigation(url)) {
+      event.respondWith(networkFirstNavigation(request));
+      return;
+    }
+
+    // HTML owns the report/PDF bundle URLs. Fetch the deployed shell before
+    // falling back so old HTML cannot keep loading stale report code.
     event.respondWith(
-      caches.match("./index.html").then((cached) => {
-        const networkFetch = fetch(request)
-          .then((response) => {
-            if (response && response.ok) {
-              const clone = response.clone();
-              caches.open(CACHE_NAME).then((cache) =>
-                cache.put("./index.html", clone));
-            }
-            return response;
-          })
-          .catch(() => null);
-        if (cached) {
-          networkFetch.catch(() => {});
-          return cached;
-        }
-        return networkFetch.then((resp) => resp || Response.error());
-      })
+      fetch(freshRequest(request))
+        .then((response) => {
+          if (response && response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) =>
+              cache.put("./index.html", clone));
+          }
+          return response;
+        })
+        .catch(() =>
+          caches.match("./index.html").then((cached) => cached || Response.error())
+        )
+    );
+    return;
+  }
+
+  if (isFreshOnlyReportRuntimeAsset(url)) {
+    event.respondWith(
+      fetch(freshRequest(request))
+        .then((response) => {
+          if (response && response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
     );
     return;
   }
@@ -180,7 +251,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   event.respondWith(
-    fetch(request)
+    fetch(freshRequest(request))
       .then((response) => {
         if (!response || response.status !== 200) return response;
         const clone = response.clone();

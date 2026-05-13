@@ -1,0 +1,4599 @@
+/*
+  Star Paper handcraft landing v3.
+  This file is intentionally a replacement layer, not another override pass.
+  It uses raster notebook assets for the hero art and keeps auth/login hooks live.
+*/
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen {
+  --sp-handcraft-bg: #030303;
+  --sp-handcraft-ink: #fbfbf8;
+  --sp-handcraft-muted: rgba(255, 255, 255, 0.72);
+  --sp-handcraft-line: rgba(255, 255, 255, 0.22);
+  --sp-handcraft-gold: #efc15e;
+  --sp-handcraft-gold-soft: #ffe29c;
+  --sp-handcraft-gold-deep: #a66f1e;
+  --sp-handcraft-serif: "Cormorant", "Cormorant Garamond", "Playfair Display", Georgia, "Times New Roman", serif;
+  --sp-handcraft-sans: "Space Grotesk", "Inter", "Segoe UI", system-ui, sans-serif;
+  --sp-handcraft-hand: "Caveat", "Cormorant", cursive;
+  --sp-notebook-desktop: url("./assets/landing/notebook-board-desktop.webp?v=3");
+  --sp-notebook-mobile: url("./assets/landing/notebook-board-mobile.webp?v=3");
+  display: block;
+  min-height: 100svh;
+  overflow-x: clip;
+  background:
+    radial-gradient(circle at 70% 10%, rgba(239, 193, 94, 0.08), transparent 34rem),
+    linear-gradient(180deg, #050505 0%, #020202 100%);
+  color: var(--sp-handcraft-ink);
+  font-family: var(--sp-handcraft-sans);
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen {
+  background:
+    radial-gradient(circle at 70% 10%, rgba(239, 193, 94, 0.08), transparent 34rem),
+    linear-gradient(180deg, #050505 0%, #020202 100%);
+  color: var(--sp-handcraft-ink);
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.42;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.045), transparent 1px);
+  background-size: 100% 3px, 4px 100%, 5px 5px;
+  mix-blend-mode: screen;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-landing-mesh,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-page-label,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-device-glow,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-top-controls {
+  display: none !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-stage {
+  position: relative;
+  z-index: 1;
+  display: block;
+  min-height: 100svh;
+  padding: 0;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-shell,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-mainstage-card,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-card {
+  width: 100%;
+  max-width: none;
+  min-height: 100svh;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-rail {
+  width: min(100%, 1536px);
+  /* Was a hard 864px which forced the rail below the fold on laptops.
+     Now: never taller than the visible viewport, so trust row stays in view. */
+  min-height: min(864px, calc(100svh - 8px));
+  margin: 0 auto;
+  padding: clamp(18px, 2.6vh, 31px) 43px clamp(16px, 2.2vh, 26px);
+  display: flex;
+  flex-direction: column;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 58px;
+  width: 100%;
+  gap: 24px;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-brand {
+  display: inline-flex;
+  align-items: center;
+  min-width: 250px;
+  gap: 16px;
+  color: #ffffff;
+  text-decoration: none;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-logo {
+  width: 57px;
+  height: 57px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 16px rgba(239, 193, 94, 0.28));
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-brand-text {
+  font-size: 26px;
+  line-height: 1;
+  letter-spacing: 0.16em;
+  font-weight: 760;
+  color: #ffffff;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-desktop-nav {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 40px;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-desktop-nav a,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-desktop-nav button {
+  color: inherit;
+  font: 650 18px/1 var(--sp-handcraft-sans);
+  text-decoration: none;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition: color 160ms ease, transform 160ms ease;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-desktop-nav a:hover,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-desktop-nav button:hover {
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-desktop-divider {
+  width: 1px;
+  height: 43px;
+  background: rgba(255, 255, 255, 0.34);
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-nav-cta {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  min-width: 181px;
+  min-height: 55px;
+  padding: 0 23px;
+  border-radius: 8px !important;
+  color: #ffffff !important;
+  background:
+    linear-gradient(180deg, rgba(255, 237, 185, 0.34) 0%, rgba(236, 176, 57, 0.44) 100%),
+    linear-gradient(180deg, rgba(15, 15, 15, 0.86), rgba(9, 9, 9, 0.94)) !important;
+  border: 1px solid rgba(255, 206, 107, 0.96) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.36),
+    0 0 0 1px rgba(255, 195, 80, 0.16),
+    0 0 30px rgba(238, 183, 72, 0.42);
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-nav-actions {
+  display: none;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-menu-panel {
+  position: absolute;
+  top: 88px;
+  right: 38px;
+  z-index: 20;
+  width: min(280px, calc(100vw - 76px));
+  padding: 14px;
+  border: 1px solid rgba(255, 206, 107, 0.46);
+  border-radius: 16px;
+  background: rgba(6, 6, 6, 0.94);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.58), 0 0 32px rgba(239, 193, 94, 0.18);
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-menu-panel[hidden] {
+  display: none !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-menu-panel a,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-menu-panel button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  color: #ffffff;
+  font: 650 16px/1 var(--sp-handcraft-sans);
+  text-decoration: none;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-menu-panel a:hover,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-menu-panel button:hover {
+  background: rgba(255, 206, 107, 0.1);
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-body {
+  flex: 1;
+  display: flex;
+  /* Align hero content to the top of the body so the medallion sits flush
+     below the header strip — was previously `align-items: center` which
+     vertically-centered the hero block inside the tall rail, leaving a
+     visible dead band above the logo on tall viewports. */
+  align-items: flex-start;
+  /* Zero top padding for the same reason; the premium layer adds 12-20px
+     top padding by default which the brief calls dead space. */
+  padding: 0 !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-hero {
+  width: 100%;
+  /* Notebook column removed — hero is now a single, full-width column. */
+  display: block;
+  min-height: 0;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-hero-copy {
+  position: relative;
+  z-index: 2;
+  min-width: 0;
+  /* Constrain copy width so the hero feels intentional rather than spread thin.
+     Top padding zeroed: previously 12-32px created a dead band between the
+     header strip and the hero medallion. The medallion now sits flush below
+     the nav, with the rail's own padding-top as the only buffer. */
+  max-width: min(820px, 100%);
+  padding: 0 0 clamp(8px, 2vh, 24px) clamp(8px, 1.6vw, 38px);
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-intro {
+  display: block;
+  margin: 0 0 30px;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--sp-handcraft-gold-soft);
+  font: 760 19px/1 var(--sp-handcraft-sans);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  text-shadow: 0 0 24px rgba(239, 193, 94, 0.26);
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-heading {
+  max-width: 670px;
+  margin: 0;
+  color: #fbfbf8;
+  font-family: var(--sp-handcraft-serif);
+  /* Naturally fluid: shrinks with viewport so trust row + CTAs stay above the fold
+     on common laptop sizes (1366×768, 1440×900, 1350×720). Caps at 88px on big
+     desktops so the editorial display weight still has presence. */
+  font-size: clamp(40px, calc(2.2vw + 4.4vh), 88px);
+  font-weight: 700;
+  font-variation-settings: "wght" 700;
+  font-optical-sizing: auto;
+  font-feature-settings: "kern", "liga", "calt", "ss01", "dlig";
+  font-kerning: normal;
+  line-height: 0.96;
+  letter-spacing: -0.018em;
+  text-wrap: balance;
+  hanging-punctuation: first last;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.22), 0 14px 32px rgba(0, 0, 0, 0.56);
+  transition: font-variation-settings 0.7s cubic-bezier(0.2, 0.8, 0.2, 1), letter-spacing 0.7s ease;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-heading:hover {
+  font-variation-settings: "wght" 640;
+  letter-spacing: -0.012em;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-highlight {
+  display: block;
+  color: transparent;
+  background:
+    linear-gradient(180deg, #fff3c8 0%, #f3ca69 33%, #c98a28 68%, #fff0b8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  text-shadow: none;
+  filter: drop-shadow(0 4px 0 rgba(69, 43, 8, 0.48)) drop-shadow(0 0 22px rgba(239, 193, 94, 0.18));
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-subtitle {
+  max-width: 560px;
+  margin: clamp(14px, 2.6vh, 25px) 0 0;
+  color: rgba(255, 255, 255, 0.78);
+  font: 500 21px/1.42 var(--sp-handcraft-sans);
+  letter-spacing: 0;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-buttons {
+  display: flex;
+  align-items: center;
+  gap: 27px;
+  margin-top: clamp(18px, 3vh, 30px);
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(14px, 1.6vw, 28px);
+  min-width: clamp(200px, 22vw, 280px);
+  /* Fluid height: never exceeds ~10% of viewport so the trust row stays in view. */
+  min-height: clamp(48px, calc(4vh + 1.4vw), 84px);
+  padding: 0 clamp(20px, 2vw, 33px) 0 clamp(24px, 2.6vw, 44px);
+  border-radius: 8px;
+  color: #ffffff;
+  font: 760 clamp(15px, calc(0.9vw + 0.6vh), 26px) / 1 var(--sp-handcraft-sans);
+  letter-spacing: 0;
+  text-decoration: none;
+  text-transform: none;
+  border: 1px solid rgba(255, 213, 121, 0.98);
+  background:
+    linear-gradient(180deg, rgba(255, 238, 190, 0.52), rgba(238, 181, 64, 0.42)),
+    linear-gradient(180deg, #c9932e 0%, #8d5c18 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.32),
+    0 0 0 1px rgba(255, 211, 111, 0.13),
+    0 0 38px rgba(239, 193, 94, 0.45),
+    0 18px 44px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: transform 150ms ease, filter 150ms ease, box-shadow 150ms ease;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-btn::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 7px;
+  pointer-events: none;
+  background: linear-gradient(110deg, transparent 0%, rgba(255, 255, 255, 0.36) 45%, transparent 62%);
+  background-size: 220% 100%;
+  background-position: -140% 0;
+  transition: background-position 520ms ease;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-btn i {
+  font-size: 33px;
+  line-height: 1;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-btn:hover {
+  transform: translateY(-2px);
+  filter: saturate(1.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.64),
+    0 0 44px rgba(239, 193, 94, 0.56),
+    0 22px 52px rgba(0, 0, 0, 0.48);
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-btn:hover::after {
+  background-position: 180% 0;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-btn:active {
+  transform: translateY(0) scale(0.99);
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-btn--ghost {
+  color: #ffffff;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)),
+    rgba(3, 3, 3, 0.6);
+  border-color: rgba(255, 255, 255, 0.58);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.09),
+    0 16px 44px rgba(0, 0, 0, 0.36);
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-btn--ghost:hover {
+  border-color: rgba(255, 255, 255, 0.82);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 0 28px rgba(255, 255, 255, 0.14),
+    0 18px 48px rgba(0, 0, 0, 0.44);
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-proof {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  margin-top: 31px;
+  color: rgba(255, 255, 255, 0.72);
+  font: 560 20px/1.35 var(--sp-handcraft-sans);
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--sp-handcraft-gold-soft);
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 18px rgba(239, 193, 94, 0.32);
+  white-space: nowrap;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-proof p {
+  min-height: 28px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.74);
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-proof-copy::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 3px;
+  background: rgba(255, 255, 255, 0.62);
+  transform: translateY(0.15em);
+  animation: spHandcraftCursor 950ms steps(2, end) infinite;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-hero-product {
+  position: relative;
+  z-index: 1;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 720px;
+  margin: 0;
+  padding: 0;
+  perspective: none;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-hero-product {
+  perspective: 1600px;
+  perspective-origin: 35% 55%;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-notebook {
+  position: relative;
+  width: min(760px, 100%);
+  aspect-ratio: 1120 / 900;
+  margin: 8px -14px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--sp-notebook-desktop) center / contain no-repeat;
+  box-shadow: none;
+  transform-style: preserve-3d;
+  transform-origin: 50% 60%;
+  filter:
+    drop-shadow(0 30px 50px rgba(0, 0, 0, 0.55))
+    drop-shadow(0 0 0 rgba(239, 193, 94, 0));
+  transition:
+    opacity 0.95s ease,
+    filter 0.55s ease;
+  will-change: transform, opacity, filter;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-notebook.is-handcraft-pending {
+  opacity: 0;
+  transform: translate3d(0, 36px, 0) rotateX(8deg) rotateY(-3deg);
+  transition: none;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-notebook.is-handcraft-revealed {
+  opacity: 1;
+  transition:
+    opacity 1s ease,
+    transform 1.1s cubic-bezier(0.2, 0.8, 0.2, 1),
+    filter 0.55s ease;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-notebook:hover {
+  filter:
+    drop-shadow(0 38px 70px rgba(0, 0, 0, 0.7))
+    drop-shadow(0 0 42px rgba(239, 193, 94, 0.32));
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-notebook::before,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-notebook::after,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-notebook__coil,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-notebook__rules,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-notebook__date,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-notebook__entries,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-notebook__doodle,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-notebook__last-ink,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-notebook__page,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-ledger,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-tabs {
+  display: none !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-hero-product > .sp-handcraft-proof {
+  display: none;
+}
+
+@keyframes spHandcraftCursor {
+  0%, 45% { opacity: 1; }
+  46%, 100% { opacity: 0; }
+}
+
+@media (max-width: 1320px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-heading {
+    font-size: 64px;
+    max-width: 585px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-btn {
+    min-width: 240px;
+    min-height: 76px;
+    font-size: 23px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-notebook {
+    width: min(705px, 100%);
+  }
+}
+
+@media (max-width: 1100px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-rail {
+    min-height: 100svh;
+    padding-inline: 34px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-desktop-nav {
+    gap: 24px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-desktop-nav a,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-desktop-nav button {
+    font-size: 16px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-hero {
+    grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+    gap: 10px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-hero-copy {
+    padding-left: 12px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-heading {
+    font-size: 56px;
+  }
+}
+
+@media (max-width: 900px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen {
+    min-height: 100svh;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-rail {
+    width: 100%;
+    min-height: 0;
+    padding: 32px 38px 28px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-nav {
+    min-height: 72px;
+    align-items: flex-start;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-brand {
+    min-width: 0;
+    gap: 15px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-logo {
+    width: 56px;
+    height: 56px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-brand-text {
+    font-size: 26px;
+    letter-spacing: 0.14em;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-desktop-nav {
+    display: none;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-login {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 56px;
+    padding: 0;
+    color: #ffffff;
+    background: transparent;
+    border: 0;
+    font: 700 22px/1 var(--sp-handcraft-sans);
+    cursor: pointer;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-menu {
+    display: inline-grid;
+    place-items: center;
+    width: 72px;
+    height: 72px;
+    color: var(--sp-handcraft-gold-soft);
+    background:
+      linear-gradient(180deg, rgba(255, 226, 156, 0.17), rgba(166, 111, 30, 0.14)),
+      rgba(7, 7, 7, 0.88);
+    border: 1px solid rgba(255, 204, 102, 0.78);
+    border-radius: 15px;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.15),
+      0 0 28px rgba(239, 193, 94, 0.36);
+    cursor: pointer;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-menu i {
+    font-size: 34px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-body {
+    display: block;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-hero {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    gap: 0;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-hero-copy {
+    width: 100%;
+    /* No top padding — medallion sits flush below the nav strip on mobile. */
+    padding: 0;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-intro {
+    margin-bottom: clamp(12px, 3vw, 20px);
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-kicker {
+    gap: 12px;
+    font-size: 22px;
+    letter-spacing: 0.11em;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-heading {
+    max-width: 100%;
+    font-size: 61px;
+    line-height: 0.95;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-highlight {
+    display: block;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-subtitle {
+    display: none;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-buttons {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 20px;
+    margin-top: 38px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-btn {
+    width: 100%;
+    min-width: 0;
+    min-height: 88px;
+    padding: 0 36px;
+    font-size: 28px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-btn--how {
+    justify-content: center;
+    gap: 17px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-proof--hero {
+    /* Trust row was hidden on mobile/tablet under the old two-column layout
+       (it lived in the device preview column instead). Now the hero is single-
+       column on every viewport, so keep the trust row visible inline. */
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-hero-product {
+    width: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 16px;
+    padding: 0;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-notebook {
+    width: min(112%, 500px);
+    aspect-ratio: 900 / 1120;
+    margin: 0 -24px 0;
+    background-image: var(--sp-notebook-mobile);
+    background-position: center top;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-hero-product > .sp-handcraft-proof {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 13px;
+    width: 100%;
+    margin: 8px 0 0;
+    text-align: center;
+    font-size: 22px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-stars {
+    gap: 14px;
+    font-size: 35px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-proof p {
+    max-width: 100%;
+    min-height: 32px;
+  }
+}
+
+@media (max-width: 460px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-rail {
+    padding: 30px 28px 24px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-brand-text {
+    font-size: 24px;
+    letter-spacing: 0.13em;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-logo {
+    width: 50px;
+    height: 50px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-login {
+    font-size: 20px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-menu {
+    width: 68px;
+    height: 68px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-heading {
+    font-size: 55px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-kicker {
+    font-size: 19px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-btn {
+    min-height: 82px;
+    font-size: 25px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-stars {
+    font-size: 31px;
+  }
+}
+
+@media (max-width: 380px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-rail {
+    padding-inline: 22px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-brand-text {
+    font-size: 21px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-heading {
+    font-size: 49px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-login {
+    font-size: 18px;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-menu {
+    width: 62px;
+    height: 62px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen *,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen *::before,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-proof-copy::after {
+    display: none;
+  }
+}
+
+/* Final ownership clamps over older landing rules that use !important. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-mini-nav {
+  display: none !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-rail {
+  padding: clamp(18px, 2.6vh, 31px) 43px clamp(16px, 2.2vh, 26px) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-nav {
+  position: static !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 58px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-brand-text {
+  white-space: nowrap !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-hero {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  /* Was a forced 2-col grid for the notebook layout. With the notebook removed,
+     this becomes a single-column block. Keep !important to defeat sibling rules. */
+  display: block !important;
+  grid-template-columns: none !important;
+  text-align: left !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-hero-copy {
+  text-align: left !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-heading {
+  max-width: 670px !important;
+  margin: 0 !important;
+  font-family: var(--sp-handcraft-serif) !important;
+  /* Same fluid sizing on the !important variant — the no-media-query block at
+     this line was overriding short-viewport @media rules at all viewport heights. */
+  font-size: clamp(40px, calc(2.2vw + 4.4vh), 88px) !important;
+  font-weight: 700 !important;
+  line-height: 0.96 !important;
+  letter-spacing: 0 !important;
+  text-align: left !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-subtitle {
+  max-width: 560px !important;
+  margin: 25px 0 0 !important;
+  min-height: 0 !important;
+  font: 500 21px/1.42 var(--sp-handcraft-sans) !important;
+  text-align: left !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-buttons {
+  width: auto !important;
+  margin-top: 30px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 27px !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-buttons .landing-btn,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-buttons .landing-btn,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-btn {
+  width: auto !important;
+  min-width: clamp(200px, 22vw, 280px) !important;
+  /* Fluid height + font, same as base — keeps trust row above the fold on laptops. */
+  min-height: clamp(48px, calc(4vh + 1.4vw), 84px) !important;
+  padding: 0 clamp(20px, 2vw, 33px) 0 clamp(24px, 2.6vw, 44px) !important;
+  border-radius: 8px !important;
+  font: 760 clamp(15px, calc(0.9vw + 0.6vh), 26px) / 1 var(--sp-handcraft-sans) !important;
+  letter-spacing: 0 !important;
+  justify-content: space-between !important;
+  text-transform: none !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-hero-product {
+  width: 100% !important;
+  max-width: none !important;
+  min-height: 720px !important;
+  margin: 0 !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-notebook {
+  display: block !important;
+  width: min(760px, 100%) !important;
+  max-width: none !important;
+  min-height: 0 !important;
+}
+
+@media (max-width: 1320px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-heading {
+    font-size: 64px !important;
+    max-width: 585px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-buttons .landing-btn,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-buttons .landing-btn,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-btn {
+    min-width: 240px !important;
+    min-height: 76px !important;
+    font-size: 23px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-rail {
+    padding: 32px 38px 28px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-nav {
+    min-height: 72px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-brand {
+    min-width: 0 !important;
+    gap: 12px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-brand-text {
+    font-size: 23px !important;
+    letter-spacing: 0.13em !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-logo {
+    width: 49px !important;
+    height: 49px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-nav-actions {
+    gap: 13px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-login {
+    font-size: 20px !important;
+    min-height: 58px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-menu {
+    width: 66px !important;
+    height: 66px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-hero {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0 !important;
+    text-align: left !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-hero-copy {
+    padding: 0 !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-heading {
+    max-width: 100% !important;
+    font-size: 64px !important;
+    line-height: 0.95 !important;
+    text-align: left !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-buttons {
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    align-items: stretch !important;
+    gap: 20px !important;
+    margin-top: 38px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-buttons .landing-btn,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-buttons .landing-btn,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-btn {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 88px !important;
+    padding: 0 36px !important;
+    font-size: 28px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-hero-product {
+    min-height: 0 !important;
+    margin-top: 16px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-notebook {
+    width: min(112%, 500px) !important;
+  }
+}
+
+@media (max-width: 460px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-rail {
+    padding: 30px 28px 24px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-heading {
+    font-size: 56px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-buttons .landing-btn,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-buttons .landing-btn,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-btn {
+    min-height: 82px !important;
+    font-size: 25px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-heading {
+    font-size: 50px !important;
+  }
+}
+
+/* Premium layer has high-specificity grid rules; these selectors intentionally outrank it. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.sp-prem-landing-refine .landing-shell-hero.sp-prem-hero-layout {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 650px) minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 12px !important;
+  text-align: left !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.sp-prem-landing-refine .sp-prem-hero-copy {
+  width: 100% !important;
+  max-width: none !important;
+  /* Was 72px 0 0 0 — created dead space between header strip and hero
+     medallion. The rail's own top padding is enough buffer. */
+  padding: 0 !important;
+  text-align: left !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.sp-prem-landing-refine .landing-shell-kicker {
+  justify-content: flex-start !important;
+  text-align: left !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.sp-prem-landing-refine .landing-hero-heading {
+  width: 100% !important;
+  max-width: 665px !important;
+  font-size: 68px !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.sp-prem-landing-refine .sp-prem-hero-product {
+  width: 100% !important;
+  max-width: none !important;
+  min-height: 720px !important;
+  justify-content: center !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.sp-prem-landing-refine .landing-notebook {
+  width: min(820px, 100%) !important;
+}
+
+@media (max-width: 1320px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.sp-prem-landing-refine .landing-shell-hero.sp-prem-hero-layout {
+    grid-template-columns: minmax(0, 585px) minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.sp-prem-landing-refine .landing-shell-hero.sp-prem-hero-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    max-width: none !important;
+    gap: 0 !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.sp-prem-landing-refine .sp-prem-hero-copy {
+    padding-left: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.sp-prem-landing-refine .landing-shell-brand-text {
+    font-size: 20px !important;
+    letter-spacing: 0.12em !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.sp-prem-landing-refine .landing-shell-logo {
+    width: 46px !important;
+    height: 46px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.sp-prem-landing-refine .landing-shell-login {
+    font-size: 18px !important;
+    min-width: 58px !important;
+    white-space: nowrap !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.sp-prem-landing-refine .landing-handcraft-menu {
+    width: 58px !important;
+    height: 58px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.sp-prem-landing-refine .landing-hero-heading {
+    width: 100% !important;
+    max-width: none !important;
+    font-size: 58px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.sp-prem-landing-refine .sp-prem-hero-product {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    margin-top: 16px !important;
+    align-items: center !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.sp-prem-landing-refine .landing-notebook {
+    width: min(112%, 500px) !important;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Handcraft phase 2 motion layer
+   - Gold cursor follower (desktop, fine pointer only)
+   - Scroll-progress hairline at the top
+   - prefers-reduced-motion + touch fallbacks
+   ────────────────────────────────────────────────────────────────── */
+
+.sp-handcraft-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  pointer-events: none;
+  z-index: 9999;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle,
+    rgba(255, 226, 156, 0.95) 0%,
+    rgba(239, 193, 94, 0.22) 55%,
+    rgba(239, 193, 94, 0) 75%
+  );
+  mix-blend-mode: screen;
+  opacity: 0;
+  transition:
+    opacity 0.35s ease,
+    width 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+    height 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+    background 0.3s ease;
+  will-change: transform;
+}
+
+.sp-handcraft-cursor.is-visible { opacity: 1; }
+
+.sp-handcraft-cursor.is-mag {
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  background: radial-gradient(
+    circle,
+    rgba(255, 226, 156, 0.55) 0%,
+    rgba(239, 193, 94, 0.18) 60%,
+    rgba(239, 193, 94, 0) 75%
+  );
+}
+
+.sp-handcraft-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 9998;
+  background: linear-gradient(
+    90deg,
+    rgba(166, 111, 30, 0.85),
+    rgba(239, 193, 94, 1),
+    rgba(255, 226, 156, 1)
+  );
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  pointer-events: none;
+  will-change: transform;
+  box-shadow: 0 0 12px rgba(239, 193, 94, 0.45);
+}
+
+@media (pointer: coarse) {
+  .sp-handcraft-cursor { display: none !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-notebook,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-notebook.is-handcraft-pending,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-notebook.is-handcraft-revealed {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
+  }
+  .sp-handcraft-cursor,
+  .sp-handcraft-progress {
+    display: none !important;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Short-viewport rescue (laptops, Chrome with bookmarks bar, etc.)
+   Compresses the hero copy column so the trust row stays above the
+   fold on viewports under ~880 px tall — the cutoff seen in a
+   1350×700 desktop render.
+   ────────────────────────────────────────────────────────────────── */
+
+@media (max-height: 880px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-rail {
+    min-height: auto !important;
+    padding: 22px 43px 22px !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-kicker {
+    margin-top: 14px !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-heading {
+    font-size: clamp(44px, calc(7vh + 0.6vw), 64px) !important;
+    line-height: 0.96 !important;
+    margin-top: 12px !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-subtitle {
+    margin-top: 14px !important;
+    font-size: 17px !important;
+    line-height: 1.4 !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-buttons {
+    margin-top: 18px !important;
+    gap: 18px !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-btn {
+    min-width: 220px !important;
+    min-height: 60px !important;
+    font-size: 19px !important;
+    padding: 0 24px 0 28px !important;
+    gap: 18px !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-btn i {
+    font-size: 24px !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-proof--hero {
+    margin-top: 14px !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-stars span {
+    font-size: 18px !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-proof p {
+    font-size: 15px !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-notebook {
+    width: min(620px, 100%) !important;
+  }
+}
+
+@media (max-height: 760px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-heading {
+    font-size: clamp(40px, calc(6.5vh + 0.4vw), 54px) !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-btn {
+    min-height: 54px !important;
+    font-size: 17px !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-notebook {
+    width: min(560px, 100%) !important;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   #1 Testimonial marquee (testimonials.html)
+   - Pure-CSS infinite scroll, paused on hover
+   - JS clones the 3 cards once for a seamless loop
+   - Mobile: falls back to touch scroll-snap slideshow (animation off)
+   ────────────────────────────────────────────────────────────────── */
+
+.sp-handcraft-marquee {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    #000 7%,
+    #000 93%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    #000 7%,
+    #000 93%,
+    transparent 100%
+  );
+}
+
+.landing-testimonials-grid.is-marquee {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  width: max-content !important;
+  gap: 28px !important;
+  animation: spHandcraftMarquee 42s linear infinite;
+  will-change: transform;
+}
+
+.landing-testimonials-grid.is-marquee .landing-testimonial-card {
+  flex: 0 0 clamp(280px, 30vw, 380px) !important;
+  width: clamp(280px, 30vw, 380px) !important;
+  max-width: none !important;
+  margin: 0 !important;
+}
+
+.sp-handcraft-marquee:hover .landing-testimonials-grid.is-marquee {
+  animation-play-state: paused;
+}
+
+@keyframes spHandcraftMarquee {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+
+@media (max-width: 720px) {
+  .sp-handcraft-marquee {
+    -webkit-mask-image: none;
+    mask-image: none;
+    overflow: visible;
+  }
+  .landing-testimonials-grid.is-marquee {
+    flex-wrap: nowrap !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    animation: none !important;
+    transform: none !important;
+    justify-content: flex-start !important;
+    gap: 14px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scroll-snap-type: x mandatory !important;
+    scroll-padding-inline: 2px !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    padding: 0 2px 10px !important;
+  }
+  .landing-testimonials-grid.is-marquee::-webkit-scrollbar {
+    display: none !important;
+  }
+  .landing-testimonials-grid.is-marquee .landing-testimonial-card {
+    flex: 0 0 min(86vw, 340px) !important;
+    width: min(86vw, 340px) !important;
+    max-width: min(86vw, 340px) !important;
+    scroll-snap-align: start !important;
+    scroll-snap-stop: always !important;
+  }
+  .landing-testimonials-grid.is-marquee .landing-testimonial-card[data-handcraft-clone="1"] {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-testimonials-grid.is-marquee {
+    animation: none !important;
+    transform: none !important;
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    justify-content: center;
+  }
+  .landing-testimonials-grid.is-marquee .landing-testimonial-card[data-handcraft-clone="1"] {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) and (max-width: 720px) {
+  .landing-testimonials-grid.is-marquee {
+    flex-wrap: nowrap !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    justify-content: flex-start !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scroll-snap-type: x mandatory !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 0 2px 10px !important;
+  }
+
+  .landing-testimonials-grid.is-marquee .landing-testimonial-card {
+    flex: 0 0 min(86vw, 340px) !important;
+    width: min(86vw, 340px) !important;
+    max-width: min(86vw, 340px) !important;
+    scroll-snap-align: start !important;
+    scroll-snap-stop: always !important;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   #3 Animated conic-gradient border on hover
+   - Applied to testimonial cards (since pricing tiers don't exist)
+   - Uses @property to animate the conic angle smoothly
+   - Hollow-ring trick: inner mask cuts out the centre
+   ────────────────────────────────────────────────────────────────── */
+
+@property --sp-handcraft-bord-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+#landingScreen .landing-testimonial-card {
+  position: relative;
+  isolation: isolate;
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.5s ease;
+}
+
+#landingScreen .landing-testimonial-card::before {
+  content: "";
+  position: absolute;
+  inset: -1.5px;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--sp-handcraft-bord-angle, 0deg),
+    rgba(239, 193, 94, 0) 0deg,
+    rgba(255, 226, 156, 0.0) 30deg,
+    rgba(255, 226, 156, 1) 90deg,
+    rgba(239, 193, 94, 1) 130deg,
+    rgba(255, 226, 156, 1) 170deg,
+    rgba(239, 193, 94, 0) 230deg,
+    rgba(239, 193, 94, 0) 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+  z-index: 1;
+}
+
+#landingScreen .landing-testimonial-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 24px 48px -16px rgba(0, 0, 0, 0.55),
+              0 0 32px -8px rgba(239, 193, 94, 0.18);
+}
+
+#landingScreen .landing-testimonial-card:hover::before {
+  opacity: 1;
+  animation: spHandcraftBorderSpin 4.2s linear infinite;
+}
+
+@keyframes spHandcraftBorderSpin {
+  to { --sp-handcraft-bord-angle: 360deg; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #landingScreen .landing-testimonial-card,
+  #landingScreen .landing-testimonial-card:hover {
+    transform: none !important;
+  }
+  #landingScreen .landing-testimonial-card::before,
+  #landingScreen .landing-testimonial-card:hover::before {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Phase 2 — Bento features grid
+   - Asymmetric 3-row × 3-col CSS Grid with named template areas
+   - Featured tile spans 2 cols × 2 rows (top-left)
+   - Glass cards w/ specular 1 px border, scroll-revealed in stagger
+   - data-handcraft-magnetic="card" triggers JS magnetic translate
+   ────────────────────────────────────────────────────────────────── */
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento {
+  position: relative;
+  /* Hard separation from hero — clear stacking context + safe top padding so
+     nothing can visually bleed up into the hero copy column. */
+  z-index: 1;
+  isolation: isolate;
+  clear: both;
+  width: min(100%, 1536px);
+  margin: clamp(40px, 7vh, 96px) auto 0;
+  padding: clamp(56px, 10vh, 140px) clamp(24px, 4vw, 80px) clamp(40px, 7vh, 100px);
+  color: var(--sp-handcraft-ink, #fbfbf8);
+  font-family: var(--sp-handcraft-sans, "Space Grotesk", system-ui, sans-serif);
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-head {
+  max-width: 880px;
+  margin: 0 0 clamp(36px, 6vh, 72px);
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px 6px 12px;
+  margin: 0 0 18px;
+  border-radius: 999px;
+  background: rgba(239, 193, 94, 0.08);
+  border: 1px solid rgba(239, 193, 94, 0.22);
+  color: var(--sp-handcraft-gold, #efc15e);
+  font: 500 13px/1 var(--sp-handcraft-sans, "Space Grotesk", system-ui, sans-serif);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-kicker-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--sp-handcraft-gold, #efc15e);
+  box-shadow: 0 0 10px rgba(239, 193, 94, 0.7);
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-title {
+  font-family: var(--sp-handcraft-serif, "Cormorant", Georgia, serif);
+  font-size: clamp(34px, calc(1.6vw + 3.6vh), 64px);
+  font-weight: 600;
+  font-variation-settings: "wght" 600;
+  line-height: 1.02;
+  letter-spacing: -0.014em;
+  margin: 0;
+  text-wrap: balance;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-title em {
+  font-style: italic;
+  font-variation-settings: "wght" 540;
+  background: linear-gradient(180deg, #fff3c8 0%, #f3ca69 33%, #c98a28 68%, #fff0b8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    "featured  bookings  artists"
+    "featured  meta      cta";
+  gap: clamp(14px, 1.6vw, 22px);
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: clamp(24px, 2.4vw, 38px);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.012)),
+    rgba(8, 8, 10, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 0 rgba(255, 255, 255, 0.02),
+    0 24px 40px -24px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  overflow: hidden;
+  transition:
+    transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 0.45s ease,
+    box-shadow 0.45s ease,
+    background 0.45s ease;
+  will-change: transform;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    520px 220px at var(--mx, 50%) var(--my, 0%),
+    rgba(239, 193, 94, 0.22),
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  z-index: 0;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card:hover {
+  border-color: rgba(255, 217, 122, 0.32);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 0 1px rgba(255, 217, 122, 0.12),
+    0 30px 60px -28px rgba(0, 0, 0, 0.7),
+    0 0 36px -8px rgba(239, 193, 94, 0.18);
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card:hover::before {
+  opacity: 1;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card-icon {
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  font-size: 24px;
+  background: linear-gradient(180deg, rgba(239, 193, 94, 0.18), rgba(239, 193, 94, 0.04));
+  color: var(--sp-handcraft-gold, #efc15e);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 0 0 1px rgba(239, 193, 94, 0.22);
+  z-index: 1;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card h3 {
+  position: relative;
+  z-index: 1;
+  margin: 6px 0 0;
+  font-family: var(--sp-handcraft-serif, "Cormorant", Georgia, serif);
+  font-weight: 600;
+  font-size: clamp(22px, 1.4vw + 0.8vh, 32px);
+  letter-spacing: -0.005em;
+  line-height: 1.06;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card p {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: clamp(14px, 0.7vw + 0.4vh, 16px);
+  line-height: 1.5;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card--featured {
+  grid-area: featured;
+  min-height: clamp(280px, 32vw, 460px);
+  background:
+    linear-gradient(180deg, rgba(239, 193, 94, 0.08), rgba(255, 255, 255, 0.012)),
+    rgba(10, 10, 12, 0.8);
+  border-color: rgba(239, 193, 94, 0.18);
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card--featured h3 {
+  font-size: clamp(28px, 1.8vw + 1.2vh, 44px);
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card--featured p {
+  font-size: clamp(15px, 0.8vw + 0.45vh, 18px);
+  max-width: 46ch;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card-foot {
+  margin-top: auto;
+  padding-top: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card-stat {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card-stat strong {
+  font-family: var(--sp-handcraft-serif);
+  font-size: clamp(28px, 1.6vw + 1vh, 44px);
+  font-weight: 600;
+  background: linear-gradient(180deg, #fff3c8, #c98a28 80%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: -0.01em;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card-stat small {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-grid > article:nth-child(2) { grid-area: bookings; }
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-grid > article:nth-child(3) { grid-area: artists; }
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-grid > article:nth-child(4) { grid-area: meta; }
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-grid > article:nth-child(5) { grid-area: cta; }
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card--cta {
+  background:
+    linear-gradient(180deg, rgba(239, 193, 94, 0.18), rgba(166, 111, 30, 0.06)),
+    rgba(8, 8, 10, 0.7);
+  border-color: rgba(239, 193, 94, 0.4);
+  align-items: flex-start;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-cta-btn {
+  margin-top: auto;
+  align-self: stretch;
+}
+
+/* Scroll-reveal stagger — class added by JS via IntersectionObserver */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card.is-handcraft-pending {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: none;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card.is-handcraft-revealed {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 0.7s ease,
+    transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 0.45s ease,
+    box-shadow 0.45s ease,
+    background 0.45s ease;
+}
+
+@media (max-width: 920px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-grid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "featured  featured"
+      "bookings  artists"
+      "meta      cta";
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card--featured {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "featured"
+      "bookings"
+      "artists"
+      "meta"
+      "cta";
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card.is-handcraft-pending,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card.is-handcraft-revealed {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card::before {
+    display: none !important;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Phase 2 — Caveat handwritten kinetic footer
+   - Massive Caveat tagline that "draws in" via clip-path on scroll
+   - Subtle gradient highlight on the second word
+   - Magnetic links for the small nav row
+   ────────────────────────────────────────────────────────────────── */
+
+/* ──────────────────────────────────────────────────────────────────
+   FINAL OWNERSHIP — Notebook removal + centered hero rearrangement
+   - Hides the right-column notebook visual entirely (raster + SVG)
+   - Converts the hero from 2-col grid to centered single-column
+   - Recenters every hero element (kicker, h1, subtitle, buttons, proof)
+   - Caps copy width at 920 px so the h1 reads cleanly at all sizes
+   - Adds a soft ambient gold radial behind the hero so the centered
+     copy has atmospheric depth where the notebook used to live
+   - Keeps every other phase-2 feature intact (bento, marquee, cursor,
+     scroll-progress, magnetic links, footer reveal, A/B harness)
+   ────────────────────────────────────────────────────────────────── */
+
+/* 1. Kill the right column entirely — notebook image, ledger, tabs,
+      duplicated proof row, perspective container — all of it. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-hero-product,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-notebook {
+  display: none !important;
+}
+
+/* 2. Single-column hero. Override every existing 2-col grid-template-columns
+      rule (multiple breakpoints had their own 2-col layout — all collapsed). */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-hero,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-hero-layout {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  grid-template-columns: 1fr !important;
+  gap: 0 !important;
+  padding-top: clamp(28px, 5vh, 80px) !important;
+  padding-bottom: clamp(24px, 4vh, 64px) !important;
+}
+
+/* 3. Copy column: full available width, capped at 920 px, centered. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-hero-copy {
+  width: 100% !important;
+  max-width: 920px !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+}
+
+/* 4. Hero intro: medallion stacks centered ABOVE the kicker (primary visual
+      anchor spot). Vertical stack prevents the medallion from rendering inline
+      next to the kicker text. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-intro {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  gap: clamp(10px, 1.4vh, 18px) !important;
+  width: 100% !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-kicker {
+  margin: 0 auto !important;
+  justify-content: center !important;
+}
+
+/* 5. Hero h1: 18ch cap prevents 5-line wraps; balance handles widows. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-heading {
+  max-width: 18ch !important;
+  margin: clamp(14px, 2.4vh, 26px) auto 0 !important;
+  text-align: center !important;
+  text-wrap: balance !important;
+}
+
+/* 6. Subtitle: narrower than h1, centered. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-subtitle {
+  max-width: 56ch !important;
+  margin: clamp(14px, 2.6vh, 26px) auto 0 !important;
+  text-align: center !important;
+}
+
+/* 7. Buttons: centered with gap, no stretch. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-buttons {
+  justify-content: center !important;
+  flex-wrap: wrap !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+/* 8. Trust row: centered with stars + typewriter copy in one line. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-proof--hero {
+  margin-left: auto !important;
+  margin-right: auto !important;
+  justify-content: center !important;
+}
+
+/* 9. Ambient gold radial where the notebook used to live — atmospheric
+      depth without a real visual object. Stays behind all content. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-stage {
+  position: relative;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(60% 50% at 50% 30%, rgba(239, 193, 94, 0.10), transparent 70%),
+    radial-gradient(40% 40% at 78% 75%, rgba(166, 111, 30, 0.07), transparent 70%);
+  mix-blend-mode: screen;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-shell,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-rail {
+  position: relative;
+  z-index: 1;
+}
+
+/* 10. Short viewport: tighter spacing so the trust row stays in view
+       on 700-720 px laptop heights even at the centered layout. */
+@media (max-height: 760px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-hero-layout {
+    padding-top: clamp(16px, 3vh, 40px) !important;
+    padding-bottom: clamp(14px, 2.4vh, 32px) !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-heading {
+    margin-top: 10px !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-subtitle {
+    margin-top: 12px !important;
+  }
+}
+
+/* 11. Mobile: buttons stack full-width for thumb-reach. */
+@media (max-width: 600px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-buttons {
+    width: 100% !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   PHASE A — Hero / Bento layout fixes
+   - Drop the 100svh hero stage + 712px rail min-heights that were
+     creating dead transparent space the bento appeared to overlap.
+   - Hero now sized by content, bento follows naturally in flow.
+   - Bento + footer get breathing room and a subtle gold separator.
+   - Mobile menu gets opaque background + raised z-index + scrim.
+   - Scroll-progress lowered from z:9998 to z:100 (sane stacking).
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* A1. Drop artificial height enforcers on the hero */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-stage {
+  position: relative !important;
+  z-index: 0 !important;
+  display: block !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-rail {
+  width: min(100%, 1536px) !important;
+  min-height: 0 !important;
+  margin: 0 auto !important;
+  padding: clamp(18px, 2.6vh, 31px) clamp(20px, 3vw, 43px) clamp(12px, 2vh, 28px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-body {
+  flex: 0 0 auto !important;
+  display: block !important;
+  /* No vertical padding — premium layer was adding 12-20px top padding which
+     produced the dead band between the header strip and the hero medallion. */
+  padding: 0 clamp(18px, 3vw, 32px) 0 !important;
+  width: 100% !important;
+}
+
+/* A2. Bento → footer breathing room */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento {
+  margin: 0 auto clamp(20px, 3vh, 48px) !important;
+}
+
+/* A3. HARD-hide legacy nav children inside .landing-shell-nav-actions.
+   We can NOT hide the wrapper .landing-shell-nav-actions itself because it
+   contains the new hamburger button .landing-handcraft-menu as a sibling of
+   the legacy items. Hide each legacy child individually instead.
+
+   Specificity-matched + !important to defeat the @media-query rules at lines
+   610 / 981 / 985 that re-show these with `display: flex !important`. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-login,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-theme-toggle,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-theme-toggle,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-mini-nav,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .mini-nav-cta,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-top-controls,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-nav-actions > .theme-toggle,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-nav-actions > .icon-toggle {
+  display: none !important;
+}
+
+/* Make sure the wrapper itself stays a clean flex container around the
+   one remaining child (the hamburger button) — gap 0 so no phantom space. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-nav-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+/* CRITICAL: .landing-shell-nav has backdrop-filter: blur(18px) which creates
+   a "containing block" for descendant position:fixed elements. Without
+   neutralizing this, the menu panel's position:fixed becomes relative to
+   the nav instead of the viewport, making it not fully cover the screen.
+   Also neutralize on hero ancestors that might have transform/filter from
+   premium layer. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-nav {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
+  transform: none !important;
+  will-change: auto !important;
+  contain: none !important;
+}
+
+/* A3b. Mobile menu panel — full-specificity selector to win over the older
+   line-185 rule that sets `position: absolute; top: 88px; right: 38px`.
+   Drops the slide-in transform (fights the JS [hidden] attribute toggle, paints
+   in a single frame anyway). Snaps in cleanly when hamburger clicked. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-menu-panel {
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: auto !important;
+  width: min(86vw, 380px) !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  max-height: none !important;
+  z-index: 80 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  background:
+    linear-gradient(180deg, rgba(8, 8, 10, 0.98) 0%, rgba(3, 3, 5, 0.98) 100%) !important;
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  border-top: none !important;
+  border-bottom: none !important;
+  border-right: none !important;
+  border-left: 1px solid rgba(255, 217, 122, 0.18) !important;
+  border-radius: 0 !important;
+  box-shadow: -32px 0 80px -20px rgba(0, 0, 0, 0.7) !important;
+  padding: clamp(72px, 12vh, 96px) clamp(20px, 5vw, 32px) clamp(24px, 4vh, 40px) !important;
+  margin: 0 !important;
+  overflow-y: auto;
+  transform: none !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-menu-panel[hidden] {
+  display: none !important;
+}
+
+/* A3c. Backdrop scrim only when menu is open */
+#landingScreen.sp-handcraft-nav-open::after {
+  display: none !important;
+  content: none !important;
+}
+
+@keyframes spHandcraftScrimIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* A3d. Hide cursor follower while menu open (it floats over panel weirdly) */
+body:has(#landingScreen.sp-handcraft-nav-open) .sp-handcraft-cursor {
+  opacity: 0 !important;
+}
+
+/* A4. Stacking sanity — lower scroll-progress so it doesn't fight cursor */
+.sp-handcraft-progress {
+  z-index: 100 !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   PHASE B — Auth forms (login + signup) match handcraft system
+   Pure CSS — zero markup or JS changes. Scoped to #loginScreen so it
+   never bleeds into authenticated app forms.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* B1. Backdrop scrim via ::before */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen {
+  background: transparent !important;
+  /* Pin to viewport so the page never scrolls when the auth screen is open.
+     Pair with body.sp-auth-open { overflow: hidden } applied in app.js. */
+  position: fixed !important;
+  inset: 0 !important;
+  isolation: isolate;
+  overflow: hidden !important;
+  place-items: center !important;
+  padding: clamp(12px, 3vh, 24px) !important;
+}
+/* When JS toggles inline `display: flex` or `display: block`, keep the grid
+   centering so the .login-box stays centered no matter what gets injected. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen[style*="display: flex"],
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen[style*="display:flex"],
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen[style*="display: block"],
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen[style*="display:block"] {
+  display: grid !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(60% 50% at 50% 30%, rgba(239, 193, 94, 0.10), transparent 70%),
+    linear-gradient(180deg, rgba(3, 3, 5, 0.92), rgba(2, 2, 3, 0.96));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  pointer-events: none;
+}
+
+/* B2. Glass card panel */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .login-box {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.012)),
+    rgba(8, 8, 10, 0.85) !important;
+  border: 1px solid rgba(255, 217, 122, 0.22) !important;
+  border-radius: 22px !important;
+  /* Compact padding so the signup form fits in a single non-scrolling view
+     on common laptop viewports (1366×768). Was 28-44px, now 18-26px. */
+  padding: clamp(18px, 3.2vh, 26px) clamp(20px, 4vw, 30px) !important;
+  max-width: 420px !important;
+  max-height: calc(100svh - 24px) !important;
+  width: 100% !important;
+  overflow: hidden !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.04),
+    0 30px 80px -28px rgba(0, 0, 0, 0.7),
+    0 0 36px -10px rgba(239, 193, 94, 0.18) !important;
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+}
+
+/* B2b. Compact the logo + heading on auth so the signup form fits. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .login-box-logo {
+  width: 44px !important;
+  height: 44px !important;
+  margin-bottom: 8px !important;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .logo {
+  margin-bottom: 14px !important;
+}
+
+/* B3. Cormorant heading + Space Grotesk body */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .logo p,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen #loginBoxHeading {
+  font-family: var(--sp-handcraft-serif, "Cormorant", Georgia, serif) !important;
+  font-size: clamp(28px, 1.4vw + 1.6vh, 38px) !important;
+  font-weight: 600 !important;
+  font-variation-settings: "wght" 600 !important;
+  letter-spacing: -0.01em !important;
+  margin: 0 0 6px !important;
+  background: linear-gradient(180deg, #fff3c8, #efc15e 75%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  color: transparent !important;
+  text-transform: none !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen #loginBoxSubtext,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .forgot-password-intro,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .auth-switch-text {
+  font-family: var(--sp-handcraft-sans, "Space Grotesk", system-ui) !important;
+  color: rgba(255, 255, 255, 0.62) !important;
+  font-size: 14px !important;
+  margin: 0 0 22px !important;
+}
+
+/* B4. Inputs (text/email/password/tel) */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen #loginForm input,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen #signupForm input,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen #forgotPasswordForm input {
+  font-family: var(--sp-handcraft-sans) !important;
+  font-size: 15px !important;
+  padding: 14px 18px !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px !important;
+  color: var(--sp-handcraft-ink, #fbfbf8) !important;
+  transition: border-color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease !important;
+  width: 100%;
+  margin-bottom: 12px;
+  box-sizing: border-box;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen #loginForm input:focus,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen #signupForm input:focus,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen #forgotPasswordForm input:focus {
+  outline: none !important;
+  border-color: rgba(239, 193, 94, 0.6) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  box-shadow:
+    0 0 0 4px rgba(239, 193, 94, 0.1),
+    0 0 24px -8px rgba(239, 193, 94, 0.2) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen #loginForm input::placeholder,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen #signupForm input::placeholder,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen #forgotPasswordForm input::placeholder {
+  color: rgba(255, 255, 255, 0.32);
+  font-family: var(--sp-handcraft-sans);
+}
+
+/* B5. Submit button — match .landing-btn */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .login-box .btn-primary {
+  position: relative !important;
+  width: 100% !important;
+  min-height: 56px !important;
+  border-radius: 12px !important;
+  font: 700 17px/1 var(--sp-handcraft-sans) !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 213, 121, 0.98) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 238, 190, 0.52), rgba(238, 181, 64, 0.42)),
+    linear-gradient(180deg, #c9932e 0%, #8d5c18 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.32),
+    0 0 0 1px rgba(255, 211, 111, 0.13),
+    0 0 32px rgba(239, 193, 94, 0.4) !important;
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s ease, filter 0.25s ease !important;
+  cursor: pointer !important;
+  margin: 6px 0 !important;
+  padding: 0 24px !important;
+  overflow: hidden;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .login-box .btn-primary:hover {
+  transform: translateY(-2px) !important;
+  filter: saturate(1.08) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.64),
+    0 0 44px rgba(239, 193, 94, 0.56),
+    0 22px 52px rgba(0, 0, 0, 0.48) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .login-box .btn-primary::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 11px;
+  pointer-events: none;
+  background: linear-gradient(110deg, transparent 0%, rgba(255, 255, 255, 0.36) 45%, transparent 62%);
+  background-size: 220% 100%;
+  background-position: -140% 0;
+  transition: background-position 520ms ease;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .login-box .btn-primary:hover::after {
+  background-position: 180% 0;
+}
+
+/* B6. Secondary buttons — Google / Back / Forgot / Switch */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .login-box .btn-google {
+  width: 100% !important;
+  min-height: 50px !important;
+  border-radius: 12px !important;
+  font-family: var(--sp-handcraft-sans) !important;
+  font-weight: 600 !important;
+  font-size: 15px !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  color: var(--sp-handcraft-ink) !important;
+  transition: all 0.3s ease !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  margin: 4px 0 !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .login-box .btn-google:hover {
+  background: rgba(255, 255, 255, 0.07) !important;
+  border-color: rgba(255, 217, 122, 0.4) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .login-box .back-btn,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .login-box .forgot-password-link,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .login-box .auth-switch-link {
+  font-family: var(--sp-handcraft-sans) !important;
+  color: rgba(255, 217, 122, 0.85) !important;
+  text-transform: none !important;
+  background: transparent !important;
+  border: none !important;
+  font-size: 14px !important;
+  text-decoration: none !important;
+  transition: color 0.25s ease !important;
+  letter-spacing: 0 !important;
+  padding: 8px 12px !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .login-box .back-btn:hover,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .login-box .forgot-password-link:hover,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .login-box .auth-switch-link:hover {
+  color: var(--sp-handcraft-gold-soft, #ffe29c) !important;
+  text-decoration: none !important;
+}
+
+/* B7. OAuth divider + remember-me + validation msg */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .auth-oauth-divider {
+  font-family: var(--sp-handcraft-sans) !important;
+  color: rgba(255, 255, 255, 0.4) !important;
+  font-size: 12px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.2em !important;
+  margin: 18px 0 !important;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .auth-oauth-divider::before,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .auth-oauth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .remember-me {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+  width: 100% !important;
+  margin: 8px 0 12px !important;
+  font-family: var(--sp-handcraft-sans) !important;
+  color: rgba(255, 255, 255, 0.65) !important;
+  font-size: 13px !important;
+  line-height: 1.2 !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .remember-me input[type="checkbox"] {
+  flex: 0 0 auto !important;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  accent-color: var(--sp-handcraft-gold, #efc15e);
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .validation-message {
+  font-family: var(--sp-handcraft-sans) !important;
+  color: #ff6b6b !important;
+  font-size: 12px !important;
+  letter-spacing: 0.02em !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .login-box-logo {
+  filter: drop-shadow(0 8px 20px rgba(239, 193, 94, 0.3));
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .auth-switch-text {
+  text-align: center;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .auth-switch-link {
+  margin-left: 4px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   PHASE C — Cross-page component restyles
+   Glass treatment for how-it-works.html feature cards + proof.html metrics.
+   Caveat footer styling already applies via existing rules — markup added
+   directly to the secondary HTML pages.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* C3a. Feature cards on how-it-works.html — match bento glass treatment */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-feature-card {
+  position: relative !important;
+  isolation: isolate;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.012)),
+    rgba(8, 8, 10, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  border-radius: 18px !important;
+  padding: clamp(24px, 2.4vw, 38px) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 0 rgba(255, 255, 255, 0.02),
+    0 24px 40px -24px rgba(0, 0, 0, 0.55) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition:
+    transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 0.45s ease,
+    box-shadow 0.45s ease !important;
+  overflow: hidden;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-feature-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 217, 122, 0.32) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 0 1px rgba(255, 217, 122, 0.12),
+    0 30px 60px -28px rgba(0, 0, 0, 0.7),
+    0 0 36px -8px rgba(239, 193, 94, 0.18) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-feature-card h3 {
+  font-family: var(--sp-handcraft-serif) !important;
+  font-weight: 600 !important;
+  font-variation-settings: "wght" 600 !important;
+  font-size: clamp(22px, 1.4vw + 0.8vh, 32px) !important;
+  letter-spacing: -0.005em !important;
+  line-height: 1.06 !important;
+  margin: 12px 0 8px !important;
+  color: var(--sp-handcraft-ink) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-feature-card p {
+  font-family: var(--sp-handcraft-sans) !important;
+  color: rgba(255, 255, 255, 0.72) !important;
+  font-size: clamp(14px, 0.7vw + 0.4vh, 16px) !important;
+  line-height: 1.5 !important;
+  margin: 0 !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-feature-icon {
+  width: 48px !important;
+  height: 48px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 12px !important;
+  font-size: 24px !important;
+  background: linear-gradient(180deg, rgba(239, 193, 94, 0.18), rgba(239, 193, 94, 0.04)) !important;
+  color: var(--sp-handcraft-gold, #efc15e) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 0 0 1px rgba(239, 193, 94, 0.22) !important;
+  margin: 0 !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-feature-step {
+  font-family: var(--sp-handcraft-sans) !important;
+  font-size: 12px !important;
+  letter-spacing: 0.18em !important;
+  text-transform: uppercase !important;
+  color: rgba(239, 193, 94, 0.7) !important;
+  font-weight: 600 !important;
+}
+
+/* C3b. Walkthrough section title (how-it-works.html) — Cormorant */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-walkthrough-title,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-testimonials-title,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-proof-title,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-final-cta__title {
+  font-family: var(--sp-handcraft-serif) !important;
+  font-weight: 600 !important;
+  font-variation-settings: "wght" 600 !important;
+  font-size: clamp(34px, calc(1.6vw + 3.6vh), 64px) !important;
+  line-height: 1.02 !important;
+  letter-spacing: -0.014em !important;
+  text-wrap: balance;
+  color: var(--sp-handcraft-ink) !important;
+}
+
+/* C3c. Section kickers across pages */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-section-kicker {
+  font-family: var(--sp-handcraft-sans) !important;
+  color: var(--sp-handcraft-gold, #efc15e) !important;
+  font-size: 13px !important;
+  letter-spacing: 0.18em !important;
+  text-transform: uppercase !important;
+  font-weight: 600 !important;
+}
+
+/* C3d. Proof.html — metric tiles with gradient gold numbers */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-metrics-strip {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+  gap: clamp(14px, 1.6vw, 22px) !important;
+  margin: clamp(28px, 4vh, 48px) auto !important;
+  width: min(100%, 1200px) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-metric {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.012)),
+    rgba(8, 8, 10, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  border-radius: 18px !important;
+  padding: clamp(24px, 2.4vw, 38px) !important;
+  text-align: center !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 24px 40px -24px rgba(0, 0, 0, 0.55) !important;
+  backdrop-filter: blur(8px);
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.4s ease;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-metric:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 217, 122, 0.32) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-metric strong,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-metric-value {
+  display: block !important;
+  font-family: var(--sp-handcraft-serif) !important;
+  font-size: clamp(36px, 1.8vw + 2vh, 64px) !important;
+  font-weight: 600 !important;
+  font-variation-settings: "wght" 600 !important;
+  background: linear-gradient(180deg, #fff3c8, #c98a28 80%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  color: transparent !important;
+  letter-spacing: -0.01em !important;
+  line-height: 1.05 !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-metric span,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-metric-label {
+  font-family: var(--sp-handcraft-sans) !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  font-size: 13px !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase !important;
+  margin-top: 8px !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   FINAL OVERRIDE BLOCK (Phase E)
+   Addresses every issue in the latest screenshots:
+   - Bento overlapping/before hero on desktop  → explicit flex order
+   - Hamburger visible on desktop              → media-query hide
+   - Desktop nav links width=0 (collapsed)     → force layout + sizes
+   - Dead space between sections (mobile)      → tighten padding
+   - Vertical card stack on mobile = ugly      → horizontal marquee
+                                                 with prev/next arrows
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* E1. LANDING CONTAINER FLEX ORDER — ensures hero → bento → footer
+       regardless of viewport or any older @media rules. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen {
+  display: flex;
+  flex-direction: column !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen[style*="display: none"] {
+  display: none !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-stage {
+  order: 0 !important;
+  flex: 0 0 auto !important;
+  position: relative !important;
+  z-index: 1 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento {
+  order: 1 !important;
+  flex: 0 0 auto !important;
+  position: relative !important;
+  z-index: 1 !important;
+  width: 100% !important;
+  max-width: 1536px !important;
+  margin: 0 auto !important;
+}
+
+/* Footer must render AFTER the bento; explicit order keeps it pinned to the
+   bottom even when prior siblings carry an explicit order (e.g. bento has
+   order: 1). Auto margin still pushes it down when the container has space. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-landing-footer {
+  order: 2 !important;
+  flex: 0 0 auto !important;
+}
+
+/* E2. HAMBURGER + DESKTOP NAV — clean responsive split */
+@media (min-width: 901px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-menu,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen #landingHandcraftMenuBtn,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-menu-panel {
+    display: none !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-desktop-nav {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: clamp(18px, 2vw, 32px) !important;
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    height: auto !important;
+    margin-left: auto !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-desktop-nav > a,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-desktop-nav > button {
+    display: inline-flex !important;
+    align-items: center !important;
+    width: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 8px 4px !important;
+    color: rgba(255, 255, 255, 0.78) !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    font: 600 16px/1 var(--sp-handcraft-sans) !important;
+    text-decoration: none !important;
+    text-transform: none !important;
+    white-space: nowrap !important;
+    letter-spacing: 0 !important;
+    box-shadow: none !important;
+    cursor: pointer !important;
+    transition: color 0.25s ease !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-desktop-nav > a:hover,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-desktop-nav > button:hover {
+    color: var(--sp-handcraft-gold-soft, #ffe29c) !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-desktop-divider {
+    display: inline-block !important;
+    width: 1px !important;
+    height: 22px !important;
+    background: rgba(255, 255, 255, 0.18) !important;
+    margin: 0 6px !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-nav-cta {
+    padding: 12px 22px !important;
+    border: 1px solid rgba(255, 217, 122, 0.45) !important;
+    border-radius: 999px !important;
+    color: var(--sp-handcraft-gold-soft, #ffe29c) !important;
+    background: rgba(239, 193, 94, 0.08) !important;
+    font-weight: 700 !important;
+    transition: all 0.25s ease !important;
+    gap: 8px !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-nav-cta:hover {
+    background: linear-gradient(180deg, rgba(255, 238, 190, 0.32), rgba(238, 181, 64, 0.22)) !important;
+    border-color: rgba(255, 217, 122, 0.8) !important;
+    color: #ffffff !important;
+  }
+}
+
+@media (max-width: 900px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-desktop-nav {
+    display: none !important;
+  }
+}
+
+/* E3. TIGHTER mobile spacing — kill the dead space between sections */
+@media (max-width: 720px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento {
+    padding: clamp(20px, 4vh, 36px) clamp(16px, 4vw, 28px) clamp(20px, 4vh, 36px) !important;
+    margin-bottom: 0 !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-head {
+    margin: 0 0 clamp(16px, 3vh, 28px) !important;
+  }
+}
+
+/* E4. BENTO → HORIZONTAL MARQUEE (all viewports)
+       Replaces the named-grid template. Cards now scroll-snap horizontally.
+       Arrow buttons (injected by JS) on desktop; swipe on touch. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-grid {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scroll-snap-type: x mandatory !important;
+  scroll-behavior: smooth !important;
+  -webkit-overflow-scrolling: touch !important;
+  gap: clamp(14px, 1.6vw, 22px) !important;
+  padding: 6px 4px 16px !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  grid-template-columns: none !important;
+  grid-template-rows: none !important;
+  grid-template-areas: none !important;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-grid::-webkit-scrollbar {
+  display: none !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card {
+  flex: 0 0 clamp(260px, 30vw, 380px) !important;
+  width: clamp(260px, 30vw, 380px) !important;
+  max-width: 380px !important;
+  scroll-snap-align: start !important;
+  grid-area: auto !important;
+  min-height: 280px !important;
+  margin: 0 !important;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card--featured {
+  flex: 0 0 clamp(280px, 38vw, 460px) !important;
+  width: clamp(280px, 38vw, 460px) !important;
+  min-height: 320px !important;
+}
+
+/* Marquee arrow buttons (JS injects these) */
+.sp-handcraft-bento {
+  position: relative !important;
+}
+
+.sp-handcraft-bento-arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 5;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 217, 122, 0.4);
+  background: rgba(8, 8, 10, 0.85);
+  color: var(--sp-handcraft-gold-soft, #ffe29c);
+  font-size: 22px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 8px 22px -8px rgba(0, 0, 0, 0.5);
+  transform: translateY(-50%);
+  padding: 0;
+  line-height: 0;
+}
+.sp-handcraft-bento-arrow:hover:not([disabled]) {
+  border-color: rgba(255, 217, 122, 0.85);
+  background: rgba(20, 20, 24, 0.95);
+  transform: translateY(-50%) scale(1.08);
+  box-shadow: 0 0 28px -4px rgba(239, 193, 94, 0.45);
+}
+.sp-handcraft-bento-arrow[disabled] {
+  opacity: 0.28;
+  cursor: default;
+}
+.sp-handcraft-bento-arrow--prev { left: 8px; }
+.sp-handcraft-bento-arrow--next { right: 8px; }
+
+@media (max-width: 600px) {
+  .sp-handcraft-bento-arrow {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+  .sp-handcraft-bento-arrow--prev { left: 4px; }
+  .sp-handcraft-bento-arrow--next { right: 4px; }
+}
+
+/* Reduced motion: keep arrows + scroll-snap, drop the smooth-scroll. */
+@media (prefers-reduced-motion: reduce) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-grid {
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .sp-handcraft-bento-arrow {
+    display: none !important;
+  }
+}
+
+/* Final mobile-header and button alignment overrides. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-menu,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen #landingHandcraftMenuBtn,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-menu-panel,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-mini-nav,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .mini-nav-cta {
+  display: none !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-nav-actions {
+  display: none !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-nav:not(:has(.landing-handcraft-desktop-nav)) .landing-shell-nav-actions {
+  display: flex !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-top-controls {
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-login,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-theme-toggle,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-nav-actions > .theme-toggle,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-nav-actions > .icon-toggle {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-login {
+  min-height: 44px !important;
+  padding: 0 12px !important;
+  color: #ffffff !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  font: 700 15px/1 var(--sp-handcraft-sans) !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-theme-toggle {
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  padding: 0 !important;
+  border-radius: 999px !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-theme-toggle i,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-btn i,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-nav-cta i,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .login-box button i {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-btn,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-nav-cta,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .login-box .btn-primary,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .login-box .btn-google,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .login-box .back-btn,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .login-box .forgot-password-link,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .login-box .auth-switch-link {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-buttons .landing-btn,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-buttons .landing-btn,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .sp-handcraft-bento-cta-btn,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-cta-btn {
+  justify-content: center !important;
+  text-align: center !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-buttons .landing-btn,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-cta-btn {
+  gap: 12px !important;
+  padding-left: clamp(20px, 2vw, 33px) !important;
+  padding-right: clamp(20px, 2vw, 33px) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen .login-box .btn-google-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+}
+
+@media (max-width: 900px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-nav-actions {
+    display: flex !important;
+  }
+}
+
+/* Final readability and visibility pass across dark/light + desktop/mobile. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) body:not(.light-theme) #landingScreen {
+  --sp-readable-bg: #050507;
+  --sp-readable-bg-end: #010102;
+  --sp-readable-surface: rgba(12, 13, 16, 0.86);
+  --sp-readable-surface-strong: rgba(17, 19, 24, 0.94);
+  --sp-readable-surface-soft: rgba(255, 255, 255, 0.055);
+  --sp-readable-line: rgba(255, 225, 156, 0.22);
+  --sp-readable-line-strong: rgba(255, 225, 156, 0.42);
+  --sp-readable-heading: #fff8e8;
+  --sp-readable-text: #f5f1e8;
+  --sp-readable-muted: rgba(245, 241, 232, 0.76);
+  --sp-readable-soft: rgba(245, 241, 232, 0.62);
+  --sp-readable-accent: #efc15e;
+  --sp-readable-accent-strong: #ffe29c;
+  --sp-readable-shadow: rgba(0, 0, 0, 0.46);
+  --sp-readable-grid-opacity: 0.32;
+  background:
+    radial-gradient(circle at 74% 10%, rgba(239, 193, 94, 0.12), transparent 30rem),
+    radial-gradient(circle at 10% 0%, rgba(255, 226, 156, 0.055), transparent 26rem),
+    linear-gradient(180deg, var(--sp-readable-bg) 0%, var(--sp-readable-bg-end) 100%) !important;
+  color: var(--sp-readable-text) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen {
+  --sp-readable-bg: #fff8ec;
+  --sp-readable-bg-end: #efe5d4;
+  --sp-readable-surface: rgba(255, 252, 246, 0.88);
+  --sp-readable-surface-strong: rgba(255, 255, 250, 0.96);
+  --sp-readable-surface-soft: rgba(125, 92, 21, 0.075);
+  --sp-readable-line: rgba(116, 83, 18, 0.2);
+  --sp-readable-line-strong: rgba(116, 83, 18, 0.38);
+  --sp-readable-heading: #1e170d;
+  --sp-readable-text: #2e2416;
+  --sp-readable-muted: rgba(46, 36, 22, 0.78);
+  --sp-readable-soft: rgba(46, 36, 22, 0.62);
+  --sp-readable-accent: #8f6519;
+  --sp-readable-accent-strong: #5f410b;
+  --sp-readable-shadow: rgba(92, 66, 14, 0.16);
+  --sp-readable-grid-opacity: 0.18;
+  background:
+    radial-gradient(circle at 78% 8%, rgba(199, 143, 36, 0.16), transparent 30rem),
+    radial-gradient(circle at 12% 0%, rgba(255, 179, 0, 0.12), transparent 26rem),
+    linear-gradient(180deg, var(--sp-readable-bg) 0%, var(--sp-readable-bg-end) 100%) !important;
+  color: var(--sp-readable-text) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen::before {
+  opacity: var(--sp-readable-grid-opacity, 0.28) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen::before {
+  background-image:
+    linear-gradient(rgba(116, 83, 18, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(116, 83, 18, 0.035) 1px, transparent 1px) !important;
+  mix-blend-mode: multiply !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-nav {
+  background: color-mix(in srgb, var(--sp-readable-surface-strong) 84%, transparent) !important;
+  border: 1px solid var(--sp-readable-line) !important;
+  border-radius: 18px !important;
+  padding-inline: clamp(12px, 2vw, 22px) !important;
+  box-shadow: 0 18px 44px -28px var(--sp-readable-shadow) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-brand,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-brand-text,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-desktop-nav a,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-desktop-nav button {
+  color: var(--sp-readable-heading) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-desktop-nav a,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-desktop-nav button {
+  opacity: 0.82;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-desktop-nav a:hover,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-desktop-nav button:hover {
+  color: var(--sp-readable-accent-strong) !important;
+  opacity: 1;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-login,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-theme-toggle {
+  color: var(--sp-readable-heading) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-theme-toggle {
+  background: var(--sp-readable-surface-soft) !important;
+  border: 1px solid var(--sp-readable-line-strong) !important;
+  box-shadow: 0 12px 24px -18px var(--sp-readable-shadow) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-page-label {
+  display: inline-flex !important;
+  width: fit-content !important;
+  margin: 0 0 14px !important;
+  padding: 7px 12px !important;
+  border: 1px solid var(--sp-readable-line) !important;
+  border-radius: 999px !important;
+  background: var(--sp-readable-surface-soft) !important;
+  color: var(--sp-readable-accent-strong) !important;
+  font: 700 12px/1 var(--sp-handcraft-sans) !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-kicker,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-section-kicker {
+  color: var(--sp-readable-accent-strong) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-heading,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-walkthrough-title,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-testimonials-title,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-proof-title,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-final-cta__title {
+  color: var(--sp-readable-heading) !important;
+  text-shadow: none !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) body:not(.light-theme) #landingScreen .landing-hero-heading {
+  text-shadow: 0 16px 38px rgba(0, 0, 0, 0.5) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .landing-hero-highlight {
+  background: linear-gradient(180deg, #7b540f 0%, #b47c1e 42%, #5a3c08 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  filter: none !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-subtitle,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-proof p,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-final-cta__inner p {
+  color: var(--sp-readable-muted) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-subtitle {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-feature-card,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-testimonial-card,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-metric,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-metric-item,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-preview-stat,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-preview-band-card,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-preview-toast,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-final-cta__inner {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--sp-readable-surface-strong) 86%, transparent), var(--sp-readable-surface)) !important;
+  border-color: var(--sp-readable-line) !important;
+  color: var(--sp-readable-text) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 24px 48px -30px var(--sp-readable-shadow) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-feature-card h3,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-testimonial-name,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-preview-heading,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-preview-band-value,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-preview-toast-title,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card h3,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card-title {
+  color: var(--sp-readable-heading) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-feature-card p,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-testimonial-role,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-preview-subheading,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-preview-stat-label,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-preview-stat-sub,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-preview-band-label,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-preview-toast-copy,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-metric-label,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card p,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card-copy {
+  color: var(--sp-readable-muted) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-testimonial-quote {
+  color: var(--sp-readable-text) !important;
+  line-height: 1.55 !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-testimonial-mark,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-feature-icon,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card-icon,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-preview-toast-icon,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-preview-live-pill {
+  background: color-mix(in srgb, var(--sp-readable-accent) 16%, transparent) !important;
+  border-color: var(--sp-readable-line-strong) !important;
+  color: var(--sp-readable-accent-strong) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-preview-shell {
+  background:
+    radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--sp-readable-accent) 12%, transparent), transparent 22%),
+    linear-gradient(180deg, var(--sp-readable-surface-strong), var(--sp-readable-surface)) !important;
+  border-color: var(--sp-readable-line-strong) !important;
+  box-shadow: 0 30px 60px -34px var(--sp-readable-shadow) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-preview-sidebar {
+  background: color-mix(in srgb, var(--sp-readable-surface-strong) 92%, var(--sp-readable-accent) 8%) !important;
+  border-right: 1px solid var(--sp-readable-line) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-preview-main {
+  background: color-mix(in srgb, var(--sp-readable-surface) 86%, transparent) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-preview-brand-label {
+  color: var(--sp-readable-muted) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-preview-stat-value,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-metric strong,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-metric-value {
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+  color: var(--sp-readable-accent-strong) !important;
+  filter: none !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-metrics-strip--footer {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-btn--ghost {
+  background: var(--sp-readable-surface-soft) !important;
+  border-color: var(--sp-readable-line-strong) !important;
+  color: var(--sp-readable-heading) !important;
+}
+
+@media (max-width: 720px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-nav {
+    gap: 8px !important;
+    border-radius: 14px !important;
+    padding-inline: 10px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-brand {
+    min-width: 0 !important;
+    gap: 9px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-brand-text {
+    font-size: clamp(17px, 4.8vw, 22px) !important;
+    letter-spacing: 0.08em !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-login {
+    min-height: 40px !important;
+    padding-inline: 8px !important;
+    font-size: 14px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-theme-toggle {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-heading,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-walkthrough-title,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-testimonials-title,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-proof-title,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-final-cta__title {
+    font-size: clamp(42px, 11.4vw, 62px) !important;
+    line-height: 1.05 !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-subtitle,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-testimonial-quote,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-feature-card p {
+    font-size: max(15px, 0.94rem) !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-subtitle {
+    max-width: 34ch !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    line-height: 1.45 !important;
+  }
+}
+
+@media (max-width: 360px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-brand-text {
+    max-width: 76px !important;
+    overflow: hidden !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+  }
+}
+
+/* Landing layout cleanup: spacing, header CTA swap, and black/gold surface pass. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen {
+  --sp-section-gap: clamp(32px, 5vw, 72px);
+  --sp-final-cta-footer-gap: clamp(64px, 7vw, 112px);
+  --sp-landing-edge: clamp(18px, 3vw, 48px);
+  --sp-section-head-gap: clamp(18px, 2.5vw, 32px);
+}
+
+@media (max-width: 720px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen {
+    --sp-section-gap: clamp(22px, 6vw, 40px);
+    --sp-final-cta-footer-gap: clamp(44px, 12vw, 72px);
+    --sp-landing-edge: clamp(16px, 4vw, 28px);
+    --sp-section-head-gap: clamp(16px, 5vw, 24px);
+  }
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) body:not(.light-theme) #landingScreen {
+  --sp-readable-bg: #030303;
+  --sp-readable-bg-end: #000000;
+  --sp-readable-surface: rgba(8, 8, 7, 0.88);
+  --sp-readable-surface-strong: rgba(14, 13, 11, 0.96);
+  --sp-readable-surface-soft: rgba(239, 193, 94, 0.08);
+  --sp-readable-line: rgba(239, 193, 94, 0.24);
+  --sp-readable-line-strong: rgba(255, 226, 156, 0.46);
+  --sp-readable-heading: #fff8e8;
+  --sp-readable-text: #f7f0df;
+  --sp-readable-muted: rgba(247, 240, 223, 0.76);
+  --sp-readable-soft: rgba(247, 240, 223, 0.58);
+  --sp-readable-accent: #efc15e;
+  --sp-readable-accent-strong: #ffe29c;
+  --sp-readable-shadow: rgba(0, 0, 0, 0.62);
+  background:
+    radial-gradient(circle at 74% 8%, rgba(239, 193, 94, 0.12), transparent 29rem),
+    radial-gradient(circle at 12% 0%, rgba(255, 226, 156, 0.055), transparent 24rem),
+    linear-gradient(180deg, var(--sp-readable-bg) 0%, var(--sp-readable-bg-end) 100%) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen {
+  --sp-readable-bg: #fff7e8;
+  --sp-readable-bg-end: #eadcc4;
+  --sp-readable-surface: rgba(255, 250, 239, 0.9);
+  --sp-readable-surface-strong: rgba(255, 253, 246, 0.97);
+  --sp-readable-surface-soft: rgba(144, 104, 28, 0.08);
+  --sp-readable-line: rgba(122, 86, 19, 0.22);
+  --sp-readable-line-strong: rgba(122, 86, 19, 0.4);
+  --sp-readable-heading: #1e170d;
+  --sp-readable-text: #2e2416;
+  --sp-readable-muted: rgba(46, 36, 22, 0.78);
+  --sp-readable-soft: rgba(46, 36, 22, 0.62);
+  --sp-readable-accent: #8f6519;
+  --sp-readable-accent-strong: #5f410b;
+  --sp-readable-shadow: rgba(92, 66, 14, 0.18);
+  background:
+    radial-gradient(circle at 78% 8%, rgba(199, 143, 36, 0.16), transparent 30rem),
+    radial-gradient(circle at 12% 0%, rgba(255, 179, 0, 0.12), transparent 26rem),
+    linear-gradient(180deg, var(--sp-readable-bg) 0%, var(--sp-readable-bg-end) 100%) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-rail {
+  padding-bottom: clamp(18px, 3vw, 44px) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen:not(.landing-home-page) .landing-hero-rail {
+  padding-bottom: clamp(8px, 1.8vw, 22px) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-hero,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-hero-layout {
+  /* No top padding — medallion sits flush below the nav strip. Was previously
+     24-56px, which combined with the hero-copy padding produced the dead band
+     the visual brief calls out. Bottom padding kept for separation from CTAs. */
+  padding-top: 0 !important;
+  padding-bottom: clamp(12px, 2.4vw, 30px) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen:not(.landing-home-page) .sp-prem-hero-layout {
+  padding-bottom: clamp(8px, 1.6vw, 22px) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen :is(
+  .landing-walkthrough-section,
+  .landing-testimonials-section,
+  .landing-proof-section
+) {
+  width: min(100%, 1536px) !important;
+  margin: 0 auto !important;
+  padding: var(--sp-section-gap) var(--sp-landing-edge) 0 !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen :is(
+  .landing-walkthrough-head,
+  .landing-testimonials-head,
+  .landing-proof-head
+) {
+  margin: 0 auto var(--sp-section-head-gap) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen :is(
+  .landing-walkthrough-grid,
+  .landing-mobile-slider,
+  .landing-metrics-strip,
+  .landing-metrics-strip--footer
+) {
+  margin-top: 0 !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-final-cta {
+  width: min(100%, 1536px) !important;
+  margin: 0 auto !important;
+  padding: var(--sp-section-gap) var(--sp-landing-edge) var(--sp-final-cta-footer-gap) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .sp-handcraft-bento {
+  margin: 0 auto !important;
+  padding: var(--sp-section-gap) var(--sp-landing-edge) var(--sp-final-cta-footer-gap) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-head {
+  margin-bottom: var(--sp-section-head-gap) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) body:not(.light-theme) #landingScreen :is(
+  .landing-shell-nav,
+  .landing-feature-card,
+  .landing-testimonial-card,
+  .landing-metric,
+  .landing-metric-item,
+  .landing-preview-stat,
+  .landing-preview-band-card,
+  .landing-preview-toast,
+  .sp-handcraft-bento-card,
+  .sp-prem-final-cta__inner
+) {
+  background:
+    linear-gradient(180deg, rgba(17, 16, 13, 0.96), rgba(7, 7, 6, 0.9)) !important;
+  border-color: var(--sp-readable-line) !important;
+  color: var(--sp-readable-text) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) body:not(.light-theme) #landingScreen .landing-preview-shell {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(239, 193, 94, 0.12), transparent 22%),
+    linear-gradient(180deg, rgba(15, 14, 11, 0.98), rgba(5, 5, 4, 0.96)) !important;
+  border-color: var(--sp-readable-line-strong) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) body:not(.light-theme) #landingScreen .landing-preview-sidebar {
+  background: rgba(10, 9, 8, 0.94) !important;
+  border-right-color: var(--sp-readable-line) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) body:not(.light-theme) #landingScreen .landing-preview-main {
+  background: rgba(5, 5, 4, 0.8) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-desktop-nav > .landing-theme-toggle {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 44px !important;
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  padding: 0 !important;
+  border-radius: 999px !important;
+  color: var(--sp-readable-heading) !important;
+  background: var(--sp-readable-surface-soft) !important;
+  border: 1px solid var(--sp-readable-line-strong) !important;
+  box-shadow: 0 12px 24px -18px var(--sp-readable-shadow) !important;
+  opacity: 1 !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-desktop-nav > .landing-theme-toggle:hover {
+  color: var(--sp-readable-accent-strong) !important;
+  border-color: var(--sp-readable-accent-strong) !important;
+  transform: translateY(-1px) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-handcraft-desktop-nav > .landing-theme-toggle i {
+  font-size: 16px !important;
+  line-height: 1 !important;
+}
+
+@media (min-width: 901px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-shell-nav-actions {
+    display: none !important;
+  }
+}
+
+@media (max-width: 900px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-shell-nav-actions {
+    display: flex !important;
+    order: 2 !important;
+    margin-left: auto !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-handcraft-desktop-nav {
+    display: inline-flex !important;
+    flex: 0 0 auto !important;
+    order: 3 !important;
+    width: auto !important;
+    min-width: 0 !important;
+    margin: 0 0 0 8px !important;
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-handcraft-desktop-nav > :not(.landing-theme-toggle) {
+    display: none !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-handcraft-desktop-nav > .landing-theme-toggle {
+    display: inline-flex !important;
+    flex-basis: 40px !important;
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+  }
+}
+
+@media (max-width: 720px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-rail {
+    padding-top: clamp(14px, 4vw, 24px) !important;
+    padding-bottom: clamp(12px, 5vw, 28px) !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-hero,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-hero-layout {
+    padding-top: clamp(18px, 7vw, 36px) !important;
+    padding-bottom: clamp(8px, 5vw, 22px) !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen :is(
+    .landing-walkthrough-section,
+    .landing-testimonials-section,
+    .landing-proof-section
+  ) {
+    padding-top: var(--sp-section-gap) !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-final-cta {
+    padding-top: var(--sp-section-gap) !important;
+    padding-bottom: var(--sp-final-cta-footer-gap) !important;
+  }
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) body:has(#landingScreen) {
+  background: #030303 !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme:has(#landingScreen) {
+  background: #fff7e8 !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen :is(
+  .landing-hero-rail,
+  .landing-shell-nav,
+  .landing-shell-body,
+  .landing-shell-hero,
+  .sp-prem-hero-layout,
+  .landing-walkthrough-section,
+  .landing-testimonials-section,
+  .landing-proof-section,
+  .sp-prem-final-cta,
+  .sp-handcraft-bento
+) {
+  box-sizing: border-box !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen {
+  width: 100% !important;
+  min-height: 100vh !important;
+}
+
+@media (max-width: 720px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-rail,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen :is(
+    .landing-walkthrough-section,
+    .landing-testimonials-section,
+    .landing-proof-section,
+    .sp-prem-final-cta,
+    .sp-handcraft-bento
+  ) {
+    max-width: 100% !important;
+    overflow-x: clip !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-nav {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-brand {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-nav-actions {
+    flex: 0 0 auto !important;
+    min-width: 0 !important;
+    gap: 6px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-heading {
+    max-width: min(100%, 12ch) !important;
+    font-size: clamp(37px, 10vw, 52px) !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.sp-prem-landing-refine .landing-shell-kicker {
+    max-width: 100% !important;
+    justify-content: center !important;
+    text-align: center !important;
+    white-space: normal !important;
+    font-size: clamp(13px, 3.6vw, 16px) !important;
+    line-height: 1.2 !important;
+    letter-spacing: 0.1em !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.sp-prem-landing-refine .landing-hero-heading {
+    max-width: min(100%, 10.5ch) !important;
+    font-size: clamp(35px, 9.4vw, 48px) !important;
+    line-height: 1.04 !important;
+    letter-spacing: 0 !important;
+  }
+}
+
+@media (max-width: 420px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen:not(.landing-home-page) .landing-shell-nav {
+    gap: 6px !important;
+    padding-inline: 8px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen:not(.landing-home-page) .landing-shell-brand {
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
+    gap: 8px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen:not(.landing-home-page) .landing-shell-brand-text {
+    display: none !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen:not(.landing-home-page) .landing-shell-logo {
+    width: 42px !important;
+    height: 42px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen:not(.landing-home-page) .landing-shell-login {
+    min-height: 36px !important;
+    padding-inline: 6px !important;
+    font-size: 13px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen:not(.landing-home-page) .landing-theme-toggle {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+  }
+}
+
+@media (max-width: 720px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen:not(.landing-home-page) .landing-shell-brand-text {
+    display: none !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen:not(.landing-home-page) .landing-top-controls,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen:not(.landing-home-page) .landing-theme-toggle {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen:not(.landing-home-page) .landing-shell-nav-actions {
+    flex-direction: row !important;
+    margin-right: clamp(46px, 12vw, 64px) !important;
+  }
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-proof-copy::after {
+  display: none !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card.is-handcraft-pending,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-bento-card.is-handcraft-revealed {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .sp-handcraft-bento-card-stat small {
+  color: rgba(112, 78, 24, 0.72) !important;
+}
+
+@media (min-width: 901px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-hero-stage,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-card,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-mainstage-card,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-hero-shell,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-hero-rail {
+    min-height: 0 !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-hero-rail {
+    padding-top: clamp(10px, 1.6vh, 18px) !important;
+    padding-bottom: clamp(10px, 1.8vh, 22px) !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-shell-body {
+    padding-top: 0 !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-shell-hero,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .sp-prem-hero-layout {
+    justify-content: flex-start !important;
+    padding-top: clamp(26px, 5vh, 58px) !important;
+    padding-bottom: clamp(8px, 1.8vh, 18px) !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .sp-prem-hero-copy {
+    gap: 0 !important;
+    max-width: min(760px, 100%) !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-hero-intro {
+    margin-bottom: clamp(8px, 1.5vh, 16px) !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-hero-heading {
+    max-width: min(100%, 13ch) !important;
+    margin-top: 0 !important;
+    font-size: clamp(54px, calc(2vw + 4.4vh), 74px) !important;
+    line-height: 0.98 !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-hero-subtitle {
+    margin-top: clamp(8px, 1.4vh, 14px) !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-buttons {
+    gap: clamp(10px, 1.2vw, 14px) !important;
+    margin-top: clamp(14px, 2.2vh, 24px) !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-buttons .landing-btn {
+    min-height: clamp(52px, 7vh, 64px) !important;
+    font-size: clamp(17px, 1.35vw, 19px) !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .sp-handcraft-proof--hero {
+    margin-top: clamp(12px, 1.8vh, 20px) !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .sp-handcraft-bento {
+    padding-top: clamp(24px, 3.6vw, 48px) !important;
+  }
+}
+
+@media (min-width: 901px) and (max-height: 820px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-hero-rail {
+    padding-top: clamp(8px, 1.4vh, 16px) !important;
+    padding-bottom: 0 !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-hero-intro {
+    gap: clamp(4px, 0.6vh, 10px) !important;
+  }
+
+  /* Hero medallion stays at the universal size on the home page so it matches
+     the rest of the landing pages — was previously shrunk to 72-96px on short
+     laptops, but the visual brief calls for a uniform anchor across pages. */
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-shell-hero,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .sp-prem-hero-layout {
+    padding-top: clamp(6px, 1.6vh, 14px) !important;
+    padding-bottom: 0 !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-hero-heading {
+    font-size: clamp(40px, calc(1.6vw + 3.2vh), 56px) !important;
+    margin-top: clamp(6px, 1vh, 12px) !important;
+    line-height: 0.96 !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-hero-subtitle {
+    margin-top: clamp(6px, 1vh, 10px) !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-buttons {
+    margin-top: clamp(10px, 1.8vh, 18px) !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-buttons .landing-btn {
+    min-height: clamp(48px, 6.6vh, 56px) !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .sp-handcraft-proof--hero {
+    /* Trust row stays visible on short laptops — keep it in flow but compact.
+       Was previously display:none to save vertical space; user-facing brief
+       requires the typewriter to be visible at every viewport. */
+    display: flex !important;
+    margin-top: clamp(8px, 1.2vh, 14px) !important;
+    gap: 10px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .sp-handcraft-bento {
+    padding-top: clamp(20px, 3vw, 36px) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-hero-stage,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-card,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-mainstage-card,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-hero-shell,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-hero-rail {
+    min-height: 0 !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-hero-rail {
+    padding-top: clamp(10px, 3vw, 18px) !important;
+    padding-bottom: 0 !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-shell-body {
+    padding-top: 0 !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-shell-hero,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .sp-prem-hero-layout {
+    padding-top: clamp(12px, 4vw, 22px) !important;
+    padding-bottom: 0 !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .sp-prem-hero-copy {
+    gap: 0 !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-hero-intro {
+    margin-bottom: clamp(6px, 2.2vw, 10px) !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-hero-heading {
+    max-width: min(100%, 10ch) !important;
+    margin-top: 0 !important;
+    font-size: clamp(34px, 8.8vw, 44px) !important;
+    line-height: 1.02 !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-hero-subtitle {
+    margin-top: clamp(5px, 1.8vw, 9px) !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-buttons {
+    gap: 8px !important;
+    margin-top: clamp(8px, 3vw, 14px) !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-buttons .landing-btn {
+    min-height: clamp(48px, 12vw, 56px) !important;
+    font-size: clamp(16px, 4vw, 18px) !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .sp-handcraft-proof--hero {
+    margin-top: clamp(8px, 2.6vw, 14px) !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .sp-handcraft-bento {
+    padding-top: clamp(8px, 2.5vw, 14px) !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .sp-handcraft-bento-head {
+    margin-bottom: clamp(12px, 4vw, 18px) !important;
+  }
+}
+
+/* Landing asset/rhythm cleanup. Keep this last so it resolves older premium/handcraft layering. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page {
+  min-height: 100dvh !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding-bottom: 0 !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-hero-stage,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-card,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-mainstage-card,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-hero-shell {
+  min-height: 0 !important;
+  height: auto !important;
+  flex: 0 0 auto !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-hero-rail {
+  min-height: 0 !important;
+  height: auto !important;
+  padding-top: clamp(14px, 2vh, 28px) !important;
+  padding-bottom: clamp(18px, 2.6vh, 34px) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-shell-body {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-shell-hero,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .sp-prem-hero-layout {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  max-width: min(860px, 100%) !important;
+  margin-inline: auto !important;
+  padding-top: clamp(18px, 3.4vh, 46px) !important;
+  padding-bottom: clamp(10px, 1.8vh, 22px) !important;
+  text-align: center !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .sp-prem-hero-copy {
+  width: min(100%, 680px) !important;
+  max-width: min(100%, 680px) !important;
+  margin-inline: auto !important;
+  align-items: center !important;
+  text-align: center !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-medallion {
+  width: clamp(96px, 9vw, 140px) !important;
+  height: clamp(96px, 9vw, 140px) !important;
+  display: grid !important;
+  place-items: center !important;
+  margin: 0 auto clamp(8px, 1.4vh, 14px) !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  filter: drop-shadow(0 8px 24px rgba(239, 193, 94, 0.18));
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-medallion-logo,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-logo,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .mini-nav-logo,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-landing-footer__logo {
+  object-fit: contain !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-medallion-logo {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-hero-heading {
+  max-width: min(100%, 13.5ch) !important;
+  margin-top: 0 !important;
+  font-size: 4rem !important;
+  line-height: 1 !important;
+  letter-spacing: 0 !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-heading .tw-word {
+  animation-delay: var(--tw-word-delay, 0s);
+}
+
+/* tw-word spans created by the heading typewriter break out of the gradient
+   clip on the parent .landing-hero-highlight (background-clip: text doesn't
+   pierce descendant spans). Restore the gold gradient on each word so the
+   highlight stays visible during AND after the typewriter animation. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-highlight .tw-word {
+  background:
+    linear-gradient(180deg, #fff3c8 0%, #f3ca69 33%, #c98a28 68%, #fff0b8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 4px 0 rgba(69, 43, 8, 0.48)) drop-shadow(0 0 22px rgba(239, 193, 94, 0.18));
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .landing-hero-highlight .tw-word {
+  background: linear-gradient(180deg, #7b540f 0%, #b47c1e 42%, #5a3c08 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  color: transparent !important;
+  filter: none !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-subtitle.landing-hero-subtitle--typing {
+  min-height: var(--tw-subtitle-min-height, 3.2em) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-buttons {
+  margin-top: clamp(12px, 2vh, 20px) !important;
+  margin-bottom: 0 !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-buttons .landing-btn {
+  font-size: 1.0625rem !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .sp-handcraft-bento {
+  padding-top: clamp(12px, 1.8vw, 24px) !important;
+  padding-bottom: clamp(28px, 4vw, 54px) !important;
+  margin-top: var(--sp-landing-section-gap, clamp(28px, 4vh, 56px)) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .sp-prem-landing-footer,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-landing-footer {
+  /* Footer hosts the brand block + the trust row (5 stars + typewriter copy
+     moved from the hero). Side-by-side on desktop, stacked on mobile, with a
+     thin gold hairline separating them. */
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: clamp(20px, 4vw, 56px) !important;
+  grid-template-columns: none !important;
+  margin-top: auto !important;
+  margin-bottom: clamp(18px, 3vw, 30px) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-landing-footer .sp-prem-landing-footer__brand {
+  justify-self: center !important;
+  text-align: center !important;
+}
+
+/* Footer trust row — quietly layered next to the brand block. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-landing-footer__trust {
+  display: inline-flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 6px !important;
+  margin: 0 !important;
+  padding-inline-end: clamp(16px, 2.4vw, 28px) !important;
+  border-inline-end: 1px solid rgba(239, 193, 94, 0.22);
+  min-width: 0;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-landing-footer__trust .sp-handcraft-stars {
+  display: inline-flex;
+  gap: 3px;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  color: var(--sp-handcraft-gold-soft, #ffe29c);
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-landing-footer__trust .sp-handcraft-proof-copy {
+  margin: 0 !important;
+  font: 500 13px/1.3 var(--sp-handcraft-sans, "Space Grotesk", system-ui, sans-serif) !important;
+  letter-spacing: 0 !important;
+  color: rgba(255, 255, 255, 0.72) !important;
+  white-space: nowrap;
+  min-height: 1.3em;
+}
+
+/* Light theme reads on cream. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .sp-prem-landing-footer__trust {
+  border-inline-end-color: rgba(111, 79, 11, 0.28);
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .sp-prem-landing-footer__trust .sp-handcraft-stars {
+  color: #b58320;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .sp-prem-landing-footer__trust .sp-handcraft-proof-copy {
+  color: #3f3421 !important;
+}
+
+/* Mobile: trust row sits above the brand, hairline becomes a bottom border. */
+@media (max-width: 720px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-landing-footer {
+    flex-direction: column !important;
+    gap: 14px !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-landing-footer__trust {
+    padding-inline-end: 0 !important;
+    padding-bottom: 12px !important;
+    border-inline-end: none;
+    border-bottom: 1px solid rgba(239, 193, 94, 0.18);
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .sp-prem-landing-footer__trust {
+    border-bottom-color: rgba(111, 79, 11, 0.22);
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-prem-landing-footer__trust .sp-handcraft-proof-copy {
+    white-space: normal;
+    text-align: center;
+  }
+}
+
+/* Pin the footer to the bottom of the landing screen by making the container
+   a vertical flex column. Works for index, how-it-works, proof, testimonials. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 100svh !important;
+  --sp-landing-section-gap: clamp(28px, 4vh, 56px);
+}
+
+@media (max-width: 720px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-hero-rail {
+    padding-top: clamp(10px, 3vw, 18px) !important;
+    padding-bottom: clamp(14px, 4vw, 24px) !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-shell-hero,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .sp-prem-hero-layout {
+    padding-top: clamp(10px, 4vw, 20px) !important;
+    padding-bottom: 0 !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-hero-heading {
+    max-width: min(100%, 10.5ch) !important;
+    font-size: 2.5rem !important;
+    line-height: 1.02 !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .landing-buttons .landing-btn {
+    font-size: 1rem !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-medallion {
+    width: clamp(84px, 22vw, 104px) !important;
+    height: clamp(84px, 22vw, 104px) !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .sp-handcraft-bento {
+    padding-top: clamp(10px, 3vw, 18px) !important;
+    padding-bottom: clamp(24px, 7vw, 42px) !important;
+    margin-top: clamp(16px, 5vw, 32px) !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   HERO PREVIEW SYSTEM — four page-specific concepts in one visual vocabulary
+   cream / black / gold, hairline geometry, no fake UI screenshots.
+   Mobile: previews collapse/hide gracefully. Desktop ≥1024px: two-column hero.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Shared base */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-hero-preview {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 280px;
+  color: var(--sp-handcraft-gold-soft, #ffe29c);
+  pointer-events: auto;
+}
+
+@media (max-width: 1023px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-home-page .sp-hero-preview--compass {
+    display: none !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-hero-preview {
+    margin-top: clamp(16px, 4vw, 28px);
+    min-height: 220px;
+  }
+}
+
+/* ── 1. Mainstage Compass (home) ──
+   The .sp-compass div sits in the right column; the SVG rings rotate slowly
+   and continuously while the brand mark + cardinal labels stay STATIC so the
+   words never go upside-down. Reduce-motion pins the rings.
+*/
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-compass {
+  position: relative;
+  width: clamp(240px, 26vw, 320px);
+  height: clamp(240px, 26vw, 320px);
+  display: grid;
+  place-items: center;
+  /* Extra outside padding so the labels sit fully outside the ring strokes. */
+  margin: clamp(40px, 4vw, 56px);
+  filter:
+    drop-shadow(0 12px 40px rgba(239, 193, 94, 0.32))
+    drop-shadow(0 0 22px rgba(255, 226, 156, 0.18));
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-compass__rings {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  stroke: var(--sp-handcraft-gold-soft, #ffe29c);
+  fill: none;
+  /* Continuous slow rotation — GPU-accelerated transform only. */
+  animation: sp-compass-spin 60s linear infinite;
+  will-change: transform;
+  transform-origin: 50% 50%;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-compass__mark {
+  position: relative;
+  z-index: 2;
+  width: 36%;
+  height: 36%;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 18px rgba(239, 193, 94, 0.32));
+  background: transparent !important;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-compass__label {
+  position: absolute;
+  z-index: 2;
+  font: 700 11px/1 var(--sp-handcraft-sans);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--sp-handcraft-gold-soft, #ffe29c);
+  opacity: 0;
+  animation: sp-compass-fade 0.6s ease forwards;
+  white-space: nowrap;
+}
+/* Labels pushed safely OUTSIDE the outermost ring so the strokes can never
+   appear to cross/strike through them. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-compass__label--n {
+  top: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  animation-delay: 0.4s;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-compass__label--e {
+  top: 50%;
+  right: -54px;
+  transform: translateY(-50%);
+  animation-delay: 0.6s;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-compass__label--s {
+  bottom: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  animation-delay: 0.8s;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-compass__label--w {
+  top: 50%;
+  left: -54px;
+  transform: translateY(-50%);
+  animation-delay: 1.0s;
+}
+@keyframes sp-compass-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes sp-compass-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-compass__rings {
+    animation: none !important;
+  }
+}
+
+/* ── 2. Three-Move Diagram (how-it-works) ── */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-flow {
+  position: relative;
+  width: clamp(280px, 30vw, 420px);
+  display: grid;
+  gap: 22px;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-flow__svg {
+  width: 100%;
+  height: auto;
+  /* currentColor is inherited by the <marker> path so arrow fill follows the
+     same color as the stroke (gold on dark, deep amber on light). */
+  color: var(--sp-handcraft-gold-soft, #ffe29c);
+  stroke: var(--sp-handcraft-gold-soft, #ffe29c);
+  fill: none;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-flow__svg .sp-flow__path {
+  opacity: 0.4;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-flow__svg .sp-flow__node {
+  fill: rgba(8, 8, 10, 0.85);
+  stroke-width: 1.5;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-flow__svg .sp-flow__dot {
+  fill: var(--sp-handcraft-gold, #efc15e);
+  stroke: none;
+  animation: sp-flow-travel 8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+@keyframes sp-flow-travel {
+  0%, 8%   { transform: translateX(0); }
+  33%, 41% { transform: translateX(140px); }
+  66%, 74% { transform: translateX(280px); }
+  100%     { transform: translateX(0); }
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-flow__labels {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  text-align: center;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-flow__labels span {
+  font: 600 11px/1.3 var(--sp-handcraft-sans);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.78);
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-flow__labels span strong {
+  display: block;
+  font-family: var(--sp-handcraft-serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 18px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--sp-handcraft-gold-soft, #ffe29c);
+  margin-bottom: 4px;
+}
+@media (max-width: 1023px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-flow {
+    width: min(360px, 100%);
+  }
+}
+
+/* ── 3. Counting-Up Trio (proof) ── */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-trio {
+  display: grid;
+  gap: clamp(18px, 2.4vh, 32px);
+  width: 100%;
+  max-width: 360px;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-trio__row {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  column-gap: 8px;
+  position: relative;
+  padding-bottom: 6px;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-trio__row::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 0;
+  height: 1px;
+  background: var(--sp-handcraft-gold-soft, #ffe29c);
+  transition: width 1s 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-trio__row[data-revealed] {
+  --sp-trio-revealed: 1;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-trio__row[data-revealed]::after {
+  width: 72%;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-trio__num {
+  font-family: var(--sp-handcraft-serif);
+  font-weight: 500;
+  font-size: clamp(56px, 7vw, 96px);
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+  color: #fbfbf8;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-trio__suffix {
+  font-family: var(--sp-handcraft-serif);
+  font-weight: 500;
+  font-size: clamp(32px, 4vw, 54px);
+  line-height: 0.9;
+  color: var(--sp-handcraft-gold-soft, #ffe29c);
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-trio__label {
+  align-self: end;
+  font: 500 11px/1.2 var(--sp-handcraft-sans);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+  padding-bottom: 8px;
+}
+@media (max-width: 1023px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-trio {
+    margin-inline: auto;
+    max-width: 320px;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-trio__num {
+    font-size: clamp(48px, 12vw, 76px);
+  }
+}
+
+/* ── 4. Chorus of Three (testimonials) ── */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-chorus {
+  position: relative;
+  width: clamp(280px, 30vw, 380px);
+  height: clamp(240px, 28vw, 300px);
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-chorus__card {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  padding: clamp(20px, 2.4vw, 28px);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.012)),
+    rgba(8, 8, 10, 0.85);
+  border: 1px solid rgba(255, 217, 122, 0.22);
+  border-radius: 18px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 20px 48px -24px rgba(0, 0, 0, 0.6);
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.4s ease, z-index 0s 0.2s;
+  opacity: 0.6;
+  z-index: 1;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-chorus__card:nth-child(2) {
+  transform: translate(10px, 14px) rotate(2deg);
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-chorus__card:nth-child(3) {
+  transform: translate(20px, 28px) rotate(4deg);
+  opacity: 0.45;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-chorus__card[data-active] {
+  opacity: 1;
+  transform: translate(0, 0) rotate(0deg);
+  z-index: 3;
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.4s ease, z-index 0s 0s;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-chorus__stars {
+  font-family: serif;
+  font-size: 18px;
+  letter-spacing: 4px;
+  color: var(--sp-handcraft-gold-soft, #ffe29c);
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-chorus__quote {
+  font-family: var(--sp-handcraft-serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: clamp(20px, 2.2vw, 28px);
+  line-height: 1.2;
+  color: #fbfbf8;
+  margin: 0;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-chorus__attr {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 500 12px/1.3 var(--sp-handcraft-sans);
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.7);
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-chorus__monogram {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(239, 193, 94, 0.16);
+  border: 1px solid rgba(239, 193, 94, 0.38);
+  color: var(--sp-handcraft-gold-soft, #ffe29c);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+@media (max-width: 1023px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-chorus {
+    width: min(360px, 100%);
+    margin-inline: auto;
+    height: clamp(220px, 60vw, 280px);
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-chorus__card:not([data-active]) {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-compass,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-compass__label,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-flow__svg .sp-flow__dot,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-chorus__card {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   DESKTOP HERO: 2-COL LAYOUT (≥1024px) — preview right, copy column stays
+   center-aligned so the medallion, kicker, heading, subtitle, CTAs and
+   trust row all share one vertical axis.
+   ═══════════════════════════════════════════════════════════════════════ */
+@media (min-width: 1024px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.sp-prem-landing-refine .landing-shell-hero.sp-prem-hero-layout {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(380px, 0.85fr) !important;
+    grid-template-areas: "copy preview" !important;
+    gap: clamp(32px, 4vw, 64px) !important;
+    align-items: center !important;
+    justify-items: stretch !important;
+    flex-direction: row !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.sp-prem-landing-refine .sp-prem-hero-copy {
+    grid-area: copy !important;
+    /* Center the copy stack within its column so the medallion, kicker, and
+       heading sit on the same vertical axis. */
+    align-items: center !important;
+    align-self: center !important;
+    text-align: center !important;
+    margin-inline: auto !important;
+    max-width: 620px !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.sp-prem-landing-refine .sp-hero-preview {
+    grid-area: preview !important;
+    justify-self: center;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-intro {
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-kicker {
+    justify-content: center !important;
+    text-align: center !important;
+    margin-inline: auto !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-heading {
+    margin-inline: auto !important;
+    text-align: center !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-hero-subtitle {
+    margin-inline: auto !important;
+    text-align: center !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-buttons {
+    margin-inline: auto !important;
+    justify-content: center !important;
+  }
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .sp-handcraft-proof--hero {
+    margin-inline: auto !important;
+    justify-content: center !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   FOCUS-VISIBLE — keyboard outline on landing CTAs
+   ═══════════════════════════════════════════════════════════════════════ */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen :is(
+  .landing-btn,
+  .landing-shell-login,
+  .sp-handcraft-bento-cta-btn,
+  .landing-theme-toggle,
+  .landing-handcraft-menu,
+  .landing-mini-nav-brand,
+  .landing-shell-brand
+):focus-visible {
+  outline: 2px solid var(--sp-handcraft-gold-soft, #ffe29c) !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 4px rgba(239, 193, 94, 0.18) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   LIGHT THEME — swap medallion + nav + footer logos to the black glyph
+   so the brand reads on cream surfaces. Uses content: swap for crispness.
+   ═══════════════════════════════════════════════════════════════════════ */
+/* All brand logos use the transparent pack PNGs (corners verified alpha=0).
+   No content-swap or mask needed — the PNGs render cleanly on both themes. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen :is(
+  .landing-hero-medallion-logo,
+  .landing-shell-logo,
+  .mini-nav-logo,
+  .sp-prem-landing-footer__logo,
+  .sp-compass__mark
+) {
+  background: transparent !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   LIGHT-THEME PREVIEW CONTRAST — preview labels need to read on cream.
+   Use deep charcoal + a darker gold accent so contrast hits WCAG AA.
+   ═══════════════════════════════════════════════════════════════════════ */
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .sp-flow__svg {
+  stroke: #6f4f0b;
+  color: #6f4f0b;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .sp-flow__svg .sp-flow__path {
+  opacity: 0.55;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .sp-flow__svg .sp-flow__node {
+  fill: rgba(255, 247, 232, 0.95);
+  stroke: #6f4f0b;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .sp-flow__svg .sp-flow__dot,
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .sp-flow__svg .sp-flow__arrow {
+  fill: #6f4f0b;
+  stroke: #6f4f0b;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .sp-flow__labels span {
+  color: #2b1f08;
+  font-weight: 700;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .sp-flow__labels span strong {
+  color: #6f4f0b;
+}
+
+/* Compass — labels + rings need readable contrast on cream. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .sp-compass__rings {
+  stroke: #6f4f0b;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .sp-compass__label {
+  color: #2b1f08;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .sp-compass {
+  filter:
+    drop-shadow(0 12px 40px rgba(111, 79, 11, 0.18))
+    drop-shadow(0 0 22px rgba(255, 226, 156, 0.28));
+}
+
+/* Trio — number stays dark, label switches off light-faded grey. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .sp-trio__num {
+  color: #1b1300;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .sp-trio__suffix {
+  color: #8a5e10;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .sp-trio__label {
+  color: #3f3421;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .sp-trio__row::after {
+  background: #8a5e10;
+}
+
+/* Chorus cards — dark surface on cream becomes a cream card with dark text. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .sp-chorus__card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(255, 247, 232, 0.85)),
+    #fff;
+  border: 1px solid rgba(111, 79, 11, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 20px 48px -24px rgba(0, 0, 0, 0.15);
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .sp-chorus__stars {
+  color: #b58320;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .sp-chorus__quote {
+  color: #1b1300;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .sp-chorus__attr {
+  color: #3f3421;
+}
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen .sp-chorus__monogram {
+  background: rgba(181, 131, 32, 0.18);
+  border-color: rgba(181, 131, 32, 0.5);
+  color: #6f4f0b;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   NAV LOGO REMOVAL — the small star in the navbar/mini-nav is redundant
+   with the hero medallion. Keep the wordmark + the brand link's clickable
+   area; just hide the <img>.
+   ═══════════════════════════════════════════════════════════════════════ */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-logo,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .mini-nav-logo {
+  display: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   HEADER COMPACT — under 480px the wordmark stays visible (brand recall on
+   mobile matters), just compressed in size + tracking so it shares space
+   cleanly with the Sign in pill.
+   ═══════════════════════════════════════════════════════════════════════ */
+@media (max-width: 480px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .landing-shell-brand-text,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .mini-nav-brand {
+    font-size: 13px !important;
+    letter-spacing: 0.08em !important;
+  }
+}

@@ -3,7 +3,12 @@
 !.env.example
 
 .codex-video-review/
+.codex-visual/
+.codex-inspect/
+.codex-proof-html-*.png
+.codex-testimonials-html-*.png
 .codex-npm-cache/
+.claude/
 .local-server.*.log
 
 .git/

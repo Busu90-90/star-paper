@@ -4,11 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Star Paper Proof</title>
-    <link rel="icon" type="image/png" sizes="32x32" href="./logo-32.png?v=21">
-    <link rel="stylesheet" href="styles.css?v=27">
+    <link rel="icon" type="image/png" sizes="32x32" href="./star_paper_logo_pack/star_paper_32.png?v=2">
+    <link rel="icon" type="image/png" sizes="256x256" href="./star_paper_logo_pack/star_paper_256.png?v=2">
+    <link rel="shortcut icon" type="image/png" href="./star_paper_logo_pack/star_paper_32.png?v=2">
+    <link rel="apple-touch-icon" sizes="256x256" href="./star_paper_logo_pack/star_paper_256.png?v=2">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,300..700;1,300..700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="styles.css?v=51">
     <link rel="stylesheet" href="star-paper-tokens.css?v=21">
-    <link rel="stylesheet" href="styles.premium.css?v=7">
+    <link rel="stylesheet" href="styles.premium.css?v=8">
+    <link rel="stylesheet" href="styles.handcraft.css?v=31">
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+    <style>
+      html.sp-handcraft-off .sp-handcraft-widget { display: none !important; }
+    </style>
+    <script>
+      (function applyHandcraftFlagBeforePaint() {
+        try {
+          if (localStorage.getItem('sp_handcraft_off') === '1' || localStorage.getItem('sp_prem_off') === '1') {
+            document.documentElement.classList.add('sp-handcraft-off');
+          }
+        } catch (_e) {}
+      })();
+    </script>
 </head>
 <body>
     <script>
@@ -21,10 +40,10 @@
     <div class="landing-container sp-prem-landing-refine" id="landingScreen">
         <div class="landing-mini-nav" id="landingMiniNav" aria-hidden="true">
             <a class="landing-mini-nav-brand" href="./index.html" aria-label="Go to Star Paper home">
-                <img src="./logo-ui.png?v=21" alt="Star Paper" class="mini-nav-logo">
+                <img src="./star_paper_logo_pack/star_paper_128.png?v=2" srcset="./star_paper_logo_pack/star_paper_128.png?v=2 1x, ./star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Star Paper" class="mini-nav-logo">
                 <span class="mini-nav-brand">STAR PAPER</span>
             </a>
-            <a class="mini-nav-cta" href="./how-it-works.html#landingFinalCta">Get Started</a>
+            <a class="mini-nav-cta" href="./index.html?auth=signup">Get Started</a>
         </div>
 
         <div class="landing-hero-stage" id="landingHeroStage">
@@ -37,7 +56,7 @@
                 <div class="landing-hero-rail">
                     <div class="landing-shell-nav">
                         <a class="landing-shell-brand" href="./index.html" aria-label="Go to Star Paper home">
-                            <img src="./logo-192.png?v=21" alt="Star Paper" class="landing-shell-logo" />
+                            <img src="./star_paper_logo_pack/star_paper_128.png?v=2" srcset="./star_paper_logo_pack/star_paper_128.png?v=2 1x, ./star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Star Paper" class="landing-shell-logo" />
                             <span class="landing-shell-brand-text">STAR PAPER</span>
                         </a>
                         <div class="landing-shell-nav-actions">
@@ -55,7 +74,7 @@
                             <div class="sp-prem-hero-copy">
                                 <div class="landing-hero-intro">
                                     <div class="landing-hero-medallion">
-                                        <img src="./logo-192.png?v=21" alt="Star Paper" class="landing-hero-medallion-logo" />
+                                        <img src="./star_paper_logo_pack/star_paper_256.png?v=2" srcset="./star_paper_logo_pack/star_paper_256.png?v=2 1x, ./star_paper_logo_pack/star_paper_512.png?v=2 2x" alt="Star Paper" class="landing-hero-medallion-logo" />
                                     </div>
                                     <div class="landing-shell-kicker">The Manager&apos;s Mainstage!</div>
                                 </div>
@@ -65,95 +84,41 @@
                                     <span class="landing-hero-highlight">cleaner, calmer</span>
                                     artist operation.
                                 </h1>
-                                <p class="landing-hero-subtitle">
+                                <p class="landing-hero-subtitle" data-tw-static="1">
                                     A quick proof point page for the performance signals Star Paper keeps visible across shows, rosters, and revenue.
                                 </p>
                             </div>
-                            <div class="sp-prem-hero-product sp-prem-widget" aria-hidden="true">
-                                <div class="sp-prem-device-glow"></div>
-                                <div class="landing-dashboard-preview sp-prem-device-parallax">
-                                    <div class="landing-preview-shell">
-                                        <div class="landing-preview-sidebar">
-                                            <div class="landing-preview-brand">
-                                                <img src="./logo-192.png?v=21" alt="" class="landing-preview-logo" aria-hidden="true" />
-                                                <div class="landing-preview-brand-label">The Manager&apos;s Mainstage!</div>
-                                            </div>
-                                            <span class="landing-preview-rail-icon is-active"><i class="ph ph-chart-line-up" aria-hidden="true"></i></span>
-                                            <span class="landing-preview-rail-icon"><i class="ph ph-currency-circle-dollar" aria-hidden="true"></i></span>
-                                            <span class="landing-preview-rail-icon"><i class="ph ph-calendar-check" aria-hidden="true"></i></span>
-                                            <span class="landing-preview-rail-icon"><i class="ph ph-users-three" aria-hidden="true"></i></span>
-                                        </div>
-                                        <div class="landing-preview-main">
-                                            <div class="landing-preview-topbar">
-                                                <div>
-                                                    <div class="landing-preview-heading">Operational proof</div>
-                                                    <div class="landing-preview-subheading">The signals teams use to stay ahead of bookings and money</div>
-                                                </div>
-                                                <div class="landing-preview-live-pill">Live</div>
-                                            </div>
-                                            <div class="landing-preview-grid">
-                                                <div class="landing-preview-stat landing-preview-stat--primary">
-                                                    <div class="landing-preview-stat-label">Shows booked</div>
-                                                    <div class="landing-preview-stat-value">150+</div>
-                                                    <div class="landing-preview-stat-sub">tracked inside one system</div>
-                                                </div>
-                                                <div class="landing-preview-stat landing-preview-stat--success">
-                                                    <div class="landing-preview-stat-label">Revenue tracked</div>
-                                                    <div class="landing-preview-stat-value">500M+</div>
-                                                    <div class="landing-preview-stat-sub">UGX collected</div>
-                                                </div>
-                                            </div>
-                                            <div class="landing-preview-band">
-                                                <div class="landing-preview-band-card">
-                                                    <div class="landing-preview-band-label">Roster visibility</div>
-                                                    <div class="landing-preview-band-value">30+ artists</div>
-                                                </div>
-                                                <div class="landing-preview-band-card">
-                                                    <div class="landing-preview-band-label">Booking follow-up</div>
-                                                    <div class="landing-preview-band-value">Deposit clarity</div>
-                                                </div>
-                                                <div class="landing-preview-band-card">
-                                                    <div class="landing-preview-band-label">Team sync</div>
-                                                    <div class="landing-preview-band-value">Live ledger</div>
-                                                </div>
-                                            </div>
-                                        </div>
+                            <aside class="sp-hero-preview sp-hero-preview--trio" aria-hidden="true">
+                                <div class="sp-trio">
+                                    <div class="sp-trio__row">
+                                        <span class="sp-trio__num" data-sp-count-to="150">0</span>
+                                        <span class="sp-trio__suffix">+</span>
+                                        <span class="sp-trio__label">Shows booked</span>
+                                    </div>
+                                    <div class="sp-trio__row">
+                                        <span class="sp-trio__num" data-sp-count-to="30">0</span>
+                                        <span class="sp-trio__suffix">+</span>
+                                        <span class="sp-trio__label">Artists managed</span>
+                                    </div>
+                                    <div class="sp-trio__row">
+                                        <span class="sp-trio__num" data-sp-count-to="500">0</span>
+                                        <span class="sp-trio__suffix">M+</span>
+                                        <span class="sp-trio__label">UGX collected</span>
                                     </div>
                                 </div>
-                            </div>
+                            </aside>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <section class="landing-proof-section" aria-label="Performance proof">
-            <div class="landing-proof-head">
-                <div class="landing-section-kicker">Proof</div>
-                <h2 class="landing-proof-title">How Star Paper keeps artist operations organized at scale.</h2>
-            </div>
-            <div class="landing-metrics-strip landing-metrics-strip--footer" aria-label="Mainstage Metrics">
-                <div class="landing-metric-item">
-                    <div class="landing-metric-value">150+</div>
-                    <div class="landing-metric-label">Shows booked</div>
-                </div>
-                <div class="landing-metric-item">
-                    <div class="landing-metric-value">30+</div>
-                    <div class="landing-metric-label">Artists managed</div>
-                </div>
-                <div class="landing-metric-item">
-                    <div class="landing-metric-value">500M+</div>
-                    <div class="landing-metric-label">UGX collected in revenue</div>
-                </div>
-            </div>
-        </section>
-
         <section class="sp-prem-final-cta sp-prem-widget" id="landingFinalCta" aria-label="Get started with Star Paper">
             <div class="sp-prem-final-cta__inner">
                 <div class="landing-section-kicker">Ready When You Are</div>
                 <h2 class="sp-prem-final-cta__title">Ready to run your artist operation from one place?</h2>
                 <div class="sp-prem-final-cta__actions">
-                    <a class="landing-btn" href="./index.html" data-sp-prem-pulse="gold">Get Started &rarr;</a>
+                    <a class="landing-btn" href="./index.html?auth=signup" data-sp-prem-pulse="gold">Get Started &rarr;</a>
                     <a class="landing-btn landing-btn--ghost landing-btn--how" href="./testimonials.html">
                         <span>Testimonials</span>
                         <i class="ph ph-arrow-right" aria-hidden="true"></i>
@@ -164,18 +129,12 @@
 
         <footer class="sp-prem-landing-footer sp-prem-widget" aria-label="Star Paper landing footer">
             <a class="sp-prem-landing-footer__brand" href="./index.html" aria-label="Go to Star Paper home">
-                <img src="./logo-192.png?v=21" alt="Star Paper" class="sp-prem-landing-footer__logo" />
+                <img src="./star_paper_logo_pack/star_paper_128.png?v=2" srcset="./star_paper_logo_pack/star_paper_128.png?v=2 1x, ./star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Star Paper" class="sp-prem-landing-footer__logo" />
                 <div>
                     <div class="sp-prem-landing-footer__name">STAR PAPER</div>
                     <div class="sp-prem-landing-footer__meta">&copy; 2026 Star Paper</div>
                 </div>
             </a>
-            <nav class="sp-prem-landing-footer__links" aria-label="Landing sections">
-                <a href="./index.html">Home</a>
-                <a href="./how-it-works.html">How It Works</a>
-                <a href="./testimonials.html">Testimonials</a>
-                <a href="./proof.html">Proof</a>
-            </nav>
         </footer>
     </div>
 
@@ -214,5 +173,6 @@
         });
       })();
     </script>
+    <script src="app.handcraft.js?v=18" defer></script>
 </body>
 </html>

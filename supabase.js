@@ -25,14 +25,11 @@ const SP_SUPABASE_CONFIGURED =
   SP_SUPABASE_KEY.trim().length > 0 &&
   !SP_SUPABASE_URL.includes('YOUR_PROJECT_ID') &&
   !SP_SUPABASE_KEY.includes('YOUR_ANON_PUBLIC_KEY');
-// Cloud-only auth: when Supabase is configured, do NOT fall back to local auth.
-// If you need offline/local-only mode, set this to true.
-const SP_ALLOW_LOCAL_FALLBACK = false;
+// Cloud-only auth: do NOT fall back to local auth.
 // Investor demo: enforce cloud-only records (no localStorage persistence for core data).
 const SP_CLOUD_ONLY_MODE = true;
 // Expose config so app.js can enforce cloud-only mode.
 window.__spSupabaseConfigured = SP_SUPABASE_CONFIGURED;
-window.__spAllowLocalFallback = SP_ALLOW_LOCAL_FALLBACK;
 window.__spCloudOnly = SP_CLOUD_ONLY_MODE;
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -41,11 +38,11 @@ const SP_CURRENCIES = {
   UGX: { symbol: 'UGX', name: 'Uganda Shilling',   rate: 1 },
   KES: { symbol: 'KES', name: 'Kenya Shilling',     rate: 0.033 },
   TZS: { symbol: 'TZS', name: 'Tanzania Shilling',  rate: 0.083 },
-  NGN: { symbol: '₦',   name: 'Nigerian Naira',     rate: 0.11  },
+  NGN: { symbol: '\u20A6', name: 'Nigerian Naira',     rate: 0.11  },
   ZAR: { symbol: 'R',   name: 'South African Rand', rate: 0.0006},
   USD: { symbol: '$',   name: 'US Dollar',          rate: 0.00026},
-  GBP: { symbol: '£',   name: 'British Pound',      rate: 0.0002 },
-  EUR: { symbol: '€',   name: 'Euro',               rate: 0.00023},
+  GBP: { symbol: '\u00A3', name: 'British Pound',      rate: 0.0002 },
+  EUR: { symbol: '\u20AC', name: 'Euro',               rate: 0.00023},
 };
 
 const SP_TEAM_ROLE_PRESETS = {
@@ -65,7 +62,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   'use strict';
 
   if (!SP_SUPABASE_CONFIGURED) {
-    console.warn('[StarPaper Supabase] Supabase config is not set. Running in localStorage mode.');
+    console.warn('[StarPaper Supabase] Supabase config is not set. Cloud auth is unavailable.');
     return;
   }
 
@@ -149,7 +146,6 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   let _teamContextCache = [];
   let _teamContextCacheAt = 0;
   let _teamContextRefreshPromise = null;
-  const _usernameEmailCache = new Map();
   let showTeamModal = null;
 
   // ── SYNC RELIABILITY: Retry Queue + Status Indicator ────────────────────────
@@ -203,8 +199,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       idle:    { icon: 'ph-cloud',           color: '#888',    title: 'Cloud idle' },
       syncing: { icon: 'ph-cloud-arrow-up',  color: '#FFB300', title: 'Syncing to cloud...' },
       synced:  { icon: 'ph-cloud-check',     color: '#81c784', title: 'Saved to cloud' },
-      failed:  { icon: 'ph-cloud-slash',     color: '#ef9a9a', title: 'Cloud sync failed — retrying' },
-      offline: { icon: 'ph-cloud-x',         color: '#888',    title: 'Offline — changes saved locally' },
+      failed:  { icon: 'ph-cloud-slash',     color: '#ef9a9a', title: 'Cloud sync failed \u2014 retrying' },
+      offline: { icon: 'ph-cloud-x',         color: '#888',    title: 'Offline \u2014 changes saved locally' },
     };
     const cfg = map[_syncState] || map.idle;
     el.className = 'ph ' + cfg.icon + ' sp-sync-icon';
@@ -303,7 +299,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       syncing: { icon: 'ph-cloud-arrow-up', color: '#FFB300', title: 'Syncing to cloud...' },
       synced:  { icon: 'ph-cloud-check',    color: '#81c784', title: 'Saved to cloud' },
       failed:  { icon: 'ph-cloud-slash',    color: '#ef9a9a', title: 'Cloud sync failed' },
-      offline: { icon: 'ph-cloud-x',        color: '#888',    title: 'Offline — reconnect to save and refresh cloud data' },
+      offline: { icon: 'ph-cloud-x',        color: '#888',    title: 'Offline \u2014 reconnect to save and refresh cloud data' },
     };
     const cfg = map[_syncState] || map.idle;
     el.className = 'ph ' + cfg.icon + ' sp-sync-icon';
@@ -696,7 +692,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     const nowSeconds = Math.floor(Date.now() / 1000);
     const hasEnoughTtl = !expiresAt || (expiresAt - nowSeconds) > minTtlSeconds;
     if (hasEnoughTtl || typeof db.auth.refreshSession !== 'function' || !current.refresh_token) {
-      await syncRealtimeAuthToken(current);
+      syncRealtimeAuthToken(current).catch((err) =>
+        warn('refreshSessionIfNeeded: background realtime sync failed:', err));
       return current;
     }
 
@@ -706,7 +703,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     if (error) throw error;
 
     _session = data?.session || current;
-    await syncRealtimeAuthToken(_session);
+    syncRealtimeAuthToken(_session).catch((err) =>
+      warn('refreshSessionIfNeeded: background realtime sync failed:', err));
     return _session;
   }
 
@@ -1351,7 +1349,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         }
         if (recoveredSession?.user) {
           _session = recoveredSession;
-          await syncRealtimeAuthToken(recoveredSession);
+          syncRealtimeAuthToken(recoveredSession).catch((err) =>
+            warn('handleSignedOutSession: background realtime sync failed:', err));
           return {
             recovered: true,
             session: recoveredSession,
@@ -1812,7 +1811,6 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       notes: row.notes,
       locationType: row.location_type,
       location: row.location,
-      mockKey: row.mock_key,
       createdAt: new Date(row.created_at).getTime(),
     };
   }
@@ -1837,7 +1835,6 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       notes: b.notes || '',
       location_type: b.locationType || 'uganda',
       location: b.location || '',
-      mock_key: b.mockKey || null,
     };
   }
 
@@ -1849,25 +1846,29 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       date: row.date,
       category: row.category,
       receipt: row.receipt || null,
+      artistId: row.artist_id || null,
+      artist: row.artist_name || '',
       teamId: row.team_id,
-      mockKey: row.mock_key,
       createdAt: new Date(row.created_at).getTime(),
     };
   }
 
   function expenseToRow(e, ownerId, teamId) {
     const cloudId = isCloudId(e.id) ? e.id : null;
+    const artistId = isCloudId(e.artistId) ? e.artistId : null;
+    const artistName = String(e.artist || e.artistName || '').trim();
     return {
       ...(cloudId ? { id: cloudId } : {}),
       legacy_id: String(e.id ?? ''),
       owner_id: ownerId,
       team_id: teamId || null,
+      artist_id: artistId,
+      artist_name: artistName,
       description: e.description || '',
       amount: Number(e.amount) || 0,
       date: e.date || null,
       category: e.category || 'other',
       receipt: e.receipt || '',
-      mock_key: e.mockKey || null,
     };
   }
 
@@ -1882,19 +1883,24 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       method: row.method,
       status: row.status,
       notes: row.notes,
+      artistId: row.artist_id || null,
+      artist: row.artist_name || '',
       teamId: row.team_id,
-      mockKey: row.mock_key,
       createdAt: new Date(row.created_at).getTime(),
     };
   }
 
   function otherIncomeToRow(i, ownerId, teamId) {
     const cloudId = isCloudId(i.id) ? i.id : null;
+    const artistId = isCloudId(i.artistId) ? i.artistId : null;
+    const artistName = String(i.artist || i.artistName || '').trim();
     return {
       ...(cloudId ? { id: cloudId } : {}),
       legacy_id: String(i.id ?? ''),
       owner_id: ownerId,
       team_id: teamId || null,
+      artist_id: artistId,
+      artist_name: artistName,
       source: i.source || '',
       amount: Number(i.amount) || 0,
       date: i.date || null,
@@ -1903,7 +1909,6 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       method: i.method || 'cash',
       status: i.status || 'received',
       notes: i.notes || '',
-      mock_key: i.mockKey || null,
     };
   }
 
@@ -2463,6 +2468,16 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
             booking.artistId = nextArtistId;
           });
         }
+
+        ['expenses', 'otherIncome'].forEach((windowKey) => {
+          if (!Array.isArray(window[windowKey])) return;
+          window[windowKey].forEach((entry) => {
+            if (!entry || isCloudId(entry.artistId)) return;
+            const nextArtistId = legacyMap[String(entry.artistId)];
+            if (!nextArtistId) return;
+            entry.artistId = nextArtistId;
+          });
+        });
       }
 
       return results;
@@ -2949,10 +2964,39 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     return Array.isArray(rows) ? rows.map(mapper).filter(Boolean) : [];
   }
 
+  const BOOTSTRAP_FIRST_PAINT_KEYS = [
+    { key: 'bookings', aliases: ['bookings'] },
+    { key: 'expenses', aliases: ['expenses'] },
+    { key: 'otherIncome', aliases: ['otherIncome', 'other_income'] },
+    { key: 'artists', aliases: ['artists'] },
+  ];
+
+  const BOOTSTRAP_BACKGROUND_KEYS = [
+    { key: 'audienceMetrics', aliases: ['audienceMetrics', 'audience_metrics'] },
+    { key: 'tasks', aliases: ['tasks'] },
+    { key: 'revenueGoal', aliases: ['revenueGoal', 'revenue_goal'] },
+    { key: 'bbfEntries', aliases: ['bbfEntries', 'bbf_entries'] },
+    { key: 'closingThoughts', aliases: ['closingThoughts', 'closing_thoughts'] },
+  ];
+
+  function hasBootstrapDataKey(data, aliases) {
+    return aliases.some((alias) => Object.prototype.hasOwnProperty.call(data, alias));
+  }
+
+  function getBootstrapDataValue(data, aliases) {
+    const alias = aliases.find((name) => Object.prototype.hasOwnProperty.call(data, name));
+    return alias ? data[alias] : undefined;
+  }
+
+  function hasBootstrapArrayValue(data, aliases) {
+    return Array.isArray(getBootstrapDataValue(data, aliases));
+  }
+
   function normalizeBootstrapRpcPayload(raw, activeSession) {
     const payload = parseBootstrapPayload(raw);
     if (!payload || typeof payload !== 'object') return null;
-    const data = payload.data && typeof payload.data === 'object' ? payload.data : {};
+    const data = payload.data && typeof payload.data === 'object' ? payload.data : null;
+    if (!data) return null;
     const meta = payload.meta && typeof payload.meta === 'object' ? payload.meta : {};
     const workspaceRaw = payload.workspace && typeof payload.workspace === 'object'
       ? payload.workspace
@@ -2967,23 +3011,56 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     const missingKeys = Array.isArray(meta.missingKeys)
       ? meta.missingKeys
       : (Array.isArray(meta.missing_keys) ? meta.missing_keys : []);
-    const fresh = {
-      bookings: mapBootstrapRows(data.bookings, rowToBooking),
-      expenses: mapBootstrapRows(data.expenses, rowToExpense),
-      otherIncome: mapBootstrapRows(data.otherIncome || data.other_income, rowToOtherIncome),
-      artists: mapBootstrapRows(data.artists, rowToArtist),
-      audienceMetrics: mapBootstrapRows(data.audienceMetrics || data.audience_metrics, rowToAudienceMetric),
-      tasks: mapBootstrapRows(data.tasks, rowToTask),
-      bbfEntries: mapBootstrapRows(data.bbfEntries || data.bbf_entries, rowToBBF),
-      closingThoughts: mapBootstrapRows(data.closingThoughts || data.closing_thoughts, rowToClosingThought),
-    };
-    if (data.revenueGoal || data.revenue_goal) {
-      fresh.revenueGoal = rowToRevenueGoal(data.revenueGoal || data.revenue_goal);
+
+    const missingFirstPaintKeys = BOOTSTRAP_FIRST_PAINT_KEYS
+      .filter((entry) => !hasBootstrapArrayValue(data, entry.aliases))
+      .map((entry) => entry.key);
+    if (missingFirstPaintKeys.length) {
+      warn('Bootstrap RPC payload missing first-paint keys:', missingFirstPaintKeys);
+      return null;
     }
+
+    const fresh = {
+      bookings: mapBootstrapRows(getBootstrapDataValue(data, ['bookings']), rowToBooking),
+      expenses: mapBootstrapRows(getBootstrapDataValue(data, ['expenses']), rowToExpense),
+      otherIncome: mapBootstrapRows(getBootstrapDataValue(data, ['otherIncome', 'other_income']), rowToOtherIncome),
+      artists: mapBootstrapRows(getBootstrapDataValue(data, ['artists']), rowToArtist),
+    };
+
+    const audienceMetricsRows = getBootstrapDataValue(data, ['audienceMetrics', 'audience_metrics']);
+    if (Array.isArray(audienceMetricsRows)) {
+      fresh.audienceMetrics = mapBootstrapRows(audienceMetricsRows, rowToAudienceMetric);
+    }
+    const taskRows = getBootstrapDataValue(data, ['tasks']);
+    if (Array.isArray(taskRows)) {
+      fresh.tasks = mapBootstrapRows(taskRows, rowToTask);
+    }
+    const bbfRows = getBootstrapDataValue(data, ['bbfEntries', 'bbf_entries']);
+    if (Array.isArray(bbfRows)) {
+      fresh.bbfEntries = mapBootstrapRows(bbfRows, rowToBBF);
+    }
+    const closingThoughtRows = getBootstrapDataValue(data, ['closingThoughts', 'closing_thoughts']);
+    if (Array.isArray(closingThoughtRows)) {
+      fresh.closingThoughts = mapBootstrapRows(closingThoughtRows, rowToClosingThought);
+    }
+    const revenueGoalRow = getBootstrapDataValue(data, ['revenueGoal', 'revenue_goal']);
+    if (revenueGoalRow) {
+      fresh.revenueGoal = rowToRevenueGoal(revenueGoalRow);
+    }
+    const missingBackgroundKeys = BOOTSTRAP_BACKGROUND_KEYS
+      .filter((entry) => {
+        if (entry.key === 'revenueGoal') return !hasBootstrapDataKey(data, entry.aliases);
+        return !hasBootstrapArrayValue(data, entry.aliases);
+      })
+      .map((entry) => entry.key);
+    const effectiveMissingKeys = Array.from(new Set([
+      ...missingKeys,
+      ...missingBackgroundKeys,
+    ]));
     fresh.__meta = {
       source: 'bootstrap-rpc',
-      complete: meta.complete !== false,
-      missingKeys,
+      complete: meta.complete !== false && effectiveMissingKeys.length === 0,
+      missingKeys: effectiveMissingKeys,
       generatedAt: meta.generatedAt || meta.generated_at || null,
     };
     attachWorkspaceMeta(fresh, 'bootstrap-rpc', workspaceMeta);
@@ -3233,6 +3310,11 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     let failedStep = 'saveAllData';
     beginCloudSaveOperation();
     try {
+      if (Array.isArray(artists)) {
+        failedStep = 'saveArtists';
+        await saveArtistsData(artists, { workspaceMeta });
+        didSave = true;
+      }
       if (Array.isArray(bookings) || Array.isArray(expenses) || Array.isArray(otherIncome)) {
         failedStep = 'saveData';
         await saveData({
@@ -3240,11 +3322,6 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
           expenses: Array.isArray(expenses) ? expenses : (window.expenses || []),
           otherIncome: Array.isArray(otherIncome) ? otherIncome : (window.otherIncome || []),
         }, { workspaceMeta });
-        didSave = true;
-      }
-      if (Array.isArray(artists)) {
-        failedStep = 'saveArtists';
-        await saveArtistsData(artists, { workspaceMeta });
         didSave = true;
       }
       if (Array.isArray(audienceMetrics)) {
@@ -3468,6 +3545,13 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     return fallbackToProduction ? SP_PRODUCTION_URL : null;
   }
 
+  function getPasswordResetRedirectUrl() {
+    return getSafeRedirectUrl({
+      requireHttpOrigin: false,
+      fallbackToProduction: true,
+    });
+  }
+
   // Store non-sensitive OAuth intent metadata so callback errors can explain wrong-origin returns.
   function writeOAuthIntent(redirectTo) {
     try {
@@ -3533,7 +3617,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   // Warn clearly when running on file:// — OAuth and email-confirm redirects need http(s).
   if (window.location.protocol === 'file:') {
     console.warn(
-      '[StarPaper] Running on file:// — Google OAuth and email-confirm redirects will not work locally.\n' +
+      '[StarPaper] Running on file:// \u2014 Google OAuth and email-confirm redirects will not work locally.\n' +
       'Use a local server instead: run `npx serve .` or use VS Code Live Server.\n' +
       'Email/password sign-in works normally on http://localhost.'
     );
@@ -3856,7 +3940,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
             shouldBootstrapStoredSession: false,
           });
         }
-        warn('Auth redirect: no valid session recovered — showing login.');
+        warn('Auth redirect: no valid session recovered \u2014 showing login.');
         clearSupabaseAuthArtifacts();
         resetWorkspaceState();
         _session = null;
@@ -3911,32 +3995,6 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       return Boolean(data);
     } catch (err) {
       warn('Username availability check error:', err);
-      return null;
-    }
-  }
-
-  async function lookupEmailForUsername(username) {
-    const normalized = String(username || '').trim();
-    if (!normalized) return null;
-    const cacheKey = normalized.toLowerCase();
-    if (_usernameEmailCache.has(cacheKey)) {
-      return _usernameEmailCache.get(cacheKey);
-    }
-    try {
-      const { data, error } = await withTimeout(
-        () => db.rpc('get_email_for_username', { p_username: normalized }),
-        1500,
-        'get_email_for_username'
-      );
-      if (error) {
-        warn('Username lookup failed:', error);
-        return null;
-      }
-      const email = typeof data === 'string' && data.includes('@') ? data : null;
-      if (email) _usernameEmailCache.set(cacheKey, email);
-      return email;
-    } catch (err) {
-      warn('Username lookup error:', err);
       return null;
     }
   }
@@ -4041,7 +4099,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     // ── Step 3: upsert failed (most likely the DB trigger beat us to it) ────
     // Do one final SELECT to recover the trigger-created row.
     if (upsertError) {
-      warn('Profile upsert failed — attempting recovery SELECT:', upsertError);
+      warn('Profile upsert failed \u2014 attempting recovery SELECT:', upsertError);
       const { data: recovered } = await db.from('profiles')
         .select('*')
         .eq('id', user.id)
@@ -4118,7 +4176,10 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     window.__spAuthRedirectInProgress = false;
 
     _session = activeSession;
-    await syncRealtimeAuthToken(activeSession);
+    // Fire-and-forget: subscribeToCoreRealtime() below opens its own channels,
+    // and the dashboard renders without waiting on the auth-token PUT.
+    syncRealtimeAuthToken(activeSession).catch((err) =>
+      warn('bootstrap.session: background realtime sync failed:', err));
     log('bootstrap.session', { user: activeSession.user?.email || activeSession.user?.id });
     subscribeToCoreRealtime();
 
@@ -4184,8 +4245,6 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }, 15000);
 
     let profile = null;
-    let profileResolved = false;
-    let teams = [];
     let fresh = null;
     let shouldRunBackgroundRefresh = false;
     let workspaceMeta = null;
@@ -4196,12 +4255,9 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
       if (rpcBootstrap?.fresh) {
         profile = rpcBootstrap.profile;
-        profileResolved = Boolean(profile);
-        teams = rpcBootstrap.teams;
         fresh = rpcBootstrap.fresh;
         workspaceMeta = rpcBootstrap.workspaceMeta;
-        shouldRunBackgroundRefresh = rpcBootstrap.meta?.complete === false ||
-          (Array.isArray(rpcBootstrap.meta?.missingKeys) && rpcBootstrap.meta.missingKeys.length > 0);
+        shouldRunBackgroundRefresh = options.skipPostBootstrapRefresh !== true;
         applyBootstrapProfile(profile, activeSession, usernameHint, remember);
         await persistActiveTeam(rpcBootstrap.teamId, {
           persistRemote: false,
@@ -4210,107 +4266,16 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
           profile,
         });
         logWorkspaceDiagnostics('bootstrap.workspace', workspaceMeta, { source: 'bootstrap-rpc' });
-        subscribeToCoreRealtime();
-      } else if (options.allowLegacyBootstrap === true) {
-      try {
-        // AUTH FIXPACK 2 2026-04-27 (Fix 8): tightened 1800ms → 1200ms toward <5s total budget.
-        profile = await withTimeout(
-          () => ensureProfileRecord(activeSession.user, usernameHint),
-          3500,
-          'ensureProfileRecord'
-        );
-        profileResolved = Boolean(profile);
-        log('bootstrap.profile.done', { ok: Boolean(profile) });
-      } catch (err) {
-        warn('Profile load failed or timed out:', err);
-        log('bootstrap.profile.done', { ok: false, error: err?.message || 'unknown' });
-      }
-
-      if (profile?.preferred_currency) {
-        applyCurrency(profile.preferred_currency);
-      }
-      if (profile?.preferred_theme && typeof window.applyTheme === 'function' && !hasLocalThemePreference()) {
-        window.applyTheme(profile.preferred_theme, { persist: true, syncRemote: false });
-      }
-      if (profile) {
-        const stableUsername = resolveSessionUsername(activeSession.user, profile, usernameHint);
-        if (profile.username === 'Manager' && stableUsername && stableUsername !== 'Manager') {
-          profile = { ...profile, username: stableUsername };
-          _profile = profile;
-        }
-        syncAuthIntoAppSession(stableUsername, profile, remember);
-        if (typeof window.updateCurrentManagerContext === 'function') {
-          try {
-            window.updateCurrentManagerContext();
-          } catch (err) {
-            warn('updateCurrentManagerContext after profile failed:', err);
-          }
-        }
-      }
-
-      try {
-        // AUTH FIXPACK 2 2026-04-27 (Fix 8): tightened 1800ms → 1200ms.
-        teams = await withTimeout(() => getMyTeams({ nullOnError: true }), 2500, 'getMyTeams[bootstrap]');
-      } catch (teamErr) {
-        warn('Team membership load failed during bootstrap:', teamErr);
-        teams = null;
-      }
-
-      const workspace = await resolveActiveWorkspace({
-        profile,
-        teams,
-        promptOnSelection: false,
-        skipProfileFetch: !profileResolved,
-        persistTimeoutMs: 1500,
-      });
-      workspaceMeta = getActiveWorkspaceMeta(workspace?.source || 'bootstrap');
-      logWorkspaceDiagnostics('bootstrap.workspace', workspaceMeta, { source: workspace?.source || 'unknown' });
-
-      subscribeToCoreRealtime();
-
-      try {
-        // AUTH FIXPACK 2 2026-04-27 (Fix 8): tightened 4500ms → 2500ms to hit the
-        // user's <5s total budget. Background refresh at line 2916 picks up any
-        // late records, so this is a soft-deadline only.
-        fresh = await loadCriticalDashboardDataFast(2500, { workspaceMeta });
-        shouldRunBackgroundRefresh = true;
-        log('bootstrap.data.fast.done', { ok: Boolean(fresh), source: workspace?.source || 'unknown' });
-      } catch (dataError) {
-        warn('Fast cloud data bootstrap failed:', dataError);
-        log('bootstrap.data.fast.timeout', { step: 'loadCriticalDashboardDataFast', error: dataError?.message || 'unknown' });
-        shouldRunBackgroundRefresh = true;
-      }
-
-      const fastMeta = fresh?.__meta || null;
-      if (!fresh || fastMeta?.partial) {
-        if (fastMeta && fresh) delete fresh.__meta;
-        setBootStateSafe('booting-data', {
-          text: 'Syncing cloud data...',
-          subtext: 'Keeping your workspace intact while Star Paper fetches your records.'
+        log('bootstrap.firstPaint.authoritative', {
+          source: 'get_bootstrap_payload',
+          complete: rpcBootstrap.meta?.complete !== false,
+          missingKeys: rpcBootstrap.meta?.missingKeys || [],
+          backgroundRefresh: shouldRunBackgroundRefresh,
         });
-        try {
-          fresh = await loadAllDataWithRetry({
-            timeoutMs: 12000,
-            retries: 0,
-            label: 'loadAllData[bootstrap-required]',
-            workspaceMeta,
-            skipProfileFetch: !profileResolved,
-            profileTimeoutMs: 2500,
-          });
-          shouldRunBackgroundRefresh = true;
-          log('bootstrap.data.full.done', {
-            ok: Boolean(fresh),
-            reason: fastMeta?.partial ? 'fast-partial' : 'fast-empty',
-          });
-        } catch (fullDataError) {
-          warn('Full cloud data bootstrap failed:', fullDataError);
-          log('bootstrap.data.full.failed', {
-            error: fullDataError?.message || 'unknown',
-            reason: fastMeta?.partial ? 'fast-partial' : 'fast-empty',
-          });
-          fresh = null;
-        }
-      }
+        subscribeToCoreRealtime();
+      } else {
+        warn('Bootstrap RPC did not return a usable first-paint payload.');
+        log('bootstrap.firstPaint.missing', { source: 'get_bootstrap_payload' });
       }
 
       if (fresh) {
@@ -4392,7 +4357,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
             force: true,
             minIntervalMs: 0,
             timeoutMs: 30000,
-            reason: 'post-fast-bootstrap',
+            reason: 'post-rpc-bootstrap',
             workspaceMeta,
           }).catch((err) => warn('Post-bootstrap cloud refresh failed:', err));
         }, 300);
@@ -4525,7 +4490,11 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     const { data, error } = await db.auth.getSession();
     if (error) return null;
     _session = data.session;
-    await syncRealtimeAuthToken(_session);
+    // Fire-and-forget: Realtime token sync isn't on the first-paint critical
+    // path, and awaiting it here serializes 100-500ms onto every getSession()
+    // — which is called 3+ times during boot.
+    syncRealtimeAuthToken(_session).catch((err) =>
+      warn('getSession: background realtime sync failed:', err));
     return data.session;
   }
 
@@ -5292,7 +5261,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
           <div class="sp-team-invite-code">
             <label>Invite Code</label>
             <div class="sp-team-code-row">
-              <code id="spTeamInviteCode">${teams.find(t => t.id === activeTeamId)?.invite_code || '—'}</code>
+              <code id="spTeamInviteCode">${teams.find(t => t.id === activeTeamId)?.invite_code || '\u2014'}</code>
               <button class="action-btn" onclick="window.SP.copyInviteCode()">Copy</button>
             </div>
             <p class="sp-muted">Share this code so others can join your team.</p>
@@ -5302,7 +5271,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
           <h4>Team Chat</h4>
           <div id="spTeamChatMessages" class="sp-chat-messages"></div>
           <div class="sp-chat-input-row">
-            <input type="text" id="spChatInput" class="form-input" placeholder="Type a message…" 
+            <input type="text" id="spChatInput" class="form-input" placeholder="Type a message&hellip;" 
                    onkeydown="if(event.key==='Enter')window.SP.sendChatMessage()">
             <button class="action-btn" onclick="window.SP.sendChatMessage()">Send</button>
           </div>
@@ -5490,7 +5459,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         <div class="sp-modal-backdrop" onclick="window.SP.closeTeamModal()"></div>
         <div class="sp-modal-box" style="max-width:560px;padding:0;">
           <div id="spTeamPanelContent" style="padding:24px;">
-            <div style="text-align:center;padding:24px;opacity:0.6;">Loading…</div>
+            <div style="text-align:center;padding:24px;opacity:0.6;">Loading&hellip;</div>
           </div>
         </div>`;
       document.body.appendChild(modal);
@@ -5525,7 +5494,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       Promise.race([
         promise,
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s — check Supabase RLS policies`)), ms)
+          setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s \u2014 check Supabase RLS policies`)), ms)
         ),
       ]);
 
@@ -5814,7 +5783,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       modal.innerHTML = `
         <div class="sp-modal-backdrop" onclick="this.parentElement.style.display='none'"></div>
         <div class="sp-modal-box" style="max-width:380px;">
-          <button class="sp-modal-close" onclick="document.getElementById('spCurrencyModal').style.display='none'">✕</button>
+          <button class="sp-modal-close" onclick="document.getElementById('spCurrencyModal').style.display='none'">&#x2715;</button>
           <div style="padding:8px 0 16px;">
             <div class="sp-modal-title">Currency</div>
             <div class="sp-modal-subtitle">All figures will convert in real-time</div>
@@ -5874,11 +5843,6 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
   // ── PATCH APP LOGIN/SIGNUP TO SUPABASE ────────────────────────────────────────
   function patchAppAuth() {
-    // Store reference to original functions as fallback
-    const _origLogin = window.login;
-    const _origSignup = window.signup;
-    const _origLogout = window.logout;
-    
     window.signInWithGoogle = async function supabaseGoogleSignIn() {
       if (window.__spGoogleSignInPending) return;
       window.__spGoogleSignInPending = true;
@@ -5913,7 +5877,12 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       const password    = document.getElementById('loginPassword')?.value || '';
 
       if (!nameOrEmail || !password) {
-        if (typeof window.toastError === 'function') window.toastError('Name and password are required.');
+        if (typeof window.toastError === 'function') window.toastError('Email and password are required.');
+        return;
+      }
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nameOrEmail)) {
+        if (typeof window.toastError === 'function') window.toastError('Enter the email address you used to sign up.');
         return;
       }
 
@@ -5923,17 +5892,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
       try {
         window.__spSuppressStoredSessionBootstrap = false;
-        // If input looks like a username (no @), look up email from profile
-        let email = nameOrEmail;
-        if (!nameOrEmail.includes('@')) {
-          const resolvedEmail = await lookupEmailForUsername(nameOrEmail);
-          if (resolvedEmail) {
-            email = resolvedEmail;
-          }
-          // No match — fall through with nameOrEmail; signIn will reject with a clear error.
-        }
-
-        const { data } = await signIn(email, password);
+        const { data } = await signIn(nameOrEmail, password);
         if (!data?.session?.user) {
           throw new Error('Could not initialise session.');
         }
@@ -5951,27 +5910,18 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         }
       } catch (err) {
         const errMsg = String(err?.message || '').toLowerCase();
-        const shouldFallback =
-          typeof _origLogin === 'function' &&
-          (errMsg.includes('failed to fetch') ||
-           errMsg.includes('network') ||
-           errMsg.includes('invalid url') ||
-           errMsg.includes('api key'));
-        if (shouldFallback) {
-          if (!SP_ALLOW_LOCAL_FALLBACK) {
-            warn('Supabase login unavailable; local fallback disabled.', err);
-            if (typeof window.toastError === 'function') {
-              window.toastError('Cloud login unavailable. Please check your connection and try again.');
-            }
-            showLoginScreen({ flowId, reason: 'password-sign-in-fallback-disabled' });
-            return;
+        const isCloudUnavailable =
+          errMsg.includes('failed to fetch') ||
+          errMsg.includes('network') ||
+          errMsg.includes('invalid url') ||
+          errMsg.includes('api key');
+        if (isCloudUnavailable) {
+          warn('Supabase login unavailable; local auth is retired.', err);
+          if (typeof window.toastError === 'function') {
+            window.toastError('Cloud login unavailable. Please check your connection and try again.');
           }
-          warn('Supabase login unavailable. Falling back to local auth.', err);
-          if (typeof window.toastWarn === 'function') {
-            window.toastWarn('Cloud login unavailable. Using local login on this device.');
-          }
-          commitBootTransitionSafe('loginScreen', { flowId, minDelayMs: 120 });
-          return _origLogin();
+          showLoginScreen({ flowId, reason: 'password-sign-in-cloud-unavailable' });
+          return;
         }
         let msg = 'Invalid credentials. Please try again.';
         if (errMsg.includes('email not confirmed')) msg = 'Please check your email to confirm your account first.';
@@ -6031,25 +5981,17 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         if (typeof window.showLoginForm === 'function') window.showLoginForm();
       } catch (err) {
         const errMsg = String(err?.message || '').toLowerCase();
-        const shouldFallback =
-          typeof _origSignup === 'function' &&
-          (errMsg.includes('failed to fetch') ||
-           errMsg.includes('network') ||
-           errMsg.includes('invalid url') ||
-           errMsg.includes('api key'));
-        if (shouldFallback) {
-          if (!SP_ALLOW_LOCAL_FALLBACK) {
-            warn('Supabase signup unavailable; local fallback disabled.', err);
-            if (typeof window.toastError === 'function') {
-              window.toastError('Cloud signup unavailable. Please check your connection and try again.');
-            }
-            return;
+        const isCloudUnavailable =
+          errMsg.includes('failed to fetch') ||
+          errMsg.includes('network') ||
+          errMsg.includes('invalid url') ||
+          errMsg.includes('api key');
+        if (isCloudUnavailable) {
+          warn('Supabase signup unavailable; local auth is retired.', err);
+          if (typeof window.toastError === 'function') {
+            window.toastError('Cloud signup unavailable. Please check your connection and try again.');
           }
-          warn('Supabase signup unavailable. Falling back to local signup.', err);
-          if (typeof window.toastWarn === 'function') {
-            window.toastWarn('Cloud signup unavailable. Using local account mode.');
-          }
-          return _origSignup();
+          return;
         }
         let msg = err.message?.includes('already registered')
           ? 'That email is already registered.'
@@ -6151,13 +6093,13 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
           const cs = getComputedStyle(landing);
           if (cs.display === 'none') {
             window.__spLogoutReloadAttempted = true;
-            warn('Logout integrity: landing is display:none after logout — forcing reload.');
+            warn('Logout integrity: landing is display:none after logout \u2014 forcing reload.');
             window.location.reload();
           }
         } catch (verifyErr) {
           // Critical: do NOT reload on a verification failure (would create reload loops
           // if any DOM API throws). Just log and continue.
-          warn('Logout integrity check threw — leaving as-is to avoid reload loop.', verifyErr);
+          warn('Logout integrity check threw \u2014 leaving as-is to avoid reload loop.', verifyErr);
         }
       }, 350);
 
@@ -6282,11 +6224,18 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     const activeFlowId = options.flowId || flowId;
     let session = null;
     try {
-      session = await withTimeout(
-        () => getSession(),
-        typeof options.sessionTimeoutMs === 'number' ? options.sessionTimeoutMs : 3000, // FIXED: auth restore + shell route stays under 5s.
-        'getSession[initial]'
-      );
+      // If we already have an in-memory session (e.g. INITIAL_SESSION fired
+      // during onAuthStateChange before this ran), trust it — a fresh
+      // db.auth.getSession() round-trip is just duplicate work.
+      if (_session?.user) {
+        session = _session;
+      } else {
+        session = await withTimeout(
+          () => getSession(),
+          typeof options.sessionTimeoutMs === 'number' ? options.sessionTimeoutMs : 5000,
+          'getSession[initial]'
+        );
+      }
     } catch (err) {
       warn('Initial session restore failed:', err);
       if (quietIfNoSession && loggedOutScreen === 'landing') {
@@ -6378,7 +6327,9 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
           return;
         }
         const fallbackFlowId = getBootTransitionIdSafe();
-        setTimeout(() => {
+        // queueMicrotask yields once so handleAuthRedirect's `.then` chain
+        // settles, but doesn't burn a fixed 150-300 ms before bootstrap.
+        queueMicrotask(() => {
           const initialEventAlreadyHandled =
             window.__spInitialAuthEventSeen &&
             bootContext !== 'auth-callback' &&
@@ -6396,9 +6347,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
             loggedOutScreen: bootContext === 'cold-start' ? 'landing' : 'login',
             bootContext,
             flowId: fallbackFlowId,
-            sessionTimeoutMs: bootContext === 'app-refresh' ? 1800 : undefined,
           });
-        }, bootContext === 'app-refresh' ? 150 : 300);
+        });
       });
 
       setTimeout(patchAppAuth, 0);         // replace window.login/signup immediately
@@ -6521,6 +6471,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     showCurrencySwitcher,
     currencies: SP_CURRENCIES,
     getCurrentCurrency: () => _currency,
+    getPasswordResetRedirectUrl,
 
     // State (cached values)
     getSessionState: () => _session,
@@ -6548,7 +6499,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   } catch (err) {
     // no-op: event dispatch is best-effort
   }
-  log('Supabase integration loaded ✓');
+  log('Supabase integration loaded \u2713');
 
 })();
 
