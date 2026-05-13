@@ -6,30 +6,22 @@
     <title>Star Paper How It Works</title>
     <script>
       (function stripAppHashFromPublicPage() {
-        var appHashes = {
-          artists: true,
-          bookings: true,
-          calendar: true,
-          dashboard: true,
-          expenses: true,
-          financials: true,
-          global: true,
-          money: true,
-          otherIncome: true,
-          reports: true,
-          schedule: true,
-          settings: true,
-          tasks: true
-        };
-        var hash = '';
-        try {
-          hash = decodeURIComponent(String(window.location.hash || '').replace(/^#/, '')).trim();
-        } catch (_err) {
-          hash = String(window.location.hash || '').replace(/^#/, '').trim();
+        var appHashPattern = /^(artists|bookings|calendar|dashboard|expenses|financials|global|money|otherIncome|reports|schedule|settings|tasks)(?:[?&/].*)?$/i;
+        function getDecodedHash() {
+          try {
+            return decodeURIComponent(String(window.location.hash || '').replace(/^#/, '')).trim();
+          } catch (_err) {
+            return String(window.location.hash || '').replace(/^#/, '').trim();
+          }
         }
-        if (appHashes[hash]) {
-          window.history.replaceState(null, '', window.location.pathname + (window.location.search || ''));
+        function stripIfAppHash() {
+          if (appHashPattern.test(getDecodedHash())) {
+            window.history.replaceState(null, '', window.location.pathname + (window.location.search || ''));
+          }
         }
+        stripIfAppHash();
+        window.addEventListener('hashchange', stripIfAppHash);
+        window.addEventListener('popstate', stripIfAppHash);
       })();
     </script>
     <link rel="icon" type="image/png" sizes="32x32" href="/star_paper_logo_pack/star_paper_32.png?v=2">
@@ -42,7 +34,7 @@
     <link rel="stylesheet" href="styles.css?v=53">
     <link rel="stylesheet" href="star-paper-tokens.css?v=21">
     <link rel="stylesheet" href="styles.premium.css?v=8">
-    <link rel="stylesheet" href="styles.handcraft.css?v=32">
+    <link rel="stylesheet" href="styles.handcraft.css?v=33">
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
     <style>
       html.sp-handcraft-off .sp-handcraft-widget { display: none !important; }

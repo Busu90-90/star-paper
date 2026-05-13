@@ -1536,7 +1536,12 @@
       const pdfVenuePerf = buildPdfVenuePerformance(m.filteredBookings, m.totalExpenses);
       const pdfTransactions = sortTransactionsForPdf([
         ...m.filteredBookings.map(b => ({ type: 'Booking', date: b.date, desc: b.event || b.artist || '', amount: Math.round(Number(b.fee) || 0) })),
-        ...m.filteredExpenses.map(e => ({ type: 'Expense', date: e.date, desc: e.description || e.category || '', amount: Math.round(Number(e.amount) || 0) })),
+        ...m.filteredExpenses.map(e => {
+          const baseDesc = e.description || e.category || '';
+          const hasArtistTag = Boolean(String(e.artistId || '').trim()) || Boolean(String(e.artist || e.artistName || '').trim());
+          const desc = (selectedArtist && !hasArtistTag) ? `${baseDesc} (shared)` : baseDesc;
+          return { type: 'Expense', date: e.date, desc, amount: Math.round(Number(e.amount) || 0) };
+        }),
         ...m.filteredOtherIncome.map(i => ({ type: 'Income', date: i.date, desc: i.source || i.type || '', amount: Math.round(Number(i.amount) || 0) })),
       ]);
       const pdfStrategyNotes = buildPdfStrategyNotes(

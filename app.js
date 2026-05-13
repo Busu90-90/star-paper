@@ -151,6 +151,43 @@ window.getBootTransitionId = () => spBootTransitionId;
 const APP_BOOT_CONTEXT_STORAGE_KEY = 'sp_boot_context';
 const APP_BOOT_CONTEXT_APP_SHELL = 'app-shell';
 const APP_BOOT_CONTEXT_AUTH_RETURN = 'auth-return';
+const SP_ROUTE_APP_PATHS = new Set(['/', '/index.html']);
+const SP_ROUTE_PUBLIC_PATHS = new Set([
+    '/',
+    '/index.html',
+    '/how-it-works',
+    '/how-it-works.html',
+    '/proof',
+    '/proof.html',
+    '/testimonials',
+    '/testimonials.html'
+]);
+const SP_ROUTE_PUBLIC_LINK_PATHS = new Set([
+    '/how-it-works',
+    '/how-it-works.html',
+    '/proof',
+    '/proof.html',
+    '/testimonials',
+    '/testimonials.html'
+]);
+const SP_ROUTE_APP_SECTIONS = new Set([
+    'artists',
+    'bookings',
+    'calendar',
+    'dashboard',
+    'expenses',
+    'financials',
+    'global',
+    'money',
+    'otherIncome',
+    'reports',
+    'schedule',
+    'settings',
+    'tasks'
+]);
+const SP_ROUTE_APP_SECTION_ALIASES = new Map(
+    Array.from(SP_ROUTE_APP_SECTIONS).map((section) => [section.toLowerCase(), section])
+);
 
 function hasAuthCallbackParams(href = window.location.href) {
     try {
@@ -203,6 +240,77 @@ function clearAppShellBootContext() {
     }
 }
 
+function normalizeRoutePathname(pathname = window.location.pathname) {
+    return (String(pathname || '/').replace(/\/+$/, '') || '/');
+}
+
+function isAppShellPath(pathname = window.location.pathname) {
+    return SP_ROUTE_APP_PATHS.has(normalizeRoutePathname(pathname));
+}
+
+function getAppHashSection(hash = window.location.hash) {
+    try {
+        const raw = decodeURIComponent(String(hash || '').replace(/^#/, '')).trim();
+        if (!raw) return '';
+        const section = raw.split(/[?&/]/)[0];
+        return SP_ROUTE_APP_SECTIONS.has(section)
+            ? section
+            : (SP_ROUTE_APP_SECTION_ALIASES.get(section.toLowerCase()) || '');
+    } catch (_err) {
+        return '';
+    }
+}
+
+function isPublicShellRoute(locationLike = window.location) {
+    const pathname = normalizeRoutePathname(locationLike?.pathname || window.location.pathname);
+    return SP_ROUTE_PUBLIC_PATHS.has(pathname) && !getAppHashSection(locationLike?.hash || window.location.hash);
+}
+
+function shouldBootAuthenticatedApp(locationLike = window.location) {
+    const href = locationLike?.href || window.location.href;
+    if (hasAuthCallbackParams(href)) return false;
+    return isAppShellPath(locationLike?.pathname || window.location.pathname) &&
+        Boolean(getAppHashSection(locationLike?.hash || window.location.hash));
+}
+
+window.isAppShellPath = isAppShellPath;
+window.getAppHashSection = getAppHashSection;
+window.isPublicShellRoute = isPublicShellRoute;
+window.shouldBootAuthenticatedApp = shouldBootAuthenticatedApp;
+
+function sanitizeOutboundPublicHref(href) {
+    try {
+        const originalHref = String(href || '');
+        if (!originalHref) return originalHref;
+        const url = new URL(originalHref, window.location.href);
+        if (url.origin !== window.location.origin) return originalHref;
+        const pathname = normalizeRoutePathname(url.pathname);
+        if (!SP_ROUTE_PUBLIC_LINK_PATHS.has(pathname)) return originalHref;
+        if (!getAppHashSection(url.hash)) return originalHref;
+        return `${url.pathname}${url.search || ''}`;
+    } catch (_err) {
+        return href;
+    }
+}
+window.sanitizeOutboundPublicHref = sanitizeOutboundPublicHref;
+
+function installOutboundPublicLinkSanitizer() {
+    if (window.__spOutboundPublicLinkSanitizerInstalled) return;
+    window.__spOutboundPublicLinkSanitizerInstalled = true;
+    document.addEventListener('click', (event) => {
+        const rawTarget = event.target;
+        const elementTarget = rawTarget?.nodeType === Node.TEXT_NODE ? rawTarget.parentElement : rawTarget;
+        const anchor = elementTarget?.closest?.('a[href]');
+        if (!anchor) return;
+        const href = anchor.getAttribute('href') || '';
+        const sanitized = sanitizeOutboundPublicHref(href);
+        if (sanitized && sanitized !== href) {
+            anchor.setAttribute('href', sanitized);
+        }
+    }, true);
+}
+installOutboundPublicLinkSanitizer();
+
 function getStartupBootContext() {
     if (hasAuthCallbackParams()) {
         return 'auth-callback';
@@ -211,10 +319,8 @@ function getStartupBootContext() {
     if (marker === APP_BOOT_CONTEXT_AUTH_RETURN) {
         return 'auth-callback';
     }
-    // Treat persisted Supabase auth as an app refresh on every origin, including
-    // local testing. Logged-out users still fall through to the public landing.
-    if (hasStoredCloudSessionHint()) return 'app-refresh';
-    return marker === APP_BOOT_CONTEXT_APP_SHELL ? 'app-refresh' : 'cold-start';
+    if (shouldBootAuthenticatedApp()) return 'app-refresh';
+    return 'cold-start';
 }
 
 function isLocalDevOrigin() {
@@ -259,7 +365,7 @@ function isSupabaseBootWorkActive() {
 function shouldUseInstantPublicReveal(options = {}) {
     if (options.keepLoader === true) return false;
     if (options.instant === true || options.publicReveal === true || options.skipBoot === true) return true;
-    if (hasAuthCallbackParams() || hasStoredCloudSessionHint() || isSupabaseBootWorkActive()) return false;
+    if (hasAuthCallbackParams() || shouldBootAuthenticatedApp() || isSupabaseBootWorkActive()) return false;
     return getStartupBootContext() === 'cold-start';
 }
 
@@ -330,7 +436,7 @@ function scheduleLocalBootFallback(bootContext, flowId = null) {
         if (isSupabaseBootWorkActive()) {
             return;
         }
-        if (bootContext === 'app-refresh' || hasStoredCloudSessionHint()) {
+        if (bootContext === 'app-refresh' || shouldBootAuthenticatedApp()) {
             setBootState('boot-error', {
                 text: 'Session restore stalled',
                 subtext: 'Retry to reconnect to Star Paper, or log out and sign in again.',
@@ -891,7 +997,7 @@ function getSectionIconMarkup(iconKey) {
         let pendingProfileAvatarValue = '';
         let pendingArtistAvatarValue = '';
         const CLOSING_THOUGHTS_STORAGE_KEY = 'starPaperClosingThoughtsByPeriod';
-        const REPORT_LOGO_ASSET_VERSION = '2';
+        const REPORT_LOGO_ASSET_VERSION = '3';
         const RETIRED_ARTIST_NAME_SET = new Set(['cinderella sanyu']);
         const dashboardWeatherCache = {
             geocode: new Map(),
@@ -1409,6 +1515,13 @@ function getSectionIconMarkup(iconKey) {
             if (scope.artistId && recordArtistId && recordArtistId === scope.artistId) return true;
             if (scope.artistName && recordArtistName && recordArtistName === scope.artistName.toLowerCase()) return true;
             return false;
+        }
+
+        function isFinanceRecordShared(record) {
+            if (!record || typeof record !== 'object') return false;
+            const hasArtistId = Boolean(String(record.artistId || '').trim());
+            const hasArtistName = Boolean(String(record.artist || record.artistName || '').trim());
+            return !hasArtistId && !hasArtistName;
         }
 
         function normalizeFinanceArtistRef(record) {
@@ -2410,6 +2523,8 @@ function getSectionIconMarkup(iconKey) {
         }
 
         window.__spAppBooted = false;
+        window.__spDataHydrationPending = Boolean(window.__spDataHydrationPending);
+        window.__spDataLoaded = Boolean(window.__spDataLoaded);
         window.currentUser = null;
         window.currentManagerId = null;
         if (getStartupBootContext() !== 'cold-start') {
@@ -4174,12 +4289,20 @@ function showLoginForm(options = {}) {
             setTimeout(() => work(), Math.min(timeout, 220));
         }
 
-        function showApp() {
-            const ownsBootLoader = !window.__spCloudBootstrapPending &&
+        function showApp(options = {}) {
+            const hydrationPending = options?.hydrationPending === true;
+            window.__spDataHydrationPending = hydrationPending || Boolean(window.__spDataHydrationPending);
+            document.body.classList.toggle('sp-data-hydration-pending', window.__spDataHydrationPending === true);
+            if (hydrationPending && typeof window.__spUpdateSyncIndicator === 'function') {
+                window.__spUpdateSyncIndicator('syncing');
+            }
+            const ownsBootLoader = hydrationPending || !window.__spCloudBootstrapPending &&
                 !window.__spSupabaseBootPromise &&
                 !window.__spAuthRedirectInProgress;
-            const flowId = window.getBootTransitionId?.() || beginBootTransition('show-app', 'loading-app');
-            setBootState('loading-app');
+            const flowId = window.getBootTransitionId?.() || beginBootTransition('show-app', hydrationPending ? 'booting-data' : 'loading-app');
+            if (!hydrationPending) {
+                setBootState('loading-app');
+            }
             try {
                 commitBootTransition('appContainer', { flowId, hideLoader: false });
                 const sidebar = document.getElementById('sidebar');
@@ -4195,18 +4318,20 @@ function showLoginForm(options = {}) {
                 if (welcomeCard) welcomeCard.style.display = 'block'; // FIXED: top search bar is visible after refresh bootstrap.
                 refreshProfileUI();
                 populateLocationDropdowns();
-                updateDashboard();
                 updateMonthContextLabels();
                 if (typeof window.updateTodayBoard === 'function') {
                     window.updateTodayBoard();
                 }
-                renderBookings();
-                renderExpenses();
-                renderOtherIncome();
-                renderArtists();
                 populateArtistDropdown();
                 populateFinanceArtistDropdowns();
                 toggleAdminOnlyUI();
+                if (!hydrationPending) {
+                    updateDashboard();
+                    renderBookings();
+                    renderExpenses();
+                    renderOtherIncome();
+                    renderArtists();
+                }
 
                 window.__spAppBooted = true;
                 applyReadOnlyMode();
@@ -4214,7 +4339,7 @@ function showLoginForm(options = {}) {
                     commitBootTransition('appContainer', {
                         flowId,
                         requireAppReady: true,
-                        minDelayMs: 220
+                        minDelayMs: hydrationPending ? 80 : 220
                     });
                 }
 
@@ -4228,20 +4353,22 @@ function showLoginForm(options = {}) {
                     }, timeout);
                 };
 
-                deferBootWork('calendar', () => renderCalendar(), 350);
-                deferBootWork('audience-controls', () => {
-                    updateAvailabilityArtists();
-                    renderAudienceMetrics();
-                    bindAudienceArtistSelect();
-                    handleAudienceArtistChange();
-                }, 450);
-                deferBootWork('push-settings', () => loadPushSettings(), 650);
-                deferBootWork('performance-map', () => renderPerformanceMap(), window.innerWidth <= 900 ? 900 : 700);
-                deferBootWork('report-statistics', () => updateReportStatistics(), 800);
-                deferBootWork('reminders', () => {
-                    requestNotificationPermission();
-                    scheduleReminderChecks();
-                }, 1000);
+                if (!hydrationPending) {
+                    deferBootWork('calendar', () => renderCalendar(), 350);
+                    deferBootWork('audience-controls', () => {
+                        updateAvailabilityArtists();
+                        renderAudienceMetrics();
+                        bindAudienceArtistSelect();
+                        handleAudienceArtistChange();
+                    }, 450);
+                    deferBootWork('push-settings', () => loadPushSettings(), 650);
+                    deferBootWork('performance-map', () => renderPerformanceMap(), window.innerWidth <= 900 ? 900 : 700);
+                    deferBootWork('report-statistics', () => updateReportStatistics(), 800);
+                    deferBootWork('reminders', () => {
+                        requestNotificationPermission();
+                        scheduleReminderChecks();
+                    }, 1000);
+                }
                 if (typeof window.__spLoadDeferredThirdParty === 'function') {
                     window.__spLoadDeferredThirdParty('app-booted');
                 }
@@ -4289,6 +4416,9 @@ function showLoginForm(options = {}) {
             } else if (isScheduleTabSection(normalized)) {
                 Storage.saveSync('starPaperLastScheduleTab', normalized);
             }
+            if (!isAppShellPath(window.location.pathname)) {
+                return normalized;
+            }
             try {
                 const hash = `#${normalized}`;
                 const route = `/${window.location.search || ''}${hash}`;
@@ -4301,12 +4431,12 @@ function showLoginForm(options = {}) {
         }
 
         function restorePostBootUiState() {
+            if (!isAppShellPath(window.location.pathname)) return;
             const allowedSections = SP_APP_SECTION_IDS;
             const readHashSection = () => {
                 try {
-                    const raw = decodeURIComponent(String(window.location.hash || '').replace(/^#/, '')).trim();
-                    if (!raw || raw.includes('=') || raw.includes('&')) return '';
-                    return allowedSections.has(raw) ? raw : '';
+                    const section = getAppHashSection(window.location.hash);
+                    return allowedSections.has(section) ? section : '';
                 } catch (_err) {
                     return '';
                 }
@@ -4335,6 +4465,24 @@ function showLoginForm(options = {}) {
             restoreDrafts();
         }
         window.restorePostBootUiState = restorePostBootUiState;
+
+        let spAppHashRouteHandling = false;
+        window.addEventListener('hashchange', () => {
+            if (spAppHashRouteHandling || !window.__spAppBooted || !isAppShellPath(window.location.pathname)) return;
+            const section = getAppHashSection(window.location.hash);
+            if (section && SP_APP_SECTION_IDS.has(section)) {
+                spAppHashRouteHandling = true;
+                try {
+                    showSection(section);
+                } finally {
+                    spAppHashRouteHandling = false;
+                }
+                return;
+            }
+            if (window.location.hash) {
+                window.history.replaceState(null, '', `${window.location.pathname}${window.location.search || ''}`);
+            }
+        });
 
         function toggleAdminOnlyUI() {
             const isAdmin = currentUser === 'Admin';
@@ -4517,8 +4665,16 @@ function showLoginForm(options = {}) {
                 provisional: options.provisional === true,
                 source: options.source || 'loadUserData'
             });
+            if (options.provisional !== true) {
+                window.__spDataHydrationPending = false;
+                window.__spDataLoaded = true;
+                document.body.classList.remove('sp-data-hydration-pending');
+            }
             window._SP_syncFromCloud = function(data) {
                 applyCloudSnapshotToRuntime(data, getActiveDataScopeKey(), { source: 'cloud-sync' });
+                window.__spDataHydrationPending = false;
+                window.__spDataLoaded = true;
+                document.body.classList.remove('sp-data-hydration-pending');
             };
         }
 
@@ -4801,38 +4957,54 @@ function showLoginForm(options = {}) {
             updateAppHeaderIcon(section);
             document.title = `Star Paper | ${nextTitle}`;
 
-            if (section === 'dashboard') {
-                updateDashboard();
-            } else if (section === 'financials') {
+            const dataHydrationPending = window.__spDataHydrationPending === true;
+            if (section === 'financials') {
                 activateMoneyTab('financials');
-                updateDashboard();
-                renderPerformanceMap();
             } else if (section === 'expenses') {
                 activateMoneyTab('expenses');
-                renderExpenses();
             } else if (section === 'otherIncome') {
                 activateMoneyTab('otherIncome');
-                renderOtherIncome();
             } else if (section === 'reports') {
                 activateMoneyTab('reports');
-                updateReportsSection();
             } else if (section === 'global') {
                 activateScheduleTab('global');
-                renderPerformanceMap();
             } else if (section === 'bookings') {
                 activateScheduleTab('bookings');
-                renderBookings();
             } else if (section === 'calendar') {
                 activateScheduleTab('calendar');
-                renderCalendar();
-            } else if (section === 'artists') {
-                renderArtists();
-            } else if (section === 'tasks') {
-                if (typeof window.renderTasks === 'function') {
-                    window.renderTasks();
+            }
+
+            if (dataHydrationPending && section !== 'settings') {
+                if (typeof window.__spUpdateSyncIndicator === 'function') {
+                    window.__spUpdateSyncIndicator('syncing');
                 }
-            } else if (section === 'settings') {
-                refreshProfileUI();
+            } else {
+                if (section === 'dashboard') {
+                    updateDashboard();
+                } else if (section === 'financials') {
+                    updateDashboard();
+                    renderPerformanceMap();
+                } else if (section === 'expenses') {
+                    renderExpenses();
+                } else if (section === 'otherIncome') {
+                    renderOtherIncome();
+                } else if (section === 'reports') {
+                    updateReportsSection();
+                } else if (section === 'global') {
+                    renderPerformanceMap();
+                } else if (section === 'bookings') {
+                    renderBookings();
+                } else if (section === 'calendar') {
+                    renderCalendar();
+                } else if (section === 'artists') {
+                    renderArtists();
+                } else if (section === 'tasks') {
+                    if (typeof window.renderTasks === 'function') {
+                        window.renderTasks();
+                    }
+                } else if (section === 'settings') {
+                    refreshProfileUI();
+                }
             }
 
             if (window.innerWidth <= 1024) {
@@ -5407,7 +5579,9 @@ function showLoginForm(options = {}) {
             const selectedArtistName = artistScope.artistName;
             if (artistScope.hasArtist) {
                 filteredBookings = filteredBookings.filter((booking) => financeRecordMatchesArtist(booking, artistScope));
-                filteredExpenses = filteredExpenses.filter((expense) => financeRecordMatchesArtist(expense, artistScope));
+                filteredExpenses = filteredExpenses.filter((expense) =>
+                    financeRecordMatchesArtist(expense, artistScope) || isFinanceRecordShared(expense)
+                );
                 filteredOtherIncome = filteredOtherIncome.filter((income) => financeRecordMatchesArtist(income, artistScope));
             }
 
@@ -6069,7 +6243,7 @@ function showLoginForm(options = {}) {
 
         function buildReportLogoCandidates(themeMode, withOrigin) {
             const primaryLogo = themeMode === 'light' ? 'star_paper_black.png' : 'star_paper_white.png';
-            const candidateNames = [primaryLogo, 'star_paper_transparent.png', 'star_paper_512.png'];
+            const candidateNames = ['star_paper_transparent.png', primaryLogo, 'star_paper_512.png'];
             return [
                 ...candidateNames.map((name) => withOrigin(`/star_paper_logo_pack/${name}?v=${REPORT_LOGO_ASSET_VERSION}`)),
                 ...candidateNames.map((name) => `/star_paper_logo_pack/${name}?v=${REPORT_LOGO_ASSET_VERSION}`)
@@ -10178,6 +10352,18 @@ function showLoginForm(options = {}) {
             });
         })();
 
+        (function publishAppBootHelpersReady() {
+            window.showApp = showApp;
+            window.loadUserData = loadUserData;
+            window.restorePostBootUiState = restorePostBootUiState;
+            window.__spAppBootHelpersReady = true;
+            try {
+                window.dispatchEvent(new CustomEvent('sp:app-boot-helpers-ready'));
+            } catch (_err) {
+                // Non-fatal: supabase.js also polls the ready flag.
+            }
+        })();
+
         if ('serviceWorker' in navigator) {
             // AUTH FIXPACK 2 2026-04-27 (Fix 7): the controllerchange auto-reload
             // (introduced in Fix 6 on 2026-04-26) was triggering reload loops during
@@ -10186,7 +10372,7 @@ function showLoginForm(options = {}) {
             // regression risk. Reverted to the canonical CLAUDE.md §2 approach: users
             // get a fresh shell on next manual reload after the new SW activates.
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=142').then((registration) => {
+                navigator.serviceWorker.register('sw.js?v=146').then((registration) => {
                     registration?.update?.().catch(() => {});
                 }).catch((error) => {
                     console.warn('Service worker registration failed:', error);

@@ -154,6 +154,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   const APP_SHELL_BOOT_CONTEXT = 'app-shell';
   const AUTH_RETURN_BOOT_CONTEXT = 'auth-return';
   const OAUTH_INTENT_STORAGE_KEY = 'sp_oauth_intent';
+  const SP_APP_SHELL_PATHS = new Set(['/', '/index.html']);
   const SP_PUBLIC_SHELL_PATHS = new Set([
     '/',
     '/index.html',
@@ -179,6 +180,9 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     'settings',
     'tasks',
   ]);
+  const SP_APP_ROUTE_HASH_ALIASES = new Map(
+    Array.from(SP_APP_ROUTE_HASHES).map((section) => [section.toLowerCase(), section])
+  );
   const SP_PASSIVE_AUTH_EVENTS = new Set(['INITIAL_SESSION', 'SIGNED_IN', 'TOKEN_REFRESHED']);
   let _retryQueue = [];               // Array of { payload, attempts, lastAttempt }
   let _syncState = 'idle';            // 'idle' | 'syncing' | 'synced' | 'failed' | 'offline'
@@ -338,6 +342,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       el.classList.remove('sp-sync-pulse');
     }
   }
+  window.__spUpdateSyncIndicator = updateSyncIndicator;
 
   function showSaveToast(isCloud) {
     const now = Date.now();
@@ -601,7 +606,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   }
 
   function ensureAppBootReady() {
-    return Boolean(window.__spAppBooted) ||
+    return Boolean(window.__spAppBootHelpersReady || window.__spAppBooted) ||
       (typeof window.showApp === 'function' && typeof window.loadUserData === 'function');
   }
 
@@ -609,13 +614,22 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     if (ensureAppBootReady()) return true;
     const started = Date.now();
     return new Promise((resolve) => {
+      let settled = false;
+      const finish = (value) => {
+        if (settled) return;
+        settled = true;
+        window.removeEventListener('sp:app-boot-helpers-ready', onReady);
+        resolve(value);
+      };
+      const onReady = () => finish(true);
+      window.addEventListener('sp:app-boot-helpers-ready', onReady, { once: true });
       const tick = () => {
         if (ensureAppBootReady()) {
-          resolve(true);
+          finish(true);
           return;
         }
         if (Date.now() - started >= maxWaitMs) {
-          resolve(false);
+          finish(false);
           return;
         }
         setTimeout(tick, intervalMs);
@@ -1125,11 +1139,13 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   }
 
   function showAuthenticatedDashboardShell(reason = 'bootstrap-fast-shell', options = {}) {
-    // Do not reveal an authenticated app shell with placeholder/empty data.
-    // A refresh should show real cloud data or an explicit boot-error, never a
-    // zero-data dashboard that looks like data loss.
-    if (options.eager === true) {
-      warn('Ignoring eager authenticated shell reveal until cloud data is confirmed.', { reason });
+    if (typeof window.showApp === 'function' && !window.__spAppBooted) {
+      try {
+        window.showApp({ hydrationPending: options.hydrationPending !== false });
+        updateSyncIndicator('syncing');
+      } catch (err) {
+        warn('Fast authenticated shell reveal failed:', err);
+      }
     }
     routeAuthenticatedUserToDashboard(reason);
     if (typeof window.setAppShellBootContext === 'function') {
@@ -1212,14 +1228,28 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     if (marker === AUTH_RETURN_BOOT_CONTEXT) {
       return 'auth-callback';
     }
-    return marker === APP_SHELL_BOOT_CONTEXT ? 'app-refresh' : 'cold-start';
+    return shouldBootAuthenticatedApp() ? 'app-refresh' : 'cold-start';
+  }
+
+  function normalizeRoutePathname(pathname = window.location.pathname) {
+    return (String(pathname || '/').replace(/\/+$/, '') || '/');
+  }
+
+  function isAppShellPath(pathname = window.location.pathname) {
+    if (typeof window.isAppShellPath === 'function') {
+      try { return Boolean(window.isAppShellPath(pathname)); } catch (_err) {}
+    }
+    return SP_APP_SHELL_PATHS.has(normalizeRoutePathname(pathname));
   }
 
   function getRouteHashToken() {
     try {
       const raw = decodeURIComponent(String(window.location.hash || '').replace(/^#/, '')).trim();
-      if (!raw || raw.includes('=') || raw.includes('&')) return '';
-      return raw;
+      if (!raw) return '';
+      const token = raw.split(/[?&/]/)[0];
+      return SP_APP_ROUTE_HASHES.has(token)
+        ? token
+        : (SP_APP_ROUTE_HASH_ALIASES.get(token.toLowerCase()) || '');
     } catch (_err) {
       return '';
     }
@@ -1230,8 +1260,15 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   }
 
   function isPublicShellRoute() {
-    const pathname = (window.location.pathname || '/').replace(/\/+$/, '') || '/';
+    const pathname = normalizeRoutePathname(window.location.pathname);
     return SP_PUBLIC_SHELL_PATHS.has(pathname);
+  }
+
+  function shouldBootAuthenticatedApp() {
+    if (typeof window.shouldBootAuthenticatedApp === 'function') {
+      try { return Boolean(window.shouldBootAuthenticatedApp(window.location)); } catch (_err) {}
+    }
+    return !hasAuthCallbackInUrl() && isAppShellPath(window.location.pathname) && hasExplicitAppRouteHash();
   }
 
   function shouldStayOnPublicShell() {
@@ -1361,6 +1398,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       window.currentManagerId = null;
       window.currentTeamRole = null;
       window.__spDataLoaded = false;
+      window.__spDataHydrationPending = false;
       resetCloudSaveFlagsSafe('workspace-reset');
     } catch (err) {
       try { window.Sentry && window.Sentry.captureException && window.Sentry.captureException(err); } catch (_e) {}
@@ -4203,6 +4241,19 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   async function bootstrapFromSupabaseSession(session, options = {}) {
     clearLocalBootFallback();
     const flowId = options.flowId || beginBootTransitionSafe('bootstrap-session', 'loading-session');
+    if (
+      localStorage.getItem('sp_logged_out') === '1' &&
+      options.ignoreLoggedOut !== true &&
+      !window.__spUserInitiatedAuth &&
+      !hasAuthCallbackInUrl()
+    ) {
+      warn('Skipping session bootstrap because explicit logout guard is active.');
+      clearSupabaseAuthArtifacts({ clearAppSession: false });
+      _session = null;
+      window.__spSuppressStoredSessionBootstrap = true;
+      showLandingScreen({ instant: true, flowId, reason: 'bootstrap-explicit-logout' });
+      return false;
+    }
     const activeSession = session || _session || await getSession();
     if (!activeSession?.user) return false;
     const bootstrapStartedAt = nowMs();
@@ -4251,23 +4302,20 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       }
     }
 
-    // AUTH FIXPACK 2 2026-04-27 (Fix 8): tightened from 1200ms to 800ms to hit
-    // the user's <5s total budget. App helpers are usually ready by then.
-    const appReady = await waitForAppBootReady(800);
+    const appReady = await waitForAppBootReady(options.appReadyTimeoutMs || 5000);
     if (!isBootTransitionCurrentSafe(flowId)) return false;
     if (!appReady) {
-      warn('App boot helpers were not ready before Supabase bootstrap; calling shell anyway.');
+      warn('App boot helpers were not ready before Supabase bootstrap; showing retryable boot error.');
+      showStalledBootError('App startup took too long', 'Retry to reconnect to Star Paper, or log out and sign in again.', 'app-helpers-timeout');
+      return false;
     }
-    // AUTH FIXPACK 2026-04-26 (Fix 2): always attempt the fast dashboard shell. The function
-    // self-guards each call with `typeof window.showApp === 'function'` etc., so a too-early
-    // call is a no-op rather than an error. Earliest reveal = safest reveal.
-    showAuthenticatedDashboardShell('bootstrap-fast-shell');
+    showAuthenticatedDashboardShell('bootstrap-fast-shell', { hydrationPending: true });
 
-    // AUTH FIXPACK 2 2026-04-27 (Fix 8): explicit boot-state transition so the
-    // loader text updates from "Signing in..." to "Syncing your workspace..."
-    // while data is being fetched. The loader element itself stays on top via
-    // sp-force-boot until line 2912 calls hideBootLoaderElement().
-    setBootStateSafe('booting-data');
+    if (window.__spAppBooted || isAppShellVisible()) {
+      updateSyncIndicator('syncing');
+    } else {
+      setBootStateSafe('booting-data');
+    }
 
     _refreshInFlight = true;
     window.__spCloudBootstrapPending = true;
@@ -4356,6 +4404,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
             snapshot: fresh,
             source: 'bootstrap',
           });
+          window.__spDataHydrationPending = false;
+          window.__spDataLoaded = true;
           if (window.__spAppBooted) {
             renderAppDataViews('bootstrap-fast-data'); // FIXED: background data paints into the already-visible dashboard shell.
           }
@@ -4694,17 +4744,18 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     // the Supabase SDK fires INITIAL_SESSION with a stale token (e.g. because
     // the server-side revocation hasn't propagated yet). Clean up and bail out.
     if (localStorage.getItem('sp_logged_out') === '1') {
-      if (event === 'SIGNED_IN' && session?.user) {
-        // Fresh login should override the logout flag.
-        localStorage.removeItem('sp_logged_out');
-      } else {
-        _session = null;
-        if (session) {
-          // A stale token survived — revoke it silently.
-          setTimeout(() => db.auth.signOut().catch(() => {}), 0);
-        }
-        return;
+      _session = null;
+      window.__spSuppressStoredSessionBootstrap = true;
+      if (session) {
+        clearSupabaseAuthArtifacts({ clearAppSession: false });
+        setTimeout(() => db.auth.signOut({ scope: 'local' }).catch(() => {}), 0);
       }
+      if (!window.__spAppBooted && !hasAuthCallbackInUrl()) {
+        deferAuthEventWork(`auth-event:${event}:explicit-logout`, async () => {
+          showLandingScreen({ instant: true, reason: 'explicit-logout-stale-auth' });
+        });
+      }
+      return;
     }
  
     if (session?.user && shouldSuppressPassiveAuthBootstrap(event)) {
@@ -6097,6 +6148,10 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         }
       }
 
+      // Set this before touching the SDK so any same-tick auth event cannot
+      // reinterpret a stale local token as a fresh sign-in.
+      localStorage.setItem('sp_logged_out', '1');
+
       // 2a. Tell the SDK to sign out (local scope so we don't wait on the network)
       //     so its in-memory state matches what we are about to do to localStorage.
       try {
@@ -6285,6 +6340,14 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       }
     }
     if (window.__spAuthRedirectInProgress) return false;
+    if (localStorage.getItem('sp_logged_out') === '1' && !hasAuthCallbackInUrl()) {
+      clearLocalBootFallback();
+      clearSupabaseAuthArtifacts({ clearAppSession: false });
+      _session = null;
+      window.__spSuppressStoredSessionBootstrap = true;
+      showLandingScreen({ instant: true, flowId, reason: 'initial-session-explicit-logout' });
+      return false;
+    }
     if (shouldStayOnPublicShell() && options.forceAppBootstrap !== true) {
       window.__spSuppressStoredSessionBootstrap = true;
       clearLocalBootFallback();

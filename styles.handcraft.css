@@ -4607,3 +4607,16 @@ html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .mini-nav-logo {
     letter-spacing: 0.08em !important;
   }
 }
+
+/* Screen isolation guard: final handcraft rules force #landingScreen to flex.
+   Respect app.js inline screen ownership when another shell is active. */
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen[style*="display: none"],
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen[style*="display:none"],
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen[style*="display: none"],
+html:not(.sp-prem-off):not(.sp-handcraft-off) #loginScreen[style*="display:none"],
+html:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer[style*="display: none"],
+html:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer[style*="display:none"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}

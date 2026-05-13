@@ -48,9 +48,9 @@ if (IS_LEGACY_NETLIFY_WORKER) {
     event.respondWith(Response.redirect(toCanonicalUrl(event.request.url), 302));
   });
 } else {
-const SHELL_VERSION = "142";
+const SHELL_VERSION = "146";
 const REPORT_BUNDLE_VERSION = "17";
-const APP_BUNDLE_VERSION = "121";
+const APP_BUNDLE_VERSION = "124";
 const CACHE_NAME = `star-paper-shell-v${SHELL_VERSION}`;
 const REPORT_RUNTIME_ASSETS = new Set(
   [
@@ -77,9 +77,9 @@ const APP_SHELL = [
   "./styles.css?v=53",
   "./styles.premium.css?v=8",
   "./styles.shell.css?v=11",
-  "./styles.handcraft.css?v=32",
+  "./styles.handcraft.css?v=33",
   "./star-paper-tokens.css?v=21",
-  "./supabase.js?v=68",
+  "./supabase.js?v=71",
   "./app.migrations.js?v=10",
   "./app.actions.js?v=8",
   "./app.todayboard.js?v=1",

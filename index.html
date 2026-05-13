@@ -50,21 +50,6 @@
           '/testimonials': '/testimonials.html',
           '/testimonials.html': '/testimonials.html'
         };
-        var appHashes = {
-          artists: true,
-          bookings: true,
-          calendar: true,
-          dashboard: true,
-          expenses: true,
-          financials: true,
-          global: true,
-          money: true,
-          otherIncome: true,
-          reports: true,
-          schedule: true,
-          settings: true,
-          tasks: true
-        };
         var pathname = (window.location.pathname || '/').replace(/\/+$/, '') || '/';
         var canonicalPath = publicRoutes[pathname];
         if (!canonicalPath) return;
@@ -75,7 +60,8 @@
         } catch (_err) {
           decodedHash = hash.replace(/^#/, '').trim();
         }
-        var targetHash = appHashes[decodedHash] ? '' : hash;
+        var appHashPattern = /^(artists|bookings|calendar|dashboard|expenses|financials|global|money|otherIncome|reports|schedule|settings|tasks)(?:[?&/].*)?$/i;
+        var targetHash = appHashPattern.test(decodedHash) ? '' : hash;
         var target = canonicalPath + (window.location.search || '') + targetHash;
         var current = window.location.pathname + (window.location.search || '') + hash;
         if (target !== current) {
@@ -85,10 +71,10 @@
     </script>
     <link rel="manifest" href="manifest.json?v=23">
     <meta name="theme-color" content="#0B0B0B">
-    <link rel="icon" type="image/png" sizes="32x32" href="/star_paper_logo_pack/star_paper_32.png?v=2">
-    <link rel="icon" type="image/png" sizes="256x256" href="/star_paper_logo_pack/star_paper_256.png?v=2">
-    <link rel="shortcut icon" type="image/png" href="/star_paper_logo_pack/star_paper_32.png?v=2">
-    <link rel="apple-touch-icon" sizes="256x256" href="/star_paper_logo_pack/star_paper_256.png?v=2">
+    <link rel="icon" type="image/png" sizes="32x32" href="star_paper_logo_pack/star_paper_32.png?v=3">
+    <link rel="icon" type="image/png" sizes="256x256" href="star_paper_logo_pack/star_paper_256.png?v=3">
+    <link rel="shortcut icon" type="image/png" href="star_paper_logo_pack/star_paper_32.png?v=3">
+    <link rel="apple-touch-icon" sizes="256x256" href="star_paper_logo_pack/star_paper_256.png?v=3">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://fxcyocdwvjiyatqnaahg.supabase.co" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -150,8 +136,8 @@
     <link rel="stylesheet" href="styles.premium.css?v=8">
     <link rel="stylesheet" href="styles.shell.css?v=11">
     <link rel="preload" as="image" href="/assets/landing/notebook-board-desktop.webp?v=3" imagesrcset="/assets/landing/notebook-board-desktop.webp?v=3">
-    <link rel="preload" as="image" href="/star_paper_logo_pack/star_paper_256.png?v=2">
-    <link rel="stylesheet" href="styles.handcraft.css?v=32">
+    <link rel="preload" as="image" href="star_paper_logo_pack/star_paper_transparent.png?v=3">
+    <link rel="stylesheet" href="styles.handcraft.css?v=33">
     <!-- Phosphor Icons — unified icon system -->
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
     <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
@@ -183,9 +169,11 @@
             url.searchParams.get('error_code') ||
             url.searchParams.get('error_description')
           );
-          // FIXED: show the auth loader before app.js loads when a Supabase session already exists.
-          const hasStoredCloudSession = localStorage.getItem('sp-starpaper-auth-v1') && localStorage.getItem('sp_logged_out') !== '1';
-          if (hasAuthCallback || hasStoredCloudSession || marker === 'app-shell' || marker === 'auth-return') {
+          const routePath = (url.pathname || '/').replace(/\/+$/, '') || '/';
+          const hashToken = decodeURIComponent((url.hash || '').replace(/^#/, '')).trim().split(/[?&/]/)[0].toLowerCase();
+          const isAppShellPath = routePath === '/' || routePath === '/index.html';
+          const hasAppHash = isAppShellPath && /^(artists|bookings|calendar|dashboard|expenses|financials|global|money|otherincome|reports|schedule|settings|tasks)$/.test(hashToken);
+          if (hasAuthCallback || hasAppHash || marker === 'auth-return') {
             document.documentElement.classList.add('sp-force-boot');
           }
         } catch (_err) {}
@@ -193,7 +181,7 @@
     </script>
     <div class="app-boot-loader hidden" id="appBootLoader" aria-live="polite" aria-hidden="true" data-state="loading-session">
         <div class="app-boot-loader__inner">
-            <img src="/star_paper_logo_pack/star_paper_128.png?v=2" srcset="/star_paper_logo_pack/star_paper_128.png?v=2 1x, /star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Star Paper" class="app-boot-loader__logo" />
+            <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="Star Paper" class="app-boot-loader__logo" />
             <div class="app-boot-loader__spinner" aria-hidden="true"></div>
             <div class="app-boot-loader__text" id="appBootLoaderText">Loading session...</div>
             <div class="app-boot-loader__subtext" id="appBootLoaderSubtext">Checking your secure cloud session...</div>
@@ -209,7 +197,7 @@
         <!-- Sticky mini-nav (appears after scrolling past hero CTA on mobile) -->
         <div class="landing-mini-nav" id="landingMiniNav" aria-hidden="true">
             <a class="landing-mini-nav-brand" href="./index.html" aria-label="Go to Star Paper home">
-                <img src="/star_paper_logo_pack/star_paper_128.png?v=2" srcset="/star_paper_logo_pack/star_paper_128.png?v=2 1x, /star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Star Paper" class="mini-nav-logo">
+                <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="Star Paper" class="mini-nav-logo">
                 <span class="mini-nav-brand">STAR PAPER</span>
             </a>
             <button class="mini-nav-cta" data-action="showSignupForm" onclick="showSignupForm()">Get Started</button>
@@ -225,7 +213,7 @@
                 <div class="landing-hero-rail">
                     <div class="landing-shell-nav">
                         <a class="landing-shell-brand" href="./index.html" aria-label="Go to Star Paper home">
-                            <img src="/star_paper_logo_pack/star_paper_128.png?v=2" srcset="/star_paper_logo_pack/star_paper_128.png?v=2 1x, /star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Star Paper" class="landing-shell-logo" />
+                            <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="Star Paper" class="landing-shell-logo" />
                             <span class="landing-shell-brand-text">STAR PAPER</span>
                         </a>
                         <nav class="landing-handcraft-desktop-nav" aria-label="Landing sections">
@@ -248,7 +236,7 @@
                             <div class="sp-prem-hero-copy">
                                 <div class="landing-hero-intro">
                                     <div class="landing-hero-medallion">
-                                        <img src="/star_paper_logo_pack/star_paper_256.png?v=2" srcset="/star_paper_logo_pack/star_paper_256.png?v=2 1x, /star_paper_logo_pack/star_paper_512.png?v=2 2x" alt="Star Paper" class="landing-hero-medallion-logo" />
+                                        <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="Star Paper" class="landing-hero-medallion-logo" />
                                     </div>
                                     <div class="landing-shell-kicker">The Manager&apos;s Mainstage</div>
                                 </div>
@@ -283,7 +271,7 @@
                                         <line x1="6"   y1="120" x2="32"  y2="120" stroke-width="1"></line>
                                         <line x1="208" y1="120" x2="234" y2="120" stroke-width="1"></line>
                                     </svg>
-                                    <img src="/star_paper_logo_pack/star_paper_256.png?v=2" srcset="/star_paper_logo_pack/star_paper_256.png?v=2 1x, /star_paper_logo_pack/star_paper_512.png?v=2 2x" alt="" class="sp-compass__mark" />
+                                    <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="" class="sp-compass__mark" />
                                     <span class="sp-compass__label sp-compass__label--n">Bookings</span>
                                     <span class="sp-compass__label sp-compass__label--e">Money</span>
                                     <span class="sp-compass__label sp-compass__label--s">Tasks</span>
@@ -335,7 +323,7 @@
                 <p class="sp-handcraft-proof-copy" data-handcraft-tw-done="1">Built for artist managers, labels, and teams</p>
             </div>
             <a class="sp-prem-landing-footer__brand" href="./index.html" aria-label="Go to Star Paper home">
-                <img src="/star_paper_logo_pack/star_paper_128.png?v=2" srcset="/star_paper_logo_pack/star_paper_128.png?v=2 1x, /star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Star Paper" class="sp-prem-landing-footer__logo" />
+                <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="Star Paper" class="sp-prem-landing-footer__logo" />
                 <div>
                     <div class="sp-prem-landing-footer__name">STAR PAPER</div>
                     <div class="sp-prem-landing-footer__meta">&copy; 2026 Star Paper</div>
@@ -352,7 +340,7 @@
                 <div>Logging in...</div>
             </div>
             <a class="logo login-home-link" href="#landingScreen" data-action="showLanding" onclick="showLanding(); return false;" aria-label="Return to Star Paper landing">
-                <img src="/star_paper_logo_pack/star_paper_128.png?v=2" srcset="/star_paper_logo_pack/star_paper_128.png?v=2 1x, /star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Star Paper" class="login-box-logo" />
+                <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="Star Paper" class="login-box-logo" />
                 <p id="loginBoxHeading">Welcome back to Star Paper</p>
                 <small class="login-subtext" id="loginBoxSubtext">Sign in to continue to your dashboard.</small>
             </a>
@@ -439,7 +427,7 @@
             <div class="sidebar-profile">
                 <div class="sidebar-profile-content">
                     <div class="sidebar-avatar sidebar-avatar--brand-mark">
-                        <img src="/star_paper_logo_pack/star_paper_128.png?v=2" srcset="/star_paper_logo_pack/star_paper_128.png?v=2 1x, /star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="User Avatar" class="avatar-img avatar-img--brand-mark" id="sidebarAvatarImg">
+                        <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="User Avatar" class="avatar-img avatar-img--brand-mark" id="sidebarAvatarImg">
                     </div>
                 <div class="sidebar-greeting">
                     <div class="greeting-name" id="sidebarUserName">Manager</div>
@@ -529,7 +517,7 @@
                 <div class="header-left">
                     <button class="hamburger" id="hamburgerBtn" aria-label="Toggle navigation" aria-expanded="false"><i class="ph ph-list" aria-hidden="true"></i></button>
                     <button class="app-brand" type="button" data-action="showSection" onclick="showSection('dashboard')" aria-label="Go to dashboard">
-                        <img src="/star_paper_logo_pack/star_paper_128.png?v=2" srcset="/star_paper_logo_pack/star_paper_128.png?v=2 1x, /star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Star Paper">
+                        <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="Star Paper">
                     </button>
                     <!-- In-app back / forward navigation -->
                     <div class="nav-hist-wrap" id="navHistWrap">
@@ -1394,7 +1382,7 @@
                             <div class="settings-panel-label">Profile</div>
                             <div class="settings-profile-summary">
                                 <div class="sidebar-avatar settings-profile-avatar sidebar-avatar--brand-mark">
-                                    <img src="/star_paper_logo_pack/star_paper_128.png?v=2" srcset="/star_paper_logo_pack/star_paper_128.png?v=2 1x, /star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Settings profile avatar" class="avatar-img avatar-img--brand-mark" id="settingsAvatarImg">
+                                    <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="Settings profile avatar" class="avatar-img avatar-img--brand-mark" id="settingsAvatarImg">
                                 </div>
                                 <div class="settings-profile-copy">
                                     <div class="settings-profile-name" id="settingsProfileName">Manager</div>
@@ -1500,7 +1488,7 @@
             <h3 class="section-title" data-icon="dashboard">Edit Profile</h3>
             <div class="profile-avatar-row">
                 <div class="sidebar-avatar profile-avatar-preview sidebar-avatar--brand-mark">
-                    <img src="/star_paper_logo_pack/star_paper_128.png?v=2" srcset="/star_paper_logo_pack/star_paper_128.png?v=2 1x, /star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Profile Avatar" class="avatar-img avatar-img--brand-mark" id="profileAvatarPreview">
+                    <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="Profile Avatar" class="avatar-img avatar-img--brand-mark" id="profileAvatarPreview">
                 </div>
                 <div class="profile-avatar-actions">
                     <label class="action-btn profile-upload-btn" for="profileAvatarUpload">Upload Photo</label>
@@ -1567,7 +1555,7 @@
                 <div class="footer-section footer-bottom">
                     <div class="footer-copyright-wrap">
                         <span class="logo-wrapper footer-logo-wrapper">
-                            <img src="/star_paper_logo_pack/star_paper_128.png?v=2" srcset="/star_paper_logo_pack/star_paper_128.png?v=2 1x, /star_paper_logo_pack/star_paper_256.png?v=2 2x" alt="Star Paper Footer Logo" class="brand-logo logo-footer" loading="lazy">
+                            <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="Star Paper Footer Logo" class="brand-logo logo-footer" loading="lazy">
                         </span>
                         <p class="footer-copyright">&copy; 2026 Star Paper. All rights reserved.</p>
                     </div>
@@ -1643,13 +1631,13 @@
           loaded above, and these deferred scripts keep document order:
           Supabase boot wiring is installed before app.js initializes UI helpers.
         -->
-<script src="supabase.js?v=68" defer></script>
+<script src="supabase.js?v=71" defer></script>
         <script src="app.migrations.js?v=10"></script>
         <script src="app.actions.js?v=8"></script>
         <script src="app.todayboard.js?v=1"></script>
         <script src="app.tasks.js?v=4"></script>
     <script src="app.reports.js?v=17"></script>
-<script src="app.js?v=121" defer></script>
+<script src="app.js?v=124" defer></script>
 <script src="app.handcraft.js?v=18" defer></script>
 <script>
 (function setupDeferredLibraries() {
@@ -1797,22 +1785,23 @@
           );
           if (hasAuthCallback) return;
           var marker = '';
-          var hasStoredCloudSession = false;
+          var hasAppHash = false;
           var publicAuthIntent = '';
           try {
             marker = sessionStorage.getItem('sp_boot_context') || '';
-            hasStoredCloudSession = Boolean(localStorage.getItem('sp-starpaper-auth-v1')) && localStorage.getItem('sp_logged_out') !== '1';
             publicAuthIntent = (url.searchParams.get('auth') || url.searchParams.get('screen') || '').toLowerCase();
             var publicHash = decodeURIComponent((url.hash || '').replace(/^#/, '')).toLowerCase();
             if (!publicAuthIntent && (publicHash === 'signup' || publicHash === 'create-account')) publicAuthIntent = 'signup';
             if (!publicAuthIntent && (publicHash === 'login' || publicHash === 'signin')) publicAuthIntent = 'login';
+            var routePath = (url.pathname || '/').replace(/\/+$/, '') || '/';
+            var hashToken = publicHash.trim().split(/[?&/]/)[0];
+            hasAppHash = (routePath === '/' || routePath === '/index.html') &&
+              /^(artists|bookings|calendar|dashboard|expenses|financials|global|money|otherincome|reports|schedule|settings|tasks)$/.test(hashToken);
           } catch (_err) {}
           if (
             window.__spAppBooted ||
-            window.__spBootContext === 'app-refresh' ||
-            marker === 'app-shell' ||
             marker === 'auth-return' ||
-            hasStoredCloudSession
+            hasAppHash
           ) {
             return;
           }
