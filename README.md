@@ -8,7 +8,7 @@ Star Paper now runs on a **cloud-only runtime**:
 
 - **Supabase Auth** is the only source of truth for sign-in, sign-out, refresh restore, and account state.
 - **Supabase Postgres** is the authoritative store for bookings, expenses, other income, artists, BBF, revenue goals, closing thoughts, tasks, and profile data.
-- **Browser storage is non-authoritative** and is only used for UI helpers such as theme, density, drafts, retry transport, boot context, and last-view restore.
+- **Browser storage is non-authoritative** and is only used for UI helpers such as theme, density, drafts, account-scoped retry transport, boot context, and last-view restore.
 - **Cross-browser and cross-session sync** is expected for the same account because the app always rehydrates from the cloud.
 
 ## Documentation

@@ -12,25 +12,25 @@
   "categories": ["business", "finance", "productivity"],
   "icons": [
     {
-      "src": "/star_paper_logo_pack/star_paper_32.png?v=2",
+      "src": "/star_paper_logo_pack/star_paper_32.png?v=3",
       "sizes": "32x32",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/star_paper_logo_pack/star_paper_128.png?v=2",
+      "src": "/star_paper_logo_pack/star_paper_128.png?v=3",
       "sizes": "128x128",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/star_paper_logo_pack/star_paper_256.png?v=2",
+      "src": "/star_paper_logo_pack/star_paper_256.png?v=3",
       "sizes": "256x256",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/star_paper_logo_pack/star_paper_512.png?v=2",
+      "src": "/star_paper_logo_pack/star_paper_512.png?v=3",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
@@ -42,14 +42,14 @@
       "short_name": "Booking",
       "description": "Log a new artist booking",
       "url": "/#bookings",
-      "icons": [{ "src": "/star_paper_logo_pack/star_paper_256.png?v=2", "sizes": "256x256" }]
+      "icons": [{ "src": "/star_paper_logo_pack/star_paper_256.png?v=3", "sizes": "256x256" }]
     },
     {
       "name": "Add Expense",
       "short_name": "Expense",
       "description": "Log a new expense",
       "url": "/#expenses",
-      "icons": [{ "src": "/star_paper_logo_pack/star_paper_256.png?v=2", "sizes": "256x256" }]
+      "icons": [{ "src": "/star_paper_logo_pack/star_paper_256.png?v=3", "sizes": "256x256" }]
     }
   ],
   "screenshots": [],

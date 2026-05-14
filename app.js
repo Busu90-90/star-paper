@@ -1110,7 +1110,7 @@ function getSectionIconMarkup(iconKey) {
 
         function resolveDisplayAvatar(user) {
             const raw = String(user?.avatar || '').trim();
-            if (!raw) return '/star_paper_logo_pack/star_paper_128.png?v=2';
+            if (!raw) return '/star_paper_logo_pack/star_paper_128.png?v=3';
             if (raw.startsWith('data:image/') || raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('./') || raw.startsWith('/')) {
                 return raw;
             }
@@ -4794,7 +4794,7 @@ function showLoginForm(options = {}) {
                     return {
                         cloudSynced: false,
                         skipped: false,
-                        queued: false,
+                        queued: Boolean(result.queued || result.context?.queued),
                         error: result.error || null,
                         message: result.message || 'Cloud save failed.',
                         result,
@@ -4810,11 +4810,13 @@ function showLoginForm(options = {}) {
                 };
             }).catch((err) => {
                 console.warn('Cloud sync failed:', err);
+                const syncResult = err?.syncResult || null;
                 return {
                     cloudSynced: false,
                     skipped: false,
-                    queued: false,
+                    queued: Boolean(syncResult?.queued || syncResult?.context?.queued),
                     error: err,
+                    result: syncResult,
                     payload
                 };
             }).finally(() => {
@@ -8392,8 +8394,8 @@ function showLoginForm(options = {}) {
                     if (reg) {
                         reg.showNotification(title, {
                             body,
-                            icon: '/star_paper_logo_pack/star_paper_transparent.png?v=2',
-                            badge: '/star_paper_logo_pack/star_paper_transparent.png?v=2'
+                            icon: '/star_paper_logo_pack/star_paper_transparent.png?v=3',
+                            badge: '/star_paper_logo_pack/star_paper_transparent.png?v=3'
                         });
                     } else {
                         new Notification(title, { body });
@@ -10372,7 +10374,7 @@ function showLoginForm(options = {}) {
             // regression risk. Reverted to the canonical CLAUDE.md §2 approach: users
             // get a fresh shell on next manual reload after the new SW activates.
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=146').then((registration) => {
+                navigator.serviceWorker.register('sw.js?v=147').then((registration) => {
                     registration?.update?.().catch(() => {});
                 }).catch((error) => {
                     console.warn('Service worker registration failed:', error);

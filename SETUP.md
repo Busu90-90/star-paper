@@ -102,7 +102,7 @@ Browser storage is allowed only for:
 - boot context
 - last-view restore
 - form drafts
-- retry transport state
+- account-scoped retry transport state
 - push configuration and similar device-specific UI settings
 
 Browser storage is **not** authoritative for:

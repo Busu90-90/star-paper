@@ -2885,9 +2885,10 @@ body.light-theme .custom-select__option { color: #1b1b1b; }
 }
 .sp-global-schedule__stage canvas:active { cursor: grabbing; }
 
-.sp-global-schedule__rail,
 .sp-global-schedule__detail,
-.sp-global-schedule__toolbar {
+.sp-global-schedule__toolbar,
+.sp-global-schedule__key,
+.sp-global-sheet__panel {
     position: absolute;
     z-index: 3;
     color: #f7fbf7;
@@ -2898,15 +2899,7 @@ body.light-theme .custom-select__option { color: #1b1b1b; }
     box-shadow: 0 18px 54px rgba(0, 0, 0, 0.36);
 }
 .sp-global-schedule__rail {
-    left: 14px;
-    top: 14px;
-    width: min(212px, calc(100% - 28px));
-    max-height: min(330px, calc(100% - 112px));
-    border-radius: 14px;
-    padding: 12px;
-    overflow: auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(212, 168, 67, 0.42) transparent;
+    display: none !important;
 }
 .sp-global-schedule__detail {
     right: 14px;
@@ -2930,6 +2923,192 @@ body.light-theme .custom-select__option { color: #1b1b1b; }
     width: min(420px, calc(100% - 28px));
     border-radius: 14px;
     padding: 8px;
+}
+.sp-global-schedule__key {
+    right: 16px;
+    bottom: 16px;
+    z-index: 4;
+    width: min(270px, calc(100% - 32px));
+    border-radius: 16px;
+    padding: 13px;
+    display: grid;
+    gap: 10px;
+}
+.sp-global-key__eyebrow,
+.sp-global-sheet__kicker {
+    color: #f0c969;
+    font-size: 10px;
+    font-weight: 850;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+}
+.sp-global-key__counts {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 10px;
+}
+.sp-global-key__counts span {
+    display: grid;
+    gap: 2px;
+    color: rgba(247, 251, 247, 0.66);
+    font-size: 10px;
+    font-weight: 750;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+.sp-global-key__counts strong {
+    color: #fff7dc;
+    font-size: 24px;
+    line-height: 1;
+}
+.sp-global-key__counts i {
+    width: 1px;
+    height: 32px;
+    background: linear-gradient(180deg, transparent, rgba(212, 168, 67, 0.52), transparent);
+}
+.sp-global-key__legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.sp-global-key__legend span {
+    min-height: 24px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 7px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.24);
+    color: rgba(247, 251, 247, 0.74);
+    font-size: 9px;
+    font-weight: 750;
+}
+.sp-global-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    display: inline-block;
+}
+.sp-global-dot--upcoming {
+    background: #d4a843;
+    box-shadow: 0 0 12px rgba(212, 168, 67, 0.65);
+}
+.sp-global-dot--past { background: #a49b8d; }
+.sp-global-arc {
+    width: 18px;
+    height: 2px;
+    border-radius: 999px;
+    background: #ffcf5a;
+    box-shadow: 0 0 12px rgba(255, 207, 90, 0.5);
+}
+.sp-global-key__selected {
+    display: grid;
+    gap: 2px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+.sp-global-key__selected strong {
+    color: #ffcf5a;
+    font-size: 12px;
+    line-height: 1.2;
+}
+.sp-global-key__selected span {
+    color: rgba(247, 251, 247, 0.66);
+    font-size: 10px;
+    line-height: 1.35;
+}
+.sp-global-key__open {
+    width: 100%;
+    min-height: 38px;
+    margin: 0;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 213, 112, 0.46);
+    background: linear-gradient(135deg, rgba(212, 168, 67, 0.86), rgba(92, 59, 0, 0.88));
+    color: #fff8dc;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 850;
+    cursor: pointer;
+}
+.sp-global-key__open:disabled {
+    cursor: not-allowed;
+    opacity: 0.62;
+}
+.sp-global-schedule__sheet {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    display: flex;
+    align-items: flex-end;
+    pointer-events: none;
+    background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.42) 100%);
+    opacity: 0;
+    transition: opacity 220ms ease;
+}
+.sp-global-schedule__sheet.is-open {
+    pointer-events: auto;
+    opacity: 1;
+}
+.sp-global-sheet__panel {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    max-height: min(60vh, calc(100% - 44px));
+    border-radius: 20px 20px 0 0;
+    padding: 0;
+    overflow: hidden;
+    transform: translateY(102%);
+    transition: transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.sp-global-schedule__sheet.is-open .sp-global-sheet__panel {
+    transform: translateY(0);
+}
+.sp-global-sheet__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.11);
+}
+.sp-global-sheet__title {
+    margin: 2px 0 0;
+    color: #fff;
+    font-size: clamp(25px, 3vw, 36px);
+    line-height: 1;
+}
+.sp-global-sheet__close {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    margin: 0;
+    padding: 0;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(0, 0, 0, 0.22);
+    color: #fff4c9;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.sp-global-sheet__body {
+    max-height: calc(min(60vh, 100%) - 76px);
+    overflow: auto;
+    padding: 16px 18px 18px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(212, 168, 67, 0.42) transparent;
+}
+.sp-global-sheet__body .sp-global-stop {
+    grid-template-columns: 68px 1fr;
+    padding: 13px;
+    border-radius: 14px;
 }
 .sp-global-panel-title {
     color: #fff;
@@ -3189,11 +3368,10 @@ body.light-theme .custom-select__option { color: #1b1b1b; }
         min-height: 0;
         padding: 10px;
         display: grid;
-        grid-template-rows: 330px auto auto auto;
+        grid-template-rows: 330px auto auto;
         gap: 10px;
     }
     .sp-global-schedule__stage,
-    .sp-global-schedule__rail,
     .sp-global-schedule__detail,
     .sp-global-schedule__toolbar {
         position: relative;
@@ -3206,15 +3384,24 @@ body.light-theme .custom-select__option { color: #1b1b1b; }
         border-radius: 14px;
         overflow: hidden;
     }
-    .sp-global-schedule__rail {
-        max-height: 170px;
-    }
     .sp-global-schedule__detail {
         max-height: 260px;
     }
     .sp-global-schedule__toolbar {
-        order: 4;
+        order: 3;
         flex-wrap: wrap;
+    }
+    .sp-global-schedule__key {
+        right: 18px;
+        bottom: 74px;
+        width: min(260px, calc(100% - 36px));
+    }
+    .sp-global-sheet__panel {
+        max-height: min(80vh, calc(100% - 24px));
+    }
+    .sp-global-sheet__body {
+        max-height: calc(min(80vh, 100%) - 76px);
+        grid-template-columns: 1fr;
     }
     .sp-global-schedule__fallback {
         position: relative;
@@ -3226,24 +3413,39 @@ body.light-theme .custom-select__option { color: #1b1b1b; }
 @media (max-width: 560px) {
     .sp-global-schedule {
         margin: 0 -4px;
-        grid-template-rows: 290px auto auto auto;
+        grid-template-rows: 290px auto auto;
         border-radius: 14px;
     }
     .sp-global-schedule__stage {
         min-height: 290px;
     }
-    .sp-global-schedule__rail,
     .sp-global-schedule__detail {
         padding: 10px;
     }
     .sp-global-stop {
         grid-template-columns: 48px 1fr;
     }
-    .sp-global-schedule__rail {
-        max-height: 148px;
-    }
     .sp-global-schedule__detail {
         max-height: 236px;
+    }
+    .sp-global-schedule__key {
+        right: 12px;
+        bottom: 66px;
+        width: min(236px, calc(100% - 24px));
+        padding: 10px;
+    }
+    .sp-global-key__legend span {
+        font-size: 8px;
+        padding-inline: 6px;
+    }
+    .sp-global-sheet__header {
+        padding: 14px 14px 10px;
+    }
+    .sp-global-sheet__body {
+        padding: 12px 14px 16px;
+    }
+    .sp-global-sheet__body .sp-global-stop {
+        grid-template-columns: 52px 1fr;
     }
     .sp-global-tool span {
         display: none;
@@ -3260,6 +3462,13 @@ body.light-theme .custom-select__option { color: #1b1b1b; }
     }
     .sp-global-pin-card small {
         font-size: 8px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sp-global-schedule__sheet,
+    .sp-global-sheet__panel {
+        transition: none;
     }
 }
 

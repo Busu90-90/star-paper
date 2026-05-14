@@ -69,7 +69,7 @@
         }
       })();
     </script>
-    <link rel="manifest" href="manifest.json?v=23">
+    <link rel="manifest" href="manifest.json?v=24">
     <meta name="theme-color" content="#0B0B0B">
     <link rel="icon" type="image/png" sizes="32x32" href="star_paper_logo_pack/star_paper_32.png?v=3">
     <link rel="icon" type="image/png" sizes="256x256" href="star_paper_logo_pack/star_paper_256.png?v=3">
@@ -118,13 +118,20 @@
       /* UPGRADE: Premium polish kill-switch failsafe (also in styles.premium.css) */
       html.sp-prem-off .sp-prem-widget { display: none !important; }
       html.sp-handcraft-off .sp-handcraft-widget { display: none !important; }
+      html.sp-shell-off .sp-shell-widget { display: none !important; }
     </style>
     <script>
-      (function applyHandcraftFlagBeforePaint() {
+      (function applyPolishFlagsBeforePaint() {
         try {
-          if (localStorage.getItem('sp_handcraft_off') === '1' || localStorage.getItem('sp_prem_off') === '1') {
+          var premOff = localStorage.getItem('sp_prem_off') === '1';
+          var handcraftOff = localStorage.getItem('sp_handcraft_off') === '1';
+          var shellOff = localStorage.getItem('sp_shell_refined_off') === '1';
+          if (premOff) document.documentElement.classList.add('sp-prem-off');
+          if (handcraftOff || premOff) {
             document.documentElement.classList.add('sp-handcraft-off');
           }
+          document.documentElement.classList.toggle('sp-shell-refined', !premOff && !handcraftOff && !shellOff);
+          document.documentElement.classList.toggle('sp-shell-off', premOff || handcraftOff || shellOff);
         } catch (_err) {}
       })();
     </script>
@@ -134,7 +141,7 @@
     <link rel="stylesheet" href="star-paper-tokens.css?v=21">
     <!-- UPGRADE: Premium polish layer (additive, kill-switchable via localStorage.sp_prem_off) -->
     <link rel="stylesheet" href="styles.premium.css?v=8">
-    <link rel="stylesheet" href="styles.shell.css?v=11">
+    <link rel="stylesheet" href="styles.shell.css?v=12">
     <link rel="preload" as="image" href="/assets/landing/notebook-board-desktop.webp?v=3" imagesrcset="/assets/landing/notebook-board-desktop.webp?v=3">
     <link rel="preload" as="image" href="star_paper_logo_pack/star_paper_transparent.png?v=3">
     <link rel="stylesheet" href="styles.handcraft.css?v=33">
@@ -149,6 +156,8 @@
       (function applyStoredThemeBeforePaint() {
         try {
           document.body.classList.toggle('light-theme', localStorage.getItem('starPaperTheme') === 'light');
+          document.body.classList.toggle('sp-shell-refined', document.documentElement.classList.contains('sp-shell-refined'));
+          document.body.classList.toggle('sp-shell-off', document.documentElement.classList.contains('sp-shell-off'));
         } catch (_err) {}
       })();
     </script>
@@ -1173,8 +1182,23 @@
                 <div class="sp-tab-panel sp-tab-panel--active" id="schedulePanel-global">
                     <div class="sp-global-schedule" id="globalScheduleGlobe" aria-label="Global Schedule interactive tour globe">
                         <div class="sp-global-schedule__stage" id="globalScheduleStage"></div>
-                        <div class="sp-global-schedule__rail" id="globalScheduleItinerary" aria-label="Tour itinerary"></div>
+                        <div class="sp-global-schedule__rail" id="globalScheduleItinerary" aria-label="Tour itinerary" hidden></div>
                         <div class="sp-global-schedule__detail" id="globalScheduleDetail" aria-live="polite"></div>
+                        <div class="sp-global-schedule__key" id="globalScheduleKey" aria-live="polite"></div>
+                        <div class="sp-global-schedule__sheet" id="globalScheduleSheet" aria-hidden="true">
+                            <div class="sp-global-sheet__panel" role="dialog" aria-modal="false" aria-labelledby="globalScheduleSheetTitle">
+                                <div class="sp-global-sheet__header">
+                                    <div>
+                                        <span class="sp-global-sheet__kicker">Itinerary</span>
+                                        <h3 class="sp-global-sheet__title" id="globalScheduleSheetTitle">Tour list</h3>
+                                    </div>
+                                    <button type="button" class="sp-global-sheet__close" data-globe-action="close-sheet" aria-label="Close itinerary">
+                                        <i class="ph ph-x" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                                <div class="sp-global-sheet__body" id="globalScheduleSheetBody"></div>
+                            </div>
+                        </div>
                         <div class="sp-global-schedule__toolbar">
                             <button type="button" class="sp-global-tool sp-global-tool--primary" data-globe-action="auto-tour" aria-label="Auto tour">
                                 <i class="ph ph-play" aria-hidden="true"></i>
@@ -1656,12 +1680,16 @@
       global: 'jspdf'
     },
     globe: {
-      src: 'app.globe.js?v=6',
+      src: 'app.globe.js?v=7',
       module: true,
       optional: true
     },
     premium: {
       src: 'app.premium.js?v=4',
+      optional: true
+    },
+    shell: {
+      src: 'app.shell.js?v=1',
       optional: true
     }
   };
@@ -1738,7 +1766,11 @@
       });
     }, 1000);
     idle(function() { loadScript('globe').catch(function() {}); }, 1600);
-    idle(function() { loadScript('premium').catch(function() {}); }, 1800);
+    idle(function() {
+      loadScript('premium')
+        .catch(function() {})
+        .then(function() { return loadScript('shell').catch(function() {}); });
+    }, 1800);
   };
 
   window.addEventListener('load', function() {

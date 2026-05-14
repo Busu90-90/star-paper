@@ -29,7 +29,7 @@ The browser may keep local helper state for:
 
 - boot context
 - logout guard
-- sync retry queue
+- account-scoped sync retry queue
 - theme
 - density
 - currency preference
@@ -45,7 +45,7 @@ The browser may keep local helper state for:
 
 - `sp_boot_context`
 - `sp_logged_out`
-- `sp_retry_queue`
+- `sp_retry_queue` (account-scoped retry transport)
 - `sp_currency`
 - `sp_density`
 - `sp_sidebar_collapsed`

@@ -5,10 +5,15 @@ const ROOT_ID = 'globalScheduleGlobe';
 const STAGE_ID = 'globalScheduleStage';
 const ITINERARY_ID = 'globalScheduleItinerary';
 const DETAIL_ID = 'globalScheduleDetail';
+const KEY_ID = 'globalScheduleKey';
+const SHEET_ID = 'globalScheduleSheet';
+const SHEET_BODY_ID = 'globalScheduleSheetBody';
 const RADIUS = 2.15;
+const LOCAL_WORLD_ATLAS_URL = '/assets/world-atlas/land-50m.json?v=1';
 const WORLD_ATLAS_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json';
 const TOPOJSON_CLIENT_URL = 'https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/+esm';
 const isReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true;
+let cachedLandShapes = null;
 
 const LOCATION_COORDS = {
   Kampala: { lat: 0.3476, lng: 32.5825, label: 'Kampala, UG' },
@@ -288,23 +293,42 @@ function drawProjectedPolygon(ctx, points, width, height) {
   ctx.closePath();
 }
 
-function makeLandTexture(landShapes = FALLBACK_LAND_SHAPES) {
-  const width = 2048;
-  const height = 1024;
+function getProjectedBounds(shape, width, height) {
+  const bounds = { minX: width, minY: height, maxX: 0, maxY: 0 };
+  getShapeRings(shape).forEach((ring) => {
+    ring.forEach(([lng, lat]) => {
+      const [x, y] = projectLngLat(lng, lat, width, height);
+      bounds.minX = Math.min(bounds.minX, x);
+      bounds.minY = Math.min(bounds.minY, y);
+      bounds.maxX = Math.max(bounds.maxX, x);
+      bounds.maxY = Math.max(bounds.maxY, y);
+    });
+  });
+  if (bounds.minX > bounds.maxX || bounds.minY > bounds.maxY) {
+    return { minX: 0, minY: 0, maxX: width, maxY: height };
+  }
+  return bounds;
+}
+
+function makeLandTexture(landShapes = FALLBACK_LAND_SHAPES, anisotropy = 8) {
+  const width = 4096;
+  const height = 2048;
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, width, height);
-  const fill = ctx.createLinearGradient(0, 0, width, height);
-  fill.addColorStop(0, 'rgba(210, 170, 72, 0.88)');
-  fill.addColorStop(0.52, 'rgba(214, 209, 196, 0.78)');
-  fill.addColorStop(1, 'rgba(126, 116, 94, 0.82)');
 
   ctx.save();
   ctx.shadowColor = 'rgba(255, 203, 92, 0.42)';
-  ctx.shadowBlur = 14;
-  landShapes.forEach((shape) => {
+  ctx.shadowBlur = 16;
+  landShapes.forEach((shape, index) => {
+    const bounds = getProjectedBounds(shape, width, height);
+    const fill = ctx.createLinearGradient(bounds.minX, bounds.minY, bounds.maxX || width, bounds.maxY || height);
+    const warmth = (index % 5) * 0.025;
+    fill.addColorStop(0, `rgba(${Math.round(218 + warmth * 120)}, ${Math.round(178 + warmth * 80)}, 76, 0.95)`);
+    fill.addColorStop(0.54, 'rgba(232, 222, 196, 0.9)');
+    fill.addColorStop(1, 'rgba(126, 116, 94, 0.94)');
     ctx.beginPath();
     getShapeRings(shape).forEach((ring) => drawProjectedPolygon(ctx, ring, width, height));
     ctx.fillStyle = fill;
@@ -315,8 +339,8 @@ function makeLandTexture(landShapes = FALLBACK_LAND_SHAPES) {
   ctx.save();
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
-  ctx.strokeStyle = 'rgba(232, 225, 207, 0.72)';
-  ctx.lineWidth = 2.2;
+  ctx.strokeStyle = 'rgba(241, 230, 196, 0.92)';
+  ctx.lineWidth = 3;
   landShapes.forEach((shape) => {
     ctx.beginPath();
     getShapeRings(shape).forEach((ring) => drawProjectedPolygon(ctx, ring, width, height));
@@ -326,18 +350,17 @@ function makeLandTexture(landShapes = FALLBACK_LAND_SHAPES) {
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 8;
+  texture.anisotropy = Math.max(8, anisotropy || 8);
   texture.needsUpdate = true;
   return texture;
 }
 
 async function loadWorldLandShapes() {
-  const [{ feature }, response] = await Promise.all([
+  if (cachedLandShapes) return cachedLandShapes;
+  const [{ feature }, topology] = await Promise.all([
     import(TOPOJSON_CLIENT_URL),
-    fetch(WORLD_ATLAS_URL, { cache: 'force-cache' }),
+    loadWorldTopology(),
   ]);
-  if (!response.ok) throw new Error(`World map unavailable (${response.status})`);
-  const topology = await response.json();
   const geo = feature(topology, topology.objects.land);
   const features = geo.type === 'FeatureCollection' ? geo.features : [geo];
   const shapes = [];
@@ -363,7 +386,26 @@ async function loadWorldLandShapes() {
       }
     });
   });
-  return shapes.length ? shapes : FALLBACK_LAND_SHAPES;
+  cachedLandShapes = shapes.length ? shapes : FALLBACK_LAND_SHAPES;
+  return cachedLandShapes;
+}
+
+async function fetchTopology(url) {
+  const response = await fetch(url, { cache: 'force-cache' });
+  if (!response.ok) throw new Error(`World map unavailable (${response.status})`);
+  return response.json();
+}
+
+async function loadWorldTopology() {
+  const errors = [];
+  for (const url of [LOCAL_WORLD_ATLAS_URL, WORLD_ATLAS_URL]) {
+    try {
+      return await fetchTopology(url);
+    } catch (err) {
+      errors.push(err);
+    }
+  }
+  throw errors[0] || new Error('World map unavailable');
 }
 
 const FALLBACK_LAND_SHAPES = LAND_POLYGONS.map(prepareLandShape);
@@ -395,6 +437,9 @@ class StarPaperGlobe {
     this.stage = document.getElementById(STAGE_ID);
     this.itinerary = document.getElementById(ITINERARY_ID);
     this.detail = document.getElementById(DETAIL_ID);
+    this.key = document.getElementById(KEY_ID);
+    this.sheet = document.getElementById(SHEET_ID);
+    this.sheetBody = document.getElementById(SHEET_BODY_ID);
     this.bookings = [];
     this.pinSprites = [];
     this.arcLines = [];
@@ -407,6 +452,8 @@ class StarPaperGlobe {
     this.focusHoldUntil = 0;
     this.defaultDistance = 8.05;
     this.previewIndex = null;
+    this.sheetOpen = false;
+    this.lastSheetTrigger = null;
     this.clock = new THREE.Clock();
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2();
@@ -438,23 +485,35 @@ class StarPaperGlobe {
     this.controls.autoRotate = false;
     this.controls.addEventListener('start', () => this.cancelFocusAnimation());
 
+    this.scene.add(new THREE.AmbientLight(0xffe6b8, 0.55));
+    const sun = new THREE.DirectionalLight(0xfff2d4, 1.15);
+    sun.position.set(-5, 3, 4);
+    this.scene.add(sun);
+
     this.globeGroup = new THREE.Group();
     this.scene.add(this.globeGroup);
 
     const earthShell = new THREE.Mesh(
       new THREE.SphereGeometry(RADIUS * 0.992, 64, 32),
-      new THREE.MeshBasicMaterial({ color: 0x050505, transparent: true, opacity: 0.86 })
+      new THREE.MeshStandardMaterial({
+        color: 0x0c1018,
+        roughness: 0.92,
+        metalness: 0.06,
+      })
     );
     this.globeGroup.add(earthShell);
 
-    this.landTexture = makeLandTexture();
+    const maxAnisotropy = this.renderer.capabilities?.getMaxAnisotropy?.() || 8;
+    this.landTexture = makeLandTexture(undefined, maxAnisotropy);
     this.landSurface = new THREE.Mesh(
       new THREE.SphereGeometry(RADIUS * 1.006, 128, 64),
-      new THREE.MeshBasicMaterial({
+      new THREE.MeshStandardMaterial({
         map: this.landTexture,
+        roughness: 0.78,
+        metalness: 0.04,
         transparent: true,
-        opacity: 0.72,
-        depthWrite: false,
+        opacity: 1,
+        depthWrite: true,
       })
     );
     this.landSurface.rotation.y = -Math.PI / 2;
@@ -470,7 +529,7 @@ class StarPaperGlobe {
           glowColor: { value: new THREE.Color('#d8d2c4') },
         },
         vertexShader: 'varying vec3 vNormal; void main(){ vNormal = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-        fragmentShader: 'uniform vec3 glowColor; varying vec3 vNormal; void main(){ float intensity = pow(0.58 - dot(vNormal, vec3(0.0,0.0,1.0)), 2.85); gl_FragColor = vec4(glowColor, clamp(intensity, 0.0, 0.22)); }',
+        fragmentShader: 'uniform vec3 glowColor; varying vec3 vNormal; void main(){ float intensity = pow(0.58 - dot(vNormal, vec3(0.0,0.0,1.0)), 2.85); gl_FragColor = vec4(glowColor, clamp(intensity, 0.0, 0.32)); }',
       })
     );
     this.globeGroup.add(halo);
@@ -507,7 +566,7 @@ class StarPaperGlobe {
   async loadDetailedLand() {
     try {
       const landShapes = await loadWorldLandShapes();
-      const nextTexture = makeLandTexture(landShapes);
+      const nextTexture = makeLandTexture(landShapes, this.renderer.capabilities?.getMaxAnisotropy?.() || 8);
       this.landSurface.material.map?.dispose?.();
       this.landSurface.material.map = nextTexture;
       this.landSurface.material.needsUpdate = true;
@@ -536,12 +595,22 @@ class StarPaperGlobe {
     this.stage.addEventListener('pointermove', (event) => this.previewPin(event));
     this.stage.addEventListener('pointerleave', () => this.hidePinCard());
     this.root.addEventListener('click', (event) => {
+      const stop = event.target.closest('[data-globe-stop]');
+      if (stop) {
+        this.selectBooking(Number(stop.dataset.globeStop), { focus: true });
+        return;
+      }
       const action = event.target.closest('[data-globe-action]')?.dataset.globeAction;
       if (!action) return;
+      if (action === 'open-sheet') this.openScheduleSheet(event.target.closest('[data-globe-action]'));
+      if (action === 'close-sheet') this.closeScheduleSheet();
       if (action === 'auto-tour') this.toggleAutoTour();
       if (action === 'recenter') this.resetView();
       if (action === 'zoom-in') this.zoomBy(-0.6);
       if (action === 'zoom-out') this.zoomBy(0.6);
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && this.sheetOpen) this.closeScheduleSheet();
     });
   }
 
@@ -579,6 +648,7 @@ class StarPaperGlobe {
     if (this.bookings.length > 0) {
       this.selectBooking(Math.min(this.selectedIndex, this.bookings.length - 1), { fly: false });
     } else {
+      this.closeScheduleSheet({ restoreFocus: false });
       this.renderEmptyDetail();
     }
   }
@@ -645,7 +715,10 @@ class StarPaperGlobe {
   }
 
   renderItinerary() {
+    this.renderScheduleKey();
+    this.renderScheduleSheet();
     if (!this.itinerary) return;
+    this.itinerary.hidden = true;
     const upcoming = this.bookings.filter((booking) => !booking.__past).length;
     const past = this.bookings.length - upcoming;
     if (this.bookings.length === 0) {
@@ -677,9 +750,98 @@ class StarPaperGlobe {
         }).join('')}
       </div>
     `;
-    this.itinerary.querySelectorAll('[data-globe-stop]').forEach((btn) => {
-      btn.addEventListener('click', () => this.selectBooking(Number(btn.dataset.globeStop), { focus: true }));
-    });
+  }
+
+  getScheduleCounts() {
+    const upcoming = this.bookings.filter((booking) => !booking.__past).length;
+    return { upcoming, past: this.bookings.length - upcoming };
+  }
+
+  getBookingTitle(booking) {
+    return booking?.event || booking?.venue || 'Untitled show';
+  }
+
+  getSelectedBooking() {
+    return this.bookings[this.selectedIndex] || this.bookings[0] || null;
+  }
+
+  renderStopCard(booking, index) {
+    const title = this.getBookingTitle(booking);
+    return `
+      <button type="button" class="sp-global-stop ${index === this.selectedIndex ? 'is-active' : ''} ${booking.__past ? 'is-past' : 'is-upcoming'}" data-globe-stop="${index}">
+        <span class="sp-global-stop__date">${escapeHtml(shortDate(booking.date))}</span>
+        <span class="sp-global-stop__body">
+          <strong>${escapeHtml(title)}</strong>
+          <em>${escapeHtml(booking.__location.label)}</em>
+          <small>${escapeHtml(booking.artist || 'Artist TBC')}</small>
+        </span>
+      </button>
+    `;
+  }
+
+  renderScheduleKey() {
+    if (!this.key) return;
+    const counts = this.getScheduleCounts();
+    const selected = this.getSelectedBooking();
+    const selectedTitle = selected ? this.getBookingTitle(selected) : 'No routed shows yet';
+    const selectedMeta = selected ? `${selected.__location.label} - ${fmtDate(selected.date)}` : 'Add a dated booking to route the globe.';
+    const disabled = this.bookings.length === 0 ? 'disabled aria-disabled="true"' : '';
+    this.key.innerHTML = `
+      <div class="sp-global-key__eyebrow">Itinerary</div>
+      <div class="sp-global-key__counts" aria-label="Schedule counts">
+        <span><strong>${counts.upcoming}</strong>Upcoming</span>
+        <i aria-hidden="true"></i>
+        <span><strong>${counts.past}</strong>Past</span>
+      </div>
+      <div class="sp-global-key__legend" aria-label="Legend">
+        <span><b class="sp-global-dot sp-global-dot--upcoming"></b>Upcoming pin</span>
+        <span><b class="sp-global-dot sp-global-dot--past"></b>Past pin</span>
+        <span><b class="sp-global-arc"></b>Active arc</span>
+      </div>
+      <div class="sp-global-key__selected">
+        <strong>${escapeHtml(selectedTitle)}</strong>
+        <span>${escapeHtml(selectedMeta)}</span>
+      </div>
+      <button type="button" class="sp-global-key__open" data-globe-action="open-sheet" ${disabled}>
+        <i class="ph ph-list" aria-hidden="true"></i>
+        <span>Open list</span>
+      </button>
+    `;
+  }
+
+  renderScheduleSheet() {
+    if (!this.sheetBody) return;
+    if (this.bookings.length === 0) {
+      this.sheetBody.innerHTML = '<div class="sp-global-empty">No dated bookings yet. Add a booking to route the globe.</div>';
+      return;
+    }
+    this.sheetBody.innerHTML = this.bookings.map((booking, index) => this.renderStopCard(booking, index)).join('');
+  }
+
+  openScheduleSheet(trigger) {
+    if (!this.sheet || !this.bookings.length) return;
+    this.lastSheetTrigger = trigger || document.activeElement;
+    this.hidePinCard();
+    this.sheetOpen = true;
+    this.root.classList.add('sp-global-schedule--sheet-open');
+    this.sheet.classList.add('is-open');
+    this.sheet.setAttribute('aria-hidden', 'false');
+    const selected = this.sheet.querySelector('.sp-global-stop.is-active') || this.sheet.querySelector('.sp-global-stop');
+    if (selected) {
+      selected.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: isReducedMotion ? 'auto' : 'smooth' });
+      setTimeout(() => selected.focus({ preventScroll: true }), isReducedMotion ? 0 : 120);
+    }
+  }
+
+  closeScheduleSheet(options = {}) {
+    if (!this.sheet || !this.sheetOpen) return;
+    this.sheetOpen = false;
+    this.root.classList.remove('sp-global-schedule--sheet-open');
+    this.sheet.classList.remove('is-open');
+    this.sheet.setAttribute('aria-hidden', 'true');
+    if (options.restoreFocus !== false && this.lastSheetTrigger?.focus) {
+      this.lastSheetTrigger.focus({ preventScroll: true });
+    }
   }
 
   renderEmptyDetail() {
@@ -743,6 +905,14 @@ class StarPaperGlobe {
     this.itinerary?.querySelectorAll('[data-globe-stop]').forEach((btn) => {
       btn.classList.toggle('is-active', Number(btn.dataset.globeStop) === index);
     });
+    this.sheetBody?.querySelectorAll('[data-globe-stop]').forEach((btn) => {
+      const active = Number(btn.dataset.globeStop) === index;
+      btn.classList.toggle('is-active', active);
+      if (active && this.sheetOpen) {
+        btn.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: isReducedMotion ? 'auto' : 'smooth' });
+      }
+    });
+    this.renderScheduleKey();
     this.pinSprites.forEach((pin, pinIndex) => {
       const active = pinIndex === index;
       const past = this.bookings[pinIndex]?.__past;
@@ -809,6 +979,7 @@ class StarPaperGlobe {
       this.selectBooking(hitIndex, { focus: false });
     } else {
       this.hidePinCard();
+      this.closeScheduleSheet({ restoreFocus: false });
     }
   }
 

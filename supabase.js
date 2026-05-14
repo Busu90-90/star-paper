@@ -184,7 +184,10 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     Array.from(SP_APP_ROUTE_HASHES).map((section) => [section.toLowerCase(), section])
   );
   const SP_PASSIVE_AUTH_EVENTS = new Set(['INITIAL_SESSION', 'SIGNED_IN', 'TOKEN_REFRESHED']);
-  let _retryQueue = [];               // Array of { payload, attempts, lastAttempt }
+  const RETRY_QUEUE_STORAGE_VERSION = 2;
+  const MAX_RETRY_QUEUE_ENTRIES = 8;
+  const MAX_RETRY_QUEUE_AGE_MS = 24 * 60 * 60 * 1000;
+  let _retryQueue = [];               // Array of { ownerId, workspaceMeta, payload, attempts, lastAttempt }
   let _syncState = 'idle';            // 'idle' | 'syncing' | 'synced' | 'failed' | 'offline'
   let _retryTimer = null;
   let _lastSaveToastAt = 0;
@@ -193,32 +196,184 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   window.__spAuthRedirectInProgress = Boolean(window.__spAuthRedirectInProgress);
   window.__spSuppressStoredSessionBootstrap = Boolean(window.__spSuppressStoredSessionBootstrap);
 
+  function isObjectRecord(value) {
+    return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+  }
+
+  function normalizeRetryQueueEntry(rawEntry, fallback = {}) {
+    if (!isObjectRecord(rawEntry)) return null;
+    const payload = isObjectRecord(rawEntry.payload) ? rawEntry.payload : null;
+    const ownerId = String(rawEntry.ownerId || rawEntry.userId || fallback.ownerId || '').trim();
+    if (!payload || !ownerId) return null;
+
+    const workspaceMeta = normalizeWorkspaceMeta({
+      ...(isObjectRecord(rawEntry.workspaceMeta) ? rawEntry.workspaceMeta : {}),
+      ...(isObjectRecord(rawEntry.workspace) ? rawEntry.workspace : {}),
+      ownerId,
+      teamId: rawEntry.teamId || rawEntry.team_id || rawEntry.workspaceMeta?.teamId || rawEntry.workspaceMeta?.team_id || null,
+      source: rawEntry.workspaceMeta?.source || rawEntry.workspace?.source || 'retry-queue',
+    });
+
+    const attempts = Number(rawEntry.attempts);
+    const lastAttempt = Number(rawEntry.lastAttempt);
+    const queuedAt = Number(rawEntry.queuedAt);
+
+    return {
+      ownerId,
+      teamId: workspaceMeta.teamId || null,
+      workspaceMeta,
+      payload,
+      attempts: Number.isFinite(attempts) && attempts > 0 ? attempts : 0,
+      lastAttempt: Number.isFinite(lastAttempt) && lastAttempt > 0 ? lastAttempt : 0,
+      queuedAt: Number.isFinite(queuedAt) && queuedAt > 0 ? queuedAt : Date.now(),
+      lastError: rawEntry.lastError ? String(rawEntry.lastError).slice(0, 500) : null,
+    };
+  }
+
+  function readStoredRetryQueue() {
+    const stored = localStorage.getItem(RETRY_QUEUE_STORAGE_KEY);
+    if (!stored) return [];
+    const parsed = JSON.parse(stored);
+    const rawEntries = Array.isArray(parsed)
+      ? parsed
+      : (Array.isArray(parsed?.entries) ? parsed.entries : []);
+    const fallback = {
+      ownerId: parsed?.ownerId || parsed?.userId || null,
+    };
+    return rawEntries
+      .map((entry) => normalizeRetryQueueEntry(entry, fallback))
+      .filter(Boolean);
+  }
+
+  function retryEntryKey(entry) {
+    return `${entry.ownerId}::${entry.workspaceMeta?.scopeKey || ''}`;
+  }
+
+  function mergeRetryQueueEntries(entries) {
+    const merged = new Map();
+    const now = Date.now();
+    entries
+      .map((entry) => normalizeRetryQueueEntry(entry))
+      .filter((entry) => entry && now - Number(entry.queuedAt || 0) <= MAX_RETRY_QUEUE_AGE_MS)
+      .filter(Boolean)
+      .forEach((entry) => {
+        const key = retryEntryKey(entry);
+        const existing = merged.get(key);
+        if (!existing || Number(entry.queuedAt || 0) >= Number(existing.queuedAt || 0)) {
+          merged.set(key, entry);
+        }
+      });
+    return Array.from(merged.values())
+      .sort((a, b) => Number(a.queuedAt || 0) - Number(b.queuedAt || 0))
+      .slice(-MAX_RETRY_QUEUE_ENTRIES);
+  }
+
+  function filterRetryQueueForOwner(ownerId = getOwnerId()) {
+    const normalizedOwnerId = String(ownerId || '').trim();
+    const safeEntries = mergeRetryQueueEntries(_retryQueue);
+    if (!normalizedOwnerId) {
+      _retryQueue = safeEntries;
+      return _retryQueue.length;
+    }
+    _retryQueue = safeEntries.filter((entry) => entry.ownerId === normalizedOwnerId);
+    return _retryQueue.length;
+  }
+
   function persistRetryQueue() {
-    // FIXED: retry queue is memory-only in cloud-first mode; Supabase remains the source of truth.
-    return;
     try {
+      _retryQueue = mergeRetryQueueEntries(_retryQueue);
       if (_retryQueue.length === 0) {
         localStorage.removeItem(RETRY_QUEUE_STORAGE_KEY);
       } else {
-        void _retryQueue;
+        localStorage.setItem(RETRY_QUEUE_STORAGE_KEY, JSON.stringify({
+          version: RETRY_QUEUE_STORAGE_VERSION,
+          updatedAt: Date.now(),
+          entries: _retryQueue,
+        }));
       }
     } catch (_err) { /* quota exceeded or private browsing — non-fatal */ }
   }
 
-  function restoreRetryQueue() {
-    // FIXED: no app-owned localStorage restore path for pending business data.
-    return;
+  function restoreRetryQueue(options = {}) {
     try {
-      const stored = null;
-      if (!stored) return;
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        _retryQueue = parsed;
-        log('Restored', _retryQueue.length, 'pending saves from localStorage');
-        updateSyncIndicator('failed');
-        scheduleRetryQueue();
+      const storedEntries = readStoredRetryQueue();
+      if (!storedEntries.length) {
+        _retryQueue = mergeRetryQueueEntries(_retryQueue);
+        return;
       }
-    } catch (_err) { /* corrupted — start fresh */ }
+      const ownerId = getOwnerId();
+      const restoredEntries = ownerId
+        ? storedEntries.filter((entry) => entry.ownerId === ownerId)
+        : storedEntries;
+      _retryQueue = mergeRetryQueueEntries([..._retryQueue, ...restoredEntries]);
+      if (ownerId) {
+        filterRetryQueueForOwner(ownerId);
+        const dropped = storedEntries.length - restoredEntries.length;
+        if (dropped > 0) persistRetryQueue();
+      }
+      if (_retryQueue.length > 0 && ownerId) {
+        log('Restored', _retryQueue.length, 'pending same-account saves from localStorage');
+        updateSyncIndicator('failed');
+        if (options.schedule !== false) scheduleRetryQueue();
+      }
+    } catch (_err) {
+      _retryQueue = [];
+      try { localStorage.removeItem(RETRY_QUEUE_STORAGE_KEY); } catch (_storageErr) {}
+    }
+  }
+
+  function shouldQueueSyncFailure(failure, options = {}) {
+    if (options.skipRetryQueue === true) return false;
+    if (!String(options.ownerId || '').trim()) return false;
+    if (!navigator.onLine) return true;
+
+    const source = failure?.syncResult || failure || {};
+    const context = source.context || failure?.context || {};
+    const reason = String(context.reason || '').toLowerCase();
+    if (reason === 'workspace-unresolved' || reason === 'no-session' || reason === 'session-refresh') {
+      return true;
+    }
+
+    const code = String(source.code || failure?.code || context.errorCode || '');
+    if (code === '42501' || code === '42P10') return false;
+
+    const message = String(source.message || failure?.message || '').toLowerCase();
+    if (
+      message.includes('row-level security') ||
+      message.includes('permission') ||
+      message.includes('no unique or exclusion constraint') ||
+      message.includes('schema is missing')
+    ) {
+      return false;
+    }
+
+    const name = String(source.name || failure?.name || '').toLowerCase();
+    return name === 'timeouterror' ||
+      name === 'aborterror' ||
+      message.includes('failed to fetch') ||
+      message.includes('network') ||
+      message.includes('timeout') ||
+      message.includes('timed out') ||
+      message.includes('offline') ||
+      message.includes('lock broken') ||
+      message.includes('temporar');
+  }
+
+  function buildRetryQueuedSyncResult(step, failure, options = {}) {
+    const result = buildStructuredSyncResult(false, {
+      failedStep: step || 'saveAllData',
+      message: 'Cloud sync failed. The latest payload will retry after reconnect or same-account sign-in.',
+      context: {
+        operation: 'queueCloudSync',
+        queued: true,
+        reason: 'retry-queued',
+        ownerId: options.ownerId || null,
+        scopeKey: options.workspaceMeta?.scopeKey || null,
+      },
+    });
+    result.queued = true;
+    result.error = failure instanceof Error ? failure : null;
+    return result;
   }
 
   function legacyUpdateSyncIndicator(state) {
@@ -230,7 +385,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       syncing: { icon: 'ph-cloud-arrow-up',  color: '#FFB300', title: 'Syncing to cloud...' },
       synced:  { icon: 'ph-cloud-check',     color: '#81c784', title: 'Saved to cloud' },
       failed:  { icon: 'ph-cloud-slash',     color: '#ef9a9a', title: 'Cloud sync failed \u2014 retrying' },
-      offline: { icon: 'ph-cloud-x',         color: '#888',    title: 'Offline \u2014 changes saved locally' },
+      offline: { icon: 'ph-cloud-x',         color: '#888',    title: 'Offline \u2014 reconnect to retry cloud sync' },
     };
     const cfg = map[_syncState] || map.idle;
     el.className = 'ph ' + cfg.icon + ' sp-sync-icon';
@@ -244,17 +399,41 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
   }
 
-  function enqueueSave(payload) {
-    // Deduplicate: replace if a pending entry exists with 0 attempts
-    const pendingIdx = _retryQueue.findIndex(e => e.attempts === 0);
-    if (pendingIdx >= 0) {
-      _retryQueue[pendingIdx] = { payload, attempts: 0, lastAttempt: 0 };
-    } else {
-      _retryQueue.push({ payload, attempts: 0, lastAttempt: 0 });
+  function enqueueSave(payload, options = {}) {
+    const ownerId = String(options.ownerId || getOwnerId() || '').trim();
+    if (!ownerId || !isObjectRecord(payload)) {
+      warn('Retry queue: refused to queue payload without an authenticated owner.');
+      return false;
     }
+    const workspaceMeta = normalizeWorkspaceMeta({
+      ...(isObjectRecord(options.workspaceMeta) ? options.workspaceMeta : getActiveWorkspaceMeta('retry-queue')),
+      ownerId,
+    });
+    const entry = normalizeRetryQueueEntry({
+      payload,
+      ownerId,
+      teamId: workspaceMeta.teamId || null,
+      workspaceMeta,
+      attempts: 0,
+      lastAttempt: 0,
+      queuedAt: Date.now(),
+      lastError: options.error?.message || options.message || null,
+    });
+    if (!entry) return false;
+
+    // Each payload is a full workspace snapshot, so the newest queued snapshot
+    // replaces older pending work for the same owner/scope.
+    const pendingIdx = _retryQueue.findIndex(e => retryEntryKey(e) === retryEntryKey(entry));
+    if (pendingIdx >= 0) {
+      _retryQueue[pendingIdx] = entry;
+    } else {
+      _retryQueue.push(entry);
+    }
+    _retryQueue = mergeRetryQueueEntries(_retryQueue);
     persistRetryQueue();
     updateSyncIndicator('failed');
-    scheduleRetryQueue();
+    if (getOwnerId() === ownerId) scheduleRetryQueue();
+    return true;
   }
 
   function scheduleRetryQueue() {
@@ -266,6 +445,11 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   }
 
   async function processRetryQueue() {
+    const ownerId = getOwnerId();
+    if (!ownerId) return;
+    filterRetryQueueForOwner(ownerId);
+    persistRetryQueue();
+    if (_retryQueue.length === 0) return;
     if (!navigator.onLine) {
       updateSyncIndicator('offline');
       return;
@@ -279,6 +463,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     const now = Date.now();
     const remaining = [];
     for (const entry of _retryQueue) {
+      if (entry.ownerId !== ownerId) continue;
       const backoff = Math.min(2000 * Math.pow(2, entry.attempts), 30000);
       if (now - entry.lastAttempt < backoff) {
         remaining.push(entry);
@@ -286,10 +471,18 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       }
       try {
         updateSyncIndicator('syncing');
-        await saveAllData(entry.payload);
-      } catch (_err) {
+        const result = await saveAllData(entry.payload, {
+          reason: 'retry-queue',
+          workspaceMeta: entry.workspaceMeta,
+          skipRetryQueue: true,
+        });
+        if (result?.ok === false) {
+          throw new Error(result.message || 'Retry queue save failed.');
+        }
+      } catch (err) {
         entry.attempts += 1;
         entry.lastAttempt = Date.now();
+        entry.lastError = err?.message || 'Retry queue save failed.';
         if (entry.attempts < MAX_RETRY_ATTEMPTS) {
           remaining.push(entry);
         } else {
@@ -3560,6 +3753,51 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     return _saveInFlight;
   }
 
+  async function queueCloudSync(payload = {}, options = {}) {
+    const ownerId = String(options.ownerId || getOwnerId() || '').trim();
+    const workspaceMeta = normalizeWorkspaceMeta({
+      ...(isObjectRecord(options.workspaceMeta) ? options.workspaceMeta : getActiveWorkspaceMeta('queueCloudSync')),
+      ownerId,
+    });
+    const saveOptions = {
+      ...options,
+      workspaceMeta,
+    };
+
+    try {
+      const result = await saveAllData(payload, saveOptions);
+      if (result?.ok === false && shouldQueueSyncFailure(result, { ...options, ownerId })) {
+        const queued = enqueueSave(payload, {
+          ownerId,
+          workspaceMeta,
+          message: result.message,
+        });
+        if (queued) {
+          return buildRetryQueuedSyncResult(result.failedStep || 'saveAllData', null, {
+            ownerId,
+            workspaceMeta,
+          });
+        }
+      }
+      return result;
+    } catch (err) {
+      if (shouldQueueSyncFailure(err, { ...options, ownerId })) {
+        const queued = enqueueSave(payload, {
+          ownerId,
+          workspaceMeta,
+          error: err,
+        });
+        if (queued) {
+          return buildRetryQueuedSyncResult(err.failedStep || 'saveAllData', err, {
+            ownerId,
+            workspaceMeta,
+          });
+        }
+      }
+      throw err;
+    }
+  }
+
   async function runStructuredDelete(step, table, id) {
     return runStructuredSyncOperation(step, async () => {
       if (!id) {
@@ -4466,6 +4704,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
           }).catch((err) => warn('Post-bootstrap cloud refresh failed:', err));
         }, 300);
       }
+
+      restoreRetryQueue({ schedule: true });
 
       if (window.__spAppBooted) {
         if (typeof window.updateDashboard === 'function') window.updateDashboard();
@@ -6129,6 +6369,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     // ── SUPABASE LOGOUT ─────────────────────────────────────────────────────────
     window.logout = async function supabaseLogout() {
       const flowId = beginBootTransitionSafe('logout', 'signing-out');
+      const logoutOwnerId = getOwnerId();
       try {
         document.getElementById('sidebar')?.classList.remove('active');
         document.getElementById('sidebarOverlay')?.classList.remove('active');
@@ -6138,8 +6379,9 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
       // FIXED: flush unsaved work through the cloud path before clearing the session.
       // AUTH FIXPACK 2 2026-04-27 (Fix 9): bounded saveUserData to 1.2s. If the
-      // cloud is hung, the user gets logged out anyway — the retry queue
-      // (sp_retry_queue) preserves any in-flight payload across logout boundaries.
+      // cloud is hung, the user gets logged out anyway. Any retry payload is
+      // persisted with the current owner/workspace and only replays after the
+      // same Supabase user signs in again.
       if (typeof window.saveUserData === 'function') {
         try {
           await withTimeout(() => window.saveUserData(), 1200, 'logout-saveUserData');
@@ -6192,7 +6434,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       window.__spAuthRedirectInProgress = false;
       _session = null;
       _profile = null;
-      _retryQueue = [];
+      filterRetryQueueForOwner(logoutOwnerId);
       persistRetryQueue();
       if (_retryTimer) { clearTimeout(_retryTimer); _retryTimer = null; }
       resetWorkspaceState();
@@ -6423,7 +6665,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     setupSyncBridge();
     applyCurrency(_currency);
     initLocalSyncBroadcast();
-    restoreRetryQueue();
+    restoreRetryQueue({ schedule: false });
     bindAutoSync();
     const localMarker = readBootContextMarker();
     const publicShellColdStart = shouldStayOnPublicShell();
@@ -6571,7 +6813,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     saveExpenses,
     saveOtherIncome,
     saveAllData,
-    queueCloudSync:  saveAllData,
+    queueCloudSync,
     saveArtists,
     debugCloudScope: inspectCloudScope,
     enqueueSave,

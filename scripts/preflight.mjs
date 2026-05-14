@@ -25,6 +25,19 @@ function requiredFile(path) {
   assert(existsSync(join(root, path)), `Missing required file: ${path}`);
 }
 
+function readJson(path) {
+  try {
+    return JSON.parse(read(path));
+  } catch (error) {
+    fail(`Could not parse ${path}: ${error.message}`);
+    return null;
+  }
+}
+
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function matchConst(text, name) {
   const match = text.match(new RegExp(`const\\s+${name}\\s*=\\s*["']([^"']+)["']`));
   if (!match) fail(`Could not find ${name} in sw.js`);
@@ -32,17 +45,78 @@ function matchConst(text, name) {
 }
 
 function matchShellAssetVersion(text, assetName) {
-  const escaped = assetName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const escaped = escapeRegex(assetName);
   const match = text.match(new RegExp(`${escaped}\\?v=([0-9]+)`));
   if (!match) fail(`Could not find ${assetName} version in sw.js APP_SHELL`);
   return match?.[1] || '';
 }
 
+function normalizeAssetUrl(asset) {
+  return `/${asset.replace(/^[./\\]+/, '').replaceAll('\\', '/')}`.split('#')[0];
+}
+
+function assetPath(assetUrl) {
+  return assetUrl.split('?')[0].replace(/^\//, '');
+}
+
+function assetVersion(assetUrl) {
+  return assetUrl.match(/[?&]v=([0-9]+)/)?.[1] || '';
+}
+
+function normalizeLandingTarget(target) {
+  return normalizeAssetUrl(target).split('?')[0];
+}
+
+function parseIndexPublicRoutes(text) {
+  const block = text.match(/var\s+publicRoutes\s*=\s*\{([\s\S]*?)\};/);
+  assert(Boolean(block), 'Could not find publicRoutes map in index.html');
+  const routes = new Map();
+  const entryPattern = /["']([^"']+)["']\s*:\s*["']([^"']+)["']/g;
+  let match;
+  while (block && (match = entryPattern.exec(block[1]))) {
+    routes.set(match[1], normalizeLandingTarget(match[2]));
+  }
+  return routes;
+}
+
+function parseSwPublicLandingPages(text) {
+  const block = text.match(/const\s+PUBLIC_LANDING_PAGES\s*=\s*new\s+Map\(\[([\s\S]*?)\]\);/);
+  assert(Boolean(block), 'Could not find PUBLIC_LANDING_PAGES map in sw.js');
+  const routes = new Map();
+  const entryPattern = /\[\s*["']([^"']+)["']\s*,\s*["']([^"']+)["']\s*\]/g;
+  let match;
+  while (block && (match = entryPattern.exec(block[1]))) {
+    routes.set(match[1], normalizeLandingTarget(match[2]));
+  }
+  return routes;
+}
+
+function assertSameMap(actual, expected, label) {
+  assert(actual.size === expected.size, `${label} size drift: expected ${expected.size}, found ${actual.size}`);
+  for (const [key, expectedValue] of expected) {
+    assert(actual.has(key), `${label} missing route: ${key}`);
+    assert(actual.get(key) === expectedValue, `${label} route drift for ${key}: expected ${expectedValue}, found ${actual.get(key) || 'missing'}`);
+  }
+}
+
+function headerBlock(path) {
+  const escaped = escapeRegex(path);
+  return headers.match(new RegExp(`^${escaped}\\s*\\r?\\n([\\s\\S]*?)(?=^\\S|\\s*$)`, 'm'))?.[1] || '';
+}
+
+function assertHeader(path, headerLine) {
+  const block = headerBlock(path);
+  assert(Boolean(block), `_headers missing ${path}`);
+  assert(block.includes(headerLine), `_headers ${path} missing ${headerLine}`);
+}
+
 for (const path of [
+  'package.json',
   'index.html',
   'app.js',
   'supabase.js',
   'sw.js',
+  'manifest.json',
   'app.reports.js',
   'schema.sql',
   '_headers',
@@ -79,48 +153,118 @@ const netlifyIgnore = read('.netlifyignore');
 const netlifyToml = read('netlify.toml');
 const schema = read('schema.sql');
 const supabase = read('supabase.js');
+const manifest = readJson('manifest.json') || {};
+const packageJson = readJson('package.json') || {};
 
 const shellVersion = matchConst(sw, 'SHELL_VERSION');
 const appVersion = matchConst(sw, 'APP_BUNDLE_VERSION');
 const reportVersion = matchConst(sw, 'REPORT_BUNDLE_VERSION');
 const stylesVersion = matchShellAssetVersion(sw, 'styles.css');
 const supabaseVersion = matchShellAssetVersion(sw, 'supabase.js');
+const manifestVersion = matchShellAssetVersion(sw, 'manifest.json');
 
 assert(app.includes(`sw.js?v=${shellVersion}`), `app.js does not register sw.js?v=${shellVersion}`);
 assert(index.includes(`app.js?v=${appVersion}`), `index.html does not load app.js?v=${appVersion}`);
 assert(index.includes(`app.reports.js?v=${reportVersion}`), `index.html does not load app.reports.js?v=${reportVersion}`);
 assert(index.includes(`styles.css?v=${stylesVersion}`), `index.html does not load styles.css?v=${stylesVersion}`);
 assert(index.includes(`supabase.js?v=${supabaseVersion}`), `index.html does not load supabase.js?v=${supabaseVersion}`);
+assert(index.includes(`manifest.json?v=${manifestVersion}`), `index.html does not load manifest.json?v=${manifestVersion}`);
+
+assert(packageJson.scripts?.preflight === 'node scripts/preflight.mjs', 'package.json preflight script must run scripts/preflight.mjs');
+assert(packageJson.scripts?.build === 'npm run preflight', 'package.json build script must run preflight');
+assert(packageJson.scripts?.test?.includes('preflight'), 'package.json test script must run preflight before tests');
+assert(packageJson.scripts?.prepublishOnly === 'npm run preflight', 'package.json prepublishOnly must run preflight');
 
 const appShellMatch = sw.match(/const APP_SHELL = \[([\s\S]*?)\];/);
 assert(Boolean(appShellMatch), 'Could not find APP_SHELL in sw.js');
+const appShellUrls = new Set();
+const appShellVersions = new Map();
 if (appShellMatch) {
-  const assets = new Set();
   const assetPattern = /(["'`])([^"'`]+)\1/g;
   let match;
   while ((match = assetPattern.exec(appShellMatch[1]))) {
-    let asset = match[2]
+    const asset = match[2]
       .replaceAll('${REPORT_BUNDLE_VERSION}', reportVersion)
       .replaceAll('${APP_BUNDLE_VERSION}', appVersion);
     if (!asset.startsWith('./') && !asset.startsWith('/')) continue;
-    asset = asset.replace(/^[./\\]+/, '').split('?')[0].split('#')[0];
-    if (asset) assets.add(asset);
-  }
-  for (const asset of assets) {
-    assert(existsSync(join(root, asset)), `APP_SHELL asset missing on disk: ${asset}`);
+    const url = normalizeAssetUrl(asset);
+    const path = assetPath(url);
+    const version = assetVersion(url);
+    if (path) {
+      appShellUrls.add(url);
+      assert(existsSync(join(root, path)), `APP_SHELL asset missing on disk: ${path}`);
+    }
+    if (path && version) {
+      const existingVersion = appShellVersions.get(path);
+      assert(!existingVersion || existingVersion === version, `APP_SHELL has multiple versions for ${path}: ${existingVersion} and ${version}`);
+      appShellVersions.set(path, version);
+    }
   }
 }
 
-for (const route of [
-  '/proof /proof.html 200',
-  '/testimonials /testimonials.html 200',
-  '/how-it-works /how-it-works.html 200',
+function assertVersionedReferencesMatchAppShell(fileName, text) {
+  for (const [path, expectedVersion] of appShellVersions) {
+    const pathPattern = path.split('/').map(escapeRegex).join('[\\\\/]');
+    const referencePattern = new RegExp(`(?:^|[^A-Za-z0-9_./-])(?:\\.?[\\\\/])?${pathPattern}\\?v=([0-9]+)`, 'g');
+    let match;
+    while ((match = referencePattern.exec(text))) {
+      assert(match[1] === expectedVersion, `${fileName} references ${path}?v=${match[1]}, but sw.js APP_SHELL uses ?v=${expectedVersion}`);
+    }
+  }
+}
+
+for (const [fileName, text] of [
+  ['index.html', index],
+  ['app.js', app],
+  ['how-it-works.html', read('how-it-works.html')],
+  ['proof.html', read('proof.html')],
+  ['testimonials.html', read('testimonials.html')],
+  ['manifest.json', read('manifest.json')],
 ]) {
-  assert(redirects.includes(route), `Missing Netlify redirect: ${route}`);
+  assertVersionedReferencesMatchAppShell(fileName, text);
+}
+
+const manifestIcons = [
+  ...(Array.isArray(manifest.icons) ? manifest.icons.map((icon) => ['manifest icons', icon]) : []),
+  ...(Array.isArray(manifest.shortcuts)
+    ? manifest.shortcuts.flatMap((shortcut) =>
+      Array.isArray(shortcut.icons)
+        ? shortcut.icons.map((icon) => [`manifest shortcut "${shortcut.name || shortcut.short_name || 'unnamed'}"`, icon])
+        : [])
+    : []),
+];
+assert(manifestIcons.length > 0, 'manifest.json must define icons');
+for (const [label, icon] of manifestIcons) {
+  assert(icon && typeof icon.src === 'string', `${label} entry is missing src`);
+  if (!icon?.src) continue;
+  const iconUrl = normalizeAssetUrl(icon.src);
+  const path = assetPath(iconUrl);
+  assert(appShellUrls.has(iconUrl), `${label} src ${icon.src} is not precached in sw.js APP_SHELL`);
+  assert(existsSync(join(root, path)), `${label} src missing on disk: ${path}`);
+  const fileSize = path.match(/star_paper_(\d+)\.png$/)?.[1];
+  if (fileSize && icon.sizes) {
+    assert(String(icon.sizes).split(/\s+/).includes(`${fileSize}x${fileSize}`), `${label} src ${icon.src} does not match sizes ${icon.sizes}`);
+  }
+}
+
+const indexPublicRoutes = parseIndexPublicRoutes(index);
+const swPublicLandingPages = parseSwPublicLandingPages(sw);
+assertSameMap(indexPublicRoutes, swPublicLandingPages, 'public landing route map');
+for (const [route, target] of swPublicLandingPages) {
+  requiredFile(target.replace(/^\//, ''));
+  if (!route.endsWith('.html')) {
+    const redirectRule = `${route} ${target} 200`;
+    assert(redirects.includes(redirectRule), `Missing Netlify redirect: ${redirectRule}`);
+  }
 }
 
 assert(headers.includes('Content-Security-Policy:'), '_headers missing Content-Security-Policy');
-assert(/\/sw\.js[\s\S]*Cache-Control: no-cache, no-store, must-revalidate/.test(headers), '_headers must no-store /sw.js');
+for (const path of ['/', '/index.html', '/*.html', '/app*.js', '/styles*.css', '/star-paper-tokens.css', '/supabase.js', '/manifest.json', '/favicon.ico']) {
+  assertHeader(path, 'Cache-Control: no-cache, must-revalidate');
+}
+assertHeader('/sw.js', 'Cache-Control: no-cache, no-store, must-revalidate');
+assertHeader('/assets/landing/*', 'Cache-Control: public, max-age=31536000, immutable');
+assertHeader('/star_paper_logo_pack/*', 'Cache-Control: public, max-age=31536000, immutable');
 assert(!/(^|\s)(https:|wss:)(?=[;\s])/.test(headers.match(/connect-src[^;\n]*[;\n]/)?.[0] || ''), 'CSP connect-src still allows broad https: or wss:');
 
 for (const pattern of [
@@ -139,6 +283,23 @@ for (const pattern of [
 }
 
 assert(/publish\s*=\s*"\."/.test(netlifyToml), 'netlify.toml must publish the static repo root');
+assert(/command\s*=\s*"npm run build"/.test(netlifyToml), 'netlify.toml build command must run npm run build');
+
+const legacyHost = matchConst(sw, 'LEGACY_NETLIFY_HOST');
+const canonicalOrigin = matchConst(sw, 'CANONICAL_NETLIFY_ORIGIN');
+let canonicalHost = '';
+try {
+  canonicalHost = new URL(canonicalOrigin).hostname;
+} catch (error) {
+  fail(`CANONICAL_NETLIFY_ORIGIN is not a valid URL: ${error.message}`);
+}
+assert(index.includes(`window.location.hostname !== '${legacyHost}'`) || index.includes(`window.location.hostname !== "${legacyHost}"`), 'index.html legacy-host redirect does not match sw.js LEGACY_NETLIFY_HOST');
+assert(index.includes(`canonicalUrl.hostname = '${canonicalHost}'`) || index.includes(`canonicalUrl.hostname = "${canonicalHost}"`), 'index.html canonical host does not match sw.js CANONICAL_NETLIFY_ORIGIN');
+assert(sw.includes(`url.hostname = "${canonicalHost}"`) || sw.includes(`url.hostname = '${canonicalHost}'`), 'sw.js toCanonicalUrl host does not match CANONICAL_NETLIFY_ORIGIN');
+for (const protocol of ['http', 'https']) {
+  assert(new RegExp(`^${protocol}://${escapeRegex(legacyHost)}/sw\\.js\\s+/sw\\.js\\s+200!$`, 'm').test(redirects), `_redirects missing ${protocol} legacy service-worker passthrough`);
+  assert(new RegExp(`^${protocol}://${escapeRegex(legacyHost)}/\\*\\s+${escapeRegex(canonicalOrigin)}/:splat\\s+301!$`, 'm').test(redirects), `_redirects missing ${protocol} legacy-to-canonical redirect`);
+}
 
 assert(schema.includes('DROP FUNCTION IF EXISTS public.get_email_for_username(TEXT);'), 'schema.sql must drop username-to-email lookup RPC');
 assert(!/GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.get_email_for_username/i.test(schema), 'schema.sql must not grant get_email_for_username');
@@ -199,4 +360,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Preflight passed: deploy hygiene, cache versions, static assets, CSP scope, and account-recovery checks are clean.');
+console.log('Preflight passed: deploy path, cache versions, manifest icons, route/host invariants, static assets, CSP scope, and account-recovery checks are clean.');

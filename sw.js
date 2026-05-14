@@ -48,7 +48,7 @@ if (IS_LEGACY_NETLIFY_WORKER) {
     event.respondWith(Response.redirect(toCanonicalUrl(event.request.url), 302));
   });
 } else {
-const SHELL_VERSION = "146";
+const SHELL_VERSION = "147";
 const REPORT_BUNDLE_VERSION = "17";
 const APP_BUNDLE_VERSION = "124";
 const CACHE_NAME = `star-paper-shell-v${SHELL_VERSION}`;
@@ -91,16 +91,16 @@ const APP_SHELL = [
   "./app.premium.js?v=4",
   "/assets/landing/notebook-board-desktop.webp?v=3",
   "/assets/landing/notebook-board-mobile.webp?v=3",
-  "/manifest.json?v=23",
-  "/star_paper_logo_pack/star_paper_32.png?v=2",
-  "/star_paper_logo_pack/star_paper_64.png?v=2",
-  "/star_paper_logo_pack/star_paper_128.png?v=2",
-  "/star_paper_logo_pack/star_paper_256.png?v=2",
-  "/star_paper_logo_pack/star_paper_512.png?v=2",
-  "/star_paper_logo_pack/star_paper_1024.png?v=2",
-  "/star_paper_logo_pack/star_paper_transparent.png?v=2",
-  "/star_paper_logo_pack/star_paper_black.png?v=2",
-  "/star_paper_logo_pack/star_paper_white.png?v=2",
+  "/manifest.json?v=24",
+  "/star_paper_logo_pack/star_paper_32.png?v=3",
+  "/star_paper_logo_pack/star_paper_64.png?v=3",
+  "/star_paper_logo_pack/star_paper_128.png?v=3",
+  "/star_paper_logo_pack/star_paper_256.png?v=3",
+  "/star_paper_logo_pack/star_paper_512.png?v=3",
+  "/star_paper_logo_pack/star_paper_1024.png?v=3",
+  "/star_paper_logo_pack/star_paper_transparent.png?v=3",
+  "/star_paper_logo_pack/star_paper_black.png?v=3",
+  "/star_paper_logo_pack/star_paper_white.png?v=3",
 ];
 
 const APP_SHELL_URLS = new Set(

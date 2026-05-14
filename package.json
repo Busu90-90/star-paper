@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "preflight": "node scripts/preflight.mjs",
-    "test": "node --test mock-removal.test.mjs"
+    "build": "npm run preflight",
+    "test": "npm run preflight && node --test mock-removal.test.mjs auth-retry-queue.test.mjs",
+    "prepublishOnly": "npm run preflight"
   }
 }

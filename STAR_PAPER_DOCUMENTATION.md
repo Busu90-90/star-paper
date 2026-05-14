@@ -65,11 +65,11 @@ The browser may still retain:
 - drafts
 - boot context
 - logout guard
-- retry queue
+- account-scoped retry queue
 - currency preference
 - sidebar state
 
-Those keys help with UX but must not override cloud truth.
+Those keys help with UX but must not override cloud truth. `sp_retry_queue` is bounded transport state only: entries must be tagged with the Supabase user and workspace that created them, and they may replay only after the same Supabase user is restored.
 
 ## Main Runtime Files
 
@@ -97,7 +97,7 @@ Owns:
 - structured cloud saves
 - profile/account persistence
 - cloud refresh and sync orchestration
-- retry queue and sync indicator
+- account-scoped retry queue and sync indicator
 
 ### `app.reports.js`
 
@@ -317,7 +317,7 @@ Expected behavior:
 
 - `sp_boot_context`
 - `sp_logged_out`
-- `sp_retry_queue`
+- `sp_retry_queue` (account-scoped retry transport)
 - `sp_currency`
 - `sp_density`
 - `sp_sidebar_collapsed`
