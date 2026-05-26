@@ -601,6 +601,16 @@
     updateReportFocusPanel();
   }
 
+  function renderReportFocusLines(bodyEl, lines) {
+    const fragment = document.createDocumentFragment();
+    lines.forEach((line) => {
+      const row = document.createElement('div');
+      row.textContent = String(line ?? '');
+      fragment.appendChild(row);
+    });
+    bodyEl.replaceChildren(fragment);
+  }
+
   function updateReportFocusPanel() {
     const panel = document.getElementById('spRptFocus');
     if (!panel) return;
@@ -613,7 +623,7 @@
     const state = reportFocusState || fallback;
     if (titleEl) titleEl.textContent = state.title || fallback.title;
     if (bodyEl) {
-      bodyEl.innerHTML = (state.lines || fallback.lines).map(line => `<div>${escapeHTML(line)}</div>`).join('');
+      renderReportFocusLines(bodyEl, state.lines || fallback.lines);
     }
   }
 
@@ -878,7 +888,8 @@
     const recs = generateRecommendations(m, ctx);
 
     const trendIcon = m.trendPct >= 0 ? 'ph-trend-up' : 'ph-trend-down';
-    const trendColor = m.trendPct >= 0 ? GREEN : RED;
+    const trendToneClass = m.trendPct >= 0 ? 'sp-rpt-tone-good' : 'sp-rpt-tone-bad';
+    const marginToneClass = m.profitMargin >= 20 ? 'sp-rpt-tone-good' : m.profitMargin >= 0 ? 'sp-rpt-tone-gold' : 'sp-rpt-tone-bad';
 
     const artistDisplay = (selectedArtist || 'Roster').toUpperCase();
     const reportTitle = `MONEY MOVES: ${escapeHTML(artistDisplay)}`;
@@ -892,12 +903,12 @@
         </div>
         <div class="sp-rpt-hero__center">
           <div class="sp-rpt-hero__profit">${fmtUGX(m.netProfit)}</div>
-          <div class="sp-rpt-hero__trend" style="color:${trendColor}">
+          <div class="sp-rpt-hero__trend ${trendToneClass}">
             <i class="ph ${trendIcon}" aria-hidden="true"></i> ${fmtPct(m.trendPct)} vs previous
           </div>
         </div>
         <div class="sp-rpt-hero__filter">
-          <select id="spRptArtistFilter" onchange="window.renderMomentumDashboard()">
+          <select id="spRptArtistFilter">
             <option value="">All Artists</option>
             ${artistOptions}
           </select>
@@ -913,17 +924,17 @@
       <div class="sp-rpt-kpis">
         <div class="sp-rpt-kpi sp-haptic">
           <div class="sp-rpt-kpi__label">Gross Income</div>
-          <div class="sp-rpt-kpi__value" style="color:${GREEN}">${fmtUGX(m.grossIncome)}</div>
+          <div class="sp-rpt-kpi__value sp-rpt-tone-good">${fmtUGX(m.grossIncome)}</div>
           <div class="sp-rpt-kpi__sub">${m.totalBookings} bookings</div>
         </div>
         <div class="sp-rpt-kpi sp-haptic">
           <div class="sp-rpt-kpi__label">Expenses</div>
-          <div class="sp-rpt-kpi__value" style="color:${RED}">${fmtUGX(m.totalExpenses)}</div>
+          <div class="sp-rpt-kpi__value sp-rpt-tone-bad">${fmtUGX(m.totalExpenses)}</div>
           <div class="sp-rpt-kpi__sub">${Object.keys(m.expenseByCat).length} categories</div>
         </div>
         <div class="sp-rpt-kpi sp-haptic">
           <div class="sp-rpt-kpi__label">Profit Margin</div>
-          <div class="sp-rpt-kpi__value" style="color:${m.profitMargin >= 20 ? GREEN : m.profitMargin >= 0 ? GOLD : RED}">${m.profitMargin.toFixed(1)}%</div>
+          <div class="sp-rpt-kpi__value ${marginToneClass}">${m.profitMargin.toFixed(1)}%</div>
           <div class="sp-rpt-kpi__sub">${m.profitMargin >= 20 ? 'Healthy' : m.profitMargin >= 0 ? 'Watch' : 'Loss'}</div>
         </div>
         <div class="sp-rpt-kpi sp-haptic">
@@ -933,7 +944,7 @@
         </div>
         <div class="sp-rpt-kpi sp-haptic">
           <div class="sp-rpt-kpi__label">Balances Due</div>
-          <div class="sp-rpt-kpi__value" style="color:${m.balancesDue > 0 ? RED : GREEN}">${fmtUGX(m.balancesDue)}</div>
+          <div class="sp-rpt-kpi__value ${m.balancesDue > 0 ? 'sp-rpt-tone-bad' : 'sp-rpt-tone-good'}">${fmtUGX(m.balancesDue)}</div>
           <div class="sp-rpt-kpi__sub">outstanding</div>
         </div>
       </div>
@@ -989,10 +1000,10 @@
                   <td class="sp-rpt-num">${r.shows}</td>
                   <td class="sp-rpt-num">${fmtUGX(r.revenue)}</td>
                   <td class="sp-rpt-num">${fmtUGX(r.cost)}</td>
-                  <td class="sp-rpt-num" style="color:${r.profit >= 0 ? GREEN : RED}">${fmtUGX(r.profit)}</td>
-                  <td class="sp-rpt-num" style="color:${r.roi >= 0 ? GREEN : RED}">${r.roi.toFixed(0)}%</td>
+                  <td class="sp-rpt-num ${r.profit >= 0 ? 'sp-rpt-tone-good' : 'sp-rpt-tone-bad'}">${fmtUGX(r.profit)}</td>
+                  <td class="sp-rpt-num ${r.roi >= 0 ? 'sp-rpt-tone-good' : 'sp-rpt-tone-bad'}">${r.roi.toFixed(0)}%</td>
                 </tr>
-              `).join('') : '<tr><td colspan="6" style="text-align:center;color:#888">No venue data yet</td></tr>'}
+              `).join('') : '<tr><td class="sp-rpt-empty-cell" colspan="6">No venue data yet</td></tr>'}
             </tbody>
           </table>
         </div>
@@ -1003,17 +1014,17 @@
         <div class="sp-rpt-achievements sp-haptic">
           <h4 class="sp-rpt-chart-title"><i class="ph-duotone ph-trophy" aria-hidden="true"></i> Achievements</h4>
           <div class="sp-rpt-badge-list">
-            ${m.bestMonth ? `<div class="sp-rpt-badge"><i class="ph-duotone ph-star" style="color:${GOLD}"></i> Best Month: ${monthLabel(m.bestMonth[0])} (${fmtUGX(m.bestMonth[1])})</div>` : ''}
-            ${m.topCity ? `<div class="sp-rpt-badge"><i class="ph-duotone ph-map-pin" style="color:${GREEN}"></i> Top City: ${escapeHTML(m.topCity[0])}</div>` : ''}
-            ${m.totalBookings >= 10 ? `<div class="sp-rpt-badge"><i class="ph-duotone ph-fire" style="color:#f97316"></i> ${m.totalBookings} Shows Booked</div>` : ''}
-            ${m.profitMargin >= 30 ? `<div class="sp-rpt-badge"><i class="ph-duotone ph-rocket" style="color:${GOLD}"></i> 30%+ Profit Margin</div>` : ''}
-            ${(!m.bestMonth && !m.topCity) ? '<div class="sp-rpt-badge" style="color:#888"><i class="ph ph-info"></i> Keep adding data to unlock achievements</div>' : ''}
+            ${m.bestMonth ? `<div class="sp-rpt-badge"><i class="ph-duotone ph-star sp-rpt-tone-gold"></i> Best Month: ${monthLabel(m.bestMonth[0])} (${fmtUGX(m.bestMonth[1])})</div>` : ''}
+            ${m.topCity ? `<div class="sp-rpt-badge"><i class="ph-duotone ph-map-pin sp-rpt-tone-good"></i> Top City: ${escapeHTML(m.topCity[0])}</div>` : ''}
+            ${m.totalBookings >= 10 ? `<div class="sp-rpt-badge"><i class="ph-duotone ph-fire sp-rpt-tone-orange"></i> ${m.totalBookings} Shows Booked</div>` : ''}
+            ${m.profitMargin >= 30 ? `<div class="sp-rpt-badge"><i class="ph-duotone ph-rocket sp-rpt-tone-gold"></i> 30%+ Profit Margin</div>` : ''}
+            ${(!m.bestMonth && !m.topCity) ? '<div class="sp-rpt-badge sp-rpt-tone-muted"><i class="ph ph-info"></i> Keep adding data to unlock achievements</div>' : ''}
           </div>
         </div>
         <div class="sp-rpt-recs sp-haptic">
           <h4 class="sp-rpt-chart-title"><i class="ph ph-lightbulb" aria-hidden="true"></i> Smart Recommendations</h4>
           <div class="sp-rpt-rec-list">
-            ${recs.map(r => `<div class="sp-rpt-rec"><i class="ph ${r.icon}" style="color:${GOLD}"></i> ${escapeHTML(r.text)}</div>`).join('')}
+            ${recs.map(r => `<div class="sp-rpt-rec"><i class="ph ${r.icon} sp-rpt-tone-gold"></i> ${escapeHTML(r.text)}</div>`).join('')}
           </div>
         </div>
       </div>
@@ -1026,6 +1037,11 @@
         </div>
       </details>
     `;
+
+    const artistFilter = document.getElementById('spRptArtistFilter');
+    if (artistFilter) {
+      artistFilter.addEventListener('change', () => renderDashboard());
+    }
 
     // Render charts after DOM is in place. Chart.js is lazy-loaded so auth boot
     // is not competing with report visuals on first paint.
@@ -1082,23 +1098,23 @@
       ...m.filteredOtherIncome.map(i => ({ type: 'Income', date: i.date, desc: i.source || i.type || '', amount: Math.round(Number(i.amount) || 0), sign: '+' })),
     ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
-    if (all.length === 0) return '<p style="color:#888;text-align:center;padding:16px">No transactions in this period</p>';
+    if (all.length === 0) return '<p class="sp-rpt-ledger-note">No transactions in this period</p>';
 
     const rows = all.slice(0, 100).map(t => {
-      const color = t.sign === '+' ? GREEN : RED;
+      const amountToneClass = t.sign === '+' ? 'sp-rpt-tone-good' : 'sp-rpt-tone-bad';
       const fmtDate = t.date ? new Date(t.date).toLocaleDateString('en-GB') : '—';
       return `<tr>
         <td>${fmtDate}</td>
         <td><span class="sp-rpt-ledger-type sp-rpt-ledger-type--${t.type.toLowerCase()}">${t.type}</span></td>
         <td>${escapeHTML(t.desc)}</td>
-        <td class="sp-rpt-num" style="color:${color}">${t.sign}${fmtUGX(t.amount).replace('UGX ', '')}</td>
+        <td class="sp-rpt-num ${amountToneClass}">${t.sign}${fmtUGX(t.amount).replace('UGX ', '')}</td>
       </tr>`;
     }).join('');
 
     return `<table class="sp-rpt-table sp-rpt-table--ledger">
       <thead><tr><th>Date</th><th>Type</th><th>Description</th><th class="sp-rpt-num">Amount</th></tr></thead>
       <tbody>${rows}</tbody>
-    </table>${all.length > 100 ? '<p style="color:#888;text-align:center;font-size:12px">Showing first 100 of ' + all.length + ' entries</p>' : ''}`;
+    </table>${all.length > 100 ? '<p class="sp-rpt-ledger-note sp-rpt-ledger-note--small">Showing first 100 of ' + all.length + ' entries</p>' : ''}`;
   }
 
   // ── PDF EXPORT MODAL ────────────────────────────────────────────────────────

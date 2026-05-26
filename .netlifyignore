@@ -11,8 +11,21 @@
 .claude/
 .local-server.*.log
 
+*.html
+!/index.html
+!/how-it-works.html
+!/proof.html
+!/testimonials.html
+
 .git/
 .github/
+.gitignore
+.netlifyignore
+netlify.toml
+package*.json
+scripts/
+*.test.*
+*.spec.*
 backend/
 legacy-netlify-redirect/
 
@@ -20,4 +33,5 @@ README.md
 SETUP.md
 STAR_PAPER_DOCUMENTATION.md
 STATE_SCHEMA.md
+*.md
 schema.sql

@@ -8,6 +8,7 @@
 .codex-npm-cache/
 .codex-proof-html-*.png
 .codex-testimonials-html-*.png
+.claude/
 .local-server.*.log
 
 node_modules/

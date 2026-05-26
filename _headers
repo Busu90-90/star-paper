@@ -1,5 +1,5 @@
 /*
-  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://unpkg.com https://fonts.gstatic.com; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:; frame-ancestors 'none'
   Referrer-Policy: strict-origin-when-cross-origin
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
@@ -42,6 +42,9 @@
   Netlify-CDN-Cache-Control: no-cache
 
 /assets/landing/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/vendor/*
   Cache-Control: public, max-age=31536000, immutable
 
 /star_paper_logo_pack/*

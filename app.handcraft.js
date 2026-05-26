@@ -340,7 +340,12 @@
       btn.type = 'button';
       btn.className = 'sp-handcraft-bento-arrow sp-handcraft-bento-arrow--' + dir;
       btn.setAttribute('aria-label', label);
-      btn.innerHTML = '<i class="' + iconClass + '" aria-hidden="true"></i>';
+      var icon = document.createElement('i');
+      String(iconClass || '').split(/\s+/).forEach(function (token) {
+        if (/^[a-z0-9_-]+$/i.test(token)) icon.classList.add(token);
+      });
+      icon.setAttribute('aria-hidden', 'true');
+      btn.appendChild(icon);
       return btn;
     }
     var prev = makeArrow('prev', 'Previous cards', 'ph ph-caret-left');

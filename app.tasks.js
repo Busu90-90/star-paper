@@ -193,13 +193,13 @@
             return `
                 <div class="task-item ${task.completed ? "task-completed" : ""} ${isOverdue ? "task-overdue" : ""}">
                     <input type="checkbox" ${task.completed ? "checked" : ""} ${readOnly ? "disabled" : ""}
-                           onchange="window.toggleTask('${escapeHtml(task.id)}')" class="task-checkbox" />
+                           data-task-action="toggle" data-task-id="${escapeHtml(task.id)}" class="task-checkbox" />
                     <div class="task-content">
                         <div class="task-text sp-inline-editable" ${inlineEditAttrs(task.id, "text", "Task")}>${escapeHtml(task.text)}</div>
                         <div class="task-due sp-inline-editable" ${inlineEditAttrs(task.id, "dueDate", "Due Date")}>${task.dueDate ? escapeHtml(formatTaskDate(task.dueDate)) : "No due date"}</div>
                     </div>
-                    <button class="task-edit" ${readOnly ? "disabled" : ""} onclick="window.startEditTask('${escapeHtml(task.id)}')" aria-label="Edit task">Edit</button>
-                    <button class="task-delete" ${readOnly ? "disabled" : ""} onclick="window.deleteTask('${escapeHtml(task.id)}')" aria-label="Delete task">&times;</button>
+                    <button class="task-edit" ${readOnly ? "disabled" : ""} data-task-action="edit" data-task-id="${escapeHtml(task.id)}" aria-label="Edit task">Edit</button>
+                    <button class="task-delete" ${readOnly ? "disabled" : ""} data-task-action="delete" data-task-id="${escapeHtml(task.id)}" aria-label="Delete task">&times;</button>
                 </div>
             `;
         }).join("");
@@ -330,6 +330,28 @@
         });
     }
 
+    function bindTaskActions() {
+        const container = document.getElementById("taskList");
+        if (!container || container.dataset.taskActionsBound === "true") return;
+        container.dataset.taskActionsBound = "true";
+        container.addEventListener("change", (event) => {
+            const target = event.target?.closest?.('[data-task-action="toggle"]');
+            if (!target || !container.contains(target)) return;
+            toggleTask(target.dataset.taskId || "");
+        });
+        container.addEventListener("click", (event) => {
+            const target = event.target?.closest?.("[data-task-action]");
+            if (!target || !container.contains(target)) return;
+            const action = target.dataset.taskAction || "";
+            const taskId = target.dataset.taskId || "";
+            if (action === "edit") {
+                startEditTask(taskId);
+            } else if (action === "delete") {
+                deleteTask(taskId);
+            }
+        });
+    }
+
     function openTasksSection() {
         if (typeof window.showSection === "function") {
             window.showSection("tasks");
@@ -348,6 +370,7 @@
     window.applyTaskSync = applyTaskSync;
     window.renderTasks = function () {
         bindTaskInputEnter();
+        bindTaskActions();
         renderTasks();
     };
     window.handleAddTask = handleAddTask;
@@ -357,6 +380,7 @@
     function initializeTasksModule() {
         ensureLoadedForCurrentUser();
         bindTaskInputEnter();
+        bindTaskActions();
         renderTasks();
     }
 

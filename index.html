@@ -3,72 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://unpkg.com https://fonts.gstatic.com; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:; frame-ancestors 'none';">
+    <meta name="star-paper:public-root" content="app-shell">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:; frame-ancestors 'none';">
     <title>Star Paper</title>
-    <script>
-      (function redirectLegacyNetlifyOrigin() {
-        if (window.location.hostname !== 'starpaper.netlify.app') return;
-        var canonicalUrl = new URL(window.location.href);
-        canonicalUrl.protocol = 'https:';
-        canonicalUrl.hostname = 'star-paper.netlify.app';
-        var redirected = false;
-        function goCanonical() {
-          if (redirected) return;
-          redirected = true;
-          window.location.replace(canonicalUrl.toString());
-        }
-        var cleanupTasks = [];
-        if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
-          cleanupTasks.push(
-            navigator.serviceWorker.getRegistrations()
-              .then(function(registrations) {
-                return Promise.all(registrations.map(function(registration) {
-                  return registration.unregister().catch(function() {});
-                }));
-              })
-          );
-        }
-        if (window.caches && caches.keys) {
-          cleanupTasks.push(
-            caches.keys().then(function(keys) {
-              return Promise.all(keys
-                .map(function(key) { return caches.delete(key).catch(function() {}); }));
-            })
-          );
-        }
-        Promise.race([
-          Promise.allSettled(cleanupTasks),
-          new Promise(function(resolve) { setTimeout(resolve, 400); })
-        ]).then(goCanonical);
-      })();
-      (function isolatePublicRouteShells() {
-        var publicRoutes = {
-          '/how-it-works': '/how-it-works.html',
-          '/how-it-works.html': '/how-it-works.html',
-          '/proof': '/proof.html',
-          '/proof.html': '/proof.html',
-          '/testimonials': '/testimonials.html',
-          '/testimonials.html': '/testimonials.html'
-        };
-        var pathname = (window.location.pathname || '/').replace(/\/+$/, '') || '/';
-        var canonicalPath = publicRoutes[pathname];
-        if (!canonicalPath) return;
-        var hash = window.location.hash || '';
-        var decodedHash = '';
-        try {
-          decodedHash = decodeURIComponent(hash.replace(/^#/, '')).trim();
-        } catch (_err) {
-          decodedHash = hash.replace(/^#/, '').trim();
-        }
-        var appHashPattern = /^(artists|bookings|calendar|dashboard|expenses|financials|global|money|otherIncome|reports|schedule|settings|tasks)(?:[?&/].*)?$/i;
-        var targetHash = appHashPattern.test(decodedHash) ? '' : hash;
-        var target = canonicalPath + (window.location.search || '') + targetHash;
-        var current = window.location.pathname + (window.location.search || '') + hash;
-        if (target !== current) {
-          window.location.replace(target);
-        }
-      })();
-    </script>
+    <script src="app.browser-assets.js?v=1"></script>
+    <script src="app.public-pages.js?v=1"></script>
+    <script src="app.boot-head.js?v=1"></script>
     <link rel="manifest" href="manifest.json?v=24">
     <meta name="theme-color" content="#0B0B0B">
     <link rel="icon" type="image/png" sizes="32x32" href="star_paper_logo_pack/star_paper_32.png?v=3">
@@ -77,14 +17,11 @@
     <link rel="apple-touch-icon" sizes="256x256" href="star_paper_logo_pack/star_paper_256.png?v=3">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://fxcyocdwvjiyatqnaahg.supabase.co" crossorigin>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="dns-prefetch" href="//browser.sentry-cdn.com">
     <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
-    <link rel="dns-prefetch" href="//unpkg.com">
     <!-- Handcraft variable + display fonts (loaded before styles.handcraft.css applies them) -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,300..700;1,300..700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
-    <link rel="preload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" as="script" crossorigin>
+    <link rel="stylesheet" href="assets/vendor/fonts/star-paper-fonts.css?v=1">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" as="script" crossorigin integrity="sha384-zfshMiFERdyezN/WZXzHe9g53pOZCrLPBj/qC0ohHnxQ20c3zXwFqbtRAwvZMacA">
 
     <!--
       FIX: Load the Supabase JS SDK synchronously in <head> so window.supabase
@@ -93,50 +30,10 @@
       calls checkAuth() while window.SP is still undefined, causing "stuck on
       landing" for every user with a valid session.
     -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
-    <script type="importmap">
-      {
-        "imports": {
-          "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
-        }
-      }
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" crossorigin="anonymous" integrity="sha384-zfshMiFERdyezN/WZXzHe9g53pOZCrLPBj/qC0ohHnxQ20c3zXwFqbtRAwvZMacA"></script>
+    <script src="app.boot-flags.js?v=1"></script>
 
-    <style>
-      html.sp-force-boot #appBootLoader.hidden {
-        opacity: 1;
-        visibility: visible;
-        pointer-events: auto;
-      }
-
-      html.sp-force-boot #landingScreen,
-      html.sp-force-boot #loginScreen {
-        visibility: hidden;
-      }
-
-      /* UPGRADE: Premium polish kill-switch failsafe (also in styles.premium.css) */
-      html.sp-prem-off .sp-prem-widget { display: none !important; }
-      html.sp-handcraft-off .sp-handcraft-widget { display: none !important; }
-      html.sp-shell-off .sp-shell-widget { display: none !important; }
-    </style>
-    <script>
-      (function applyPolishFlagsBeforePaint() {
-        try {
-          var premOff = localStorage.getItem('sp_prem_off') === '1';
-          var handcraftOff = localStorage.getItem('sp_handcraft_off') === '1';
-          var shellOff = localStorage.getItem('sp_shell_refined_off') === '1';
-          if (premOff) document.documentElement.classList.add('sp-prem-off');
-          if (handcraftOff || premOff) {
-            document.documentElement.classList.add('sp-handcraft-off');
-          }
-          document.documentElement.classList.toggle('sp-shell-refined', !premOff && !handcraftOff && !shellOff);
-          document.documentElement.classList.toggle('sp-shell-off', premOff || handcraftOff || shellOff);
-        } catch (_err) {}
-      })();
-    </script>
-
-    <link rel="stylesheet" href="styles.css?v=53">
+    <link rel="stylesheet" href="styles.css?v=56">
     <!-- UPGRADE: Final premium relayering token layer (additive, kill-switchable via localStorage.sp_prem_off) -->
     <link rel="stylesheet" href="star-paper-tokens.css?v=21">
     <!-- UPGRADE: Premium polish layer (additive, kill-switchable via localStorage.sp_prem_off) -->
@@ -145,49 +42,14 @@
     <link rel="preload" as="image" href="/assets/landing/notebook-board-desktop.webp?v=3" imagesrcset="/assets/landing/notebook-board-desktop.webp?v=3">
     <link rel="preload" as="image" href="star_paper_logo_pack/star_paper_transparent.png?v=3">
     <link rel="stylesheet" href="styles.handcraft.css?v=33">
-    <!-- Phosphor Icons — unified icon system -->
-    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
-    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+    <!-- Vendored Phosphor Icons 2.1.1 - unified icon system -->
+    <link rel="stylesheet" href="assets/vendor/phosphor-icons/regular/style.css?v=1">
+    <link rel="stylesheet" href="assets/vendor/phosphor-icons/fill/style.css?v=1">
     <!-- UPGRADE: duotone variant for primary actions -->
-    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/duotone/style.css">
+    <link rel="stylesheet" href="assets/vendor/phosphor-icons/duotone/style.css?v=1">
 </head>
 <body>
-    <script>
-      (function applyStoredThemeBeforePaint() {
-        try {
-          document.body.classList.toggle('light-theme', localStorage.getItem('starPaperTheme') === 'light');
-          document.body.classList.toggle('sp-shell-refined', document.documentElement.classList.contains('sp-shell-refined'));
-          document.body.classList.toggle('sp-shell-off', document.documentElement.classList.contains('sp-shell-off'));
-        } catch (_err) {}
-      })();
-    </script>
-    <script>
-      (function() {
-        try {
-          const key = 'sp_boot_context';
-          const marker = sessionStorage.getItem(key) || '';
-          const url = new URL(window.location.href);
-          const hashParams = new URLSearchParams((url.hash || '').replace(/^#/, ''));
-          const hasAuthCallback = Boolean(
-            hashParams.get('access_token') ||
-            hashParams.get('refresh_token') ||
-            url.searchParams.get('access_token') ||
-            url.searchParams.get('refresh_token') ||
-            url.searchParams.get('code') ||
-            url.searchParams.get('error') ||
-            url.searchParams.get('error_code') ||
-            url.searchParams.get('error_description')
-          );
-          const routePath = (url.pathname || '/').replace(/\/+$/, '') || '/';
-          const hashToken = decodeURIComponent((url.hash || '').replace(/^#/, '')).trim().split(/[?&/]/)[0].toLowerCase();
-          const isAppShellPath = routePath === '/' || routePath === '/index.html';
-          const hasAppHash = isAppShellPath && /^(artists|bookings|calendar|dashboard|expenses|financials|global|money|otherincome|reports|schedule|settings|tasks)$/.test(hashToken);
-          if (hasAuthCallback || hasAppHash || marker === 'auth-return') {
-            document.documentElement.classList.add('sp-force-boot');
-          }
-        } catch (_err) {}
-      })();
-    </script>
+    <script src="app.boot-body.js?v=1"></script>
     <div class="app-boot-loader hidden" id="appBootLoader" aria-live="polite" aria-hidden="true" data-state="loading-session">
         <div class="app-boot-loader__inner">
             <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="Star Paper" class="app-boot-loader__logo" />
@@ -195,8 +57,8 @@
             <div class="app-boot-loader__text" id="appBootLoaderText">Loading session...</div>
             <div class="app-boot-loader__subtext" id="appBootLoaderSubtext">Checking your secure cloud session...</div>
             <div class="app-boot-loader__actions" id="appBootLoaderActions" hidden>
-                <button class="app-boot-loader__button" type="button" onclick="window.retryInitialCloudBootstrap?.()">Retry</button>
-                <button class="app-boot-loader__button app-boot-loader__button--ghost" type="button" onclick="window.logout?.()">Log Out</button>
+                <button class="app-boot-loader__button" type="button" data-action="retryInitialCloudBootstrap">Retry</button>
+                <button class="app-boot-loader__button app-boot-loader__button--ghost" type="button" data-action="logout">Log Out</button>
             </div>
         </div>
     </div>
@@ -209,7 +71,7 @@
                 <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="Star Paper" class="mini-nav-logo">
                 <span class="mini-nav-brand">STAR PAPER</span>
             </a>
-            <button class="mini-nav-cta" data-action="showSignupForm" onclick="showSignupForm()">Get Started</button>
+            <button class="mini-nav-cta" data-action="showSignupForm">Get Started</button>
         </div>
 
         <div class="landing-hero-stage" id="landingHeroStage">
@@ -230,13 +92,13 @@
                             <a href="./proof.html">Proof</a>
                             <a href="./testimonials.html">Testimonials</a>
                             <span class="landing-handcraft-desktop-divider" aria-hidden="true"></span>
-                            <button type="button" data-action="showLoginForm" onclick="showLoginForm()">Sign in</button>
+                            <button type="button" data-action="showLoginForm">Sign in</button>
                             <button class="theme-toggle icon-toggle landing-theme-toggle landing-handcraft-nav-theme" id="landingThemeToggle" type="button" aria-label="Toggle theme">
-                                <i class="ph ph-moon" aria-hidden="true" style="font-size:15px;"></i>
+                                <i class="ph ph-moon sp-csp-style-1" aria-hidden="true"></i>
                             </button>
                         </nav>
                         <div class="landing-shell-nav-actions">
-                            <button class="landing-shell-login" type="button" data-action="showLoginForm" onclick="showLoginForm()">Sign in</button>
+                            <button class="landing-shell-login" type="button" data-action="showLoginForm">Sign in</button>
                         </div>
                     </div>
 
@@ -258,7 +120,7 @@
                                     Bookings, finances, contracts, splits, and more. Everything in sync. Everyone in the loop.
                                 </p>
                                 <div class="landing-buttons">
-                                    <button class="landing-btn" id="createAccountBtn" data-action="showSignupForm" data-sp-prem-pulse="gold" onclick="showSignupForm()">
+                                    <button class="landing-btn" id="createAccountBtn" data-action="showSignupForm" data-sp-prem-pulse="gold">
                                         <span>Get started</span>
                                         <i class="ph ph-arrow-right" aria-hidden="true"></i>
                                     </button>
@@ -348,12 +210,12 @@
                 <div class="spinner"></div>
                 <div>Logging in...</div>
             </div>
-            <a class="logo login-home-link" href="#landingScreen" data-action="showLanding" onclick="showLanding(); return false;" aria-label="Return to Star Paper landing">
+            <a class="logo login-home-link" href="#landingScreen" data-action="showLanding" aria-label="Return to Star Paper landing">
                 <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="Star Paper" class="login-box-logo" />
                 <p id="loginBoxHeading">Welcome back to Star Paper</p>
                 <small class="login-subtext" id="loginBoxSubtext">Sign in to continue to your dashboard.</small>
             </a>
-            <div id="loginForm" style="display: none;">
+            <div class="sp-csp-style-2" id="loginForm">
                 <label class="sr-only" for="loginName">Email</label>
                 <input type="email" id="loginName" placeholder="Email" autocomplete="email" inputmode="email" />
                 <div class="validation-message" id="loginNameError"></div>
@@ -370,18 +232,18 @@
                     <span class="btn-google-icon" aria-hidden="true"><i class="ph ph-google-logo" aria-hidden="true"></i></span>
                     Continue with Google
                 </button>
-                <button class="back-btn" data-action="showLanding" onclick="showLanding()">Back</button>
+                <button class="back-btn" data-action="showLanding">Back</button>
                 <button class="forgot-password-link" type="button" data-action="showForgotPassword">Forgot password?</button>
             </div>
-            <div id="forgotPasswordForm" style="display: none;">
+            <div class="sp-csp-style-2" id="forgotPasswordForm">
                 <p class="forgot-password-intro">Enter your account email and we'll send secure reset instructions if the account exists.</p>
                 <label class="sr-only" for="forgotEmail">Account email</label>
                 <input type="email" id="forgotEmail" placeholder="Email" autocomplete="email" inputmode="email" />
                 <div class="forgot-password-hint" id="forgotPasswordResult"></div>
                 <button class="btn-primary" type="button" data-action="submitForgotPassword">Send Reset Email</button>
-                <button class="back-btn" type="button" data-action="showLoginForm" onclick="showLoginForm()">Back to Login</button>
+                <button class="back-btn" type="button" data-action="showLoginForm">Back to Login</button>
             </div>
-            <div id="signupForm" style="display: none;">
+            <div class="sp-csp-style-2" id="signupForm">
                 <label class="sr-only" for="signupName">Name</label>
                 <input type="text" id="signupName" placeholder="Name" autocomplete="name" />
                 <label class="sr-only" for="signupPassword">Password</label>
@@ -390,14 +252,14 @@
                 <input type="email" id="signupEmail" placeholder="Email (required for cloud signup)" autocomplete="email" />
                 <label class="sr-only" for="signupPhone">Phone</label>
                 <input type="tel" id="signupPhone" placeholder="Phone (optional)" autocomplete="tel" />
-                <button class="btn-primary" data-action="signup" onclick="signup()">Create Account</button>
+                <button class="btn-primary" data-action="signup">Create Account</button>
                 <div class="auth-oauth-divider"><span>or</span></div>
                 <button class="btn-google" type="button" data-action="signInWithGoogle">
                     <span class="btn-google-icon" aria-hidden="true"><i class="ph ph-google-logo" aria-hidden="true"></i></span>
                     Continue with Google
                 </button>
                 <p class="auth-switch-text">Already have an account? <a href="#" class="auth-switch-link" data-action="showLoginForm">Login</a></p>
-                <button class="back-btn" data-action="showLanding" onclick="showLanding()">Back</button>
+                <button class="back-btn" data-action="showLanding">Back</button>
             </div>
         </div>
     </div>
@@ -406,7 +268,7 @@
     <div class="receipt-modal" id="confirmDeleteModal" role="alertdialog" aria-modal="true" aria-labelledby="confirmDeleteTitle">
         <div class="receipt-modal-content confirm-delete-modal-content">
             <div class="confirm-delete-icon" aria-hidden="true">
-                <i class="ph ph-trash" aria-hidden="true" style="font-size:28px;"></i>
+                <i class="ph ph-trash sp-csp-style-3" aria-hidden="true"></i>
             </div>
             <h3 id="confirmDeleteTitle" class="confirm-delete-title">Delete this entry?</h3>
             <p class="confirm-delete-body" id="confirmDeleteBody">This action cannot be undone.</p>
@@ -428,8 +290,8 @@
     <div class="app-container" id="appContainer">
         <!-- Collapse toggle — lives outside sidebar to escape overflow clipping -->
         <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" aria-label="Toggle sidebar" type="button">
-            <i class="scb-icon scb-icon--close ph ph-caret-left" aria-hidden="true" style="font-size:14px;"></i>
-            <i class="scb-icon scb-icon--open ph ph-caret-right" aria-hidden="true" style="font-size:14px;"></i>
+            <i class="scb-icon scb-icon--close ph ph-caret-left sp-csp-style-4" aria-hidden="true"></i>
+            <i class="scb-icon scb-icon--open ph ph-caret-right sp-csp-style-4" aria-hidden="true"></i>
         </button>
                 <div class="sidebar" id="sidebar">
             <!-- Profile Header Section -->
@@ -446,29 +308,29 @@
 
             <!-- Navigation List — Phosphor Icons -->
             <nav class="sidebar-nav">
-                <button type="button" class="nav-item active" data-action="showSection" onclick="showSection('dashboard')" data-section="dashboard" data-tooltip="Dashboard">
-                    <i class="ph ph-house nav-icon-svg" aria-hidden="true" style="font-size:20px;"></i>
+                <button type="button" class="nav-item active" data-action="showSection" data-section="dashboard" data-tooltip="Dashboard">
+                    <i class="ph ph-house nav-icon-svg sp-csp-style-5" aria-hidden="true"></i>
                     <span class="nav-label">Dashboard</span>
                 </button>
-                <button type="button" class="nav-item" data-action="showSection" onclick="showSection('money')" data-section="money" data-tooltip="Money">
-                    <i class="ph ph-currency-circle-dollar nav-icon-svg" aria-hidden="true" style="font-size:20px;"></i>
+                <button type="button" class="nav-item" data-action="showSection" data-section="money" data-tooltip="Money">
+                    <i class="ph ph-currency-circle-dollar nav-icon-svg sp-csp-style-5" aria-hidden="true"></i>
                     <span class="nav-label">Money</span>
                 </button>
-                <button type="button" class="nav-item" data-action="showSection" onclick="showSection('schedule')" data-section="schedule" data-tooltip="Schedule">
-                    <i class="ph ph-calendar-blank nav-icon-svg" aria-hidden="true" style="font-size:20px;"></i>
+                <button type="button" class="nav-item" data-action="showSection" data-section="schedule" data-tooltip="Schedule">
+                    <i class="ph ph-calendar-blank nav-icon-svg sp-csp-style-5" aria-hidden="true"></i>
                     <span class="nav-label">Schedule</span>
                 </button>
-                <button type="button" class="nav-item" data-action="showSection" onclick="showSection('tasks')" data-section="tasks" data-tooltip="Tasks">
-                    <i class="ph ph-clipboard-text nav-icon-svg" aria-hidden="true" style="font-size:20px;"></i>
+                <button type="button" class="nav-item" data-action="showSection" data-section="tasks" data-tooltip="Tasks">
+                    <i class="ph ph-clipboard-text nav-icon-svg sp-csp-style-5" aria-hidden="true"></i>
                     <span class="nav-label">Tasks</span>
-                    <span class="task-badge-nav" id="taskBadgeNav" style="display:none;margin-left:auto;min-width:20px;height:20px;padding:0 6px;background:#f44336;color:white;border-radius:10px;font-size:11px;font-weight:700;display:none;align-items:center;justify-content:center;">0</span>
+                    <span class="task-badge-nav sp-csp-style-6" id="taskBadgeNav">0</span>
                 </button>
-                <button type="button" class="nav-item" data-action="showSection" onclick="showSection('artists')" data-section="artists" data-tooltip="Artists">
-                    <i class="ph ph-microphone-stage nav-icon-svg" aria-hidden="true" style="font-size:20px;"></i>
+                <button type="button" class="nav-item" data-action="showSection" data-section="artists" data-tooltip="Artists">
+                    <i class="ph ph-microphone-stage nav-icon-svg sp-csp-style-5" aria-hidden="true"></i>
                     <span class="nav-label">Artists</span>
                 </button>
-                <button type="button" class="nav-item" data-action="showSection" onclick="showSection('settings')" data-section="settings" data-tooltip="Settings">
-                    <i class="ph ph-gear-six nav-icon-svg" aria-hidden="true" style="font-size:20px;"></i>
+                <button type="button" class="nav-item" data-action="showSection" data-section="settings" data-tooltip="Settings">
+                    <i class="ph ph-gear-six nav-icon-svg sp-csp-style-5" aria-hidden="true"></i>
                     <span class="nav-label">Settings</span>
                 </button>
             </nav>
@@ -479,12 +341,12 @@
             <!-- Bottom utility bar: About · Settings · Logout -->
             <div class="sidebar-logout-section">
                 <div class="sidebar-util-row">
-                    <button type="button" class="sidebar-util-btn" id="sidebarAboutBtn" data-action="showAboutModal" onclick="showAboutModal()" title="About Star Paper">
-                        <i class="ph ph-info" aria-hidden="true" style="font-size:18px;"></i>
+                    <button type="button" class="sidebar-util-btn" id="sidebarAboutBtn" data-action="showAboutModal" title="About Star Paper">
+                        <i class="ph ph-info sp-csp-style-7" aria-hidden="true"></i>
                         <span class="nav-label">About</span>
                     </button>
                     <button type="button" class="nav-item sidebar-util-btn sidebar-util-btn--logout" id="sidebarLogoutBtn" title="Logout">
-                        <i class="ph ph-sign-out" aria-hidden="true" style="font-size:18px;"></i>
+                        <i class="ph ph-sign-out sp-csp-style-7" aria-hidden="true"></i>
                         <span class="nav-label">Logout</span>
                     </button>
                 </div>
@@ -494,64 +356,64 @@
 
         <!-- Mobile bottom navigation bar -->
         <nav class="bottom-nav" id="bottomNav" aria-label="Quick navigation">
-            <button class="bottom-nav-item" data-action="showSection" onclick="showSection('dashboard')" data-section="dashboard" data-tooltip="Dashboard" aria-label="Dashboard">
-                <i class="ph ph-house" aria-hidden="true" style="font-size:22px;"></i>
+            <button class="bottom-nav-item" data-action="showSection" data-section="dashboard" data-tooltip="Dashboard" aria-label="Dashboard">
+                <i class="ph ph-house sp-csp-style-8" aria-hidden="true"></i>
                 <span>Home</span>
             </button>
-            <button class="bottom-nav-item" data-action="showSection" onclick="showSection('schedule')" data-section="schedule" data-tooltip="Schedule" aria-label="Schedule">
-                <i class="ph ph-calendar-blank" aria-hidden="true" style="font-size:22px;"></i>
+            <button class="bottom-nav-item" data-action="showSection" data-section="schedule" data-tooltip="Schedule" aria-label="Schedule">
+                <i class="ph ph-calendar-blank sp-csp-style-8" aria-hidden="true"></i>
                 <span>Schedule</span>
             </button>
-            <button class="bottom-nav-item" data-action="showSection" onclick="showSection('money')" data-section="money" data-tooltip="Money" aria-label="Money">
-                <i class="ph ph-currency-circle-dollar" aria-hidden="true" style="font-size:22px;"></i>
+            <button class="bottom-nav-item" data-action="showSection" data-section="money" data-tooltip="Money" aria-label="Money">
+                <i class="ph ph-currency-circle-dollar sp-csp-style-8" aria-hidden="true"></i>
                 <span>Money</span>
             </button>
-            <button class="bottom-nav-item" data-action="showSection" onclick="showSection('tasks')" data-section="tasks" data-tooltip="Tasks" aria-label="Tasks">
-                <i class="ph ph-clipboard-text" aria-hidden="true" style="font-size:22px;"></i>
+            <button class="bottom-nav-item" data-action="showSection" data-section="tasks" data-tooltip="Tasks" aria-label="Tasks">
+                <i class="ph ph-clipboard-text sp-csp-style-8" aria-hidden="true"></i>
                 <span>Tasks</span>
             </button>
-            <button class="bottom-nav-item" data-action="showSection" onclick="showSection('settings')" data-section="settings" data-tooltip="Settings" aria-label="Settings">
-                <i class="ph ph-gear-six" aria-hidden="true" style="font-size:22px;"></i>
+            <button class="bottom-nav-item" data-action="showSection" data-section="settings" data-tooltip="Settings" aria-label="Settings">
+                <i class="ph ph-gear-six sp-csp-style-8" aria-hidden="true"></i>
                 <span>Settings</span>
             </button>
         </nav>
 
         <!-- Scroll-to-top FAB (appears after scrolling down) -->
         <button class="scroll-top-fab" id="scrollTopFab" aria-label="Scroll to top" title="Scroll to top">
-            <i class="ph ph-caret-up" aria-hidden="true" style="font-size:18px;"></i>
+            <i class="ph ph-caret-up sp-csp-style-7" aria-hidden="true"></i>
         </button>
 
         <div class="main-content">
             <div class="header">
                 <div class="header-left">
                     <button class="hamburger" id="hamburgerBtn" aria-label="Toggle navigation" aria-expanded="false"><i class="ph ph-list" aria-hidden="true"></i></button>
-                    <button class="app-brand" type="button" data-action="showSection" onclick="showSection('dashboard')" aria-label="Go to dashboard">
+                    <button class="app-brand" type="button" data-action="showSection" data-section="dashboard" aria-label="Go to dashboard">
                         <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="Star Paper">
                     </button>
                     <!-- In-app back / forward navigation -->
                     <div class="nav-hist-wrap" id="navHistWrap">
                         <button class="nav-hist-btn" id="navBackBtn" aria-label="Go back" title="Go back" disabled>
-                            <i class="ph ph-caret-left" aria-hidden="true" style="font-size:15px;"></i>
+                            <i class="ph ph-caret-left sp-csp-style-1" aria-hidden="true"></i>
                         </button>
                         <button class="nav-hist-btn" id="navFwdBtn" aria-label="Go forward" title="Go forward" disabled>
-                            <i class="ph ph-caret-right" aria-hidden="true" style="font-size:15px;"></i>
+                            <i class="ph ph-caret-right sp-csp-style-1" aria-hidden="true"></i>
                         </button>
                     </div>
                     <div class="app-title-icon" id="appTitleIcon" aria-hidden="true"></div>
                     <h1 id="pageTitle">Overview</h1>
                 </div>
                 <div class="user-info">
-                    <span id="userName" style="display:none;"></span>
+                    <span class="sp-csp-style-9" id="userName"></span>
                 </div>
                 <div class="sp-sync-indicator" id="spSyncIndicator" title="Cloud sync status" aria-live="polite" aria-label="Cloud idle">
                     <i class="ph ph-cloud sp-sync-icon" id="spSyncIcon" aria-hidden="true"></i>
                 </div>
             </div>
             <!-- Welcome Message -->
-            <div id="welcomeMessage" class="welcome-message" style="display: none;">
+            <div id="welcomeMessage" class="welcome-message sp-csp-style-2">
                 <canvas id="mainstageCoinRainCanvas" aria-hidden="true"></canvas>
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
-                    <div style="flex: 1;">
+                <div class="sp-csp-style-10">
+                    <div class="sp-csp-style-11">
                         <h3><span id="welcomeUserName">STAR PAPER</span></h3>
                         <p>The Manager's Mainstage!</p>
                         <div class="welcome-search">
@@ -559,16 +421,16 @@
                                 <div class="search-bar">
                                     <input type="text" id="dashboardSearch" placeholder=" " aria-label="Search anything" autocomplete="off" spellcheck="false">
                                     <span class="search-center-label" aria-hidden="true">
-                                        <i class="ph ph-magnifying-glass" aria-hidden="true" style="font-size:16px;"></i>
+                                        <i class="ph ph-magnifying-glass sp-csp-style-12" aria-hidden="true"></i>
                                         <span>Search anything</span>
                                     </span>
                                 </div>
                                 <div class="quick-add" id="quickAdd">
                                     <div class="quick-add-panel" id="quickAddPanel">
-                                        <button type="button" data-action="openQuickAdd" onclick="openQuickAdd('booking')" data-type="booking" data-target-section="bookings">+ New Booking</button>
-                                        <button type="button" data-action="openQuickAdd" onclick="openQuickAdd('expense')" data-type="expense" data-target-section="expenses">+ New Expense</button>
-                                        <button type="button" data-action="openQuickAdd" onclick="openQuickAdd('income')" data-type="income" data-target-section="otherIncome">+ Other Income</button>
-                                        <button type="button" data-action="openQuickAdd" onclick="openQuickAdd('artists')" data-type="artists" data-target-section="artists">+ New Artist</button>
+                                        <button type="button" data-action="openQuickAdd" data-type="booking" data-target-section="bookings">+ New Booking</button>
+                                        <button type="button" data-action="openQuickAdd" data-type="expense" data-target-section="expenses">+ New Expense</button>
+                                        <button type="button" data-action="openQuickAdd" data-type="income" data-target-section="otherIncome">+ Other Income</button>
+                                        <button type="button" data-action="openQuickAdd" data-type="artists" data-target-section="artists">+ New Artist</button>
                                     </div>
                                     <button class="quick-add-btn" id="quickAddBtn" type="button" aria-label="Quick add">+</button>
                                 </div>
@@ -582,7 +444,7 @@
             <!-- Dashboard Section -->
             <div class="section active" id="dashboard">
                 <!-- Smart Nudge Banner -->
-                <div class="nudge-banner" id="nudgeBanner" style="display: none;">
+                <div class="nudge-banner sp-csp-style-2" id="nudgeBanner">
                     <div class="nudge-banner__content">
                         <div class="nudge-banner__icon"><i class="ph ph-warning" aria-hidden="true"></i></div>
                         <div class="nudge-banner__text" id="nudgeBannerText"></div>
@@ -633,9 +495,9 @@
                                 </div>
                             </div>
                             <div class="monthly-goal-progress" aria-hidden="true">
-                                <div class="monthly-goal-progress__bar" id="monthlyGoalProgressBar" style="width: 0%;"></div>
+                                <div class="monthly-goal-progress__bar sp-csp-style-13" id="monthlyGoalProgressBar"></div>
                             </div>
-                            <div class="monthly-goal-editor" id="monthlyGoalEditor" style="display: none;">
+                            <div class="monthly-goal-editor sp-csp-style-2" id="monthlyGoalEditor">
                                 <input type="number" id="monthlyGoalInput" min="0" step="1000" placeholder="Enter monthly goal (UGX)" />
                                 <button class="action-btn" type="button" data-action="saveMonthlyRevenueGoal">Save Goal</button>
                                 <button class="back-btn" type="button" data-action="toggleMonthlyGoalEditor">Cancel</button>
@@ -662,11 +524,11 @@
                                 <div class="mainstage-kpi__label">Balances Due</div>
                                 <div class="mainstage-kpi__value expense-red" id="balancesOverdue"><span class="sp-skeleton"></span></div>
                             </div>
-                            <div class="mainstage-kpi mainstage-kpi--bbf" role="button" tabindex="0" data-action="openBBFModal" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openBBFModal();}">
+                            <div class="mainstage-kpi mainstage-kpi--bbf" role="button" tabindex="0" data-action="openBBFModal">
                                 <div class="mainstage-kpi__label">Balance Brought Forward <span class="bbf-month-label" id="bbfMonthLabel">(prev. month)</span></div>
                                 <div class="mainstage-kpi__value deposit-blue" id="dashboardBBF"><span class="sp-skeleton"></span></div>
                                 <div class="mainstage-kpi__sub">
-                                    <button class="bbf-edit-btn action-btn" type="button" data-action="openBBFModal" onclick="openBBFModal()">Set BBF</button>
+                                    <button class="bbf-edit-btn action-btn" type="button" data-action="openBBFModal">Set BBF</button>
                                 </div>
                             </div>
                             <div class="mainstage-kpi">
@@ -686,8 +548,8 @@
                                     <!-- Track arc -->
                                     <path class="vg-track" d="M 20 100 A 80 80 0 0 1 180 100" stroke="rgba(255,179,0,0.12)" stroke-width="14" stroke-linecap="round" fill="none"/>
                                     <!-- Fill arc (JS-driven stroke-dasharray) -->
-                                    <path class="vg-fill" id="velocityGaugeFill" d="M 20 100 A 80 80 0 0 1 180 100" stroke="url(#vgGrad)" stroke-width="14" stroke-linecap="round" fill="none"
-                                        stroke-dasharray="0 251" style="transition: stroke-dasharray 0.9s cubic-bezier(0.22,0.61,0.36,1)"/>
+                                    <path class="vg-fill sp-csp-style-14" id="velocityGaugeFill" d="M 20 100 A 80 80 0 0 1 180 100" stroke="url(#vgGrad)" stroke-width="14" stroke-linecap="round" fill="none"
+                                        stroke-dasharray="0 251"/>
                                     <defs>
                                         <linearGradient id="vgGrad" x1="0%" y1="0%" x2="100%" y2="0%">
                                             <stop offset="0%"   stop-color="#c9920a"/>
@@ -695,10 +557,10 @@
                                         </linearGradient>
                                     </defs>
                                     <!-- Needle (JS-driven transform) -->
-                                    <line class="vg-needle" id="velocityGaugeNeedle"
+                                    <line class="vg-needle sp-csp-style-15" id="velocityGaugeNeedle"
                                         x1="100" y1="100" x2="100" y2="28"
                                         stroke="#FFB300" stroke-width="2.5" stroke-linecap="round"
-                                        style="transform-origin: 100px 100px; transform: rotate(-90deg); transition: transform 0.9s cubic-bezier(0.22,0.61,0.36,1)"/>
+                                       />
                                     <circle cx="100" cy="100" r="5" fill="#FFB300"/>
                                 </svg>
                                 <div class="velocity-gauge__center">
@@ -759,7 +621,7 @@
                     <div class="card dashboard-section-card dashboard-performance-card dashboard-global-card">
                         <h3 class="section-title" data-icon="tour">Global Schedule</h3>
                         <p class="dashboard-global-card__copy">Plan routes, revenue, and upcoming stops from the Schedule page.</p>
-                        <button class="action-btn dashboard-global-card__button" type="button" data-action="showSection" onclick="showSection('schedule')">
+                        <button class="action-btn dashboard-global-card__button" type="button" data-action="showSection" data-section="schedule">
                             <i class="ph ph-globe-hemisphere-east" aria-hidden="true"></i>
                             Open Global View
                         </button>
@@ -773,10 +635,10 @@
             <!-- MONEY SECTION -->
             <div class="section" id="money">
                 <div class="sp-tabs" id="moneyTabs">
-                    <button class="sp-tab sp-tab--active" data-tab="financials" data-action="switchMoneyTab" onclick="switchMoneyTab('financials')"><i class="ph ph-chart-bar" aria-hidden="true"></i> Overview</button>
-                    <button class="sp-tab" data-tab="expenses" data-action="switchMoneyTab" onclick="switchMoneyTab('expenses')"><i class="ph ph-receipt" aria-hidden="true"></i> Expenses</button>
-                    <button class="sp-tab" data-tab="otherIncome" data-action="switchMoneyTab" onclick="switchMoneyTab('otherIncome')"><i class="ph ph-plus-circle" aria-hidden="true"></i> Other Income</button>
-                    <button class="sp-tab" data-tab="reports" data-action="switchMoneyTab" onclick="switchMoneyTab('reports')"><i class="ph ph-clipboard-text" aria-hidden="true"></i> Reports</button>
+                    <button class="sp-tab sp-tab--active" data-tab="financials" data-action="switchMoneyTab"><i class="ph ph-chart-bar" aria-hidden="true"></i> Overview</button>
+                    <button class="sp-tab" data-tab="expenses" data-action="switchMoneyTab"><i class="ph ph-receipt" aria-hidden="true"></i> Expenses</button>
+                    <button class="sp-tab" data-tab="otherIncome" data-action="switchMoneyTab"><i class="ph ph-plus-circle" aria-hidden="true"></i> Other Income</button>
+                    <button class="sp-tab" data-tab="reports" data-action="switchMoneyTab"><i class="ph ph-clipboard-text" aria-hidden="true"></i> Reports</button>
                 </div>
                 <div class="sp-tab-panel sp-tab-panel--active" id="moneyPanel-financials">
                 <div class="card mainstage-pulse-card dashboard-financials-card">
@@ -831,9 +693,9 @@
                             </div>
                         </div>
                         <div class="monthly-goal-progress" aria-hidden="true">
-                            <div class="monthly-goal-progress__bar" id="financialsMonthlyGoalProgressBar" style="width: 0%;"></div>
+                            <div class="monthly-goal-progress__bar sp-csp-style-13" id="financialsMonthlyGoalProgressBar"></div>
                         </div>
-                        <div class="monthly-goal-editor" id="financialsMonthlyGoalEditor" style="display: none;">
+                        <div class="monthly-goal-editor sp-csp-style-2" id="financialsMonthlyGoalEditor">
                             <input type="number" id="financialsMonthlyGoalInput" min="0" step="1000" placeholder="Enter monthly goal (UGX)" />
                                 <button class="action-btn" type="button" data-action="saveFinancialsMonthlyRevenueGoal">Save Goal</button>
                                 <button class="back-btn" type="button" data-action="toggleFinancialsMonthlyGoalEditor">Cancel</button>
@@ -857,7 +719,7 @@
                 <div class="sp-tab-panel" id="moneyPanel-expenses">
                 <!-- Removed: FAB button handles this -->
 
-                <div class="card" id="addExpenseForm" style="display: none;">
+                <div class="card sp-csp-style-2" id="addExpenseForm">
                     <h3 class="section-title" data-icon="expenses">New Expense</h3>
                     <div class="form-grid">
                         <div class="form-group">
@@ -894,21 +756,21 @@
                             </select>
                         </div>
                     </div>
-                    <div class="form-group" style="margin-top: 15px;">
+                    <div class="form-group sp-csp-style-16">
                         <label>Upload Receipt (Optional)</label>
                         <div class="receipt-upload">
-                            <input type="file" id="expenseReceipt" accept="image/*" data-change-action="previewReceipt" />
+                            <input type="file" id="expenseReceipt" accept="image/png,image/jpeg,image/webp,image/gif" data-change-action="previewReceipt" />
                         </div>
-                        <img id="receiptPreview" class="receipt-preview" style="display: none;" />
+                        <img id="receiptPreview" class="receipt-preview sp-csp-style-2" />
                     </div>
                     <button id="saveExpenseBtn" class="btn-primary" data-action="saveExpense">Save Expense</button>
-                    <button class="back-btn" data-action="cancelExpense" onclick="cancelExpense()">Cancel</button>
+                    <button class="back-btn" data-action="cancelExpense">Cancel</button>
                 </div>
 
                 <div class="card" id="expensesListCard">
                     <div class="card-header-row">
                         <h3 class="section-title" data-icon="expenses">All Expenses</h3>
-                        <button class="section-fab" aria-label="Add expense" onclick="showAddExpense()">+</button>
+                        <button class="section-fab" aria-label="Add expense" data-action="showAddExpense">+</button>
                     </div>
                     <div class="table-wrap">
                         <table id="expensesTable" class="expenses-table">
@@ -925,17 +787,17 @@
                         <tbody></tbody>
                         </table>
                     </div>
-                    <div id="expensesCards" class="expenses-cards" style="margin-top: 16px;"></div>
+                    <div id="expensesCards" class="expenses-cards sp-csp-style-17"></div>
                 </div>
 
                 </div>
                 <div class="sp-tab-panel" id="moneyPanel-otherIncome">
                 <!-- Removed: FAB button handles this -->
 
-                <div class="card" id="addOtherIncomeForm" style="display: none;">
-                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
-                        <button class="back-btn" data-action="cancelOtherIncome" onclick="cancelOtherIncome()" style="margin: 0;">Back to All Other Income</button>
-                        <h3 class="section-title" data-icon="otherIncome" style="margin: 0;">New Other Income</h3>
+                <div class="card sp-csp-style-2" id="addOtherIncomeForm">
+                    <div class="sp-csp-style-18">
+                        <button class="back-btn sp-csp-style-19" data-action="cancelOtherIncome">Back to All Other Income</button>
+                        <h3 class="section-title sp-csp-style-19" data-icon="otherIncome">New Other Income</h3>
                     </div>
                     <div class="form-grid">
                         <div class="form-group">
@@ -989,25 +851,25 @@
                             </select>
                         </div>
                     </div>
-                    <div class="form-group" style="margin-top: 15px;">
+                    <div class="form-group sp-csp-style-16">
                         <label>Notes (Optional)</label>
                         <textarea id="otherIncomeNotes" placeholder="Optional details"></textarea>
                     </div>
-                    <div class="form-group" style="margin-top: 15px;">
+                    <div class="form-group sp-csp-style-16">
                         <label>Upload Proof (Optional)</label>
                         <div class="receipt-upload">
-                            <input type="file" id="otherIncomeProof" accept="image/*" data-change-action="previewOtherIncomeProof" />
+                            <input type="file" id="otherIncomeProof" accept="image/png,image/jpeg,image/webp,image/gif" data-change-action="previewOtherIncomeProof" />
                         </div>
-                        <img id="otherIncomeProofPreview" class="receipt-preview" style="display: none;" />
+                        <img id="otherIncomeProofPreview" class="receipt-preview sp-csp-style-2" />
                     </div>
                     <button id="saveOtherIncomeBtn" class="btn-primary" data-action="saveOtherIncome">Save Other Income</button>
-                    <button class="back-btn" data-action="cancelOtherIncome" onclick="cancelOtherIncome()">Cancel</button>
+                    <button class="back-btn" data-action="cancelOtherIncome">Cancel</button>
                 </div>
 
                 <div class="card" id="otherIncomeListCard">
                     <div class="card-header-row">
                         <h3 class="section-title" data-icon="otherIncome">Other Income</h3>
-                        <button class="section-fab" aria-label="Add income" onclick="showAddOtherIncome()">+</button>
+                        <button class="section-fab" aria-label="Add income" data-action="showAddOtherIncome">+</button>
                     </div>
                     <div class="table-wrap">
                         <table id="otherIncomeTable" class="other-income-table">
@@ -1027,7 +889,7 @@
                         <tbody></tbody>
                         </table>
                     </div>
-                    <div id="otherIncomeCards" class="other-income-cards" style="margin-top: 16px;"></div>
+                    <div id="otherIncomeCards" class="other-income-cards sp-csp-style-17"></div>
                 </div>
 
                 </div>
@@ -1036,7 +898,7 @@
                 <div class="card" id="reportControlsCard">
                     <h3 class="section-title" data-icon="reports">Generate Report</h3>
                     <div class="report-controls">
-                        <select id="reportPeriod" style="flex: 1;" data-native="always" data-change-action="handleReportPeriodChange">
+                        <select class="sp-csp-style-11" id="reportPeriod" data-native="always" data-change-action="handleReportPeriodChange">
                             <option value="month" id="reportPeriodCurrentOption">Month Year</option>
                             <option value="prevMonth" id="reportPeriodPrevOption">Previous Month</option>
                             <option value="quarter">This Quarter</option>
@@ -1044,11 +906,11 @@
                             <option value="prevYear">Previous Year</option>
                             <option value="all">All Time</option>
                         </select>
-                        <button class="add-btn" data-action="openPdfExportModal" onclick="openPdfExportModal()" style="margin:0;"><i class="ph ph-download-simple" aria-hidden="true"></i> Generate &amp; Download PDF</button>
-                        <button class="add-btn" data-action="exportCSV" onclick="exportCSV()" style="margin:0; background: var(--glass-bg, rgba(255,255,255,0.08));"><i class="ph ph-file-csv" aria-hidden="true"></i> Export CSV</button>
-                        <button class="action-btn" data-action="toggleClosingThoughts" style="margin: 0;">Closing Thoughts</button>
+                        <button class="add-btn sp-csp-style-20" data-action="openPdfExportModal"><i class="ph ph-download-simple" aria-hidden="true"></i> Generate &amp; Download PDF</button>
+                        <button class="add-btn sp-csp-style-21" data-action="exportCSV"><i class="ph ph-file-csv" aria-hidden="true"></i> Export CSV</button>
+                        <button class="action-btn sp-csp-style-19" data-action="toggleClosingThoughts">Closing Thoughts</button>
                     </div>
-                    <div class="closing-thoughts-panel" id="closingThoughtsPanel" style="display: none;">
+                    <div class="closing-thoughts-panel sp-csp-style-2" id="closingThoughtsPanel">
                         <label for="closingThoughtsInput">Manager Closing Thoughts (Optional)</label>
                         <textarea id="closingThoughtsInput" rows="4" maxlength="600" data-input-action="updateClosingThoughtsMeta" placeholder="Add final notes for this period. Example: top wins, key risks, and priorities for next month."></textarea>
                         <div class="closing-thoughts-meta">
@@ -1056,8 +918,8 @@
                             <span id="closingThoughtsCount">0 / 600</span>
                         </div>
                         <div class="closing-thoughts-actions">
-                            <button class="action-btn" data-action="saveClosingThoughts" style="margin: 0;">Save Thoughts</button>
-                            <button class="action-btn" data-action="clearClosingThoughts" style="margin: 0;">Clear</button>
+                            <button class="action-btn sp-csp-style-19" data-action="saveClosingThoughts">Save Thoughts</button>
+                            <button class="action-btn sp-csp-style-19" data-action="clearClosingThoughts">Clear</button>
                         </div>
                     </div>
                 </div>
@@ -1093,7 +955,7 @@
                             </button>
                         </div>
                     </div>
-                    <div id="audienceMetricList" style="margin-top: 12px;"></div>
+                    <div class="sp-csp-style-22" id="audienceMetricList"></div>
                 </div>
 
                 <div class="card">
@@ -1118,7 +980,7 @@
             <div class="section" id="artists">
                 <!-- Removed: FAB button handles this -->
 
-                <div class="card" id="addArtistForm" style="display: none;">
+                <div class="card sp-csp-style-2" id="addArtistForm">
                     <h3 class="section-title" data-icon="artists">Add New Artist</h3>
                     <div class="form-grid">
                         <div class="form-group">
@@ -1138,34 +1000,34 @@
                             <input type="text" id="artistSpecialty" placeholder="e.g., Hip Hop, Gospel, Afrobeat" />
                         </div>
                     </div>
-                    <div class="form-group" style="margin-top: 15px;">
+                    <div class="form-group sp-csp-style-16">
                         <label>Strategic Goal</label>
                         <textarea id="artistStrategicGoal" placeholder="e.g., Secure 3 festival slots this quarter"></textarea>
                     </div>
-                    <div class="form-group" style="margin-top: 15px;">
+                    <div class="form-group sp-csp-style-16">
                         <label>Artist Photo</label>
                         <div class="artist-photo-row">
                             <div class="artist-photo-preview">
                                 <img id="artistAvatarPreview" class="artist-avatar-img" alt="Artist photo preview" />
                             </div>
                             <div class="artist-photo-actions">
-                                <input type="file" id="artistAvatarUpload" accept="image/*" />
-                                <small style="color:#888;">PNG or JPG recommended</small>
+                                <input type="file" id="artistAvatarUpload" accept="image/png,image/jpeg,image/webp,image/gif" />
+                                <small class="sp-csp-style-23">PNG or JPG recommended</small>
                             </div>
                         </div>
                     </div>
-                    <div class="form-group" style="margin-top: 15px;">
+                    <div class="form-group sp-csp-style-16">
                         <label>Bio/Description</label>
                         <textarea id="artistBio" placeholder="Brief description of the artist..."></textarea>
                     </div>
                     <button class="btn-primary" data-action="saveArtist">Save Artist</button>
-                    <button class="back-btn" data-action="cancelAddArtist" onclick="cancelAddArtist()">Cancel</button>
+                    <button class="back-btn" data-action="cancelAddArtist">Cancel</button>
                 </div>
 
                 <div class="card" id="artistsListCard">
                     <div class="card-header-row">
                         <h3 class="section-title" data-icon="artists">All Artists</h3>
-                        <button class="section-fab" aria-label="Add artist" onclick="showAddArtistForm()">+</button>
+                        <button class="section-fab" aria-label="Add artist" data-action="showAddArtistForm">+</button>
                     </div>
                     <div class="artist-grid" id="artistGrid"></div>
                 </div>
@@ -1175,9 +1037,9 @@
             <!-- SCHEDULE SECTION -->
             <div class="section" id="schedule">
                 <div class="sp-tabs" id="scheduleTabs">
-                    <button class="sp-tab sp-tab--active" data-tab="global" data-action="switchScheduleTab" onclick="switchScheduleTab('global')"><i class="ph ph-globe-hemisphere-east" aria-hidden="true"></i> Global</button>
-                    <button class="sp-tab" data-tab="bookings" data-action="switchScheduleTab" onclick="switchScheduleTab('bookings')"><i class="ph ph-calendar-check" aria-hidden="true"></i> Bookings</button>
-                    <button class="sp-tab" data-tab="calendar" data-action="switchScheduleTab" onclick="switchScheduleTab('calendar')"><i class="ph ph-calendar-blank" aria-hidden="true"></i> Calendar</button>
+                    <button class="sp-tab sp-tab--active" data-tab="global" data-action="switchScheduleTab"><i class="ph ph-globe-hemisphere-east" aria-hidden="true"></i> Global</button>
+                    <button class="sp-tab" data-tab="bookings" data-action="switchScheduleTab"><i class="ph ph-calendar-check" aria-hidden="true"></i> Bookings</button>
+                    <button class="sp-tab" data-tab="calendar" data-action="switchScheduleTab"><i class="ph ph-calendar-blank" aria-hidden="true"></i> Calendar</button>
                 </div>
                 <div class="sp-tab-panel sp-tab-panel--active" id="schedulePanel-global">
                     <div class="sp-global-schedule" id="globalScheduleGlobe" aria-label="Global Schedule interactive tour globe">
@@ -1185,18 +1047,25 @@
                         <div class="sp-global-schedule__rail" id="globalScheduleItinerary" aria-label="Tour itinerary" hidden></div>
                         <div class="sp-global-schedule__detail" id="globalScheduleDetail" aria-live="polite"></div>
                         <div class="sp-global-schedule__key" id="globalScheduleKey" aria-live="polite"></div>
-                        <div class="sp-global-schedule__sheet" id="globalScheduleSheet" aria-hidden="true">
+                        <div class="sp-global-schedule__sheet" id="globalScheduleSheet" data-snap="peek" aria-hidden="false">
                             <div class="sp-global-sheet__panel" role="dialog" aria-modal="false" aria-labelledby="globalScheduleSheetTitle">
-                                <div class="sp-global-sheet__header">
-                                    <div>
-                                        <span class="sp-global-sheet__kicker">Itinerary</span>
-                                        <h3 class="sp-global-sheet__title" id="globalScheduleSheetTitle">Tour list</h3>
-                                    </div>
-                                    <button type="button" class="sp-global-sheet__close" data-globe-action="close-sheet" aria-label="Close itinerary">
-                                        <i class="ph ph-x" aria-hidden="true"></i>
-                                    </button>
+                                <div class="sp-global-sheet__handle-strip" aria-hidden="true">
+                                    <div class="sp-global-sheet__handle"></div>
                                 </div>
+                                <div class="sp-global-sheet__header" id="globalScheduleSheetHeader"></div>
+                                <h3 id="globalScheduleSheetTitle" class="sr-only">Itinerary</h3>
                                 <div class="sp-global-sheet__body" id="globalScheduleSheetBody"></div>
+                            </div>
+                        </div>
+                        <div class="sp-global-schedule__detail-sheet" id="globalScheduleDetailSheet" aria-hidden="true">
+                            <div class="sp-global-detail-sheet__panel" role="dialog" aria-modal="false" aria-labelledby="globalScheduleDetailSheetTitle">
+                                <div class="sp-global-detail-sheet__header">
+                                    <button type="button" class="sp-global-detail-sheet__back" data-globe-action="close-detail" aria-label="Back to itinerary">
+                                        <i class="ph ph-caret-left" aria-hidden="true"></i>
+                                    </button>
+                                    <h3 class="sp-global-detail-sheet__title" id="globalScheduleDetailSheetTitle">Booking</h3>
+                                </div>
+                                <div class="sp-global-detail-sheet__body" id="globalScheduleDetailSheetBody"></div>
                             </div>
                         </div>
                         <div class="sp-global-schedule__toolbar">
@@ -1219,12 +1088,12 @@
                     </div>
                 </div>
                 <div class="sp-tab-panel" id="schedulePanel-bookings">
-                <button class="add-btn bookings-list-btn" onclick="showAddBooking()">+ Add New Booking</button>
+                <button class="add-btn bookings-list-btn" data-action="showAddBooking">+ Add New Booking</button>
 
-                <div class="card" id="addBookingForm" style="display: none;">
+                <div class="card sp-csp-style-2" id="addBookingForm">
                     <div class="form-header-row">
                         <h3 class="section-title" data-icon="bookings">New Booking</h3>
-                        <button class="back-to-list" type="button" data-action="cancelBooking" onclick="cancelBooking()">Back to Bookings</button>
+                        <button class="back-to-list" type="button" data-action="cancelBooking">Back to Bookings</button>
                     </div>
                     <div class="form-grid">
                         <div class="form-group">
@@ -1280,23 +1149,23 @@
                             <label>District</label>
                             <select id="bookingUgandaLocation"></select>
                         </div>
-                        <div class="form-group" id="abroadLocationGroup" style="display: none;">
+                        <div class="form-group sp-csp-style-2" id="abroadLocationGroup">
                             <label>Country</label>
                             <select id="bookingAbroadLocation"></select>
                         </div>
                     </div>
-                    <div class="form-group" style="margin-top: 15px;">
+                    <div class="form-group sp-csp-style-16">
                         <label>Notes</label>
                         <textarea id="bookingNotes"></textarea>
                     </div>
                     <button id="saveBookingBtn" class="btn-primary" data-action="saveBooking">Save Booking</button>
-                    <button class="back-btn" data-action="cancelBooking" onclick="cancelBooking()">Cancel</button>
+                    <button class="back-btn" data-action="cancelBooking">Cancel</button>
                 </div>
 
                 <div class="card" id="bookingsListCard">
                     <div class="card-header-row">
                         <h3 class="section-title" data-icon="bookings">All Bookings</h3>
-                        <button class="section-fab" aria-label="Add booking" onclick="showAddBooking()">+</button>
+                        <button class="section-fab" aria-label="Add booking" data-action="showAddBooking">+</button>
                     </div>
                     <div class="table-wrap">
                         <table id="bookingsTable" class="bookings-table">
@@ -1318,44 +1187,44 @@
                             <tbody></tbody>
                         </table>
                     </div>
-                    <div id="bookingsCards" class="bookings-cards" style="margin-top: 16px;"></div>
+                    <div id="bookingsCards" class="bookings-cards sp-csp-style-17"></div>
                 </div>
 
                 </div>
                 <div class="sp-tab-panel" id="schedulePanel-calendar">
                 <div class="card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div class="sp-csp-style-24">
                         <h3 id="calendarMonth">January 2026</h3>
-                        <div class="calendar-nav" style="display: flex; gap: 10px;">
-                            <button data-action="previousMonth" onclick="previousMonth()" style="width: auto; padding: 10px 15px; margin: 0;">Previous</button>
-                            <button data-action="goToToday" onclick="goToToday()" style="width: auto; padding: 10px 15px; margin: 0;">Today</button>
-                            <button data-action="nextMonth" onclick="nextMonth()" style="width: auto; padding: 10px 15px; margin: 0;">Next</button>
+                        <div class="calendar-nav sp-csp-style-25">
+                            <button class="sp-csp-style-26" data-action="previousMonth">Previous</button>
+                            <button class="sp-csp-style-26" data-action="goToToday">Today</button>
+                            <button class="sp-csp-style-26" data-action="nextMonth">Next</button>
                         </div>
                     </div>
                     
                     <div class="calendar-grid calendar-compact" id="calendarGrid"></div>
                     
-                    <div style="margin-top: 20px;">
-                        <button class="add-btn" onclick="showAddEventToCalendar()" style="width: auto; margin: 0;">+ Add Event to Selected Date</button>
+                    <div class="sp-csp-style-27">
+                        <button class="add-btn sp-csp-style-28" data-action="showAddEventToCalendar">+ Add Event to Selected Date</button>
                     </div>
                 </div>
 
                 <div class="card">
                     <h3 class="section-title" data-icon="calendar">Availability Checker</h3>
-                    <div class="availability-checker" style="display: flex; gap: 10px; margin: 20px 0; flex-wrap: wrap;">
-                        <select id="availabilityArtist" style="flex: 1;">
+                    <div class="availability-checker sp-csp-style-29">
+                        <select class="sp-csp-style-11" id="availabilityArtist">
                             <option value="">Select Artist</option>
                         </select>
-                        <input type="date" id="availabilityDate" style="flex: 1;" />
-                        <button class="add-btn" onclick="checkAvailability()" style="width: auto; margin: 0;">Check Availability</button>
+                        <input class="sp-csp-style-11" type="date" id="availabilityDate" />
+                        <button class="add-btn sp-csp-style-28" data-action="checkAvailability">Check Availability</button>
                     </div>
-                    <div id="availabilityResult" style="margin-top: 15px;"></div>
+                    <div class="sp-csp-style-16" id="availabilityResult"></div>
                 </div>
 
-                <div class="card" style="display: none;">
+                <div class="card sp-csp-style-2">
                     <h3 class="section-title" data-icon="calendar">Event Details</h3>
                     <div id="calendarEventDetails">
-                        <p style="color: #888;">Hover a date to see details</p>
+                        <p class="sp-csp-style-30">Hover a date to see details</p>
                     </div>
                 </div>
 
@@ -1365,22 +1234,22 @@
             <!-- TASKS SECTION -->
             <div class="section" id="tasks">
                 <div class="card">
-                    <div class="task-widget-header" style="margin-bottom: 14px;">
+                    <div class="task-widget-header sp-csp-style-31">
                         <div class="task-widget-title">
                             <span>Task Board</span>
-                            <span class="task-badge" id="taskBadge" style="display:none;">0</span>
+                            <span class="task-badge sp-csp-style-9" id="taskBadge">0</span>
                         </div>
-                        <button class="action-btn" type="button" data-action="clearCompletedTasks" onclick="clearCompletedTasks()">Clear Completed</button>
+                        <button class="action-btn" type="button" data-action="clearCompletedTasks">Clear Completed</button>
                     </div>
                     <div class="task-list" id="taskList"></div>
                 </div>
                 <div class="card">
                     <h3 class="section-title" data-icon="tasks">Add Task</h3>
-                    <div class="task-add-form" style="margin-top: 0;">
-                        <div class="task-input-group" style="flex-wrap: wrap;">
+                    <div class="task-add-form sp-csp-style-32">
+                        <div class="task-input-group sp-csp-style-33">
                             <input type="text" id="taskInput" class="task-input" placeholder="Add a task..." />
                             <input type="date" id="taskDueDate" class="task-date-input">
-                            <button class="task-add-btn" type="button" onclick="handleAddTask()">Add Task</button>
+                            <button class="task-add-btn" type="button" data-action="handleAddTask">Add Task</button>
                         </div>
                     </div>
                 </div>
@@ -1394,7 +1263,7 @@
                             <div class="settings-eyebrow">Workspace Control</div>
                             <h2>Settings</h2>
                         </div>
-                        <button class="action-btn settings-quick-launcher" type="button" data-action="openCommandPalette" onclick="window.openCommandPalette?.()">
+                        <button class="action-btn settings-quick-launcher" type="button" data-action="openCommandPalette">
                             <i class="ph ph-command" aria-hidden="true"></i>
                             <span>Quick Launcher</span>
                             <kbd>Ctrl+K</kbd>
@@ -1413,7 +1282,7 @@
                                     <div class="settings-profile-email" id="settingsProfileEmail">Profile details</div>
                                     <div class="settings-profile-bio" id="settingsProfileBio">Manage your identity, photo, contact details, and bio.</div>
                                 </div>
-                                <button class="action-btn settings-inline-action" type="button" data-action="openProfileModal" onclick="openProfileModal()">
+                                <button class="action-btn settings-inline-action" type="button" data-action="openProfileModal">
                                     Edit Profile
                                 </button>
                             </div>
@@ -1429,11 +1298,11 @@
                                 </div>
                                 <div class="sidebar-theme-toggle settings-toggle-group" role="group" aria-label="Theme preference">
                                     <button class="theme-btn theme-btn-light active" id="sidebarLightBtn" type="button">
-                                        <i class="ph ph-sun" aria-hidden="true" style="font-size:16px;"></i>
+                                        <i class="ph ph-sun sp-csp-style-12" aria-hidden="true"></i>
                                         Light
                                     </button>
                                     <button class="theme-btn theme-btn-dark" id="sidebarDarkBtn" type="button">
-                                        <i class="ph ph-moon" aria-hidden="true" style="font-size:16px;"></i>
+                                        <i class="ph ph-moon sp-csp-style-12" aria-hidden="true"></i>
                                         Dark
                                     </button>
                                 </div>
@@ -1446,11 +1315,11 @@
                                 </div>
                                 <div class="sidebar-theme-toggle settings-toggle-group" role="group" aria-label="Density preference">
                                     <button class="theme-btn sp-density-btn sp-density-btn--comfortable active" id="densityComfortableBtn" type="button" title="Comfortable spacing">
-                                        <i class="ph ph-rows" aria-hidden="true" style="font-size:14px;"></i>
+                                        <i class="ph ph-rows sp-csp-style-4" aria-hidden="true"></i>
                                         Comfy
                                     </button>
                                     <button class="theme-btn sp-density-btn sp-density-btn--compact" id="densityCompactBtn" type="button" title="Compact spacing">
-                                        <i class="ph ph-list" aria-hidden="true" style="font-size:14px;"></i>
+                                        <i class="ph ph-list sp-csp-style-4" aria-hidden="true"></i>
                                         Compact
                                     </button>
                                 </div>
@@ -1461,7 +1330,7 @@
                                     <div class="settings-row-title">Currency</div>
                                     <div class="settings-row-sub" id="spCurrencyName">All money screens use the selected display currency.</div>
                                 </div>
-                                <button class="action-btn settings-currency-btn" id="spSettingsCurrencyBtn" type="button" onclick="window.SP?.showCurrencySwitcher?.()">
+                                <button class="action-btn settings-currency-btn" id="spSettingsCurrencyBtn" type="button" data-action="showCurrencySwitcher">
                                     <span id="spCurrencyBadge">UGX</span>
                                     Currency
                                 </button>
@@ -1471,15 +1340,15 @@
                         <div class="settings-panel settings-admin-card">
                             <div class="settings-panel-label">Admin</div>
                             <div class="settings-admin-actions">
-                                <button type="button" class="action-btn" id="sidebarSettingsBtn" data-action="showAdminSettings" onclick="showAdminSettings()" title="Admin Settings">
+                                <button type="button" class="action-btn" id="sidebarSettingsBtn" data-action="showAdminSettings" title="Admin Settings">
                                     <i class="ph ph-users-three" aria-hidden="true"></i>
                                     User Management
                                 </button>
-                                <button class="action-btn" data-action="exportAllData" onclick="exportAllData()" type="button">
+                                <button class="action-btn" data-action="exportAllData" type="button">
                                     <i class="ph ph-download-simple" aria-hidden="true"></i>
                                     Export All Data
                                 </button>
-                                <button class="action-btn action-btn--danger" data-action="clearAllData" onclick="clearAllData()" type="button">
+                                <button class="action-btn action-btn--danger" data-action="clearAllData" type="button">
                                     <i class="ph ph-trash" aria-hidden="true"></i>
                                     Reset App Data
                                 </button>
@@ -1489,7 +1358,7 @@
                         <div class="settings-panel settings-account-card">
                             <div class="settings-panel-label">Account</div>
                             <div class="settings-account-actions">
-                                <button type="button" class="action-btn" id="settingsAboutBtn" data-action="showAboutModal" onclick="showAboutModal()" title="About Star Paper">
+                                <button type="button" class="action-btn" id="settingsAboutBtn" data-action="showAboutModal" title="About Star Paper">
                                     <i class="ph ph-info" aria-hidden="true"></i>
                                     About Star Paper
                                 </button>
@@ -1516,19 +1385,19 @@
                 </div>
                 <div class="profile-avatar-actions">
                     <label class="action-btn profile-upload-btn" for="profileAvatarUpload">Upload Photo</label>
-                    <input type="file" id="profileAvatarUpload" accept="image/*" style="display:none;">
+                    <input class="sp-csp-style-9" type="file" id="profileAvatarUpload" accept="image/png,image/jpeg,image/webp,image/gif">
                 </div>
             </div>
             <div class="profile-avatar-presets" id="profileAvatarPresets">
-                <button type="button" class="avatar-preset" data-avatar="A" style="--preset-bg:#FFB300;--preset-color:#000">A</button>
-                <button type="button" class="avatar-preset" data-avatar="B" style="--preset-bg:#1565c0;--preset-color:#fff">B</button>
-                <button type="button" class="avatar-preset" data-avatar="C" style="--preset-bg:#2e7d32;--preset-color:#fff">C</button>
-                <button type="button" class="avatar-preset" data-avatar="D" style="--preset-bg:#6a1b9a;--preset-color:#fff">D</button>
-                <button type="button" class="avatar-preset" data-avatar="E" style="--preset-bg:#c62828;--preset-color:#fff">E</button>
-                <button type="button" class="avatar-preset" data-avatar="M" style="--preset-bg:#00695c;--preset-color:#fff">M</button>
-                <button type="button" class="avatar-preset" data-avatar="P" style="--preset-bg:#4527a0;--preset-color:#fff">P</button>
-                <button type="button" class="avatar-preset" data-avatar="R" style="--preset-bg:#bf360c;--preset-color:#fff">R</button>
-                <button type="button" class="avatar-preset" data-avatar="S" style="--preset-bg:#37474f;--preset-color:#fff">S</button>
+                <button type="button" class="avatar-preset sp-csp-style-34" data-avatar="A">A</button>
+                <button type="button" class="avatar-preset sp-csp-style-35" data-avatar="B">B</button>
+                <button type="button" class="avatar-preset sp-csp-style-36" data-avatar="C">C</button>
+                <button type="button" class="avatar-preset sp-csp-style-37" data-avatar="D">D</button>
+                <button type="button" class="avatar-preset sp-csp-style-38" data-avatar="E">E</button>
+                <button type="button" class="avatar-preset sp-csp-style-39" data-avatar="M">M</button>
+                <button type="button" class="avatar-preset sp-csp-style-40" data-avatar="P">P</button>
+                <button type="button" class="avatar-preset sp-csp-style-41" data-avatar="R">R</button>
+                <button type="button" class="avatar-preset sp-csp-style-42" data-avatar="S">S</button>
             </div>
             <div class="form-grid">
                 <div class="form-group">
@@ -1548,7 +1417,7 @@
                     <input type="tel" id="profilePhone" />
                 </div>
             </div>
-            <div class="form-group" style="margin-top: 12px;">
+            <div class="form-group sp-csp-style-22">
                 <label>Bio</label>
                 <textarea id="profileBio" rows="3"></textarea>
             </div>
@@ -1589,11 +1458,11 @@
         </footer>
 
         <!-- BBF Modal -->
-        <div id="spBbfModal" class="sp-modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="spBbfModalTitle">
-          <div class="sp-modal-card" style="max-width:460px;">
+        <div id="spBbfModal" class="sp-modal-overlay sp-csp-style-9" role="dialog" aria-modal="true" aria-labelledby="spBbfModalTitle">
+          <div class="sp-modal-card sp-csp-style-43">
             <div class="sp-modal-header">
               <h3 id="spBbfModalTitle"><i class="ph ph-wallet" aria-hidden="true"></i> Set Balance Brought Forward</h3>
-              <button class="sp-modal-close" onclick="closeBBFModal()" aria-label="Close">&times;</button>
+              <button class="sp-modal-close" data-action="closeBBFModal" aria-label="Close">&times;</button>
             </div>
             <div class="sp-modal-body">
               <div class="sp-form-group">
@@ -1613,18 +1482,18 @@
               <p class="sp-form-note" id="spBbfContext">This balance will be saved to the current account scope and used in Money Moves closing balance calculations.</p>
             </div>
             <div class="sp-modal-footer">
-              <button class="action-btn" type="button" onclick="closeBBFModal()">Cancel</button>
-              <button class="add-btn" type="button" data-action="saveBBF" onclick="saveBBF()"><i class="ph ph-floppy-disk" aria-hidden="true"></i> Save BBF</button>
+              <button class="action-btn" type="button" data-action="closeBBFModal">Cancel</button>
+              <button class="add-btn" type="button" data-action="saveBBF"><i class="ph ph-floppy-disk" aria-hidden="true"></i> Save BBF</button>
             </div>
           </div>
         </div>
 
         <!-- PDF Export Modal -->
-        <div id="spPdfExportModal" class="sp-modal-overlay" style="display:none;">
-          <div class="sp-modal-card" style="max-width:420px;">
+        <div id="spPdfExportModal" class="sp-modal-overlay sp-csp-style-9">
+          <div class="sp-modal-card sp-csp-style-44">
             <div class="sp-modal-header">
               <h3><i class="ph ph-file-pdf" aria-hidden="true"></i> Export PDF Report</h3>
-              <button class="sp-modal-close" onclick="closePdfExportModal()" aria-label="Close">&times;</button>
+              <button class="sp-modal-close" data-action="closePdfExportModal" aria-label="Close">&times;</button>
             </div>
             <div class="sp-modal-body">
               <div class="sp-form-group">
@@ -1635,17 +1504,17 @@
               </div>
               <div class="sp-form-group">
                 <label for="spPdfDateStart">Date Range</label>
-                <div style="display:flex;gap:8px;align-items:center;">
-                  <input type="date" id="spPdfDateStart" style="flex:1;">
-                  <span style="color:#888;">to</span>
-                  <input type="date" id="spPdfDateEnd" style="flex:1;">
+                <div class="sp-csp-style-45">
+                  <input class="sp-csp-style-46" type="date" id="spPdfDateStart">
+                  <span class="sp-csp-style-23">to</span>
+                  <input class="sp-csp-style-46" type="date" id="spPdfDateEnd">
                 </div>
               </div>
-              <p style="font-size:12px;color:#888;margin-top:8px;">Leave dates empty to use the current report period.</p>
+              <p class="sp-csp-style-47">Leave dates empty to use the current report period.</p>
             </div>
             <div class="sp-modal-footer">
-              <button class="action-btn" onclick="closePdfExportModal()">Cancel</button>
-              <button class="add-btn" id="spPdfGenerateBtn" onclick="generateMomentumPDF()"><i class="ph ph-download-simple" aria-hidden="true"></i> Generate PDF</button>
+              <button class="action-btn" data-action="closePdfExportModal">Cancel</button>
+              <button class="add-btn" id="spPdfGenerateBtn" data-action="generateMomentumPDF"><i class="ph ph-download-simple" aria-hidden="true"></i> Generate PDF</button>
             </div>
           </div>
         </div>
@@ -1655,443 +1524,26 @@
           loaded above, and these deferred scripts keep document order:
           Supabase boot wiring is installed before app.js initializes UI helpers.
         -->
-<script src="supabase.js?v=71" defer></script>
+<script src="app.root-shell.js?v=3" defer></script>
+<script src="supabase.js?v=78" defer></script>
         <script src="app.migrations.js?v=10"></script>
         <script src="app.actions.js?v=8"></script>
-        <script src="app.todayboard.js?v=1"></script>
-        <script src="app.tasks.js?v=4"></script>
-    <script src="app.reports.js?v=17"></script>
-<script src="app.js?v=124" defer></script>
-<script src="app.handcraft.js?v=18" defer></script>
-<script>
-(function setupDeferredLibraries() {
-  var sources = {
-    sentry: {
-      src: 'https://browser.sentry-cdn.com/8.53.0/bundle.min.js',
-      global: 'Sentry',
-      crossOrigin: 'anonymous'
-    },
-    chart: {
-      src: 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
-      global: 'Chart'
-    },
-    jspdf: {
-      src: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-      global: 'jspdf'
-    },
-    globe: {
-      src: 'app.globe.js?v=7',
-      module: true,
-      optional: true
-    },
-    premium: {
-      src: 'app.premium.js?v=4',
-      optional: true
-    },
-    shell: {
-      src: 'app.shell.js?v=1',
-      optional: true
-    }
-  };
-  var pending = {};
-
-  function idle(work, timeout) {
-    if (typeof work !== 'function') return;
-    if ('requestIdleCallback' in window) {
-      window.requestIdleCallback(work, { timeout: timeout || 1200 });
-      return;
-    }
-    window.setTimeout(work, Math.min(timeout || 1200, 400));
-  }
-
-  function loadScript(name) {
-    var config = sources[name];
-    if (!config) return Promise.reject(new Error('Unknown deferred library: ' + name));
-    if (config.global && window[config.global]) return Promise.resolve(window[config.global]);
-    if (pending[name]) return pending[name];
-    pending[name] = new Promise(function(resolve, reject) {
-      var script = document.createElement('script');
-      script.src = config.src;
-      script.async = true;
-      if (config.module) script.type = 'module';
-      if (config.crossOrigin) script.crossOrigin = config.crossOrigin;
-      script.onload = function() { resolve(config.global ? window[config.global] : true); };
-      script.onerror = function() {
-        if (name === 'globe' && window.__spShowGlobalScheduleFallback) {
-          window.__spShowGlobalScheduleFallback();
-        }
-        var error = new Error('Deferred library failed: ' + name);
-        if (config.optional) resolve(false);
-        else reject(error);
-      };
-      document.head.appendChild(script);
-    });
-    return pending[name];
-  }
-
-  window.__spLoadDeferredLibrary = function(name) {
-    if (name === 'pdf') {
-      return loadScript('jspdf');
-    }
-    return loadScript(name);
-  };
-
-  window.__spInitSentry = function initDeferredSentry() {
-    if (!window.Sentry || window.__spSentryInitialized) return;
-    window.__spSentryInitialized = true;
-    window.Sentry.init({
-      dsn: 'https://43eaad14b9ae20eec68d9249f139cbc2@o4511079351189504.ingest.de.sentry.io/4511081427894352',
-      environment: window.location.hostname === 'star-paper.netlify.app' ? 'production' : 'development',
-      release: 'star-paper@report-runtime-v138',
-      tracesSampleRate: 0.1,
-      ignoreErrors: [
-        'AbortError',
-        'Lock broken by steal',
-        'ResizeObserver loop limit exceeded',
-        'Non-Error promise rejection'
-      ],
-      beforeSend: function(event) {
-        try {
-          if (localStorage.getItem('sp_logged_out') === '1') return null;
-        } catch (_err) {}
-        return event;
-      }
-    });
-  };
-
-  window.__spLoadDeferredThirdParty = function(reason) {
-    idle(function() {
-      loadScript('sentry').then(window.__spInitSentry).catch(function(err) {
-        console.warn('Sentry deferred load failed:', err);
-      });
-    }, 1000);
-    idle(function() { loadScript('globe').catch(function() {}); }, 1600);
-    idle(function() {
-      loadScript('premium')
-        .catch(function() {})
-        .then(function() { return loadScript('shell').catch(function() {}); });
-    }, 1800);
-  };
-
-  window.addEventListener('load', function() {
-    window.__spLoadDeferredThirdParty('window-load');
-  }, { once: true });
-})();
-</script>
-<script>
-(function globalScheduleFallbackGuard() {
-  window.__spShowGlobalScheduleFallback = function showGlobalScheduleFallback() {
-    if (window.SP_GLOBAL_GLOBE) return;
-    var root = document.getElementById('globalScheduleGlobe');
-    if (!root) return;
-    root.classList.add('sp-global-schedule--fallback');
-    try {
-      window.renderPerformanceMap?.(null, {
-        showLabels: false,
-        showLocationList: true,
-        showPinnedPanel: true,
-        fallbackOnly: true
-      });
-    } catch (_err) {}
-  };
-  window.addEventListener('load', function () {
-    window.setTimeout(window.__spShowGlobalScheduleFallback, 4500);
-  });
-})();
-</script>
-        <script>
-        (function localDevColdStartGuard() {
-          var isLocalDev = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
-          if (!isLocalDev) return;
-          var url = new URL(window.location.href);
-          var hashParams = new URLSearchParams((url.hash || '').replace(/^#/, ''));
-          var hasAuthCallback = Boolean(
-            hashParams.get('access_token') ||
-            hashParams.get('refresh_token') ||
-            url.searchParams.get('access_token') ||
-            url.searchParams.get('refresh_token') ||
-            url.searchParams.get('code') ||
-            url.searchParams.get('error') ||
-            url.searchParams.get('error_code') ||
-            url.searchParams.get('error_description')
-          );
-          if (hasAuthCallback) return;
-          var marker = '';
-          var hasAppHash = false;
-          var publicAuthIntent = '';
-          try {
-            marker = sessionStorage.getItem('sp_boot_context') || '';
-            publicAuthIntent = (url.searchParams.get('auth') || url.searchParams.get('screen') || '').toLowerCase();
-            var publicHash = decodeURIComponent((url.hash || '').replace(/^#/, '')).toLowerCase();
-            if (!publicAuthIntent && (publicHash === 'signup' || publicHash === 'create-account')) publicAuthIntent = 'signup';
-            if (!publicAuthIntent && (publicHash === 'login' || publicHash === 'signin')) publicAuthIntent = 'login';
-            var routePath = (url.pathname || '/').replace(/\/+$/, '') || '/';
-            var hashToken = publicHash.trim().split(/[?&/]/)[0];
-            hasAppHash = (routePath === '/' || routePath === '/index.html') &&
-              /^(artists|bookings|calendar|dashboard|expenses|financials|global|money|otherincome|reports|schedule|settings|tasks)$/.test(hashToken);
-          } catch (_err) {}
-          if (
-            window.__spAppBooted ||
-            marker === 'auth-return' ||
-            hasAppHash
-          ) {
-            return;
-          }
-          window.__spSuppressStoredSessionBootstrap = true;
-          try { sessionStorage.removeItem('sp_boot_context'); } catch (_err) {}
-
-          function revealLandingForLocalTesting() {
-            if (window.__spAppBooted) return;
-            var flowId = window.getBootTransitionId && window.getBootTransitionId();
-            if (!flowId && window.beginBootTransition) {
-              flowId = window.beginBootTransition('local-dev-cold-start', 'loading-session');
-            }
-            if (publicAuthIntent === 'signup' && window.showSignupForm) {
-              window.showSignupForm({ instant: true });
-              return;
-            }
-            if ((publicAuthIntent === 'login' || publicAuthIntent === 'signin') && window.showLoginForm) {
-              window.showLoginForm({ instant: true });
-              return;
-            }
-            if (window.showLanding) {
-              window.showLanding({ flowId: flowId, minDelayMs: 80 });
-              return;
-            }
-            if (window.commitBootTransition) {
-              window.commitBootTransition('landingScreen', { flowId: flowId, minDelayMs: 80 });
-            }
-          }
-
-          setTimeout(revealLandingForLocalTesting, 0);
-          setTimeout(revealLandingForLocalTesting, 750);
-          setTimeout(revealLandingForLocalTesting, 2500);
-        })();
-        </script>
-        <script>
-        // -- FILE:// PROTOCOL GUARD -----------------------------------------------
-        // When the app is opened as a local file (double-clicked), window.location.origin
-        // is "null". OAuth (Google sign-in) cannot work on file:// — it requires http/https.
-        // This block shows a clear warning and disables the Google button gracefully.
-        (function fileProtocolGuard() {
-            if (window.location.protocol !== 'file:') return;
-
-            // Show a banner on the login/landing screen
-            window.addEventListener('DOMContentLoaded', function() {
-                var banner = document.createElement('div');
-                banner.id = 'spLocalFileBanner';
-                banner.style.cssText = [
-                    'position:fixed', 'top:0', 'left:0', 'right:0', 'z-index:99999',
-                    'background:#b45309', 'color:#fff', 'font-size:13px',
-                    'padding:10px 16px', 'text-align:center', 'line-height:1.5',
-                    'font-family:sans-serif'
-                ].join(';');
-                banner.innerHTML =
-                    '<strong>Warning: Local file detected.</strong> ' +
-                    'Google sign-in requires a local server. ' +
-                    'Run <code style="background:rgba(0,0,0,.3);padding:1px 6px;border-radius:3px">npx serve .</code> ' +
-                    'in this folder, then open <strong>http://localhost:3000</strong>. ' +
-                    'Email/password login works as normal. ' +
-                    '<button onclick="this.parentElement.remove()" ' +
-                    'style="margin-left:12px;background:rgba(0,0,0,.3);border:none;' +
-                    'color:#fff;padding:2px 8px;border-radius:3px;cursor:pointer"><i class="ph ph-x" aria-hidden="true"></i></button>';
-                document.body.appendChild(banner);
-
-                // Disable & label Google sign-in buttons
-                document.querySelectorAll('.btn-google, [data-action="signInWithGoogle"]').forEach(function(btn) {
-                    btn.disabled = true;
-                    btn.title = 'Google sign-in requires http://localhost - not file://';
-                    btn.style.opacity = '0.4';
-                    btn.style.cursor = 'not-allowed';
-                });
-            });
-        })();
-        </script>
-        <script>
-        // This runs after ALL scripts load. It directly calls window functions for
-        // every add/action button. Works regardless of app.actions.js, data-action
-        // routing, or onclick attributes. Belt-AND-suspenders.
-        (function wireCriticalButtons() {
-            if (window.__starPaperActionsBound || window.__starPaperFallbackActionsBound) {
-                return;
-            }
-            var MAP = {
-                // FAB / header add buttons
-                'showAddBooking':         function() { if (typeof window.showAddBooking  === 'function') window.showAddBooking(); },
-                'showAddExpense':         function() { if (typeof window.showAddExpense  === 'function') window.showAddExpense(); },
-                'showAddOtherIncome':     function() { if (typeof window.showAddOtherIncome === 'function') window.showAddOtherIncome(); },
-                'showAddArtistForm':      function() { if (typeof window.showAddArtistForm === 'function') window.showAddArtistForm(); },
-                'showAddEventToCalendar': function() { if (typeof window.showAddEventToCalendar === 'function') window.showAddEventToCalendar(); },
-                // Auth actions intentionally excluded here to avoid duplicate dispatch
-                // with app.actions.js and inline onclick fallbacks.
-                // Cancel / close
-                'cancelExpense':          function() { if (typeof window.cancelExpense   === 'function') window.cancelExpense(); },
-                'cancelBooking':          function() { if (typeof window.cancelBooking   === 'function') window.cancelBooking(); },
-                'cancelOtherIncome':      function() { if (typeof window.cancelOtherIncome === 'function') window.cancelOtherIncome(); },
-                'cancelAddArtist':        function() { if (typeof window.cancelAddArtist === 'function') window.cancelAddArtist(); },
-                'closeReceiptModal':      function() { if (typeof window.closeReceiptModal === 'function') window.closeReceiptModal(); },
-                'closeProfileModal':      function() { if (typeof window.closeProfileModal === 'function') window.closeProfileModal(); },
-                'openProfileModal':       function() { if (typeof window.openProfileModal === 'function') window.openProfileModal(); },
-                // Save (profile / goals only — main form saves stay with app.actions.js)
-                'saveProfileChanges':     function() { if (typeof window.saveProfileChanges === 'function') window.saveProfileChanges(); },
-                'saveMonthlyRevenueGoal': function() { if (typeof window.saveMonthlyRevenueGoal === 'function') window.saveMonthlyRevenueGoal(); },
-                'saveFinancialsMonthlyRevenueGoal': function() { if (typeof window.saveFinancialsMonthlyRevenueGoal === 'function') window.saveFinancialsMonthlyRevenueGoal(); },
-                'saveBBF':                function() { if (typeof window.saveBBF         === 'function') window.saveBBF(); },
-                'saveClosingThoughts':    function() { if (typeof window.saveClosingThoughts === 'function') window.saveClosingThoughts(); },
-                // Tasks
-                'handleAddTask':          function() { if (typeof window.handleAddTask   === 'function') window.handleAddTask(); },
-                'clearCompletedTasks':    function() { if (typeof window.clearCompletedTasks === 'function') window.clearCompletedTasks(); },
-                // Dashboard widgets
-                'toggleMonthlyGoalEditor':           function() { if (typeof window.toggleMonthlyGoalEditor === 'function') window.toggleMonthlyGoalEditor(); },
-                'toggleFinancialsMonthlyGoalEditor': function() { if (typeof window.toggleFinancialsMonthlyGoalEditor === 'function') window.toggleFinancialsMonthlyGoalEditor(); },
-                'toggleBBFEditor':        function() { if (typeof window.toggleBBFEditor  === 'function') window.toggleBBFEditor(); },
-                'toggleClosingThoughts':  function() { if (typeof window.toggleClosingThoughts === 'function') window.toggleClosingThoughts(); },
-                'clearClosingThoughts':   function() { if (typeof window.clearClosingThoughts === 'function') window.clearClosingThoughts(); },
-                // Calendar
-                'previousMonth':          function() { if (typeof window.previousMonth   === 'function') window.previousMonth(); },
-                'nextMonth':              function() { if (typeof window.nextMonth        === 'function') window.nextMonth(); },
-                'goToToday':              function() { if (typeof window.goToToday        === 'function') window.goToToday(); },
-                'checkAvailability':      function() { if (typeof window.checkAvailability === 'function') window.checkAvailability(); },
-                // Reports / data
-                'generateMomentumPDF':    function() { if (typeof window.generateMomentumPDF === 'function') window.generateMomentumPDF(); },
-                'openPdfExportModal':     function() { if (typeof window.openPdfExportModal === 'function') window.openPdfExportModal(); },
-                'exportCSV':              function() { if (typeof window.exportCSV === 'function') window.exportCSV(); },
-                'exportAllData':          function() { if (typeof window.exportAllData    === 'function') window.exportAllData(); },
-                'clearAllData':           function() { if (typeof window.clearAllData     === 'function') window.clearAllData(); },
-                // Modals
-                'showAboutModal':         function() { if (typeof window.showAboutModal   === 'function') window.showAboutModal(); },
-                'showAdminSettings':      function() { if (typeof window.showAdminSettings === 'function') window.showAdminSettings(); },
-                // Nudge
-                'dismissNudge':           function(el) { if (typeof window.dismissNudge  === 'function') window.dismissNudge(el); },
-            };
-
-            // Navigation needs special handling (data-section attr)
-            function handleShowSection(el) {
-                var section = el.dataset.section;
-                if (section && typeof window.showSection === 'function') window.showSection(section, el);
-            }
-            // Quick-add needs data-type
-            function handleOpenQuickAdd(el) {
-                var type = el.dataset.targetSection || el.dataset.type;
-                if (type && typeof window.openQuickAdd === 'function') window.openQuickAdd(type, el);
-            }
-            // Tab switches
-            function handleSwitchMoneyTab(el) {
-                var tab = el.dataset.tab;
-                if (tab && typeof window.switchMoneyTab === 'function') window.switchMoneyTab(tab);
-            }
-            function handleSwitchScheduleTab(el) {
-                var tab = el.dataset.tab;
-                if (tab && typeof window.switchScheduleTab === 'function') window.switchScheduleTab(tab);
-            }
-
-            document.addEventListener('click', function(e) {
-                var el = e.target && typeof e.target.closest === 'function'
-                    ? e.target.closest('[data-action]') : null;
-                if (!el) return;
-                var action = el.dataset.action;
-                if (!action) return;
-
-                // Let app.actions.js handle save actions to avoid double-fire
-                if (action === 'saveBooking' || action === 'saveExpense' ||
-                    action === 'saveOtherIncome' || action === 'saveArtist') return;
-
-                if (action === 'showSection')       { handleShowSection(el); return; }
-                if (action === 'openQuickAdd')       { handleOpenQuickAdd(el); return; }
-                if (action === 'switchMoneyTab')     { handleSwitchMoneyTab(el); return; }
-                if (action === 'switchScheduleTab')  { handleSwitchScheduleTab(el); return; }
-
-                var fn = MAP[action];
-                if (typeof fn === 'function') {
-                    try { fn(el); }
-                    catch(err) { console.error('[StarPaper] action "' + action + '" threw:', err); }
-                } else {
-                    // Only warn for actions that should be in MAP (not data-* routing ones)
-                    if (action && !['showSection','openQuickAdd','switchMoneyTab','switchScheduleTab',
-                                    'showSignupForm','showLoginForm','showLanding','showForgotPassword',
-                                    'signup','signInWithGoogle','submitForgotPassword',
-                                    'saveBooking','saveExpense','saveOtherIncome','saveArtist',
-                                    'saveProfileChanges','switchScheduleTab','showDetailView',
-                                    'landingFeaturePrev','landingFeatureNext'].includes(action)) {
-                        console.warn('[StarPaper] No handler for "' + action + '". window.' + action + '=', typeof window[action]);
-                    }
-                }
-            }, true); // capture phase — fires before any other listener
-        })();
-        </script>
-        <script>
-            window.showForgotPassword = function showForgotPassword() {
-                var loginForm = document.getElementById('loginForm');
-                var signupForm = document.getElementById('signupForm');
-                var forgotForm = document.getElementById('forgotPasswordForm');
-                var result = document.getElementById('forgotPasswordResult');
-                var emailInput = document.getElementById('forgotEmail');
-                var heading = document.getElementById('loginBoxHeading');
-                var subtext = document.getElementById('loginBoxSubtext');
-                if (loginForm) loginForm.style.display = 'none';
-                if (signupForm) signupForm.style.display = 'none';
-                if (forgotForm) forgotForm.style.display = 'block';
-                if (result) {
-                    result.textContent = '';
-                    result.className = 'forgot-password-hint';
-                }
-                if (emailInput) emailInput.value = '';
-                if (heading) heading.textContent = 'Reset your password';
-                if (subtext) subtext.textContent = 'Enter your account email to receive secure reset instructions.';
-            };
-
-            window.submitForgotPassword = async function submitForgotPassword() {
-                var email = (document.getElementById('forgotEmail')?.value || '').trim();
-                var result = document.getElementById('forgotPasswordResult');
-                if (!result) return;
-                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                    result.textContent = 'Please enter a valid email address.';
-                    result.className = 'forgot-password-hint forgot-password-hint--error';
-                    return;
-                }
-                result.textContent = 'Sending reset instructions...';
-                result.className = 'forgot-password-hint';
-                try {
-                    if (window.SP?.client?.auth?.resetPasswordForEmail) {
-                        var redirectTo = typeof window.SP.getPasswordResetRedirectUrl === 'function'
-                            ? window.SP.getPasswordResetRedirectUrl()
-                            : new URL(window.location.pathname || '/', window.location.origin).toString();
-                        var resetResult = await window.SP.client.auth.resetPasswordForEmail(email, { redirectTo: redirectTo });
-                        if (resetResult?.error) {
-                            console.warn('[StarPaper] Password reset request was not accepted by Supabase:', resetResult.error);
-                        }
-                    } else {
-                        console.warn('[StarPaper] Password reset skipped because Supabase auth is not ready.');
-                    }
-                } catch (err) {
-                    console.warn('[StarPaper] Password reset request failed:', err);
-                }
-                result.textContent = 'If an account exists for that email, reset instructions will arrive shortly.';
-                result.className = 'forgot-password-hint forgot-password-hint--success';
-            };
-
-            document.addEventListener('click', function(e) {
-                if (e.target.closest('[data-action="showForgotPassword"]')) {
-                    e.preventDefault();
-                    window.showForgotPassword();
-                }
-                if (e.target.closest('[data-action="submitForgotPassword"]')) {
-                    e.preventDefault();
-                    window.submitForgotPassword();
-                }
-            });
-        </script>
+        <script src="app.todayboard.js?v=2"></script>
+        <script src="app.tasks.js?v=5"></script>
+    <script src="app.reports.js?v=19"></script>
+<script src="app.js?v=139" defer></script>
+<script src="app.handcraft.js?v=19" defer></script>
 
     <!-- Premium toast stack -->
     <div class="sp-toast-stack" id="spToastStack" aria-live="polite" aria-atomic="false"></div>
 
     <!-- About Modal -->
-    <div class="sp-about-modal" id="spAboutModal" style="display:none;" role="dialog" aria-modal="true" aria-label="About Star Paper">
+    <div class="sp-about-modal sp-csp-style-9" id="spAboutModal" role="dialog" aria-modal="true" aria-label="About Star Paper">
         <div class="sp-modal-backdrop" id="spAboutBackdrop"></div>
         <div class="sp-modal-box">
             <button class="sp-modal-close" id="spAboutClose" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
             <div class="sp-modal-logo">
-                <div class="sp-modal-logo-icon"><i class="ph ph-star" aria-hidden="true" style="font-size:28px;color:#FFB300;"></i></div>
+                <div class="sp-modal-logo-icon"><i class="ph ph-star sp-csp-style-48" aria-hidden="true"></i></div>
                 <div>
                     <div class="sp-modal-title">Star Paper</div>
                     <div class="sp-modal-subtitle">Artist Management Platform</div>
@@ -2101,34 +1553,34 @@
                 <p>Star Paper is a premium management tool built for artist managers in Uganda and beyond. Track bookings, monitor finances, manage your roster, and generate professional reports - all in one place.</p>
                 <p>Designed for the realities of the African music industry: offline-capable, mobile-first, and built around the workflows that actually matter.</p>
                 <div class="sp-modal-divider"></div>
-                <p style="margin:0; font-size:13px; color:var(--text-muted);">Built with care for the creative economy.</p>
+                <p class="sp-csp-style-49">Built with care for the creative economy.</p>
                 <span class="sp-modal-version">v2.0 - Phase 5</span>
             </div>
         </div>
     </div>
 
     <!-- Admin Settings Modal -->
-    <div class="sp-admin-modal" id="spAdminModal" style="display:none;" role="dialog" aria-modal="true" aria-label="Admin Settings">
+    <div class="sp-admin-modal sp-csp-style-9" id="spAdminModal" role="dialog" aria-modal="true" aria-label="Admin Settings">
         <div class="sp-modal-backdrop" id="spAdminBackdrop"></div>
-        <div class="sp-modal-box" style="max-width:560px;">
+        <div class="sp-modal-box sp-csp-style-50">
             <button class="sp-modal-close" id="spAdminClose" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
             <div class="sp-modal-logo">
-                <div class="sp-modal-logo-icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);"><i class="ph ph-gear" aria-hidden="true" style="font-size:28px;color:#fff;"></i></div>
+                <div class="sp-modal-logo-icon sp-csp-style-51"><i class="ph ph-gear sp-csp-style-52" aria-hidden="true"></i></div>
                 <div>
-                    <div class="sp-modal-title" style="background:linear-gradient(135deg,#818cf8,#c4b5fd);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Admin Settings</div>
+                    <div class="sp-modal-title sp-csp-style-53">Admin Settings</div>
                     <div class="sp-modal-subtitle">Root user controls</div>
                 </div>
             </div>
             <div class="sp-modal-body">
-                <h4 style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">User Management</h4>
+                <h4 class="sp-csp-style-54">User Management</h4>
                 <div id="spAdminUserList">
                     <div class="sp-admin-empty">Loading users...</div>
                 </div>
                 <div class="sp-modal-divider"></div>
-                <h4 style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">System</h4>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    <button class="action-btn" data-action="exportAllData" onclick="exportAllData()" style="margin:0;font-size:12px;"><i class="ph ph-download-simple" aria-hidden="true"></i> Export All Data</button>
-                    <button class="action-btn action-btn--danger" data-action="clearAllData" onclick="clearAllData()" style="margin:0;font-size:12px;"><i class="ph ph-trash" aria-hidden="true"></i> Reset App Data</button>
+                <h4 class="sp-csp-style-54">System</h4>
+                <div class="sp-csp-style-55">
+                    <button class="action-btn sp-csp-style-56" data-action="exportAllData"><i class="ph ph-download-simple" aria-hidden="true"></i> Export All Data</button>
+                    <button class="action-btn action-btn--danger sp-csp-style-56" data-action="clearAllData"><i class="ph ph-trash" aria-hidden="true"></i> Reset App Data</button>
                 </div>
             </div>
         </div>
@@ -2136,7 +1588,7 @@
 
     <!-- Command Palette -->
     <div class="sp-palette-backdrop" id="spPaletteBackdrop" aria-hidden="true"></div>
-    <div class="sp-palette" id="spPalette" role="dialog" aria-modal="true" aria-label="Command palette" style="display:none">
+    <div class="sp-palette sp-csp-style-57" id="spPalette" role="dialog" aria-modal="true" aria-label="Command palette">
         <div class="sp-palette__header">
             <span class="sp-palette__icon"><i class="ph ph-command" aria-hidden="true"></i></span>
             <input class="sp-palette__input" id="spPaletteInput" type="text"
@@ -2158,7 +1610,7 @@
 
     <!-- Keyboard Shortcut Cheat Sheet -->
     <div class="sp-cheatsheet-backdrop" id="spCheatsheetBackdrop" aria-hidden="true"></div>
-    <div class="sp-cheatsheet" id="spCheatsheet" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" style="display:none">
+    <div class="sp-cheatsheet sp-csp-style-57" id="spCheatsheet" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
         <div class="sp-cheatsheet__header">
             <span class="sp-cheatsheet__title"><i class="ph ph-keyboard" aria-hidden="true"></i> Keyboard Shortcuts</span>
             <button class="sp-cheatsheet__close" id="spCheatsheetClose" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>

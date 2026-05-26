@@ -49,7 +49,10 @@ Critical expectations:
 - UUID primary keys where the frontend expects cloud IDs
 - owner-scoped and team-scoped RLS
 - personal workspace inserts and reads for authenticated owners
-- valid upsert constraints such as `legacy_id, owner_id` where the runtime uses them
+- `get_bootstrap_payload(uid)` returns the loader-blocking `profile`, `teams`, `workspace`, `data.*`, and `meta.*` payload
+- team/profile helpers exist: `get_my_team_context`, `get_team_members_context`, `create_team_with_member`, `join_team_by_code`, `is_username_available`, `get_my_team_ids`, `has_team_permission`, and `team_role_permissions`
+- upgrade guards have run for runtime columns such as `profiles.last_active_team_id`, business-table `team_id`/`legacy_id`, `team_members.permissions`, `messages.msg_type`, and profile preference columns
+- scope-aware legacy-ID uniqueness exists: personal rows use `legacy_id, owner_id` where `team_id IS NULL`; team rows use `legacy_id, team_id` where `team_id IS NOT NULL`
 
 ## 5. Put your Supabase keys in `supabase.js`
 
@@ -119,6 +122,15 @@ Browser storage is **not** authoritative for:
 
 ## 10. Deployment checklist
 
+Before deploy, confirm root HTML remains intentional public surface only:
+
+- `index.html`
+- `how-it-works.html`
+- `proof.html`
+- `testimonials.html`
+
+Any new public root HTML file must be added to `app.public-pages.js`, unignored in `.netlifyignore`, marked with `star-paper:public-root`, added to the service-worker app shell, and wired through `_redirects` when it has an extensionless route. Preflight fails if those surfaces drift.
+
 Deploy these files together:
 
 - `app.js`
@@ -127,11 +139,21 @@ Deploy these files together:
 - `app.tasks.js`
 - `styles.css`
 - `index.html`
+- `app.public-pages.js`
 - `sw.js`
 
 Also deploy or run:
 
-- `schema.sql` when backend changes are part of the release
+- `schema.sql` when the database contract changes
+
+Security checks before deploy:
+
+- Run `npm run preflight`; it blocks unexpected root HTML, generated local files, service-role credential patterns, malformed invite-code policy, missing RLS enablement, RLS policies without `TO authenticated`, anonymous RPC grant drift, unsafe SECURITY DEFINER search paths, missing CDN SRI, and unsafe sink regressions.
+- Treat the Supabase anon key as public. Never commit service-role credentials, JWT secrets, database passwords, or access tokens.
+- After applying `schema.sql` in Supabase, confirm every `teams.invite_code` is a 32-character lower-case hex value, old 8-character invite codes no longer work, authenticated users cannot direct-select `teams.invite_code`, and `team_members.permissions` cannot differ from `public.team_role_permissions(role)`; owners/admins should receive invite codes only through the team context RPCs.
+- Confirm workspace-scope trigger guards exist on business tables and `team_members`. Updates must not be able to change an existing row's `owner_id`, `user_id`, or `team_id`; team-copy flows should insert cloned rows instead.
+- Keep uploaded profile/avatar/receipt/proof images inside the app guardrails: PNG, JPG, WebP, or GIF only.
+- Review `star-paper-main-threat-model.md` and `security_best_practices_report.md` when the deploy touches auth, teams, CSP, external scripts, or rendering.
 
 If you changed any cached asset version:
 

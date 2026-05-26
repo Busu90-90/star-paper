@@ -267,6 +267,9 @@ function isPublicShellRoute(locationLike = window.location) {
 }
 
 function shouldBootAuthenticatedApp(locationLike = window.location) {
+    try {
+        if (localStorage.getItem('sp_logged_out') === '1') return false;
+    } catch (_err) {}
     const href = locationLike?.href || window.location.href;
     if (hasAuthCallbackParams(href)) return false;
     return isAppShellPath(locationLike?.pathname || window.location.pathname) &&
@@ -428,11 +431,12 @@ function scheduleLocalBootFallback(bootContext, flowId = null) {
     setTimeout(() => {
         if (flowId && !isCurrentBootTransition(flowId)) return;
         const loader = document.getElementById('appBootLoader');
-        if (window.__spAppBooted || loader?.dataset.state !== 'loading-session') return;
+        if (loader?.dataset.state !== 'loading-session') return;
         if (isAppShellVisible()) {
-            hideBootLoaderElement({ force: true, flowId });
+            hideBootLoaderElement({ force: true });
             return;
         }
+        if (window.__spAppBooted) return;
         if (isSupabaseBootWorkActive()) {
             return;
         }
@@ -851,6 +855,9 @@ function getSectionIconMarkup(iconKey) {
                     case 'showAdminSettings':
                         showAdminSettings();
                         return;
+                    case 'showCurrencySwitcher':
+                        window.SP?.showCurrencySwitcher?.();
+                        return;
                     case 'showHelpCenterAlert':
                         toastInfo('Help documentation coming soon!');
                         return;
@@ -945,6 +952,82 @@ function getSectionIconMarkup(iconKey) {
                 .replace(/>/g, '&gt;')
                 .replace(/\"/g, '&quot;')
                 .replace(/'/g, '&#39;');
+        }
+
+        function normalizePhosphorIconClass(value) {
+            const iconClass = String(value ?? '').trim();
+            return /^ph-[a-z0-9-]+$/i.test(iconClass) ? iconClass : '';
+        }
+
+        function escapeXml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+        }
+
+        const SP_AVATAR_UPLOAD_MAX_BYTES = 1024 * 1024;
+        const SP_RECEIPT_UPLOAD_MAX_BYTES = 4 * 1024 * 1024;
+        const SP_ALLOWED_UPLOAD_IMAGE_TYPES = new Set([
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+            'image/gif'
+        ]);
+
+        function isSafeImageDataUrl(value) {
+            return /^data:image\/(?:png|jpe?g|webp|gif);base64,[a-z0-9+/=\r\n]+$/i.test(String(value || '').trim());
+        }
+
+        function normalizeSafeImageSource(value, fallback = '') {
+            const raw = String(value || '').trim();
+            if (!raw) return fallback;
+            if (isSafeImageDataUrl(raw)) return raw;
+            if (raw.startsWith('/') && !raw.startsWith('//') && !raw.includes('\\')) return raw;
+            if (raw.startsWith('./') && !raw.includes('\\')) return raw;
+            try {
+                const url = new URL(raw, window.location.origin);
+                if (url.protocol === 'https:') return url.href;
+                if (url.origin === window.location.origin && (url.protocol === 'http:' || url.protocol === 'https:')) {
+                    return `${url.pathname}${url.search}${url.hash}`;
+                }
+            } catch (_err) {}
+            return fallback;
+        }
+
+        function validateImageUpload(file, { label = 'Image', maxBytes = SP_AVATAR_UPLOAD_MAX_BYTES } = {}) {
+            if (!file) return false;
+            if (!SP_ALLOWED_UPLOAD_IMAGE_TYPES.has(String(file.type || '').toLowerCase())) {
+                toastError(`${label} must be a PNG, JPG, WebP, or GIF image.`);
+                return false;
+            }
+            if (file.size > maxBytes) {
+                const sizeMb = Math.round(maxBytes / (1024 * 1024));
+                toastError(`${label} must be ${sizeMb} MB or smaller.`);
+                return false;
+            }
+            return true;
+        }
+
+        function readValidatedImageDataUrl(file, options = {}) {
+            if (!validateImageUpload(file, options)) return Promise.resolve('');
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const result = normalizeSafeImageSource(reader.result);
+                    if (!result) {
+                        toastError(`${options.label || 'Image'} could not be read safely.`);
+                    }
+                    resolve(result);
+                };
+                reader.onerror = () => {
+                    toastError(`${options.label || 'Image'} could not be read.`);
+                    resolve('');
+                };
+                reader.readAsDataURL(file);
+            });
         }
 
         // FIXED: cloud UUIDs and legacy numeric IDs are compared consistently across inline actions.
@@ -1092,6 +1175,7 @@ function getSectionIconMarkup(iconKey) {
         function avatarDataUriFromSymbol(symbol) {
             const token = String(symbol || '').trim();
             if (!token) return '';
+            const safeToken = escapeXml(token.slice(0, 2).toUpperCase());
             const svg = `
                 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
                     <defs>
@@ -1101,7 +1185,7 @@ function getSectionIconMarkup(iconKey) {
                         </linearGradient>
                     </defs>
                     <rect width="256" height="256" rx="128" fill="url(#g)" />
-                    <text x="50%" y="53%" text-anchor="middle" dominant-baseline="middle" font-size="118">${token}</text>
+                    <text x="50%" y="53%" text-anchor="middle" dominant-baseline="middle" font-size="118">${safeToken}</text>
                 </svg>
             `.trim();
             const encoded = window.btoa(unescape(encodeURIComponent(svg)));
@@ -1111,9 +1195,8 @@ function getSectionIconMarkup(iconKey) {
         function resolveDisplayAvatar(user) {
             const raw = String(user?.avatar || '').trim();
             if (!raw) return '/star_paper_logo_pack/star_paper_128.png?v=3';
-            if (raw.startsWith('data:image/') || raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('./') || raw.startsWith('/')) {
-                return raw;
-            }
+            const safeImage = normalizeSafeImageSource(raw);
+            if (safeImage) return safeImage;
             return avatarDataUriFromSymbol(raw);
         }
 
@@ -1147,9 +1230,8 @@ function getSectionIconMarkup(iconKey) {
         function resolveDisplayArtistAvatar(artist) {
             const raw = String(artist?.avatar || '').trim();
             if (raw) {
-                if (raw.startsWith('data:image/') || raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('./') || raw.startsWith('/')) {
-                    return raw;
-                }
+                const safeImage = normalizeSafeImageSource(raw);
+                if (safeImage) return safeImage;
                 return avatarDataUriFromSymbol(raw);
             }
             const initial = String(artist?.name || '?').trim().charAt(0).toUpperCase() || '?';
@@ -1162,21 +1244,16 @@ function getSectionIconMarkup(iconKey) {
             preview.src = src || '';
         }
 
-        function handleArtistAvatarUpload(event) {
+        async function handleArtistAvatarUpload(event) {
             const file = event?.target?.files?.[0];
             if (!file) return;
-            if (!file.type || !file.type.startsWith('image/')) {
-                toastError('Please upload a valid image file.');
-                return;
-            }
-            const reader = new FileReader();
-            reader.onload = () => {
-                const result = typeof reader.result === 'string' ? reader.result : '';
-                if (!result) return;
-                pendingArtistAvatarValue = result;
-                updateArtistAvatarPreview(result);
-            };
-            reader.readAsDataURL(file);
+            const result = await readValidatedImageDataUrl(file, {
+                label: 'Artist photo',
+                maxBytes: SP_AVATAR_UPLOAD_MAX_BYTES
+            });
+            if (!result) return;
+            pendingArtistAvatarValue = result;
+            updateArtistAvatarPreview(result);
         }
 
         function updateHeaderGreeting() {
@@ -1271,25 +1348,20 @@ function getSectionIconMarkup(iconKey) {
             pendingProfileAvatarValue = '';
         }
 
-        function handleProfileAvatarUpload(event) {
+        async function handleProfileAvatarUpload(event) {
             const file = event?.target?.files?.[0];
             if (!file) return;
-            if (!file.type || !file.type.startsWith('image/')) {
-                toastError('Please upload a valid image file.');
-                return;
+            const result = await readValidatedImageDataUrl(file, {
+                label: 'Profile photo',
+                maxBytes: SP_AVATAR_UPLOAD_MAX_BYTES
+            });
+            if (!result) return;
+            pendingProfileAvatarValue = result;
+            const preview = document.getElementById('profileAvatarPreview');
+            if (preview) {
+                preview.src = result;
+                syncBrandMarkPresentation(preview, result);
             }
-            const reader = new FileReader();
-            reader.onload = () => {
-                const result = typeof reader.result === 'string' ? reader.result : '';
-                if (!result) return;
-                pendingProfileAvatarValue = result;
-                const preview = document.getElementById('profileAvatarPreview');
-                if (preview) {
-                    preview.src = result;
-                    syncBrandMarkPresentation(preview, result);
-                }
-            };
-            reader.readAsDataURL(file);
         }
 
         function selectProfileAvatarPreset(event) {
@@ -1324,7 +1396,7 @@ function getSectionIconMarkup(iconKey) {
                     toastError('Username is required.');
                     return;
                 }
-                const nextAvatar = pendingProfileAvatarValue || user.avatar || '';
+                const nextAvatar = pendingProfileAvatarValue || normalizeSafeImageSource(user.avatar) || '';
                 const saveBridge = window.SP?.saveAccountProfile;
                 if (typeof saveBridge !== 'function') {
                     toastError('Profile sync is not ready yet. Please try again in a moment.');
@@ -2688,15 +2760,13 @@ function getSectionIconMarkup(iconKey) {
                         openSelectors: [
                             '[data-action="showAddBooking"]',
                             '[data-action="showAddEventToCalendar"]',
-                            '[onclick*="showAddBooking"]',
-                            '[onclick*="showAddEventToCalendar"]',
-                            '[onclick*="bookArtistFromAvailability"]',
+                            '[data-availability-book]',
                             '.booking-edit-trigger'
                         ]
                     },
-                    { id: 'addExpenseForm', cancel: cancelExpense, openSelectors: ['[data-action="showAddExpense"]', '[onclick*="showAddExpense"]', '.expense-edit-trigger'] },
-                    { id: 'addOtherIncomeForm', cancel: cancelOtherIncome, openSelectors: ['[data-action="showAddOtherIncome"]', '[onclick*="showAddOtherIncome"]', '.other-income-edit-trigger'] },
-                    { id: 'addArtistForm', cancel: cancelAddArtist, openSelectors: ['[data-action="showAddArtistForm"]', '[onclick*="showAddArtistForm"]', '.artist-card[data-artist-id]'] }
+                    { id: 'addExpenseForm', cancel: cancelExpense, openSelectors: ['[data-action="showAddExpense"]', '.expense-edit-trigger'] },
+                    { id: 'addOtherIncomeForm', cancel: cancelOtherIncome, openSelectors: ['[data-action="showAddOtherIncome"]', '.other-income-edit-trigger'] },
+                    { id: 'addArtistForm', cancel: cancelAddArtist, openSelectors: ['[data-action="showAddArtistForm"]', '.artist-card[data-artist-id]'] }
                 ];
 
             forms.forEach(form => {
@@ -4246,6 +4316,12 @@ function showLoginForm(options = {}) {
             refreshProfileUI();
             clearForms();
             commitBootTransition('landingScreen', { flowId, minDelayMs: 180 });
+            setTimeout(() => {
+                const landing = document.getElementById('landingScreen');
+                if (landing?.classList.contains('screen-active')) {
+                    hideBootLoaderElement({ force: true });
+                }
+            }, 260);
             toastInfo('Logged out');
         }
 
@@ -4869,18 +4945,16 @@ function showLoginForm(options = {}) {
 
             const parentSection = PARENT_MAP[section] || section;
 
-            // Idempotency guard: triple-dispatch (data-action + onclick + capture-phase) can
+            // Idempotency guard: capture-phase and app-side data-action bridges can
             // fire showSection twice for the same click. Skip the heavy DOM work if we're
             // already on this section, but still allow the renderers below to refresh data.
-            const _spSameSection = window._spCurrentSection === section;
+            const parentElement = document.getElementById(parentSection);
+            const parentIsActive = parentElement?.classList.contains('active') === true;
+            const _spSameSection = window._spCurrentSection === section && parentIsActive;
             window._spCurrentSection = section;
 
             if (!_spSameSection) {
-                // Batch class toggles in a single frame to keep clicks feeling instant on
-                // mid-range hardware (i5-8250U / 8GB target).
-                requestAnimationFrame(() => {
-                    document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.id === parentSection));
-                });
+                document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.id === parentSection));
             }
             persistAppSectionRoute(section);
 
@@ -5154,8 +5228,7 @@ function showLoginForm(options = {}) {
             if (!map) {
                 return;
             }
-            map.innerHTML = '';
-            const showLabels = options.showLabels === true;
+            map.replaceChildren();
             const showLocationList = options.showLocationList === true;
             const showPinnedPanel = options.showPinnedPanel !== false;
 
@@ -5163,71 +5236,126 @@ function showLoginForm(options = {}) {
             const allBookings = sourceBookings.filter(b => b.date);
             const hasInternational = allBookings.some(b => b.locationType === 'abroad');
 
-            const buildTooltipLines = (bookingList) => {
-                return bookingList.map(b => {
-                    const dateStr = b.date ? formatDisplayDate(b.date) : 'Unknown date';
-                    const status = b.status ? b.status.charAt(0).toUpperCase() + b.status.slice(1) : 'Unknown';
-                    return `
-                        <div class="tooltip-line">
-                            <span class="tooltip-label">Show</span>
-                            <span class="tooltip-value">${b.event || 'Unknown'}</span>
-                        </div>
-                        <div class="tooltip-line">
-                            <span class="tooltip-label">Date</span>
-                            <span class="tooltip-value">${dateStr}</span>
-                        </div>
-                        <div class="tooltip-line">
-                            <span class="tooltip-label">Status</span>
-                            <span class="tooltip-value">${status}</span>
-                        </div>
-                    `;
-                }).join('');
+            const createDiv = (className, text = null) => {
+                const el = document.createElement('div');
+                el.className = className;
+                if (text !== null) el.textContent = text;
+                return el;
             };
 
-            const buildPanelContent = (location, bookingList) => {
+            const appendTooltipLine = (root, label, value) => {
+                const line = createDiv('tooltip-line');
+                line.append(
+                    Object.assign(document.createElement('span'), { className: 'tooltip-label', textContent: label }),
+                    Object.assign(document.createElement('span'), { className: 'tooltip-value', textContent: value })
+                );
+                root.appendChild(line);
+            };
+
+            const buildPinTooltip = (location, bookingList) => {
+                const tooltip = createDiv('map-pin-tooltip');
+                const title = document.createElement('strong');
+                title.textContent = location;
+                tooltip.append(title, document.createElement('br'));
+                bookingList.forEach((booking) => {
+                    appendTooltipLine(tooltip, 'Show', booking.event || 'Unknown');
+                    appendTooltipLine(tooltip, 'Date', booking.date ? formatDisplayDate(booking.date) : 'Unknown date');
+                    appendTooltipLine(tooltip, 'Status', booking.status ? booking.status.charAt(0).toUpperCase() + booking.status.slice(1) : 'Unknown');
+                });
+                return tooltip;
+            };
+
+            const renderPanelContent = (panel, location, bookingList) => {
+                if (!panel) return;
                 if (!location || bookingList.length === 0) {
-                    return `<div class="map-info-title">Performance Details</div><div class="map-info-empty">Hover a pin to see show details.</div>`;
+                    panel.replaceChildren(
+                        createDiv('map-info-title', 'Performance Details'),
+                        createDiv('map-info-empty', 'Hover a pin to see show details.')
+                    );
+                    return;
                 }
-                const blocks = bookingList.map(b => {
-                    const dateStr = b.date ? formatDisplayDate(b.date) : 'Unknown date';
-                    const status = b.status ? b.status.charAt(0).toUpperCase() + b.status.slice(1) : 'Unknown';
-                    return `
-                        <div class="map-info-item">
-                            <div><strong>${b.event || 'Unknown show'}</strong></div>
-                            <div>${dateStr}</div>
-                            <div>Status: ${status}</div>
-                        </div>
-                    `;
-                }).join('');
-                return `
-                    <div class="map-info-title">${location}</div>
-                    ${blocks}
-                `;
+                const nodes = [createDiv('map-info-title', location)];
+                bookingList.forEach((booking) => {
+                    const item = createDiv('map-info-item');
+                    const eventLine = document.createElement('div');
+                    const eventName = document.createElement('strong');
+                    eventName.textContent = booking.event || 'Unknown show';
+                    eventLine.appendChild(eventName);
+                    item.append(
+                        eventLine,
+                        createDiv('', booking.date ? formatDisplayDate(booking.date) : 'Unknown date'),
+                        createDiv('', `Status: ${booking.status ? booking.status.charAt(0).toUpperCase() + booking.status.slice(1) : 'Unknown'}`)
+                    );
+                    nodes.push(item);
+                });
+                panel.replaceChildren(...nodes);
+            };
+
+            const buildLocationGroups = () => {
+                const groups = {};
+                allBookings.forEach(booking => {
+                    const location = booking.location || 'Unknown';
+                    if (!groups[location]) {
+                        groups[location] = { count: 0, bookings: [], hasUpcoming: false };
+                    }
+                    groups[location].count++;
+                    groups[location].bookings.push(booking);
+                    if (new Date(booking.date) >= today) {
+                        groups[location].hasUpcoming = true;
+                    }
+                });
+                return groups;
+            };
+
+            const buildLegendRow = (kind, label) => {
+                const row = createDiv('map-legend-row');
+                row.append(createDiv(`map-legend-dot map-legend-dot--${kind}`), document.createTextNode(label));
+                return row;
+            };
+
+            const buildLegend = (title, count) => {
+                const legend = createDiv('map-legend');
+                legend.append(
+                    createDiv('map-legend-title', title),
+                    buildLegendRow('upcoming', 'Upcoming shows'),
+                    buildLegendRow('past', 'Past shows'),
+                    createDiv('map-legend-count', `Showing ${count} shows`),
+                    createDiv('map-legend-note', 'Hover pins for details')
+                );
+                return legend;
+            };
+
+            const appendPins = (locationGroups, coordsByLocation, fallbackCoords) => {
+                Object.keys(locationGroups).forEach(location => {
+                    const coords = coordsByLocation[location] || fallbackCoords;
+                    const data = locationGroups[location];
+
+                    const pin = document.createElement('div');
+                    pin.className = `map-pin ${data.hasUpcoming ? 'upcoming' : 'past'}`;
+                    pin.style.left = `${coords.x}%`;
+                    pin.style.top = `${coords.y}%`;
+                    if (!showPinnedPanel) {
+                        pin.appendChild(buildPinTooltip(location, data.bookings));
+                    }
+                    if (showPinnedPanel && pinnedPanel) {
+                        pin.addEventListener('mouseenter', () => {
+                            renderPanelContent(pinnedPanel, location, data.bookings);
+                        });
+                    }
+                    map.appendChild(pin);
+                });
             };
 
             let pinnedPanel = null;
             if (showPinnedPanel) {
                 pinnedPanel = document.createElement('div');
                 pinnedPanel.className = 'map-info-panel';
-                pinnedPanel.innerHTML = buildPanelContent(null, []);
+                renderPanelContent(pinnedPanel, null, []);
                 map.appendChild(pinnedPanel);
             }
 
+            const locationGroups = buildLocationGroups();
             if (hasInternational) {
-                const worldLocations = {};
-
-                allBookings.forEach(booking => {
-                    const location = booking.location || 'Unknown';
-                    if (!worldLocations[location]) {
-                        worldLocations[location] = { count: 0, bookings: [], hasUpcoming: false };
-                    }
-                    worldLocations[location].count++;
-                    worldLocations[location].bookings.push(booking);
-                    if (new Date(booking.date) >= today) {
-                        worldLocations[location].hasUpcoming = true;
-                    }
-                });
-
                 const worldCoords = {
                     'Kampala': { x: 50, y: 60 },
                     'Entebbe': { x: 50, y: 61 },
@@ -5243,60 +5371,9 @@ function showLoginForm(options = {}) {
                     'Ghana': { x: 43, y: 55 },
                     'Rwanda': { x: 51, y: 61 }
                 };
-
-                Object.keys(worldLocations).forEach(location => {
-                    const coords = worldCoords[location] || { x: 50, y: 50 };
-                    const data = worldLocations[location];
-
-                    const pin = document.createElement('div');
-                    pin.className = `map-pin ${data.hasUpcoming ? 'upcoming' : 'past'}`;
-                    pin.style.left = `${coords.x}%`;
-                    pin.style.top = `${coords.y}%`;
-                    pin.innerHTML = showPinnedPanel ? '' : `
-                        <div class="map-pin-tooltip">
-                            <strong>${location}</strong><br>
-                            ${buildTooltipLines(data.bookings)}
-                        </div>
-                    `;
-                    if (showPinnedPanel && pinnedPanel) {
-                        pin.addEventListener('mouseenter', () => {
-                            pinnedPanel.innerHTML = buildPanelContent(location, data.bookings);
-                        });
-                    }
-                    map.appendChild(pin);
-                });
-
-                const legend = document.createElement('div');
-                legend.style.cssText = 'position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.9); padding: 12px; border-radius: 8px; border: 2px solid #ff9800; font-size: 12px; color: #fff;';
-                legend.innerHTML = `
-                    <div style="color: #ff9800; font-weight: bold; margin-bottom: 8px;">WORLD VIEW</div>
-                    <div style="display: flex; align-items: center; margin-bottom: 5px;">
-                        <div style="width: 12px; height: 12px; background: #4caf50; border-radius: 50%; margin-right: 8px;"></div>
-                        <span>Upcoming shows</span>
-                    </div>
-                    <div style="display: flex; align-items: center; margin-bottom: 5px;">
-                        <div style="width: 12px; height: 12px; background: #f44336; border-radius: 50%; margin-right: 8px;"></div>
-                        <span>Past shows</span>
-                    </div>
-                    <div style="font-size: 10px; color: #aaa; margin-top: 5px;">Showing ${allBookings.length} shows</div>
-                    <div style="font-size: 10px; color: #888;">Hover pins for details</div>
-                `;
-                map.appendChild(legend);
+                appendPins(locationGroups, worldCoords, { x: 50, y: 50 });
+                map.appendChild(buildLegend('WORLD VIEW', allBookings.length));
             } else {
-                const ugandaLocations = {};
-
-                allBookings.forEach(booking => {
-                    const location = booking.location || 'Unknown';
-                    if (!ugandaLocations[location]) {
-                        ugandaLocations[location] = { count: 0, bookings: [], hasUpcoming: false };
-                    }
-                    ugandaLocations[location].count++;
-                    ugandaLocations[location].bookings.push(booking);
-                    if (new Date(booking.date) >= today) {
-                        ugandaLocations[location].hasUpcoming = true;
-                    }
-                });
-
                 const ugandaCoords = {
                     'Kampala': { x: 30, y: 50 },
                     'Wakiso': { x: 28, y: 48 },
@@ -5316,60 +5393,50 @@ function showLoginForm(options = {}) {
                     'Tororo': { x: 52, y: 50 },
                     'Busia': { x: 55, y: 50 }
                 };
-
-                Object.keys(ugandaLocations).forEach(location => {
-                    const coords = ugandaCoords[location] || { x: 30, y: 50 };
-                    const data = ugandaLocations[location];
-
-                    const pin = document.createElement('div');
-                    pin.className = `map-pin ${data.hasUpcoming ? 'upcoming' : 'past'}`;
-                    pin.style.left = `${coords.x}%`;
-                    pin.style.top = `${coords.y}%`;
-                    pin.innerHTML = showPinnedPanel ? '' : `
-                        <div class="map-pin-tooltip">
-                            <strong>${location}</strong><br>
-                            ${buildTooltipLines(data.bookings)}
-                        </div>
-                    `;
-                    if (showPinnedPanel && pinnedPanel) {
-                        pin.addEventListener('mouseenter', () => {
-                            pinnedPanel.innerHTML = buildPanelContent(location, data.bookings);
-                        });
-                    }
-                    map.appendChild(pin);
-                });
-
-                const legend = document.createElement('div');
-                legend.style.cssText = 'position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.9); padding: 12px; border-radius: 8px; border: 2px solid #ff9800; font-size: 12px; color: #fff;';
-                legend.innerHTML = `
-                    <div style="color: #ff9800; font-weight: bold; margin-bottom: 8px;">UGANDA VIEW</div>
-                    <div style="display: flex; align-items: center; margin-bottom: 5px;">
-                        <div style="width: 12px; height: 12px; background: #4caf50; border-radius: 50%; margin-right: 8px;"></div>
-                        <span>Upcoming shows</span>
-                    </div>
-                    <div style="display: flex; align-items: center; margin-bottom: 5px;">
-                        <div style="width: 12px; height: 12px; background: #f44336; border-radius: 50%; margin-right: 8px;"></div>
-                        <span>Past shows</span>
-                    </div>
-                    <div style="font-size: 10px; color: #aaa; margin-top: 5px;">Showing ${allBookings.length} shows</div>
-                    <div style="font-size: 10px; color: #888;">Hover pins for details</div>
-                `;
-                map.appendChild(legend);
+                appendPins(locationGroups, ugandaCoords, { x: 30, y: 50 });
+                map.appendChild(buildLegend('UGANDA VIEW', allBookings.length));
             }
 
             if (showLocationList) {
                 const locationList = Array.from(new Set(allBookings.map(b => (b.location || 'Unknown').trim())))
                     .filter(Boolean)
                     .sort((a, b) => a.localeCompare(b));
-                const listWrap = document.createElement('div');
-                listWrap.className = 'map-location-list';
-                listWrap.innerHTML = `
-                    <div class="map-location-list-title">Locations</div>
-                    ${locationList.length === 0 ? '<div class="map-location-list-item">- None</div>' :
-                        locationList.map(loc => `<div class="map-location-list-item">- ${loc}</div>`).join('')}
-                `;
+                const listWrap = createDiv('map-location-list');
+                listWrap.appendChild(createDiv('map-location-list-title', 'Locations'));
+                if (locationList.length === 0) {
+                    listWrap.appendChild(createDiv('map-location-list-item', '- None'));
+                } else {
+                    locationList.forEach((location) => {
+                        listWrap.appendChild(createDiv('map-location-list-item', `- ${location}`));
+                    });
+                }
                 map.appendChild(listWrap);
             }
+        }
+
+        function bindCalendarGridActions(grid) {
+            if (!grid || grid.dataset.spCalendarActionsBound === '1') return;
+            grid.dataset.spCalendarActionsBound = '1';
+
+            const activateDay = (dayEl) => {
+                const dateStr = dayEl?.dataset?.date || '';
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return;
+                selectCalendarDate(dateStr);
+            };
+
+            grid.addEventListener('click', (event) => {
+                const dayEl = event.target?.closest?.('.calendar-day[data-date]');
+                if (!dayEl || !grid.contains(dayEl)) return;
+                activateDay(dayEl);
+            });
+
+            grid.addEventListener('keydown', (event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                const dayEl = event.target?.closest?.('.calendar-day[data-date]');
+                if (!dayEl || !grid.contains(dayEl)) return;
+                event.preventDefault();
+                activateDay(dayEl);
+            });
         }
 
         // Calendar Functions - More Interactive - More Interactive - More Interactive
@@ -5387,6 +5454,8 @@ function showLoginForm(options = {}) {
             const daysInPrevMonth = new Date(year, month, 0).getDate();
 
             const grid = document.getElementById('calendarGrid');
+            if (!grid) return;
+            bindCalendarGridActions(grid);
             grid.innerHTML = `
                 <div class="calendar-day-label">Sun</div>
                 <div class="calendar-day-label">Mon</div>
@@ -5406,7 +5475,7 @@ function showLoginForm(options = {}) {
                 
                 grid.innerHTML += `
                     <div class="calendar-day other-month ${hasEvent ? 'has-event' : ''}" data-date="${dateStr}"
-                         onclick="selectCalendarDate('${dateStr}')">
+                         role="button" tabindex="0">
                         ${day}
                         ${hasEvent ? '<div class="event-indicator"></div>' : ''}
                         ${hasEvent ? buildEventTooltip(dateStr) : ''}
@@ -5431,7 +5500,7 @@ function showLoginForm(options = {}) {
                 if (isToday) classes.push('today');
 
                 grid.innerHTML += `
-                    <div class="${classes.join(' ')}" data-date="${dateStr}" onclick="selectCalendarDate('${dateStr}')">
+                    <div class="${classes.join(' ')}" data-date="${dateStr}" role="button" tabindex="0">
                         ${day}
                         ${hasEvent ? `<div class="event-count">${dayEvents.length}</div>` : ''}
                         ${hasEvent ? '<div class="event-indicator"></div>' : ''}
@@ -5451,7 +5520,7 @@ function showLoginForm(options = {}) {
                 
                 grid.innerHTML += `
                     <div class="calendar-day other-month ${hasEvent ? 'has-event' : ''}" data-date="${dateStr}"
-                         onclick="selectCalendarDate('${dateStr}')">
+                         role="button" tabindex="0">
                         ${day}
                         ${hasEvent ? '<div class="event-indicator"></div>' : ''}
                         ${hasEvent ? buildEventTooltip(dateStr) : ''}
@@ -5464,7 +5533,7 @@ function showLoginForm(options = {}) {
             const allBookings = getAllBookings();
             const dayEvents = allBookings.filter(b => b.date === dateStr);
             if (dayEvents.length === 0) return '';
-            const lines = dayEvents.map(evt => `- ${evt.event} - ${evt.artist}`).join('<br>');
+            const lines = dayEvents.map(evt => `- ${escapeHtml(evt.event || 'Untitled event')} - ${escapeHtml(evt.artist || 'Roster / Shared')}`).join('<br>');
             return `<div class="event-tooltip">${lines}</div>`;
         }
 
@@ -5522,21 +5591,21 @@ function showLoginForm(options = {}) {
             currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
             renderCalendar();
             selectedCalendarDate = null;
-            document.getElementById('calendarEventDetails').innerHTML = '<p style="color: #888;">Click on a date with events to see details</p>';
+            document.getElementById('calendarEventDetails').innerHTML = '<p class="calendar-empty-note">Click on a date with events to see details</p>';
         }
 
         function nextMonth() {
             currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
             renderCalendar();
             selectedCalendarDate = null;
-            document.getElementById('calendarEventDetails').innerHTML = '<p style="color: #888;">Click on a date with events to see details</p>';
+            document.getElementById('calendarEventDetails').innerHTML = '<p class="calendar-empty-note">Click on a date with events to see details</p>';
         }
 
         function goToToday() {
             currentCalendarDate = new Date();
             renderCalendar();
             selectedCalendarDate = null;
-            document.getElementById('calendarEventDetails').innerHTML = '<p style="color: #888;">Click on a date with events to see details</p>';
+            document.getElementById('calendarEventDetails').innerHTML = '<p class="calendar-empty-note">Click on a date with events to see details</p>';
         }
 
         function getReportPeriodData(period, options = {}) {
@@ -6416,17 +6485,17 @@ function showLoginForm(options = {}) {
             document.getElementById('receiptPreview').src = '';
         }
 
-        function previewReceipt(event) {
+        async function previewReceipt(event) {
             const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const preview = document.getElementById('receiptPreview');
-                    preview.src = e.target.result;
-                    preview.style.display = 'block';
-                };
-                reader.readAsDataURL(file);
-            }
+            if (!file) return;
+            const result = await readValidatedImageDataUrl(file, {
+                label: 'Receipt image',
+                maxBytes: SP_RECEIPT_UPLOAD_MAX_BYTES
+            });
+            if (!result) return;
+            const preview = document.getElementById('receiptPreview');
+            preview.src = result;
+            preview.style.display = 'block';
         }
 
         async function saveExpense() {
@@ -6435,7 +6504,7 @@ function showLoginForm(options = {}) {
             let previousExpenses = [];
             try {
                 previousExpenses = expenses.slice();
-                const receiptSrc = document.getElementById('receiptPreview').src || null;
+                const receiptSrc = normalizeSafeImageSource(document.getElementById('receiptPreview').src) || null;
                 const existingExpense = editingExpenseId ? expenses.find(e => isSameRecordId(e.id, editingExpenseId)) : null;
                 const isEdit = Boolean(editingExpenseId);
                 let expense = {
@@ -6504,7 +6573,7 @@ function showLoginForm(options = {}) {
                     title: 'No expenses yet',
                     sub: 'Track your costs - travel, equipment, studio time, and more.',
                     ctaLabel: '+ Log Expense',
-                    ctaAction: "showAddExpense()"
+                    ctaAction: 'showAddExpense'
                 })}</td></tr>`;
                 const cards = document.getElementById('expensesCards');
                 if (cards) cards.innerHTML = emptyState({
@@ -6512,7 +6581,7 @@ function showLoginForm(options = {}) {
                     title: 'No expenses yet',
                     sub: 'Track your costs - travel, equipment, studio time, and more.',
                     ctaLabel: '+ Log Expense',
-                    ctaAction: "showAddExpense()"
+                    ctaAction: 'showAddExpense'
                 });
                 return;
             }
@@ -6526,7 +6595,7 @@ function showLoginForm(options = {}) {
                     <td class="sp-inline-editable" ${inlineEditAttrs('expense', expense.id, 'date', 'Date')}>${escapeHtml(formatDisplayDate(expense.date))}</td>
                     <td>
                         ${expense.receipt ?
-                            `<button class="action-btn icon-btn" data-receipt="${expense.id}" onclick="event.stopPropagation(); viewReceiptById(this.dataset.receipt, 'expense')" aria-label="View receipt" title="View receipt"><i class="ph ph-eye" aria-hidden="true"></i></button>` :
+                            `<button class="action-btn icon-btn" data-receipt-view="1" data-receipt="${escapeHtml(expense.id)}" data-receipt-type="expense" aria-label="View receipt" title="View receipt"><i class="ph ph-eye" aria-hidden="true"></i></button>` :
                             '-'}
                     </td>
                 </tr>
@@ -6548,7 +6617,7 @@ function showLoginForm(options = {}) {
                             <div class="expense-field"><span>Receipt</span>${expense.receipt ? 'Attached' : 'None'}</div>
                         </div>
                         <div class="expense-actions">
-                            ${expense.receipt ? `<button class="action-btn icon-btn" onclick="event.stopPropagation(); viewReceipt('${expense.receipt}')" aria-label="View receipt" title="View receipt"><i class="ph ph-eye" aria-hidden="true"></i></button>` : ''}
+                            ${expense.receipt ? `<button class="action-btn icon-btn" data-receipt-view="1" data-receipt="${escapeHtml(expense.id)}" data-receipt-type="expense" aria-label="View receipt" title="View receipt"><i class="ph ph-eye" aria-hidden="true"></i></button>` : ''}
                             <button class="action-btn icon-btn delete-btn" ${deleteRecordAttrs('expense', expense.id)} aria-label="Delete" title="Delete"><i class="ph ph-trash" aria-hidden="true"></i></button>
                         </div>
                     </div>
@@ -6602,8 +6671,9 @@ function showLoginForm(options = {}) {
             document.getElementById('expenseCategory').value = expense.category;
             setFinanceArtistSelectValue('expenseArtist', expense);
 
-            if (expense.receipt) {
-                document.getElementById('receiptPreview').src = expense.receipt;
+            const safeReceipt = normalizeSafeImageSource(expense.receipt);
+            if (safeReceipt) {
+                document.getElementById('receiptPreview').src = safeReceipt;
                 document.getElementById('receiptPreview').style.display = 'block';
             }
 
@@ -6611,9 +6681,14 @@ function showLoginForm(options = {}) {
         }
 
         function viewReceipt(receiptData) {
+            const safeReceipt = normalizeSafeImageSource(receiptData);
+            if (!safeReceipt) {
+                toastError('Receipt image is unavailable or unsafe.');
+                return;
+            }
             const modal = document.getElementById('receiptModal');
             const img = document.getElementById('receiptModalImage');
-            img.src = receiptData;
+            img.src = safeReceipt;
             modal.style.display = 'flex';
         }
 
@@ -6627,6 +6702,18 @@ function showLoginForm(options = {}) {
                 data = item?.proof;
             }
             if (data) viewReceipt(data);
+        }
+
+        if (!window.__spReceiptViewActionsBound) {
+            window.__spReceiptViewActionsBound = true;
+            document.addEventListener('click', (event) => {
+                const button = event.target?.closest?.('[data-receipt-view][data-receipt]');
+                if (!button) return;
+                event.preventDefault();
+                event.stopPropagation();
+                const receiptType = button.dataset.receiptType === 'otherIncome' ? 'otherIncome' : 'expense';
+                viewReceiptById(button.dataset.receipt, receiptType);
+            });
         }
 
         function closeReceiptModal() {
@@ -6677,17 +6764,17 @@ function showLoginForm(options = {}) {
             document.getElementById('otherIncomeProofPreview').src = '';
         }
 
-        function previewOtherIncomeProof(event) {
+        async function previewOtherIncomeProof(event) {
             const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const preview = document.getElementById('otherIncomeProofPreview');
-                    preview.src = e.target.result;
-                    preview.style.display = 'block';
-                };
-                reader.readAsDataURL(file);
-            }
+            if (!file) return;
+            const result = await readValidatedImageDataUrl(file, {
+                label: 'Proof image',
+                maxBytes: SP_RECEIPT_UPLOAD_MAX_BYTES
+            });
+            if (!result) return;
+            const preview = document.getElementById('otherIncomeProofPreview');
+            preview.src = result;
+            preview.style.display = 'block';
         }
 
         async function saveOtherIncome() {
@@ -6696,7 +6783,7 @@ function showLoginForm(options = {}) {
             let previousOtherIncome = [];
             try {
                 previousOtherIncome = otherIncome.slice();
-                const proofSrc = document.getElementById('otherIncomeProofPreview').src || null;
+                const proofSrc = normalizeSafeImageSource(document.getElementById('otherIncomeProofPreview').src) || null;
                 const existingIncome = editingOtherIncomeId ? otherIncome.find(i => isSameRecordId(i.id, editingOtherIncomeId)) : null;
                 const isEdit = Boolean(editingOtherIncomeId);
                 let incomeItem = {
@@ -6771,7 +6858,7 @@ function showLoginForm(options = {}) {
                     title: 'No other income yet',
                     sub: 'Log sponsorships, royalties, merch sales, and other revenue streams.',
                     ctaLabel: '+ Log Income',
-                    ctaAction: "showAddOtherIncome()"
+                    ctaAction: 'showAddOtherIncome'
                 })}</td></tr>`;
                 const cards = document.getElementById('otherIncomeCards');
                 if (cards) cards.innerHTML = emptyState({
@@ -6779,7 +6866,7 @@ function showLoginForm(options = {}) {
                     title: 'No other income yet',
                     sub: 'Log sponsorships, royalties, merch sales, and other revenue streams.',
                     ctaLabel: '+ Log Income',
-                    ctaAction: "showAddOtherIncome()"
+                    ctaAction: 'showAddOtherIncome'
                 });
                 return;
             }
@@ -6798,7 +6885,7 @@ function showLoginForm(options = {}) {
                         <td><span class="status-badge ${statusClass} sp-inline-editable" ${inlineEditAttrs('otherIncome', item.id, 'status', 'Status')}>${escapeHtml(item.status || 'received')}</span></td>
                         <td>
                             ${item.proof ?
-                                `<button class="action-btn icon-btn" data-receipt="${item.id}" onclick="event.stopPropagation(); viewReceiptById(this.dataset.receipt, 'otherIncome')" aria-label="View proof" title="View proof"><i class="ph ph-eye" aria-hidden="true"></i></button>` :
+                                `<button class="action-btn icon-btn" data-receipt-view="1" data-receipt="${escapeHtml(item.id)}" data-receipt-type="otherIncome" aria-label="View proof" title="View proof"><i class="ph ph-eye" aria-hidden="true"></i></button>` :
                                 '-'}
                         </td>
                     </tr>
@@ -6825,7 +6912,7 @@ function showLoginForm(options = {}) {
                                 <div class="expense-field sp-inline-editable" ${inlineEditAttrs('otherIncome', item.id, 'notes', 'Notes')}><span>Notes</span>${escapeHtml(item.notes || 'None')}</div>
                             </div>
                             <div class="expense-actions">
-                                ${item.proof ? `<button class="action-btn icon-btn" onclick="event.stopPropagation(); viewReceipt('${item.proof}')" aria-label="View proof" title="View proof"><i class="ph ph-eye" aria-hidden="true"></i></button>` : ''}
+                                ${item.proof ? `<button class="action-btn icon-btn" data-receipt-view="1" data-receipt="${escapeHtml(item.id)}" data-receipt-type="otherIncome" aria-label="View proof" title="View proof"><i class="ph ph-eye" aria-hidden="true"></i></button>` : ''}
                                 <button class="action-btn icon-btn delete-btn" ${deleteRecordAttrs('otherIncome', item.id)} aria-label="Delete" title="Delete"><i class="ph ph-trash" aria-hidden="true"></i></button>
                             </div>
                         </div>
@@ -6884,8 +6971,9 @@ function showLoginForm(options = {}) {
             document.getElementById('otherIncomeNotes').value = item.notes || '';
             setFinanceArtistSelectValue('otherIncomeArtist', item);
 
-            if (item.proof) {
-                document.getElementById('otherIncomeProofPreview').src = item.proof;
+            const safeProof = normalizeSafeImageSource(item.proof);
+            if (safeProof) {
+                document.getElementById('otherIncomeProofPreview').src = safeProof;
                 document.getElementById('otherIncomeProofPreview').style.display = 'block';
             }
 
@@ -7019,7 +7107,7 @@ function showLoginForm(options = {}) {
                         specialty: artistSpecialty,
                         bio: artistBio,
                         strategicGoal: artistStrategicGoal,
-                        avatar: pendingArtistAvatarValue || existingArtist.avatar || ''
+                        avatar: pendingArtistAvatarValue || normalizeSafeImageSource(existingArtist.avatar) || ''
                     };
 
                     if (previousName !== artistName) {
@@ -7097,7 +7185,7 @@ function showLoginForm(options = {}) {
                     title: 'No artists yet',
                     sub: 'Add your first artist to start tracking bookings and performance.',
                     ctaLabel: '+ Add Artist',
-                    ctaAction: "showAddArtistForm()"
+                    ctaAction: 'showAddArtistForm'
                 });
                 return;
             }
@@ -7111,7 +7199,7 @@ function showLoginForm(options = {}) {
                 const artistEmail = escapeHtml(artist.email || '');
                 const artistPhone = escapeHtml(artist.phone || '');
                 const artistInitial = escapeHtml(String(artist.name || '?').charAt(0).toUpperCase());
-                const artistAvatarSrc = artist.avatar ? escapeHtml(artist.avatar) : '';
+                const artistAvatarSrc = escapeHtml(resolveDisplayArtistAvatar(artist));
                 const artistAvatarMarkup = artistAvatarSrc
                     ? `<img class="artist-avatar-img" src="${artistAvatarSrc}" alt="${artistName} photo">`
                     : artistInitial;
@@ -7121,12 +7209,12 @@ function showLoginForm(options = {}) {
                     <h4 class="sp-inline-editable" ${inlineEditAttrs('artist', artist.id, 'name', 'Artist Name')}>${artistName}</h4>
                     <p class="artist-specialty sp-inline-editable" ${inlineEditAttrs('artist', artist.id, 'specialty', 'Specialty')}>${artistSpecialty}</p>
                     <p class="artist-bio sp-inline-editable" ${inlineEditAttrs('artist', artist.id, 'bio', 'Bio')}>${artistBio}</p>
-                    <p class="artist-bio sp-inline-editable" ${inlineEditAttrs('artist', artist.id, 'strategicGoal', 'Strategic Goal')} style="color:#c8a846;">Goal: ${artistGoal || 'Set a strategic goal'}</p>
+                    <p class="artist-bio artist-bio--goal sp-inline-editable" ${inlineEditAttrs('artist', artist.id, 'strategicGoal', 'Strategic Goal')}>Goal: ${artistGoal || 'Set a strategic goal'}</p>
                     <div class="artist-contact">
                         <div class="sp-inline-editable" ${inlineEditAttrs('artist', artist.id, 'email', 'Email')}><i class="ph ph-envelope-simple" aria-hidden="true"></i> ${artistEmail || 'No email'}</div>
                         <div class="sp-inline-editable" ${inlineEditAttrs('artist', artist.id, 'phone', 'Phone')}><i class="ph ph-phone" aria-hidden="true"></i> ${artistPhone || 'No phone'}</div>
                     </div>
-                    <button type="button" class="action-btn delete-btn" data-action="deleteArtistCard" data-artist-id="${artistId}" style="width: 100%; margin-top: 10px;">Remove Artist</button>
+                    <button type="button" class="action-btn delete-btn artist-remove-btn" data-action="deleteArtistCard" data-artist-id="${artistId}">Remove Artist</button>
                 </div>`;
             }).join('');
         }
@@ -7172,7 +7260,10 @@ function showLoginForm(options = {}) {
             
             const artistList = getArtists();
             select.innerHTML = '<option value="">Select Artist</option>' + 
-                artistList.map(artist => `<option value="${artist.name}">${artist.name}</option>`).join('');
+                artistList.map(artist => {
+                    const name = escapeHtml(artist?.name || 'Artist');
+                    return `<option value="${name}">${name}</option>`;
+                }).join('');
             populateAudienceArtistDropdown();
             populateFinanceArtistDropdowns();
         }
@@ -7373,7 +7464,7 @@ function showLoginForm(options = {}) {
                     title: 'No bookings yet',
                     sub: 'Log your first show to start tracking fees, deposits, and balances.',
                     ctaLabel: '+ Add Booking',
-                    ctaAction: "showAddBooking()"
+                    ctaAction: 'showAddBooking'
                 })}</td></tr>`;
                 const cards = document.getElementById('bookingsCards');
                 if (cards) cards.innerHTML = emptyState({
@@ -7381,7 +7472,7 @@ function showLoginForm(options = {}) {
                     title: 'No bookings yet',
                     sub: 'Log your first show to start tracking fees, deposits, and balances.',
                     ctaLabel: '+ Add Booking',
-                    ctaAction: "showAddBooking()"
+                    ctaAction: 'showAddBooking'
                 });
                 return;
             }
@@ -7718,23 +7809,23 @@ function showLoginForm(options = {}) {
             if (artistBookings.length > 0) {
                 resultDiv.textContent = '';
                 const panel = document.createElement('div');
-                panel.style.cssText = 'background: rgba(244, 67, 54, 0.1); border-left: 3px solid #f44336; padding: 15px; border-radius: 5px;';
+                panel.className = 'availability-result-panel availability-result-panel--blocked';
                 const status = document.createElement('strong');
-                status.style.color = '#f44336';
+                status.className = 'availability-result-status availability-result-status--blocked';
                 status.textContent = 'NOT AVAILABLE';
                 const summary = document.createElement('p');
-                summary.style.cssText = 'color: #ccc; margin-top: 10px;';
+                summary.className = 'availability-result-summary';
                 summary.textContent = `${artistName} is already booked on ${formatDisplayDate(date)}`;
                 panel.append(status, summary);
                 artistBookings.forEach((booking) => {
                     const item = document.createElement('div');
-                    item.style.cssText = 'margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px;';
+                    item.className = 'availability-result-booking';
                     const eventLine = document.createElement('div');
                     const eventName = document.createElement('strong');
                     eventName.textContent = booking.event || 'Untitled booking';
                     eventLine.appendChild(eventName);
                     const locationLine = document.createElement('div');
-                    locationLine.style.cssText = 'font-size: 12px; color: #888;';
+                    locationLine.className = 'availability-result-location';
                     locationLine.textContent = booking.location
                         ? `${booking.location} ${booking.locationType === 'abroad' ? '(Abroad)' : '(Uganda)'}`
                         : 'Location not set';
@@ -7745,17 +7836,17 @@ function showLoginForm(options = {}) {
             } else {
                 resultDiv.textContent = '';
                 const panel = document.createElement('div');
-                panel.style.cssText = 'background: rgba(76, 175, 80, 0.1); border-left: 3px solid #4caf50; padding: 15px; border-radius: 5px;';
+                panel.className = 'availability-result-panel availability-result-panel--available';
                 const status = document.createElement('strong');
-                status.style.color = '#4caf50';
+                status.className = 'availability-result-status availability-result-status--available';
                 status.textContent = 'AVAILABLE';
                 const summary = document.createElement('p');
-                summary.style.cssText = 'color: #ccc; margin-top: 10px;';
+                summary.className = 'availability-result-summary';
                 summary.textContent = `${artistName} is free on ${formatDisplayDate(date)}`;
                 const bookButton = document.createElement('button');
-                bookButton.className = 'add-btn';
+                bookButton.className = 'add-btn availability-result-book-button';
                 bookButton.type = 'button';
-                bookButton.style.cssText = 'margin-top: 10px; width: auto;';
+                bookButton.dataset.availabilityBook = '1';
                 bookButton.textContent = 'Book Now';
                 bookButton.addEventListener('click', () => bookArtistFromAvailability(artistName, date));
                 panel.append(status, summary, bookButton);
@@ -8186,7 +8277,7 @@ function showLoginForm(options = {}) {
                 .sort((a, b) => new Date(a.date) - new Date(b.date));
 
             if (!upcoming.length) {
-                list.innerHTML = '<p style="color: #888; text-align: center; padding: 14px;">No upcoming confirmed shows.</p>';
+                list.innerHTML = '<p class="sp-list-empty-note">No upcoming confirmed shows.</p>';
                 return;
             }
 
@@ -8199,14 +8290,17 @@ function showLoginForm(options = {}) {
                 const status = String(booking?.status || 'pending').toLowerCase();
                 const statusClass = status === 'confirmed' ? 'status-confirmed' : 'status-pending';
                 const weatherHolder = `<span class="show-weather-slot" id="weatherIndicator-${renderKey}"></span>`;
+                const eventLabel = escapeHtml(booking.event || 'Untitled Event');
+                const locationLabel = escapeHtml(booking.location || 'Venue TBC');
+                const artistLabel = escapeHtml(booking.artist || 'Artist');
                 return `
                 <div class="timeline-item dashboard-stream-item dashboard-upcoming-item">
                     <div class="timeline-meta">
-                        <div class="timeline-title">${booking.event || 'Untitled Event'} ${weatherHolder}</div>
-                        <div class="timeline-sub">${formatDisplayDate(booking.date)}  -  ${booking.location || 'Venue TBC'}  -  ${booking.artist || 'Artist'}</div>
+                        <div class="timeline-title">${eventLabel} ${weatherHolder}</div>
+                        <div class="timeline-sub">${escapeHtml(formatDisplayDate(booking.date))}  -  ${locationLabel}  -  ${artistLabel}</div>
                     </div>
                     <div class="timeline-amount">
-                        <span class="booking-status-pill ${statusClass}">${status.toUpperCase()}</span>
+                        <span class="booking-status-pill ${statusClass}">${escapeHtml(status.toUpperCase())}</span>
                         <span class="timeline-fee income-green">UGX ${(Math.round(Number(booking.fee) || 0)).toLocaleString()}</span>
                     </div>
                 </div>
@@ -8273,14 +8367,14 @@ function showLoginForm(options = {}) {
                 const relTime = item.createdAt ? timeAgo(item.createdAt) : '';
                 const timeLabel = relTime ? `<span class="activity-time-ago">${relTime}</span>` : '';
                 return `
-                <div class="timeline-item dashboard-stream-item dashboard-upcoming-item dashboard-activity-item ${item.type}">
+                <div class="timeline-item dashboard-stream-item dashboard-upcoming-item dashboard-activity-item ${escapeHtml(item.type)}">
                     <div class="timeline-meta">
-                        <div class="timeline-title">${item.title} ${timeLabel}</div>
-                        <div class="timeline-sub">${formatDisplayDate(item.date)}  -  ${item.sub}</div>
+                        <div class="timeline-title">${escapeHtml(item.title)} ${timeLabel}</div>
+                        <div class="timeline-sub">${escapeHtml(formatDisplayDate(item.date))}  -  ${escapeHtml(item.sub)}</div>
                     </div>
                     <div class="timeline-amount">
-                        <span class="booking-status-pill ${item.badgeClass}">${item.badge}</span>
-                        <span class="timeline-fee ${item.amountClass}">${item.amountLabel}</span>
+                        <span class="booking-status-pill ${escapeHtml(item.badgeClass)}">${escapeHtml(item.badge)}</span>
+                        <span class="timeline-fee ${escapeHtml(item.amountClass)}">${escapeHtml(item.amountLabel)}</span>
                     </div>
                 </div>`;
             }).join('');
@@ -8524,8 +8618,8 @@ function showLoginForm(options = {}) {
             list.innerHTML = items.slice(0, 12).map(item => `
                 <div class="timeline-item">
                     <div class="timeline-meta">
-                        <div class="timeline-title">${item.title}</div>
-                        <div class="timeline-sub">${formatDisplayDate(item.date)}  -  ${item.sub}</div>
+                        <div class="timeline-title">${escapeHtml(item.title)}</div>
+                        <div class="timeline-sub">${escapeHtml(formatDisplayDate(item.date))}  -  ${escapeHtml(item.sub)}</div>
                     </div>
                     <div class="timeline-amount ${item.type === 'expense' ? 'expense-red' : 'income-green'}">
                         ${item.type === 'expense' ? '-' : '+'}UGX ${item.amount.toLocaleString()}
@@ -8588,7 +8682,7 @@ function showLoginForm(options = {}) {
             items.sort((a, b) => new Date(b.date) - new Date(a.date));
 
             if (items.length === 0) {
-                list.innerHTML = '<p style="color: #888; text-align: center; padding: 14px;">No cash flow entries in the last 2 months.</p>';
+                list.innerHTML = '<p class="sp-list-empty-note">No cash flow entries in the last 2 months.</p>';
                 return;
             }
 
@@ -8596,8 +8690,8 @@ function showLoginForm(options = {}) {
             list.innerHTML = items.slice(0, 12).map(item => `
                 <div class="timeline-item">
                     <div class="timeline-meta">
-                        <div class="timeline-title">${item.title}</div>
-                        <div class="timeline-sub">${formatDisplayDate(item.date)}  -  ${item.sub}</div>
+                        <div class="timeline-title">${escapeHtml(item.title)}</div>
+                        <div class="timeline-sub">${escapeHtml(formatDisplayDate(item.date))}  -  ${escapeHtml(item.sub)}</div>
                     </div>
                     <div class="timeline-amount ${item.type === 'expense' ? 'expense-red' : 'income-green'}">
                         ${item.type === 'expense' ? '-' : '+'}UGX ${item.amount.toLocaleString()}
@@ -8692,11 +8786,13 @@ function showLoginForm(options = {}) {
             const wrapper = document.createElement('div');
             wrapper.className = 'custom-select';
 
-            const inlineStyle = select.getAttribute('style');
-            if (inlineStyle) {
-                wrapper.setAttribute('style', inlineStyle);
-                select.removeAttribute('style');
-            }
+            Array.from(select.classList)
+                .filter(className => className.startsWith('sp-csp-style-'))
+                .forEach(className => {
+                    wrapper.classList.add(className);
+                    select.classList.remove(className);
+                });
+            select.removeAttribute('style');
 
             select.classList.add('custom-select__native');
             select.parentNode.insertBefore(wrapper, select);
@@ -8890,25 +8986,36 @@ function showLoginForm(options = {}) {
             if (!stack) return;
 
             const icons = { success: '<i class="ph ph-check-circle" aria-hidden="true"></i>', error: '<i class="ph ph-x-circle" aria-hidden="true"></i>', info: '<i class="ph ph-info" aria-hidden="true"></i>', warning: '<i class="ph ph-warning" aria-hidden="true"></i>' };
-            const dur = opts.duration || (type === 'error' ? 5000 : 3200);
+            const toastType = Object.prototype.hasOwnProperty.call(icons, type) ? type : 'info';
+            const requestedDuration = Number(opts.duration);
+            const dur = Number.isFinite(requestedDuration) && requestedDuration > 0
+                ? Math.min(requestedDuration, 30000)
+                : (toastType === 'error' ? 5000 : 3200);
             const durSec = (dur / 1000).toFixed(1) + 's';
+            const titleText = opts.title == null ? '' : String(opts.title);
+            const messageText = message == null ? '' : String(message);
 
             const toast = document.createElement('div');
-            toast.className = `sp-toast sp-toast--${type}`;
+            toast.className = `sp-toast sp-toast--${toastType}`;
             toast.setAttribute('role', 'status');
             toast.innerHTML = `
-                <span class="sp-toast__icon">${icons[type] || icons.info}</span>
+                <span class="sp-toast__icon">${icons[toastType]}</span>
                 <div class="sp-toast__body">
-                    <div class="sp-toast__title">${opts.title || ''}</div>
-                    <div class="sp-toast__msg">${message}</div>
+                    <div class="sp-toast__title"></div>
+                    <div class="sp-toast__msg"></div>
                 </div>
                 <button class="sp-toast__close" aria-label="Dismiss"><i class="ph ph-x" aria-hidden="true"></i></button>
-                <div class="sp-toast__bar" style="--sp-toast-dur:${durSec}"></div>
+                <div class="sp-toast__bar"></div>
             `;
-            // If no title set, promote message to title
-            if (!opts.title) {
-                toast.querySelector('.sp-toast__title').textContent = message;
-                toast.querySelector('.sp-toast__msg').remove();
+            toast.querySelector('.sp-toast__bar')?.style.setProperty('--sp-toast-dur', durSec);
+            const titleEl = toast.querySelector('.sp-toast__title');
+            const messageEl = toast.querySelector('.sp-toast__msg');
+            if (titleText) {
+                titleEl.textContent = titleText;
+                messageEl.textContent = messageText;
+            } else {
+                titleEl.textContent = messageText;
+                messageEl.remove();
             }
 
             stack.appendChild(toast);
@@ -8951,17 +9058,40 @@ function showLoginForm(options = {}) {
         }
 
         // ── Empty state builder ───────────────────────────────────────────────
+        const EMPTY_STATE_ACTIONS = {
+            showAddExpense: () => showAddExpense(),
+            showAddOtherIncome: () => showAddOtherIncome(),
+            showAddArtistForm: () => showAddArtistForm(),
+            showAddBooking: () => showAddBooking()
+        };
+
+        function normalizeEmptyStateAction(action) {
+            const key = String(action || '').trim().replace(/\(\)\s*;?$/, '');
+            return Object.prototype.hasOwnProperty.call(EMPTY_STATE_ACTIONS, key) ? key : '';
+        }
+
+        document.addEventListener('click', (event) => {
+            const button = event.target?.closest?.('.sp-empty__cta[data-empty-action]');
+            if (!button) return;
+            const handler = EMPTY_STATE_ACTIONS[button.dataset.emptyAction || ''];
+            if (!handler) return;
+            event.preventDefault();
+            handler();
+        });
+
         function emptyState({ icon, title, sub, ctaLabel, ctaAction }) {
             // icon = Phosphor class name e.g. 'ph-receipt' OR legacy emoji (renders as text fallback)
-            const isPhosphor = typeof icon === 'string' && icon.startsWith('ph-');
+            const safeIcon = String(icon || '');
+            const isPhosphor = /^ph-[a-z0-9-]+$/i.test(safeIcon);
             const iconHTML = isPhosphor
-                ? `<i class="ph ${icon} sp-empty__ph-icon" aria-hidden="true"></i>`
-                : `<svg class="sp-empty__art" viewBox="0 0 72 72" fill="none"><circle cx="36" cy="36" r="35" stroke="rgba(255,179,0,0.15)" stroke-width="1.5"/><text x="36" y="44" text-anchor="middle" font-size="28" fill="rgba(255,179,0,0.45)">${icon}</text></svg>`;
+                ? `<i class="ph ${escapeHtml(safeIcon)} sp-empty__ph-icon" aria-hidden="true"></i>`
+                : `<svg class="sp-empty__art" viewBox="0 0 72 72" fill="none"><circle cx="36" cy="36" r="35" stroke="rgba(255,179,0,0.15)" stroke-width="1.5"/><text x="36" y="44" text-anchor="middle" font-size="28" fill="rgba(255,179,0,0.45)">${escapeHtml(safeIcon)}</text></svg>`;
+            const actionKey = normalizeEmptyStateAction(ctaAction);
             return `<div class="sp-empty">
                 ${iconHTML}
-                <p class="sp-empty__title">${title}</p>
-                <p class="sp-empty__sub">${sub}</p>
-                ${ctaLabel ? `<button class="sp-empty__cta" onclick="${ctaAction}">${ctaLabel}</button>` : ''}
+                <p class="sp-empty__title">${escapeHtml(title)}</p>
+                <p class="sp-empty__sub">${escapeHtml(sub)}</p>
+                ${ctaLabel && actionKey ? `<button class="sp-empty__cta" type="button" data-empty-action="${escapeHtml(actionKey)}">${escapeHtml(ctaLabel)}</button>` : ''}
             </div>`;
         }
 
@@ -9080,16 +9210,23 @@ function showLoginForm(options = {}) {
                             <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Actions</th></tr></thead>
                             <tbody>${allUsers.map(u => `
                                 <tr>
-                                    <td>${u.name || u.email || '-'}</td>
-                                    <td style="color:var(--text-muted)">${u.email || '-'}</td>
-                                    <td><span class="sp-admin-pill sp-admin-pill--${u.status}">${u.status}</span></td>
+                                    <td>${escapeHtml(u.name || u.email || '-')}</td>
+                                    <td class="sp-admin-email-cell">${escapeHtml(u.email || '-')}</td>
+                                    <td><span class="sp-admin-pill sp-admin-pill--${u.status === 'pending' ? 'pending' : 'active'}">${escapeHtml(u.status === 'pending' ? 'pending' : 'active')}</span></td>
                                     <td><div class="sp-admin-actions">
-                                        ${u.status === 'pending' ? `<button class="sp-admin-btn sp-admin-btn--approve" onclick="adminApproveUser('${u.id || u.email}')">Approve</button>` : ''}
-                                        <button class="sp-admin-btn sp-admin-btn--delete" onclick="adminDeleteUser('${u.id || u.email}')">Delete</button>
+                                        ${u.status === 'pending' ? `<button class="sp-admin-btn sp-admin-btn--approve" data-admin-action="approve" data-admin-user="${escapeHtml(u.id || u.email || '')}">Approve</button>` : ''}
+                                        <button class="sp-admin-btn sp-admin-btn--delete" data-admin-action="delete" data-admin-user="${escapeHtml(u.id || u.email || '')}">Delete</button>
                                     </div></td>
                                 </tr>`).join('')}
                             </tbody>
                         </table>`;
+                    listEl.querySelectorAll('[data-admin-action][data-admin-user]').forEach((button) => {
+                        button.addEventListener('click', () => {
+                            const idOrEmail = button.dataset.adminUser || '';
+                            if (button.dataset.adminAction === 'approve') adminApproveUser(idOrEmail);
+                            if (button.dataset.adminAction === 'delete') adminDeleteUser(idOrEmail);
+                        });
+                    });
                 }
             }
 
@@ -9254,7 +9391,13 @@ function showLoginForm(options = {}) {
 
             // ── Render ────────────────────────────────────────────────────────
             if (!alertsEl) return;
-            const dismissed = JSON.parse(sessionStorage.getItem('sp_dismissed_nudges') || '[]');
+            let dismissed = [];
+            try {
+                dismissed = JSON.parse(sessionStorage.getItem('sp_dismissed_nudges') || '[]');
+                if (!Array.isArray(dismissed)) dismissed = [];
+            } catch (_err) {
+                dismissed = [];
+            }
             const visible = nudges.filter(n => !dismissed.includes(n.id));
 
             if (statEl) {
@@ -9281,22 +9424,35 @@ function showLoginForm(options = {}) {
                 const actionAttrs = n.action
                     ? ` data-nudge-action="${escapeHtml(n.action)}" data-nudge-action-id="${escapeHtml(n.actionId || '')}" tabindex="0" role="button"`
                     : '';
+                const nudgeIconClass = normalizePhosphorIconClass(n.icon);
+                const iconHtml = nudgeIconClass
+                    ? `<i class="ph ${escapeHtml(nudgeIconClass)}" aria-hidden="true"></i>`
+                    : escapeHtml(n.icon);
                 return `
                 <div class="${itemClasses.join(' ')}" data-nudge-id="${escapeHtml(n.id)}"${actionAttrs}>
-                    <span class="nudge-icon">${n.icon && n.icon.startsWith('ph-') ? `<i class="ph ${n.icon}" aria-hidden="true"></i>` : escapeHtml(n.icon)}</span>
+                    <span class="nudge-icon">${iconHtml}</span>
                     <span class="nudge-text">${escapeHtml(n.text)}</span>
-                    <button class="nudge-dismiss" onclick="(function(btn, ev){
-                        ev.stopPropagation();
-                        const id = btn.closest('[data-nudge-id]').dataset.nudgeId;
-                        const d = JSON.parse(sessionStorage.getItem('sp_dismissed_nudges')||'[]');
-                        if (!d.includes(id)) d.push(id);
-                        sessionStorage.setItem('sp_dismissed_nudges', JSON.stringify(d));
-                        btn.closest('[data-nudge-id]').remove();
-                        window.updateTodayBoard();
-                    })(this, event)" aria-label="Dismiss"><i class="ph ph-x" aria-hidden="true"></i></button>
+                    <button class="nudge-dismiss" data-nudge-dismiss="1" aria-label="Dismiss"><i class="ph ph-x" aria-hidden="true"></i></button>
                 </div>`;
             }).join('');
         };
+
+        function dismissNudgeFromButton(button) {
+            const item = button?.closest?.('[data-nudge-id]');
+            const id = item?.dataset?.nudgeId;
+            if (!id) return;
+            let dismissed = [];
+            try {
+                dismissed = JSON.parse(sessionStorage.getItem('sp_dismissed_nudges') || '[]');
+                if (!Array.isArray(dismissed)) dismissed = [];
+            } catch (_err) {
+                dismissed = [];
+            }
+            if (!dismissed.includes(id)) dismissed.push(id);
+            sessionStorage.setItem('sp_dismissed_nudges', JSON.stringify(dismissed));
+            item.remove();
+            window.updateTodayBoard();
+        }
 
         function resolveBookingId(rawId) {
             const allBookings = typeof bookings !== 'undefined' ? bookings : [];
@@ -9352,6 +9508,13 @@ function showLoginForm(options = {}) {
             window.__spNudgeFollowUpBound = true;
 
             document.addEventListener('click', function(e) {
+                const dismissBtn = e.target?.closest?.('[data-nudge-dismiss]');
+                if (dismissBtn) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dismissNudgeFromButton(dismissBtn);
+                    return;
+                }
                 const target = e.target?.closest?.('.nudge-item[data-nudge-action]');
                 if (!target) return;
                 handleNudgeFollowUp(target.dataset.nudgeAction, target.dataset.nudgeActionId || '');
@@ -9681,7 +9844,6 @@ function showLoginForm(options = {}) {
             const canvas = document.createElement('canvas');
             canvas.className = 'sp-gold-dust-canvas';
             canvas.setAttribute('aria-hidden', 'true');
-            canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9999;';
             document.body.appendChild(canvas);
             const ctx = canvas.getContext('2d');
             const W = canvas.width  = window.innerWidth;
@@ -9754,20 +9916,20 @@ function showLoginForm(options = {}) {
 
             // ── Section registry ──────────────────────────────────────────────
             const SECTIONS = [
-                { id: 'dashboard',   label: 'Dashboard',    icon: '<i class="ph ph-house"></i>',                     sub: 'Overview & KPIs',                key: 'D' },
-                { id: 'money',       label: 'Money',        icon: '<i class="ph ph-currency-circle-dollar"></i>',   sub: 'Financials, Expenses & Reports', key: 'M' },
-                { id: 'schedule',    label: 'Schedule',     icon: '<i class="ph ph-calendar-blank"></i>',           sub: 'Bookings & Calendar',            key: 'S' },
+                { id: 'dashboard',   label: 'Dashboard',    icon: 'ph-house',                  sub: 'Overview & KPIs',                key: 'D' },
+                { id: 'money',       label: 'Money',        icon: 'ph-currency-circle-dollar', sub: 'Financials, Expenses & Reports', key: 'M' },
+                { id: 'schedule',    label: 'Schedule',     icon: 'ph-calendar-blank',         sub: 'Bookings & Calendar',            key: 'S' },
                 { id: 'artists',     label: 'Artists',      icon: 'ph-microphone-stage', sub: 'Roster & profiles',              key: 'A' },
-                { id: 'tasks',       label: 'Tasks',        icon: '<i class="ph ph-clipboard-text"></i>', sub: 'To-dos & reminders',             key: 'T' },
-                { id: 'settings',    label: 'Settings',     icon: '<i class="ph ph-gear-six"></i>', sub: 'Profile, preferences & admin', key: 'P' },
+                { id: 'tasks',       label: 'Tasks',        icon: 'ph-clipboard-text',    sub: 'To-dos & reminders',             key: 'T' },
+                { id: 'settings',    label: 'Settings',     icon: 'ph-gear-six',          sub: 'Profile, preferences & admin', key: 'P' },
             ];
 
             const ACTIONS = [
-                { label: 'Add Booking',    icon: '<i class="ph ph-calendar-plus"></i>', sub: 'Log a new show',       action: () => { showSection('schedule');    setTimeout(() => showAddBooking?.(), 80); } },
-                { label: 'Add Expense',    icon: '<i class="ph ph-receipt"></i>', sub: 'Log a cost or bill',   action: () => { if (guardTeamPermission('finance', 'add expenses')) return; showSection('expenses');    setTimeout(() => showAddExpense?.(), 80); } },
-                { label: 'Add Artist',     icon: '<i class="ph ph-microphone-stage"></i>', sub: 'Add to your roster',   action: () => { showSection('artists');     setTimeout(() => showAddArtistForm?.(), 80); } },
-                { label: 'Add Income',     icon: '<i class="ph ph-plus-circle"></i>', sub: 'Log other income',      action: () => { if (guardTeamPermission('finance', 'add other income')) return; showSection('otherIncome'); } },
-                { label: 'Open Quick Launcher',   icon: '<i class="ph ph-command"></i>', sub: 'Cmd/Ctrl+K',           action: () => openPalette() },
+                { label: 'Add Booking',    icon: 'ph-calendar-plus',       sub: 'Log a new show',       action: () => { showSection('schedule');    setTimeout(() => showAddBooking?.(), 80); } },
+                { label: 'Add Expense',    icon: 'ph-receipt',             sub: 'Log a cost or bill',   action: () => { if (guardTeamPermission('finance', 'add expenses')) return; showSection('expenses');    setTimeout(() => showAddExpense?.(), 80); } },
+                { label: 'Add Artist',     icon: 'ph-microphone-stage',    sub: 'Add to your roster',   action: () => { showSection('artists');     setTimeout(() => showAddArtistForm?.(), 80); } },
+                { label: 'Add Income',     icon: 'ph-plus-circle',         sub: 'Log other income',      action: () => { if (guardTeamPermission('finance', 'add other income')) return; showSection('otherIncome'); } },
+                { label: 'Open Quick Launcher',   icon: 'ph-command',      sub: 'Cmd/Ctrl+K',           action: () => openPalette() },
             ];
 
             // ── DOM refs ──────────────────────────────────────────────────────
@@ -9813,12 +9975,14 @@ function showLoginForm(options = {}) {
 
             // ── Search & render ───────────────────────────────────────────────
             function highlight(text, query) {
-                if (!query) return text;
-                const idx = text.toLowerCase().indexOf(query.toLowerCase());
-                if (idx < 0) return text;
-                return text.slice(0, idx) +
-                    '<mark>' + text.slice(idx, idx + query.length) + '</mark>' +
-                    text.slice(idx + query.length);
+                const source = String(text ?? '');
+                const needle = String(query ?? '');
+                if (!needle) return escapeHtml(source);
+                const idx = source.toLowerCase().indexOf(needle.toLowerCase());
+                if (idx < 0) return escapeHtml(source);
+                return escapeHtml(source.slice(0, idx)) +
+                    '<mark>' + escapeHtml(source.slice(idx, idx + needle.length)) + '</mark>' +
+                    escapeHtml(source.slice(idx + needle.length));
             }
 
             function buildResults(query) {
@@ -9854,7 +10018,7 @@ function showLoginForm(options = {}) {
 
                 // Artist matches
                 const artistList = typeof getArtists === 'function' ? getArtists() : (typeof artists !== 'undefined' ? artists : []);
-                const matchArtists = artistList.filter(a => a.name.toLowerCase().includes(q)).slice(0, 4);
+                const matchArtists = artistList.filter(a => String(a.name || '').toLowerCase().includes(q)).slice(0, 4);
                 if (matchArtists.length) {
                     items.push({ type: 'group', label: 'Artists' });
                     matchArtists.forEach(a => items.push({
@@ -9874,8 +10038,8 @@ function showLoginForm(options = {}) {
                 if (matchBookings.length) {
                     items.push({ type: 'group', label: 'Bookings' });
                     matchBookings.forEach(b => items.push({
-                        type: 'booking', label: b.event, icon: 'ph-calendar-check',
-                        sub: `${b.artist} - ${b.date || ''}`, query: q,
+                        type: 'booking', label: b.event || 'Untitled booking', icon: 'ph-calendar-check',
+                        sub: `${b.artist || 'Roster / Shared'} - ${b.date || ''}`, query: q,
                         action: () => { showSection('schedule'); }
                     }));
                 }
@@ -9893,29 +10057,26 @@ function showLoginForm(options = {}) {
 
                 resultsList.innerHTML = items.map((item, globalIdx) => {
                     if (item.type === 'group') {
-                        return `<li class="sp-palette__group-label" role="presentation">${item.label}</li>`;
+                        return `<li class="sp-palette__group-label" role="presentation">${escapeHtml(item.label)}</li>`;
                     }
                     if (item.type === 'empty') {
-                        return `<li class="sp-palette__empty" role="option">No results for "<strong>${query}</strong>"</li>`;
+                        return `<li class="sp-palette__empty" role="option">No results for "<strong>${escapeHtml(query)}</strong>"</li>`;
                     }
                     const resultIdx = currentResults.indexOf(item);
                     const isSelected = resultIdx === selectedIdx;
+                    const iconClass = normalizePhosphorIconClass(item.icon);
                     const kbdHtml = item.key
-                        ? `<span class="sp-palette__result-kbd">G+${item.key}</span>` : '';
-                    const iconHtml = !item.icon
-                        ? '<i class="ph ph-dot-outline" aria-hidden="true"></i>'
-                        : item.icon.includes('<')
-                            ? item.icon
-                            : item.icon.startsWith('ph-')
-                                ? `<i class="ph ${item.icon}" aria-hidden="true"></i>`
-                                : escapeHtml(item.icon);
+                        ? `<span class="sp-palette__result-kbd">G+${escapeHtml(item.key)}</span>` : '';
+                    const iconHtml = iconClass
+                        ? `<i class="ph ${escapeHtml(iconClass)}" aria-hidden="true"></i>`
+                        : '<i class="ph ph-dot-outline" aria-hidden="true"></i>';
                     return `<li class="sp-palette__result" role="option"
                         aria-selected="${isSelected}"
                         data-result-idx="${resultIdx}">
                         <div class="sp-palette__result-icon">${iconHtml}</div>
                         <div class="sp-palette__result-body">
                             <div class="sp-palette__result-title">${highlight(item.label, item.query)}</div>
-                            <div class="sp-palette__result-sub">${item.sub || ''}</div>
+                            <div class="sp-palette__result-sub">${escapeHtml(item.sub || '')}</div>
                         </div>
                         ${kbdHtml}
                     </li>`;
@@ -10374,7 +10535,12 @@ function showLoginForm(options = {}) {
             // regression risk. Reverted to the canonical CLAUDE.md §2 approach: users
             // get a fresh shell on next manual reload after the new SW activates.
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=147').then((registration) => {
+                const assetManifest = window.SP_BROWSER_ASSETS;
+                if (!assetManifest || typeof assetManifest.url !== 'function') {
+                    console.warn('Service worker registration skipped: browser asset manifest is unavailable.');
+                    return;
+                }
+                navigator.serviceWorker.register(assetManifest.url('sw.js')).then((registration) => {
                     registration?.update?.().catch(() => {});
                 }).catch((error) => {
                     console.warn('Service worker registration failed:', error);

@@ -1,5 +1,5 @@
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import * as THREE from './assets/vendor/three/three.module.js?v=1';
+import { OrbitControls } from './assets/vendor/three/OrbitControls.js?v=1';
 
 const ROOT_ID = 'globalScheduleGlobe';
 const STAGE_ID = 'globalScheduleStage';
@@ -8,10 +8,16 @@ const DETAIL_ID = 'globalScheduleDetail';
 const KEY_ID = 'globalScheduleKey';
 const SHEET_ID = 'globalScheduleSheet';
 const SHEET_BODY_ID = 'globalScheduleSheetBody';
+const DETAIL_SHEET_ID = 'globalScheduleDetailSheet';
+const DETAIL_SHEET_BODY_ID = 'globalScheduleDetailSheetBody';
+const DETAIL_SHEET_TITLE_ID = 'globalScheduleDetailSheetTitle';
+const SHEET_SNAPS = ['peek', 'half', 'full'];
+const DESKTOP_MQ = '(min-width: 769px)';
+const SWIPE_X_THRESHOLD = 80;
+const SWIPE_Y_TOLERANCE = 28;
 const RADIUS = 2.15;
 const LOCAL_WORLD_ATLAS_URL = '/assets/world-atlas/land-50m.json?v=1';
-const WORLD_ATLAS_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json';
-const TOPOJSON_CLIENT_URL = 'https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/+esm';
+const TOPOJSON_CLIENT_URL = './assets/vendor/topojson-client/topojson-client.esm.js?v=1';
 const isReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true;
 let cachedLandShapes = null;
 
@@ -92,26 +98,77 @@ const LAND_POLYGONS = [
   { name: 'Antarctica', points: [[-180,-72],[-120,-70],[-60,-73],[0,-71],[62,-73],[122,-70],[180,-72],[180,-86],[-180,-86]] },
 ];
 
-function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>"']/g, (char) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;',
-  }[char]));
+function textElement(tagName, text) {
+  const element = document.createElement(tagName);
+  element.textContent = String(text ?? '');
+  return element;
+}
+
+function classElement(tagName, className, text) {
+  const element = document.createElement(tagName);
+  if (className) element.className = className;
+  if (arguments.length >= 3) element.textContent = String(text ?? '');
+  return element;
+}
+
+function textNode(text) {
+  return document.createTextNode(String(text ?? ''));
+}
+
+function iconElement(iconClass) {
+  const icon = document.createElement('i');
+  icon.className = `ph ${iconClass}`;
+  icon.setAttribute('aria-hidden', 'true');
+  return icon;
+}
+
+function iconTextElement(tagName, className, iconClass, text) {
+  const element = classElement(tagName, className);
+  element.append(iconElement(iconClass), textNode(text));
+  return element;
 }
 
 function fmtDate(value) {
   if (typeof window.formatDisplayDate === 'function') return window.formatDisplayDate(value);
-  const date = new Date(value);
+  const date = parseLocalDate(value);
   return Number.isNaN(date.getTime()) ? 'Date TBC' : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function fmtMoney(value) {
   const amount = Math.round(Number(value) || 0);
-  if (typeof window.SP_formatCurrency === 'function') return window.SP_formatCurrency(amount);
   return `UGX ${amount.toLocaleString()}`;
 }
 
 function normalizeKey(value) {
   return String(value || '').trim().toLowerCase();
+}
+
+function parseLocalDate(value) {
+  if (value instanceof Date) return new Date(value.getFullYear(), value.getMonth(), value.getDate(), 12);
+  const text = String(value || '').trim();
+  const dateOnly = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnly) {
+    return new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]), 12);
+  }
+  const parsed = new Date(text);
+  return Number.isNaN(parsed.getTime()) ? parsed : new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate(), 12);
+}
+
+function localDateTime(value) {
+  const date = parseLocalDate(value);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
+function bookingIdentity(booking = {}) {
+  const explicitId = String(booking.id ?? '').trim();
+  if (explicitId) return explicitId;
+  return [
+    booking.date,
+    booking.event,
+    booking.venue,
+    booking.location,
+    booking.artist,
+  ].map((part) => normalizeKey(part)).join('|');
 }
 
 function normalizeLocationName(value) {
@@ -199,7 +256,7 @@ function isPastBooking(booking) {
   const status = normalizeKey(booking.status);
   if (status === 'completed') return true;
   if (status === 'cancelled') return false;
-  const date = new Date(booking.date);
+  const date = parseLocalDate(booking.date);
   if (Number.isNaN(date.getTime())) return false;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -208,19 +265,21 @@ function isPastBooking(booking) {
 
 function normalizeBookings(input) {
   const source = Array.isArray(input) ? input : (Array.isArray(window.bookings) ? window.bookings : []);
-  return source
+  const enriched = source
     .filter((booking) => booking && booking.date && normalizeKey(booking.status) !== 'cancelled')
-    .map((booking, index) => {
+    .map((booking) => {
       const loc = getLocationInfo(booking);
       return {
         ...booking,
-        __index: index,
+        __globeId: bookingIdentity(booking),
         __location: loc,
         __past: isPastBooking(booking),
         __vector: latLngToVector(loc.lat, loc.lng, RADIUS + 0.035),
       };
     })
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
+    .sort((a, b) => localDateTime(a.date) - localDateTime(b.date));
+  enriched.forEach((booking, index) => { booking.__index = index; });
+  return enriched;
 }
 
 function latLngToVector(lat, lng, radius = RADIUS) {
@@ -272,6 +331,29 @@ function makeDiscTexture(color = '#d4a843', fill = 1) {
   ctx.beginPath();
   ctx.arc(48, 48, 46, 0, Math.PI * 2);
   ctx.fill();
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function makeRingTexture(color = '#ffd76a') {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 5;
+  ctx.shadowColor = 'rgba(255, 215, 106, 0.55)';
+  ctx.shadowBlur = 14;
+  ctx.beginPath();
+  ctx.arc(64, 64, 50, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.lineWidth = 2;
+  ctx.globalAlpha = 0.65;
+  ctx.beginPath();
+  ctx.arc(64, 64, 56, 0, Math.PI * 2);
+  ctx.stroke();
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
@@ -398,7 +480,7 @@ async function fetchTopology(url) {
 
 async function loadWorldTopology() {
   const errors = [];
-  for (const url of [LOCAL_WORLD_ATLAS_URL, WORLD_ATLAS_URL]) {
+  for (const url of [LOCAL_WORLD_ATLAS_URL]) {
     try {
       return await fetchTopology(url);
     } catch (err) {
@@ -440,12 +522,17 @@ class StarPaperGlobe {
     this.key = document.getElementById(KEY_ID);
     this.sheet = document.getElementById(SHEET_ID);
     this.sheetBody = document.getElementById(SHEET_BODY_ID);
+    this.detailSheet = document.getElementById(DETAIL_SHEET_ID);
+    this.detailSheetBody = document.getElementById(DETAIL_SHEET_BODY_ID);
+    this.detailSheetTitle = document.getElementById(DETAIL_SHEET_TITLE_ID);
     this.bookings = [];
     this.pinSprites = [];
     this.arcLines = [];
     this.activeCurve = null;
     this.autoTourTimer = null;
-    this.selectedIndex = 0;
+    this.selectedIndex = -1;
+    this.selectedBookingId = null;
+    this.selectionCleared = false;
     this.running = true;
     this.targetDistance = null;
     this.focusAnimation = null;
@@ -454,10 +541,19 @@ class StarPaperGlobe {
     this.previewIndex = null;
     this.sheetOpen = false;
     this.lastSheetTrigger = null;
+    this.sheetSnap = 'peek';
+    this.lastSheetSnap = 'half';
+    this.sheetFilter = 'all';
+    this.lastStopTap = null;
+    this.detailSheetOpen = false;
+    this.detailSheetTrigger = null;
+    this.selectionRing = null;
+    this.desktopQuery = window.matchMedia?.(DESKTOP_MQ) || null;
     this.clock = new THREE.Clock();
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2();
     this.pickWorld = new THREE.Vector3();
+    this.globeWorldCenter = new THREE.Vector3();
     this.focusTargetWorld = new THREE.Vector3();
     this.init();
   }
@@ -534,6 +630,30 @@ class StarPaperGlobe {
     );
     this.globeGroup.add(halo);
 
+    const atmosphere = new THREE.Mesh(
+      new THREE.SphereGeometry(RADIUS * 1.06, 64, 32),
+      new THREE.MeshBasicMaterial({
+        color: 0xd4a843,
+        transparent: true,
+        opacity: 0.06,
+        side: THREE.BackSide,
+        depthWrite: false,
+      })
+    );
+    this.globeGroup.add(atmosphere);
+
+    this.ringTexture = makeRingTexture('#ffd76a');
+    this.selectionRing = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: this.ringTexture,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      depthTest: true,
+    }));
+    this.selectionRing.scale.set(0.48, 0.48, 0.48);
+    this.selectionRing.visible = false;
+    this.globeGroup.add(this.selectionRing);
+
     this.scene.add(new THREE.Points(
       buildStarGeometry(),
       new THREE.PointsMaterial({
@@ -594,24 +714,200 @@ class StarPaperGlobe {
     this.stage.addEventListener('click', (event) => this.pick(event));
     this.stage.addEventListener('pointermove', (event) => this.previewPin(event));
     this.stage.addEventListener('pointerleave', () => this.hidePinCard());
+
     this.root.addEventListener('click', (event) => {
+      const chip = event.target.closest('[data-globe-filter]');
+      if (chip) {
+        this.setSheetFilter(chip.dataset.globeFilter);
+        return;
+      }
+      const chevron = event.target.closest('[data-globe-chevron]');
+      if (chevron) {
+        event.stopPropagation();
+        const index = Number(chevron.dataset.globeChevron);
+        this.selectBooking(index, { focus: true });
+        this.openDetailSheet(chevron);
+        return;
+      }
       const stop = event.target.closest('[data-globe-stop]');
       if (stop) {
-        this.selectBooking(Number(stop.dataset.globeStop), { focus: true });
+        const index = Number(stop.dataset.globeStop);
+        const alreadySelected = index === this.selectedIndex;
+        const now = event.timeStamp || performance.now();
+        const isFastRepeatTap = this.lastStopTap &&
+          this.lastStopTap.index === index &&
+          now - this.lastStopTap.at < 420;
+        this.lastStopTap = { index, at: now };
+        if (isFastRepeatTap || event.detail > 1) {
+          this.selectBooking(index, { focus: true });
+          this.openDetailSheet(stop);
+          return;
+        }
+        if (alreadySelected) {
+          this.clearSelection();
+          return;
+        }
+        this.selectBooking(index, { focus: true });
+        if (this.sheetSnap === 'peek' && !this.isDesktopLayout()) {
+          this.setSheetSnap('half');
+        }
         return;
       }
       const action = event.target.closest('[data-globe-action]')?.dataset.globeAction;
       if (!action) return;
-      if (action === 'open-sheet') this.openScheduleSheet(event.target.closest('[data-globe-action]'));
-      if (action === 'close-sheet') this.closeScheduleSheet();
+      if (action === 'open-sheet') this.setSheetSnap('half');
+      if (action === 'close-sheet') this.setSheetSnap('peek');
+      if (action === 'close-detail') this.closeDetailSheet();
       if (action === 'auto-tour') this.toggleAutoTour();
       if (action === 'recenter') this.resetView();
       if (action === 'zoom-in') this.zoomBy(-0.6);
       if (action === 'zoom-out') this.zoomBy(0.6);
+      if (action === 'add-booking' && typeof window.showAddBooking === 'function') window.showAddBooking();
     });
+
     document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && this.sheetOpen) this.closeScheduleSheet();
+      if (event.key !== 'Escape') return;
+      if (this.detailSheetOpen) {
+        this.closeDetailSheet();
+        return;
+      }
+      if (this.isDesktopLayout()) return;
+      if (this.sheetSnap === 'full') this.setSheetSnap('half');
+      else if (this.sheetSnap === 'half') this.setSheetSnap('peek');
     });
+
+    this.bindSheetDrag();
+    this.bindCardSwipe();
+    this.desktopQuery?.addEventListener?.('change', () => this.applyLayoutMode());
+  }
+
+  isDesktopLayout() {
+    return this.desktopQuery?.matches === true;
+  }
+
+  applyLayoutMode() {
+    if (!this.sheet) return;
+    const snap = this.isDesktopLayout() ? 'full' : this.sheetSnap;
+    this.sheet.setAttribute('data-snap', snap);
+    this.sheet.setAttribute('aria-hidden', 'false');
+  }
+
+  bindSheetDrag() {
+    if (!this.sheet) return;
+    const handle = this.sheet.querySelector('.sp-global-sheet__handle-strip');
+    if (!handle) return;
+    let dragState = null;
+    const onDown = (event) => {
+      if (this.isDesktopLayout()) return;
+      const panel = this.sheet.querySelector('.sp-global-sheet__panel');
+      if (!panel) return;
+      const computed = getComputedStyle(panel).transform;
+      let currentY = 0;
+      if (computed && computed !== 'none') {
+        const match = computed.match(/matrix.*\(([^)]+)\)/);
+        if (match) {
+          const parts = match[1].split(',').map((s) => parseFloat(s));
+          currentY = parts[parts.length - 1] || 0;
+        }
+      }
+      dragState = {
+        pointerId: event.pointerId,
+        startY: event.clientY,
+        baseY: currentY,
+        panel,
+        panelHeight: panel.getBoundingClientRect().height,
+        lastY: event.clientY,
+        lastTime: performance.now(),
+        velocity: 0,
+      };
+      handle.setPointerCapture?.(event.pointerId);
+      this.sheet.classList.add('is-dragging');
+    };
+    const onMove = (event) => {
+      if (!dragState || event.pointerId !== dragState.pointerId) return;
+      event.preventDefault();
+      const now = performance.now();
+      const dt = Math.max(8, now - dragState.lastTime);
+      dragState.velocity = (event.clientY - dragState.lastY) / dt;
+      dragState.lastY = event.clientY;
+      dragState.lastTime = now;
+      const delta = event.clientY - dragState.startY;
+      const next = THREE.MathUtils.clamp(dragState.baseY + delta, 0, Math.max(0, dragState.panelHeight - 60));
+      dragState.panel.style.transform = `translateY(${next}px)`;
+    };
+    const onUp = (event) => {
+      if (!dragState || event.pointerId !== dragState.pointerId) return;
+      const velocity = dragState.velocity;
+      const panel = this.sheet.querySelector('.sp-global-sheet__panel');
+      if (panel) panel.style.transform = '';
+      this.sheet.classList.remove('is-dragging');
+      handle.releasePointerCapture?.(event.pointerId);
+      const totalDelta = event.clientY - dragState.startY;
+      dragState = null;
+      this.commitSheetSnapAfterDrag(totalDelta, velocity);
+    };
+    handle.addEventListener('pointerdown', onDown);
+    handle.addEventListener('pointermove', onMove);
+    handle.addEventListener('pointerup', onUp);
+    handle.addEventListener('pointercancel', onUp);
+  }
+
+  commitSheetSnapAfterDrag(totalDelta, velocity) {
+    const order = SHEET_SNAPS; // ['peek', 'half', 'full']
+    const currentIndex = order.indexOf(this.sheetSnap);
+    let nextIndex = currentIndex;
+    if (Math.abs(velocity) > 0.5) {
+      nextIndex = velocity < 0 ? currentIndex + 1 : currentIndex - 1;
+    } else if (Math.abs(totalDelta) > 60) {
+      nextIndex = totalDelta < 0 ? currentIndex + 1 : currentIndex - 1;
+    }
+    nextIndex = THREE.MathUtils.clamp(nextIndex, 0, order.length - 1);
+    this.setSheetSnap(order[nextIndex]);
+  }
+
+  bindCardSwipe() {
+    if (!this.sheetBody) return;
+    let state = null;
+    this.sheetBody.addEventListener('pointerdown', (event) => {
+      if (event.pointerType === 'mouse') return; // swipe is mobile-only
+      const card = event.target.closest('[data-globe-stop]');
+      if (!card) return;
+      state = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        card,
+        index: Number(card.dataset.globeStop),
+        captured: false,
+      };
+    }, { passive: true });
+    this.sheetBody.addEventListener('pointermove', (event) => {
+      if (!state || event.pointerId !== state.pointerId) return;
+      const dx = event.clientX - state.startX;
+      const dy = event.clientY - state.startY;
+      if (!state.captured && Math.abs(dx) > 10 && Math.abs(dy) < SWIPE_Y_TOLERANCE) {
+        state.captured = true;
+        state.card.setPointerCapture?.(event.pointerId);
+      }
+      if (state.captured) {
+        const clamped = Math.max(-20, Math.min(120, dx));
+        state.card.style.transform = `translateX(${clamped}px)`;
+      }
+    }, { passive: true });
+    const finish = (event) => {
+      if (!state || event.pointerId !== state.pointerId) return;
+      const dx = event.clientX - state.startX;
+      const dy = event.clientY - state.startY;
+      state.card.style.transform = '';
+      state.card.releasePointerCapture?.(event.pointerId);
+      if (state.captured && dx > SWIPE_X_THRESHOLD && Math.abs(dy) < SWIPE_Y_TOLERANCE) {
+        this.selectBooking(state.index, { focus: true });
+        this.openDetailSheet(state.card);
+      }
+      state = null;
+    };
+    this.sheetBody.addEventListener('pointerup', finish);
+    this.sheetBody.addEventListener('pointercancel', finish);
   }
 
   createPinCard() {
@@ -640,16 +936,33 @@ class StarPaperGlobe {
   }
 
   render(inputBookings = window.bookings || []) {
+    const previousSelectedId = this.selectedBookingId;
     this.bookings = normalizeBookings(inputBookings);
     this.clearPinsAndArcs();
     this.renderItinerary();
     this.buildPins();
     this.buildArcs();
+    this.applyLayoutMode();
     if (this.bookings.length > 0) {
-      this.selectBooking(Math.min(this.selectedIndex, this.bookings.length - 1), { fly: false });
+      const preservedIndex = previousSelectedId
+        ? this.bookings.findIndex((booking) => booking.__globeId === previousSelectedId)
+        : -1;
+      const nextIndex = preservedIndex >= 0
+        ? preservedIndex
+        : (this.selectionCleared ? -1 : 0);
+      if (nextIndex >= 0) {
+        this.selectBooking(nextIndex, { focus: false });
+      } else {
+        this.clearSelection({ renderEmpty: true });
+      }
     } else {
-      this.closeScheduleSheet({ restoreFocus: false });
+      this.selectedIndex = -1;
+      this.selectedBookingId = null;
       this.renderEmptyDetail();
+      if (this.selectionRing) {
+        this.selectionRing.visible = false;
+        this.selectionRing.material.opacity = 0;
+      }
     }
   }
 
@@ -689,29 +1002,27 @@ class StarPaperGlobe {
 
   buildArcs() {
     if (this.bookings.length < 2) return;
-    const now = new Date();
-    let activeIndex = this.bookings.findIndex((booking) => new Date(booking.date) >= now && !booking.__past);
-    activeIndex = Math.max(0, activeIndex - 1);
     for (let i = 0; i < this.bookings.length - 1; i += 1) {
       const a = this.bookings[i].__vector.clone();
       const b = this.bookings[i + 1].__vector.clone();
       const mid = a.clone().add(b).normalize().multiplyScalar(RADIUS * 1.48);
       const curve = new THREE.QuadraticBezierCurve3(a, mid, b);
-      const isActive = i === activeIndex;
       const geometry = new THREE.BufferGeometry().setFromPoints(curve.getPoints(56));
       const line = new THREE.Line(
         geometry,
         new THREE.LineBasicMaterial({
-          color: isActive ? 0xffcf5a : 0xb8b0a0,
+          color: 0xb8b0a0,
           transparent: true,
-          opacity: isActive ? 0.74 : 0.32,
+          opacity: 0.32,
           blending: THREE.AdditiveBlending,
         })
       );
+      line.userData.routeIndex = i;
+      line.userData.curve = curve;
       this.arcLines.push(line);
       this.globeGroup.add(line);
-      if (isActive) this.activeCurve = curve;
     }
+    this.updateActiveArc();
   }
 
   renderItinerary() {
@@ -721,35 +1032,25 @@ class StarPaperGlobe {
     this.itinerary.hidden = true;
     const upcoming = this.bookings.filter((booking) => !booking.__past).length;
     const past = this.bookings.length - upcoming;
+    const title = classElement('div', 'sp-global-panel-title', 'Itinerary');
     if (this.bookings.length === 0) {
-      this.itinerary.innerHTML = `
-        <div class="sp-global-panel-title">Itinerary</div>
-        <div class="sp-global-empty">No dated bookings yet. Add a booking to route the globe.</div>
-      `;
+      this.itinerary.replaceChildren(
+        title,
+        classElement('div', 'sp-global-empty', 'No dated bookings yet. Add a booking to route the globe.')
+      );
       return;
     }
-    this.itinerary.innerHTML = `
-      <div class="sp-global-panel-title">Itinerary</div>
-      <div class="sp-global-toggle" aria-label="Show states">
-        <span><i class="ph ph-map-pin" aria-hidden="true"></i>${upcoming} Upcoming</span>
-        <span><i class="ph ph-sparkle" aria-hidden="true"></i>${past} Past</span>
-      </div>
-      <div class="sp-global-itinerary-list">
-        ${this.bookings.map((booking, index) => {
-          const title = booking.event || booking.venue || 'Untitled show';
-          return `
-          <button type="button" class="sp-global-stop ${index === this.selectedIndex ? 'is-active' : ''} ${booking.__past ? 'is-past' : 'is-upcoming'}" data-globe-stop="${index}">
-            <span class="sp-global-stop__date">${escapeHtml(shortDate(booking.date))}</span>
-            <span class="sp-global-stop__body">
-              <strong>${escapeHtml(title)}</strong>
-              <em>${escapeHtml(booking.__location.label)}</em>
-              <small>${escapeHtml(booking.artist || 'Artist TBC')}</small>
-            </span>
-          </button>
-        `;
-        }).join('')}
-      </div>
-    `;
+    const toggle = classElement('div', 'sp-global-toggle');
+    toggle.setAttribute('aria-label', 'Show states');
+    toggle.append(
+      iconTextElement('span', '', 'ph-map-pin', `${upcoming} Upcoming`),
+      iconTextElement('span', '', 'ph-sparkle', `${past} Past`)
+    );
+    const list = classElement('div', 'sp-global-itinerary-list');
+    this.bookings.forEach((booking, index) => {
+      list.appendChild(this.createItineraryStopButton(booking, index));
+    });
+    this.itinerary.replaceChildren(title, toggle, list);
   }
 
   getScheduleCounts() {
@@ -762,134 +1063,173 @@ class StarPaperGlobe {
   }
 
   getSelectedBooking() {
-    return this.bookings[this.selectedIndex] || this.bookings[0] || null;
+    if (!this.selectedBookingId) return null;
+    return this.bookings.find((booking) => booking.__globeId === this.selectedBookingId) || null;
+  }
+
+  createItineraryStopButton(booking, index) {
+    const title = booking.event || booking.venue || 'Untitled show';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'sp-global-stop';
+    button.classList.add(booking.__past ? 'is-past' : 'is-upcoming');
+    button.classList.toggle('is-active', index === this.selectedIndex);
+    button.dataset.globeStop = String(index);
+
+    const date = classElement('span', 'sp-global-stop__date', shortDate(booking.date));
+    const body = classElement('span', 'sp-global-stop__body');
+    body.append(
+      textElement('strong', title),
+      textElement('em', booking.__location?.label || 'Location TBC'),
+      textElement('small', booking.artist || 'Artist TBC')
+    );
+    button.append(date, body);
+    return button;
   }
 
   renderStopCard(booking, index) {
-    const title = this.getBookingTitle(booking);
-    return `
-      <button type="button" class="sp-global-stop ${index === this.selectedIndex ? 'is-active' : ''} ${booking.__past ? 'is-past' : 'is-upcoming'}" data-globe-stop="${index}">
-        <span class="sp-global-stop__date">${escapeHtml(shortDate(booking.date))}</span>
-        <span class="sp-global-stop__body">
-          <strong>${escapeHtml(title)}</strong>
-          <em>${escapeHtml(booking.__location.label)}</em>
-          <small>${escapeHtml(booking.artist || 'Artist TBC')}</small>
-        </span>
-      </button>
-    `;
+    const title = booking.__location?.label || this.getBookingTitle(booking);
+    const artist = booking.artist || 'Artist TBC';
+    const active = booking.__globeId === this.selectedBookingId;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'sp-global-stop';
+    button.classList.add(booking.__past ? 'is-past' : 'is-upcoming');
+    button.classList.toggle('is-active', active);
+    button.dataset.globeStop = String(index);
+
+    const indicator = classElement('span', 'sp-global-stop__indicator');
+    indicator.setAttribute('aria-hidden', 'true');
+
+    const lines = classElement('span', 'sp-global-stop__lines');
+    const line1 = classElement('span', 'sp-global-stop__line1');
+    line1.append(
+      classElement('span', 'sp-global-stop__title', title),
+      classElement('span', 'sp-global-stop__date', shortDate(booking.date))
+    );
+    const sub = classElement('span', 'sp-global-stop__sub');
+    sub.append(textNode(`${artist} \u00b7 `), textElement('b', fmtMoney(booking.fee)));
+    lines.append(line1, sub);
+
+    const chevron = classElement('span', 'sp-global-stop__chevron');
+    chevron.dataset.globeChevron = String(index);
+    chevron.setAttribute('aria-label', 'Open booking details');
+    chevron.appendChild(iconElement('ph-caret-right'));
+
+    button.append(indicator, lines, chevron);
+    return button;
   }
 
-  renderScheduleKey() {
-    if (!this.key) return;
-    const counts = this.getScheduleCounts();
-    const selected = this.getSelectedBooking();
-    const selectedTitle = selected ? this.getBookingTitle(selected) : 'No routed shows yet';
-    const selectedMeta = selected ? `${selected.__location.label} - ${fmtDate(selected.date)}` : 'Add a dated booking to route the globe.';
-    const disabled = this.bookings.length === 0 ? 'disabled aria-disabled="true"' : '';
-    this.key.innerHTML = `
-      <div class="sp-global-key__eyebrow">Itinerary</div>
-      <div class="sp-global-key__counts" aria-label="Schedule counts">
-        <span><strong>${counts.upcoming}</strong>Upcoming</span>
-        <i aria-hidden="true"></i>
-        <span><strong>${counts.past}</strong>Past</span>
-      </div>
-      <div class="sp-global-key__legend" aria-label="Legend">
-        <span><b class="sp-global-dot sp-global-dot--upcoming"></b>Upcoming pin</span>
-        <span><b class="sp-global-dot sp-global-dot--past"></b>Past pin</span>
-        <span><b class="sp-global-arc"></b>Active arc</span>
-      </div>
-      <div class="sp-global-key__selected">
-        <strong>${escapeHtml(selectedTitle)}</strong>
-        <span>${escapeHtml(selectedMeta)}</span>
-      </div>
-      <button type="button" class="sp-global-key__open" data-globe-action="open-sheet" ${disabled}>
-        <i class="ph ph-list" aria-hidden="true"></i>
-        <span>Open list</span>
-      </button>
-    `;
+  filterBookings() {
+    if (this.sheetFilter === 'upcoming') return this.bookings.filter((b) => !b.__past);
+    if (this.sheetFilter === 'past') return this.bookings.filter((b) => b.__past);
+    return this.bookings;
   }
 
-  renderScheduleSheet() {
-    if (!this.sheetBody) return;
-    if (this.bookings.length === 0) {
-      this.sheetBody.innerHTML = '<div class="sp-global-empty">No dated bookings yet. Add a booking to route the globe.</div>';
+  setSheetFilter(filter) {
+    if (!filter || !['all', 'upcoming', 'past'].includes(filter)) return;
+    if (this.sheetFilter === filter) return;
+    this.sheetFilter = filter;
+    this.renderScheduleSheet();
+  }
+
+  setSheetSnap(snap) {
+    if (!SHEET_SNAPS.includes(snap)) return;
+    if (this.isDesktopLayout()) {
+      this.sheet?.setAttribute('data-snap', 'full');
+      this.sheet?.setAttribute('aria-hidden', 'false');
+      this.sheetOpen = true;
       return;
     }
-    this.sheetBody.innerHTML = this.bookings.map((booking, index) => this.renderStopCard(booking, index)).join('');
-  }
-
-  openScheduleSheet(trigger) {
-    if (!this.sheet || !this.bookings.length) return;
-    this.lastSheetTrigger = trigger || document.activeElement;
-    this.hidePinCard();
-    this.sheetOpen = true;
-    this.root.classList.add('sp-global-schedule--sheet-open');
-    this.sheet.classList.add('is-open');
-    this.sheet.setAttribute('aria-hidden', 'false');
-    const selected = this.sheet.querySelector('.sp-global-stop.is-active') || this.sheet.querySelector('.sp-global-stop');
-    if (selected) {
-      selected.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: isReducedMotion ? 'auto' : 'smooth' });
-      setTimeout(() => selected.focus({ preventScroll: true }), isReducedMotion ? 0 : 120);
+    this.sheetSnap = snap;
+    if (snap !== 'peek') this.lastSheetSnap = snap;
+    this.sheet?.setAttribute('data-snap', snap);
+    this.sheet?.setAttribute('aria-hidden', 'false');
+    if (snap === 'half' || snap === 'full') {
+      this.sheetOpen = true;
+      this.root.classList.add('sp-global-schedule--sheet-open');
+    } else {
+      this.sheetOpen = false;
+      this.root.classList.remove('sp-global-schedule--sheet-open');
     }
   }
 
-  closeScheduleSheet(options = {}) {
-    if (!this.sheet || !this.sheetOpen) return;
-    this.sheetOpen = false;
-    this.root.classList.remove('sp-global-schedule--sheet-open');
-    this.sheet.classList.remove('is-open');
-    this.sheet.setAttribute('aria-hidden', 'true');
-    if (options.restoreFocus !== false && this.lastSheetTrigger?.focus) {
-      this.lastSheetTrigger.focus({ preventScroll: true });
-    }
+  createDetailMetaSpan(iconClass, text) {
+    const span = document.createElement('span');
+    span.append(iconElement(iconClass), textNode(text));
+    return span;
   }
 
-  renderEmptyDetail() {
-    if (!this.detail) return;
-    this.detail.innerHTML = `
-      <div class="sp-global-detail__kicker"><i class="ph ph-globe-hemisphere-east" aria-hidden="true"></i> Global Schedule</div>
-      <h3>No routed shows yet</h3>
-      <p class="sp-global-detail__sub">Add bookings with dates and locations to see pins, route arcs, and revenue by territory.</p>
-      <button class="sp-global-contract" type="button" onclick="window.showAddBooking?.()"><i class="ph ph-calendar-plus" aria-hidden="true"></i>Add Booking</button>
-    `;
+  createContractButton(booking) {
+    const button = document.createElement('button');
+    button.className = 'sp-global-contract';
+    button.type = 'button';
+    button.dataset.contractBooking = String(booking?.id ?? '');
+    button.append(
+      iconElement('ph-file-text'),
+      textNode('View Full Contract'),
+      iconElement('ph-caret-right')
+    );
+    return button;
   }
 
-  renderDetail(booking) {
-    if (!this.detail || !booking) return;
+  renderBookingDetailContent(container, booking, options = {}) {
+    if (!container || !booking) return;
     const revenueLabel = booking.__past ? 'Settled Gross' : 'Projected Revenue';
-    const revenueIcon = booking.__past ? 'ph-check-circle' : 'ph-currency-dollar';
+    const revenueIcon = options.revenueIcon || (booking.__past ? 'ph-check-circle' : 'ph-currency-dollar');
     const status = String(booking.status || (booking.__past ? 'completed' : 'pending')).toUpperCase();
     const net = Math.max(0, Math.round((Number(booking.fee) || 0) - (Number(booking.balance) || 0)));
     const title = booking.event || booking.venue || 'Untitled show';
+    const locationLabel = booking.__location?.label || 'Location TBC';
+    const venueSeparator = options.venueSeparator || ' - ';
     const locationLine = booking.venue && booking.venue !== title
-      ? `${booking.__location.label} - ${booking.venue}`
-      : booking.__location.label;
-    this.detail.innerHTML = `
-      <div class="sp-global-detail__kicker"><i class="ph ${booking.__past ? 'ph-sparkle' : 'ph-map-pin'}" aria-hidden="true"></i>${booking.__past ? 'Past Show' : 'Next Show'}</div>
-      <h3>${escapeHtml(title)}</h3>
-      <p class="sp-global-detail__sub">${escapeHtml(locationLine)}</p>
-      ${booking.__location.approximate ? '<div class="sp-global-approx">Location approximate</div>' : ''}
-      <div class="sp-global-detail__meta">
-        <span><i class="ph ph-calendar-blank" aria-hidden="true"></i>${escapeHtml(fmtDate(booking.date))}</span>
-        <span><i class="ph ph-microphone-stage" aria-hidden="true"></i>${escapeHtml(booking.artist || 'Artist TBC')}</span>
-        <span><i class="ph ph-users-three" aria-hidden="true"></i>Capacity: ${escapeHtml(Number(booking.capacity || 0).toLocaleString())}</span>
-      </div>
-      <div class="sp-global-money">
-        <span>${revenueLabel}</span>
-        <strong><i class="ph ${revenueIcon}" aria-hidden="true"></i>${escapeHtml(fmtMoney(booking.fee))}</strong>
-        <small>Collected ${escapeHtml(fmtMoney(booking.deposit))} · Net ${escapeHtml(fmtMoney(net))}</small>
-      </div>
-      <button class="sp-global-contract" type="button" data-contract-booking="${escapeHtml(booking.id)}">
-        <i class="ph ph-file-text" aria-hidden="true"></i>
-        View Full Contract
-        <i class="ph ph-caret-right" aria-hidden="true"></i>
-      </button>
-      <div class="sp-global-detail__rows">
-        <span>Status <b>${escapeHtml(status)}</b></span>
-        <span>Balance Due <b>${escapeHtml(fmtMoney(booking.balance))}</b></span>
-      </div>
-    `;
-    this.detail.querySelector('[data-contract-booking]')?.addEventListener('click', () => {
+      ? `${locationLabel}${venueSeparator}${booking.venue}`
+      : locationLabel;
+    const kickerLabel = booking.__past ? 'Past Show' : (options.upcomingLabel || 'Next Show');
+
+    const kicker = classElement('div', 'sp-global-detail__kicker');
+    kicker.append(iconElement(booking.__past ? 'ph-sparkle' : 'ph-map-pin'), textNode(kickerLabel));
+
+    const heading = textElement('h3', title);
+    if (options.compactHeading) {
+      heading.style.margin = '0 0 6px';
+      heading.style.color = '#fff';
+      heading.style.fontSize = '22px';
+      heading.style.lineHeight = '1.1';
+    }
+
+    const sub = classElement('p', 'sp-global-detail__sub', locationLine);
+    const children = [kicker, heading, sub];
+    if (booking.__location?.approximate) {
+      children.push(classElement('div', 'sp-global-approx', 'Location approximate'));
+    }
+
+    const meta = classElement('div', 'sp-global-detail__meta');
+    meta.append(
+      this.createDetailMetaSpan('ph-calendar-blank', fmtDate(booking.date)),
+      this.createDetailMetaSpan('ph-microphone-stage', booking.artist || 'Artist TBC'),
+      this.createDetailMetaSpan('ph-users-three', `Capacity: ${Number(booking.capacity || 0).toLocaleString()}`)
+    );
+
+    const money = classElement('div', 'sp-global-money');
+    const amount = document.createElement('strong');
+    amount.append(iconElement(revenueIcon), textNode(fmtMoney(booking.fee)));
+    money.append(
+      textElement('span', revenueLabel),
+      amount,
+      textElement('small', `Collected ${fmtMoney(booking.deposit)} \u00b7 Net ${fmtMoney(net)}`)
+    );
+
+    const contract = this.createContractButton(booking);
+    const rows = classElement('div', 'sp-global-detail__rows');
+    const statusRow = textElement('span', 'Status ');
+    statusRow.appendChild(textElement('b', status));
+    const balanceRow = textElement('span', 'Balance Due ');
+    balanceRow.appendChild(textElement('b', fmtMoney(booking.balance)));
+    rows.append(statusRow, balanceRow);
+
+    container.replaceChildren(...children, meta, money, contract, rows);
+    contract.addEventListener('click', () => {
       if (typeof window.showSection === 'function') window.showSection('bookings');
       setTimeout(() => {
         if (typeof window.editBooking === 'function') window.editBooking(booking.id);
@@ -897,21 +1237,227 @@ class StarPaperGlobe {
     });
   }
 
+  openDetailSheet(trigger) {
+    if (!this.detailSheet) return;
+    const booking = this.getSelectedBooking();
+    if (!booking) return;
+    this.detailSheetTrigger = trigger || document.activeElement;
+    this.renderDetailSheet(booking);
+    this.detailSheet.classList.add('is-open');
+    this.detailSheet.setAttribute('aria-hidden', 'false');
+    this.detailSheetOpen = true;
+  }
+
+  closeDetailSheet() {
+    if (!this.detailSheet || !this.detailSheetOpen) return;
+    this.detailSheet.classList.remove('is-open');
+    this.detailSheet.setAttribute('aria-hidden', 'true');
+    this.detailSheetOpen = false;
+    if (this.detailSheetTrigger?.focus) {
+      try { this.detailSheetTrigger.focus({ preventScroll: true }); } catch (_e) {}
+    }
+  }
+
+  renderDetailSheet(booking) {
+    if (!this.detailSheet || !this.detailSheetBody || !booking) return;
+    if (this.detailSheetTitle) this.detailSheetTitle.textContent = booking.__past ? 'Past Show' : 'Upcoming Show';
+    this.renderBookingDetailContent(this.detailSheetBody, booking, {
+      upcomingLabel: 'Upcoming Show',
+      venueSeparator: ' \u00b7 ',
+      compactHeading: true,
+      revenueIcon: 'ph-currency-dollar',
+    });
+  }
+
+  renderScheduleKey() {
+    if (!this.key) return;
+    const counts = this.getScheduleCounts();
+    const selected = this.getSelectedBooking();
+    const selectedTitle = selected ? this.getBookingTitle(selected) : 'No routed shows yet';
+    const selectedMeta = selected ? `${selected.__location?.label || 'Location TBC'} - ${fmtDate(selected.date)}` : 'Add a dated booking to route the globe.';
+
+    const countsEl = classElement('div', 'sp-global-key__counts');
+    countsEl.setAttribute('aria-label', 'Schedule counts');
+    const upcoming = document.createElement('span');
+    upcoming.append(textElement('strong', counts.upcoming), textNode('Upcoming'));
+    const separator = document.createElement('i');
+    separator.setAttribute('aria-hidden', 'true');
+    const past = document.createElement('span');
+    past.append(textElement('strong', counts.past), textNode('Past'));
+    countsEl.append(upcoming, separator, past);
+
+    const legend = classElement('div', 'sp-global-key__legend');
+    legend.setAttribute('aria-label', 'Legend');
+    [
+      ['sp-global-dot sp-global-dot--upcoming', 'Upcoming pin'],
+      ['sp-global-dot sp-global-dot--past', 'Past pin'],
+      ['sp-global-arc', 'Active arc'],
+    ].forEach(([className, label]) => {
+      const item = document.createElement('span');
+      const marker = classElement('b', className);
+      item.append(marker, textNode(label));
+      legend.appendChild(item);
+    });
+
+    const selectedEl = classElement('div', 'sp-global-key__selected');
+    selectedEl.append(textElement('strong', selectedTitle), textElement('span', selectedMeta));
+
+    const openButton = document.createElement('button');
+    openButton.type = 'button';
+    openButton.className = 'sp-global-key__open';
+    openButton.dataset.globeAction = 'open-sheet';
+    if (this.bookings.length === 0) {
+      openButton.disabled = true;
+      openButton.setAttribute('aria-disabled', 'true');
+    }
+    openButton.append(iconElement('ph-list'), textElement('span', 'Open list'));
+
+    this.key.replaceChildren(
+      classElement('div', 'sp-global-key__eyebrow', 'Itinerary'),
+      countsEl,
+      legend,
+      selectedEl,
+      openButton
+    );
+  }
+
+  renderSheetHeader() {
+    if (!this.sheet) return;
+    const header = this.sheet.querySelector('.sp-global-sheet__header');
+    if (!header) return;
+    const counts = this.getScheduleCounts();
+    const filters = [
+      { key: 'all', label: 'All', count: this.bookings.length },
+      { key: 'upcoming', label: 'Upcoming', count: counts.upcoming },
+      { key: 'past', label: 'Past', count: counts.past },
+    ];
+    const row = classElement('div', 'sp-global-sheet__header-row');
+    const heading = classElement('div', 'sp-global-sheet__heading');
+    const countsLine = classElement('span', 'sp-global-sheet__counts-line');
+    const upcoming = document.createElement('span');
+    upcoming.append(textElement('b', counts.upcoming), textNode(' upcoming'));
+    const past = document.createElement('span');
+    past.append(textElement('b', counts.past), textNode(' past'));
+    countsLine.append(upcoming, past);
+    heading.append(classElement('span', 'sp-global-sheet__kicker', 'Itinerary'), countsLine);
+
+    const closeButton = document.createElement('button');
+    closeButton.type = 'button';
+    closeButton.className = 'sp-global-sheet__close';
+    closeButton.dataset.globeAction = 'close-sheet';
+    closeButton.setAttribute('aria-label', 'Collapse itinerary');
+    closeButton.appendChild(iconElement('ph-caret-down'));
+    row.append(heading, closeButton);
+
+    const filter = classElement('div', 'sp-global-sheet__filter');
+    filter.setAttribute('role', 'tablist');
+    filter.setAttribute('aria-label', 'Filter itinerary');
+    filters.forEach((item) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.setAttribute('role', 'tab');
+      chip.className = 'sp-global-sheet__chip';
+      chip.classList.toggle('is-active', this.sheetFilter === item.key);
+      chip.dataset.globeFilter = item.key;
+      chip.setAttribute('aria-selected', String(this.sheetFilter === item.key));
+      const count = textElement('span', item.count);
+      count.style.opacity = '.6';
+      chip.append(textNode(`${item.label} `), count);
+      filter.appendChild(chip);
+    });
+
+    header.replaceChildren(row, filter);
+  }
+
+  renderScheduleSheet() {
+    if (!this.sheet) return;
+    this.renderSheetHeader();
+    if (!this.sheetBody) return;
+    const filtered = this.filterBookings();
+    if (this.bookings.length === 0) {
+      this.sheetBody.replaceChildren(
+        classElement('div', 'sp-global-sheet__empty', 'No dated bookings yet. Add a booking to route the globe.')
+      );
+      return;
+    }
+    if (filtered.length === 0) {
+      this.sheetBody.replaceChildren(
+        classElement('div', 'sp-global-sheet__empty', `No ${this.sheetFilter} shows.`)
+      );
+      return;
+    }
+    const fragment = document.createDocumentFragment();
+    filtered.forEach((booking) => {
+      fragment.appendChild(this.renderStopCard(booking, booking.__index));
+    });
+    this.sheetBody.replaceChildren(fragment);
+  }
+
+  // Legacy aliases for backward compatibility with any external callers
+  openScheduleSheet(trigger) {
+    this.lastSheetTrigger = trigger || document.activeElement;
+    this.setSheetSnap('half');
+  }
+
+  closeScheduleSheet(options = {}) {
+    this.setSheetSnap('peek');
+    if (options.restoreFocus !== false && this.lastSheetTrigger?.focus) {
+      try { this.lastSheetTrigger.focus({ preventScroll: true }); } catch (_e) {}
+    }
+  }
+
+  renderEmptyDetail() {
+    if (!this.detail) return;
+    const kicker = classElement('div', 'sp-global-detail__kicker');
+    kicker.append(iconElement('ph-globe-hemisphere-east'), textNode('Global Schedule'));
+    const addButton = document.createElement('button');
+    addButton.className = 'sp-global-contract';
+    addButton.type = 'button';
+    addButton.dataset.globeAction = 'add-booking';
+    addButton.append(iconElement('ph-calendar-plus'), textNode('Add Booking'));
+    this.detail.replaceChildren(
+      kicker,
+      textElement('h3', 'No routed shows yet'),
+      classElement('p', 'sp-global-detail__sub', 'Add bookings with dates and locations to see pins, route arcs, and revenue by territory.'),
+      addButton
+    );
+  }
+
+  renderNoSelectionDetail() {
+    if (!this.detail) return;
+    const kicker = classElement('div', 'sp-global-detail__kicker');
+    kicker.append(iconElement('ph-globe-hemisphere-east'), textNode('Global Schedule'));
+    this.detail.replaceChildren(
+      kicker,
+      textElement('h3', 'Select a show'),
+      classElement('p', 'sp-global-detail__sub', 'Tap an itinerary row or visible globe pin to focus the route and inspect booking details.')
+    );
+  }
+
+  renderDetail(booking) {
+    if (!this.detail || !booking) return;
+    this.renderBookingDetailContent(this.detail, booking);
+  }
+
   selectBooking(index, options = {}) {
     if (!Number.isFinite(index) || index < 0 || index >= this.bookings.length) return;
     this.selectedIndex = index;
     const booking = this.bookings[index];
+    this.selectedBookingId = booking.__globeId;
+    this.selectionCleared = false;
     this.renderDetail(booking);
     this.itinerary?.querySelectorAll('[data-globe-stop]').forEach((btn) => {
       btn.classList.toggle('is-active', Number(btn.dataset.globeStop) === index);
     });
+    let activeCard = null;
     this.sheetBody?.querySelectorAll('[data-globe-stop]').forEach((btn) => {
       const active = Number(btn.dataset.globeStop) === index;
       btn.classList.toggle('is-active', active);
-      if (active && this.sheetOpen) {
-        btn.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: isReducedMotion ? 'auto' : 'smooth' });
-      }
+      if (active) activeCard = btn;
     });
+    if (activeCard && this.sheetBody) {
+      activeCard.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: isReducedMotion ? 'auto' : 'smooth' });
+    }
     this.renderScheduleKey();
     this.pinSprites.forEach((pin, pinIndex) => {
       const active = pinIndex === index;
@@ -920,11 +1466,73 @@ class StarPaperGlobe {
       pin.scale.setScalar(active ? base * 1.28 : base);
       pin.material.opacity = active ? 1 : (past ? 0.66 : 0.92);
     });
+    if (this.selectionRing && booking.__vector) {
+      const ringPos = booking.__vector.clone().multiplyScalar(1.02);
+      this.selectionRing.position.copy(ringPos);
+      this.selectionRing.visible = true;
+      this.selectionRing.material.opacity = 0.9;
+    }
+    if (this.detailSheetOpen) this.renderDetailSheet(booking);
+    this.updateActiveArc();
     if (options.focus === true) {
       this.focusBooking(index);
     } else if (options.focus === false) {
       this.cancelFocusAnimation();
     }
+  }
+
+  clearSelection(options = {}) {
+    this.selectedIndex = -1;
+    this.selectedBookingId = null;
+    this.selectionCleared = true;
+    this.lastStopTap = null;
+    this.cancelFocusAnimation();
+    this.itinerary?.querySelectorAll('[data-globe-stop]').forEach((btn) => {
+      btn.classList.remove('is-active');
+    });
+    this.sheetBody?.querySelectorAll('[data-globe-stop]').forEach((btn) => {
+      btn.classList.remove('is-active');
+    });
+    this.pinSprites.forEach((pin, pinIndex) => {
+      const past = this.bookings[pinIndex]?.__past;
+      const base = past ? 0.18 : 0.25;
+      pin.scale.setScalar(base);
+      pin.material.opacity = past ? 0.66 : 0.92;
+    });
+    if (this.selectionRing) {
+      this.selectionRing.visible = false;
+      this.selectionRing.material.opacity = 0;
+    }
+    if (this.detailSheetOpen && options.closeDetail !== false) this.closeDetailSheet();
+    if (options.renderEmpty !== false) this.renderNoSelectionDetail();
+    this.renderScheduleKey();
+    this.updateActiveArc();
+  }
+
+  getDefaultActiveArcIndex() {
+    if (this.bookings.length < 2) return -1;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const upcomingIndex = this.bookings.findIndex((booking) => parseLocalDate(booking.date) >= today && !booking.__past);
+    return Math.max(0, upcomingIndex >= 0 ? upcomingIndex - 1 : this.bookings.length - 2);
+  }
+
+  getSelectedArcIndex() {
+    if (this.bookings.length < 2 || this.selectedIndex < 0) return this.getDefaultActiveArcIndex();
+    return this.selectedIndex > 0 ? this.selectedIndex - 1 : 0;
+  }
+
+  updateActiveArc() {
+    const activeIndex = this.getSelectedArcIndex();
+    this.activeCurve = null;
+    this.arcLines.forEach((line, index) => {
+      const active = index === activeIndex;
+      line.material.color.set(active ? 0xffcf5a : 0xb8b0a0);
+      line.material.opacity = active ? 0.78 : 0.28;
+      line.material.needsUpdate = true;
+      if (active) this.activeCurve = line.userData.curve || null;
+    });
+    if (!this.activeCurve) this.pulse.visible = false;
   }
 
   cancelFocusAnimation() {
@@ -977,10 +1585,20 @@ class StarPaperGlobe {
     if (hitIndex >= 0) {
       this.showPinCard(hitIndex, event);
       this.selectBooking(hitIndex, { focus: false });
+      if (!this.isDesktopLayout() && this.sheetSnap === 'peek') {
+        this.setSheetSnap('half');
+      }
     } else {
       this.hidePinCard();
-      this.closeScheduleSheet({ restoreFocus: false });
+      this.clearSelection();
     }
+  }
+
+  isPinVisibleToCamera(worldPosition) {
+    this.globeGroup.getWorldPosition(this.globeWorldCenter);
+    const surfaceNormal = worldPosition.clone().sub(this.globeWorldCenter).normalize();
+    const cameraVector = this.camera.position.clone().sub(worldPosition).normalize();
+    return surfaceNormal.dot(cameraVector) > 0.08;
   }
 
   getPinHitIndex(event) {
@@ -993,6 +1611,7 @@ class StarPaperGlobe {
     const hitRadius = rect.width < 520 ? 44 : 32;
     this.pinSprites.forEach((pin, index) => {
       pin.getWorldPosition(this.pickWorld);
+      if (!this.isPinVisibleToCamera(this.pickWorld)) return;
       const projected = this.pickWorld.clone().project(this.camera);
       if (projected.z < -1 || projected.z > 1) return;
       const sx = (projected.x * 0.5 + 0.5) * rect.width;
@@ -1023,11 +1642,11 @@ class StarPaperGlobe {
     this.previewIndex = index;
     const rootRect = this.root.getBoundingClientRect();
     const stageRect = this.stage.getBoundingClientRect();
-    this.pinCard.innerHTML = `
-      <strong>${escapeHtml(booking.event || booking.venue || 'Untitled show')}</strong>
-      <span>${escapeHtml(booking.__location.label)} · ${escapeHtml(fmtDate(booking.date))}</span>
-      <small>${escapeHtml(booking.artist || 'Artist TBC')} · ${escapeHtml(fmtMoney(booking.fee))}</small>
-    `;
+    this.pinCard.replaceChildren(
+      textElement('strong', booking.event || booking.venue || 'Untitled show'),
+      textElement('span', `${booking.__location.label} · ${fmtDate(booking.date)}`),
+      textElement('small', `${booking.artist || 'Artist TBC'} · ${fmtMoney(booking.fee)}`)
+    );
     const cardWidth = rootRect.width < 560
       ? Math.min(206, Math.max(170, rootRect.width - 28))
       : Math.min(230, Math.max(190, rootRect.width - 28));
@@ -1056,9 +1675,11 @@ class StarPaperGlobe {
       return;
     }
     if (this.bookings.length === 0) return;
-    this.selectBooking(this.selectedIndex || 0, { focus: false });
+    const startIndex = this.selectedIndex >= 0 ? this.selectedIndex : 0;
+    this.selectBooking(startIndex, { focus: false });
     this.autoTourTimer = setInterval(() => {
-      this.selectBooking((this.selectedIndex + 1) % this.bookings.length, { focus: false });
+      const current = this.selectedIndex >= 0 ? this.selectedIndex : 0;
+      this.selectBooking((current + 1) % this.bookings.length, { focus: false });
     }, 3200);
   }
 
@@ -1106,13 +1727,18 @@ class StarPaperGlobe {
       this.pulse.visible = true;
       this.pulse.material.opacity = 0.55 + Math.sin(elapsed * 8) * 0.28;
     }
+    if (this.selectionRing?.visible && !isReducedMotion) {
+      const ringPulse = 0.46 + Math.sin(elapsed * 4.6) * 0.06;
+      this.selectionRing.scale.setScalar(ringPulse);
+      this.selectionRing.material.opacity = 0.78 + Math.sin(elapsed * 4.6) * 0.18;
+    }
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
   }
 }
 
 function shortDate(value) {
-  const date = new Date(value);
+  const date = parseLocalDate(value);
   if (Number.isNaN(date.getTime())) return 'TBC';
   return date.toLocaleDateString(undefined, { month: 'short', day: '2-digit' }).toUpperCase();
 }
@@ -1121,13 +1747,13 @@ function showFallback(root, error) {
   root.classList.add('sp-global-schedule--fallback');
   const stage = document.getElementById(STAGE_ID);
   if (stage) {
-    stage.innerHTML = `
-      <div class="sp-global-fallback-card">
-        <i class="ph ph-globe-hemisphere-east" aria-hidden="true"></i>
-        <strong>Global view fallback</strong>
-        <span>${escapeHtml(error?.message || '3D globe unavailable on this device.')}</span>
-      </div>
-    `;
+    const card = classElement('div', 'sp-global-fallback-card');
+    card.append(
+      iconElement('ph-globe-hemisphere-east'),
+      textElement('strong', 'Global view fallback'),
+      textElement('span', error?.message || '3D globe unavailable on this device.')
+    );
+    stage.replaceChildren(card);
   }
   try {
     window.renderPerformanceMap?.(window.bookings || [], { showLabels: false, showLocationList: true, showPinnedPanel: true, fallbackOnly: true });
@@ -1144,7 +1770,7 @@ function init() {
       render: (bookings, options = {}) => globe.render(bookings, options),
       focusBooking: (id) => {
         const index = globe.bookings.findIndex((booking) => String(booking.id) === String(id));
-        if (index >= 0) globe.selectBooking(index, { fly: false });
+        if (index >= 0) globe.selectBooking(index, { focus: true });
       },
       recenter: () => globe.resetView(),
     };

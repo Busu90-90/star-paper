@@ -31,6 +31,18 @@ const SP_CLOUD_ONLY_MODE = true;
 // Expose config so app.js can enforce cloud-only mode.
 window.__spSupabaseConfigured = SP_SUPABASE_CONFIGURED;
 window.__spCloudOnly = SP_CLOUD_ONLY_MODE;
+
+function getSupabaseSdkAsset() {
+  const manifest = window.SP_BROWSER_ASSETS;
+  if (!manifest || typeof manifest.external !== 'function') {
+    throw new Error('[StarPaper Supabase] Browser asset manifest is unavailable.');
+  }
+  const sdk = manifest.external('supabase');
+  if (!sdk || !sdk.src || !sdk.integrity) {
+    throw new Error('[StarPaper Supabase] Supabase SDK asset metadata is incomplete.');
+  }
+  return sdk;
+}
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ── CURRENCY CONFIG ───────────────────────────────────────────────────────────
@@ -69,8 +81,11 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   // Load Supabase JS SDK from CDN
   if (!window.supabase) {
     await new Promise((resolve, reject) => {
+      const sdk = getSupabaseSdkAsset();
       const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
+      s.src = sdk.src;
+      s.crossOrigin = sdk.crossOrigin || 'anonymous';
+      s.integrity = sdk.integrity;
       s.onload = resolve;
       s.onerror = reject;
       document.head.appendChild(s);
@@ -575,6 +590,10 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     return div.innerHTML;
   }
 
+  function escapeAttr(str) {
+    return escapeHTML(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
   function toastSafe(type, msg) {
     const fn = window['toast' + type];
     if (typeof fn === 'function') fn(msg);
@@ -732,7 +751,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         const msg = payload.new;
         // Don't notify for own messages
         if (msg && msg.user_id === getOwnerId()) return;
-        const sender = escapeHTML(msg?.username || 'A teammate');
+        const sender = msg?.username || 'A teammate';
         toastSafe('Info', `New message from ${sender}`);
         // Increment badge on team nav if it exists
         const badge = document.getElementById('spTeamChatBadge');
@@ -741,11 +760,10 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
           badge.textContent = count;
           badge.style.display = 'inline-flex';
         }
-        // If chat panel is open, append message
+        // If chat panel is open, append message through DOM text nodes.
         const container = document.getElementById('spTeamChatMessages');
-        if (container && typeof window.buildMessageHTML === 'function') {
-          container.insertAdjacentHTML('beforeend', window.buildMessageHTML(msg));
-          container.scrollTop = container.scrollHeight;
+        if (container) {
+          appendChatMessage(container, msg);
         }
       }
     );
@@ -983,11 +1001,34 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
   function clearSupabaseAuthArtifacts(options = {}) {
     const clearAppSession = options.clearAppSession !== false;
+    const shouldRemoveAuthStorageKey = (key = '') => {
+      const value = String(key || '');
+      return value === SP_SUPABASE_STORAGE_KEY ||
+        value === SP_SUPABASE_PKCE_KEY ||
+        value === `sb-${SP_SUPABASE_PROJECT_REF}-auth-token` ||
+        value === `sb-${SP_SUPABASE_PROJECT_REF}-auth-token-code-verifier` ||
+        value.startsWith(`${SP_SUPABASE_STORAGE_KEY}.`) ||
+        value.startsWith(`${SP_SUPABASE_STORAGE_KEY}-`) ||
+        value.startsWith(`sb-${SP_SUPABASE_PROJECT_REF}-auth-token`) ||
+        value.startsWith('sb-fxcyocdwvjiyatqnaahg-auth-token');
+    };
+    const clearStorageKeys = (storage) => {
+      if (!storage) return;
+      const keys = [];
+      for (let i = 0; i < storage.length; i += 1) {
+        const key = storage.key(i);
+        if (shouldRemoveAuthStorageKey(key)) keys.push(key);
+      }
+      keys.forEach((key) => storage.removeItem(key));
+    };
     try {
       localStorage.removeItem(`sb-${SP_SUPABASE_PROJECT_REF}-auth-token`);
       localStorage.removeItem(`sb-${SP_SUPABASE_PROJECT_REF}-auth-token-code-verifier`);
       localStorage.removeItem(SP_SUPABASE_STORAGE_KEY);
       localStorage.removeItem(SP_SUPABASE_PKCE_KEY);
+      clearStorageKeys(localStorage);
+      clearStorageKeys(sessionStorage);
+      sessionStorage.removeItem(BOOT_CONTEXT_STORAGE_KEY);
     } catch (_err) {
       // Best-effort cleanup only.
     }
@@ -1390,7 +1431,18 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   function hasStoredSupabaseSessionHint() {
     if (!SP_SUPABASE_CONFIGURED) return false;
     if (localStorage.getItem('sp_logged_out') === '1') return false;
-    return Boolean(localStorage.getItem(SP_SUPABASE_STORAGE_KEY));
+    if (localStorage.getItem(SP_SUPABASE_STORAGE_KEY)) return true;
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i) || '';
+      if (
+        key === `sb-${SP_SUPABASE_PROJECT_REF}-auth-token` ||
+        key.startsWith(`${SP_SUPABASE_STORAGE_KEY}.`) ||
+        key.startsWith(`sb-${SP_SUPABASE_PROJECT_REF}-auth-token`)
+      ) {
+        return true;
+      }
+    }
+    return false;
   }
 
   function readBootContextMarker() {
@@ -1458,6 +1510,9 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   }
 
   function shouldBootAuthenticatedApp() {
+    try {
+      if (localStorage.getItem('sp_logged_out') === '1') return false;
+    } catch (_err) {}
     if (typeof window.shouldBootAuthenticatedApp === 'function') {
       try { return Boolean(window.shouldBootAuthenticatedApp(window.location)); } catch (_err) {}
     }
@@ -1863,10 +1918,12 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   function normalizeTeamContextRow(row) {
     const role = normalizeTeamRole(row?.my_role || row?.role);
     const permissions = permissionsForRole(role, row?.my_permissions || row?.permissions);
+    const rawInviteCode = String(row?.invite_code || '').trim();
+    const inviteCode = /^[0-9a-f]{32}$/.test(rawInviteCode) ? rawInviteCode : null;
     return {
       id: row?.id,
       name: row?.name,
-      invite_code: row?.invite_code,
+      invite_code: inviteCode,
       owner_id: row?.owner_id,
       myRole: role,
       myRoleLabel: roleLabel(role),
@@ -2384,6 +2441,11 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     return typeof id === 'string' && UUID_RE.test(id);
   }
 
+  function normalizeCloudId(id) {
+    const value = String(id || '').trim();
+    return isCloudId(value) ? value : '';
+  }
+
   function sanitizeUpsertRow(row) {
     const sanitized = {};
     Object.entries(row || {}).forEach(([key, value]) => {
@@ -2392,6 +2454,72 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       sanitized[key] = value;
     });
     return sanitized;
+  }
+
+  function makeWorkspaceCopyId(prefix, index) {
+    const random = (globalThis.crypto?.getRandomValues)
+      ? Array.from(globalThis.crypto.getRandomValues(new Uint32Array(2)))
+          .map((value) => value.toString(36))
+          .join('')
+      : `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
+    return `${prefix}-${Date.now().toString(36)}-${index}-${random}`;
+  }
+
+  function cloneWorkspacePayloadForTeamCopy(payload = {}) {
+    const copy = JSON.parse(JSON.stringify(payload || {}));
+    delete copy.__meta;
+    delete copy.__workspace;
+
+    const artistIdMap = new Map();
+    if (Array.isArray(copy.artists)) {
+      copy.artists = copy.artists.map((artist, index) => {
+        const previousId = String(artist?.id || '');
+        const nextId = makeWorkspaceCopyId('artist', index);
+        if (previousId) artistIdMap.set(previousId, nextId);
+        return {
+          ...artist,
+          id: nextId,
+          managerId: null,
+          teamId: null,
+        };
+      });
+    }
+
+    const cloneRows = (key, prefix, options = {}) => {
+      if (!Array.isArray(copy[key])) return;
+      copy[key] = copy[key].map((entry, index) => {
+        const next = { ...entry, id: makeWorkspaceCopyId(prefix, index), teamId: null };
+        if (options.remapArtist && next.artistId && artistIdMap.has(String(next.artistId))) {
+          next.artistId = artistIdMap.get(String(next.artistId));
+        }
+        return next;
+      });
+    };
+
+    cloneRows('bookings', 'booking', { remapArtist: true });
+    cloneRows('expenses', 'expense', { remapArtist: true });
+    cloneRows('otherIncome', 'income', { remapArtist: true });
+    cloneRows('audienceMetrics', 'metric', { remapArtist: true });
+    cloneRows('tasks', 'task');
+
+    return copy;
+  }
+
+  function patchLinkedArtistIdsFromSavedRows(payload, savedRows) {
+    if (!payload || !Array.isArray(savedRows) || savedRows.length === 0) return;
+    const legacyMap = {};
+    savedRows.forEach((row) => {
+      if (row?.legacy_id && row?.id) legacyMap[String(row.legacy_id)] = row.id;
+    });
+    if (!Object.keys(legacyMap).length) return;
+    ['bookings', 'expenses', 'otherIncome', 'audienceMetrics'].forEach((key) => {
+      if (!Array.isArray(payload[key])) return;
+      payload[key].forEach((entry) => {
+        if (!entry || isCloudId(entry.artistId)) return;
+        const nextArtistId = legacyMap[String(entry.artistId || '')];
+        if (nextArtistId) entry.artistId = nextArtistId;
+      });
+    });
   }
 
   function scopeMutationQuery(query, workspaceMeta, ownerColumn = 'owner_id') {
@@ -3597,7 +3725,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     try {
       if (Array.isArray(artists)) {
         failedStep = 'saveArtists';
-        await saveArtistsData(artists, { workspaceMeta });
+        const savedArtistRows = await saveArtistsData(artists, { workspaceMeta });
+        patchLinkedArtistIdsFromSavedRows(payload, savedArtistRows);
         didSave = true;
       }
       if (Array.isArray(bookings) || Array.isArray(expenses) || Array.isArray(otherIncome)) {
@@ -3948,7 +4077,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   if (window.location.protocol === 'file:') {
     console.warn(
       '[StarPaper] Running on file:// \u2014 Google OAuth and email-confirm redirects will not work locally.\n' +
-      'Use a local server instead: run `npx serve .` or use VS Code Live Server.\n' +
+      'Use the static frontend preview instead: run `npm run preview` and open http://localhost:8080.\n' +
       'Email/password sign-in works normally on http://localhost.'
     );
   }
@@ -4691,6 +4820,13 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         requireAppReady: true,
         minDelayMs: 260,
       });
+      if (typeof window.hideBootLoaderWhenUiPainted === 'function') {
+        window.__spBootRevealPending = false;
+        window.hideBootLoaderWhenUiPainted({
+          requireAppReady: true,
+          minDelayMs: 260,
+        });
+      }
 
       if (shouldRunBackgroundRefresh) {
         setTimeout(() => {
@@ -4743,7 +4879,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       // Swallow — user-visible recovery is the contract. Caller treats this as a non-fatal completion.
       return false;
     } finally {
-      if (isBootTransitionCurrentSafe(flowId)) {
+      const ownsVisibleApp = bootstrapSucceeded && isAppShellVisible();
+      if (isBootTransitionCurrentSafe(flowId) || ownsVisibleApp) {
         clearBootstrapSafetyTimer();
         _refreshInFlight = false;
         window.__spCloudBootstrapPending = false;
@@ -4789,7 +4926,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       } catch (_err) {}
       clearOAuthIntent();
       window.__spUserInitiatedAuth = false;
-      const err = new Error('Google sign-in requires http://localhost or your deployed https:// URL. file:// cannot receive OAuth redirects.');
+      const err = new Error('Google sign-in requires the frontend preview origin, such as http://localhost:8080, or your deployed https:// URL. file:// cannot receive OAuth redirects.');
       err.flowId = flowId;
       throw err;
     }
@@ -5179,11 +5316,11 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     let error = null;
     try {
       ({ data, error } = await db.from('team_members')
-        .select('role, permissions, teams(id, name, invite_code, owner_id)')
+        .select('role, permissions, teams(id, name, owner_id)')
         .eq('user_id', getOwnerId()));
       if (error && /permissions/i.test(error.message || '')) {
         ({ data, error } = await db.from('team_members')
-          .select('role, teams(id, name, invite_code, owner_id)')
+          .select('role, teams(id, name, owner_id)')
           .eq('user_id', getOwnerId()));
       }
     } catch (err) {
@@ -5333,19 +5470,21 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   }
 
   async function updateTeamMemberRole(teamId, userId, role) {
-    if (!teamId || !userId || !role) return;
+    const safeTeamId = normalizeCloudId(teamId);
+    const safeUserId = normalizeCloudId(userId);
+    if (!safeTeamId || !safeUserId || !role) return;
     const nextRole = normalizeTeamRole(role);
     const nextPermissions = permissionsForRole(nextRole);
     try {
       let { error } = await db.from('team_members')
         .update({ role: nextRole, permissions: nextPermissions })
-        .eq('team_id', teamId)
-        .eq('user_id', userId);
+        .eq('team_id', safeTeamId)
+        .eq('user_id', safeUserId);
       if (error && /permissions/i.test(error.message || '')) {
         ({ error } = await db.from('team_members')
           .update({ role: nextRole })
-          .eq('team_id', teamId)
-          .eq('user_id', userId));
+          .eq('team_id', safeTeamId)
+          .eq('user_id', safeUserId));
       }
       if (error) throw error;
       toastSafe('Success', 'Member role updated.');
@@ -5356,12 +5495,14 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   }
 
   async function removeTeamMember(teamId, userId) {
-    if (!teamId || !userId) return;
+    const safeTeamId = normalizeCloudId(teamId);
+    const safeUserId = normalizeCloudId(userId);
+    if (!safeTeamId || !safeUserId) return;
     try {
       const { error } = await db.from('team_members')
         .delete()
-        .eq('team_id', teamId)
-        .eq('user_id', userId);
+        .eq('team_id', safeTeamId)
+        .eq('user_id', safeUserId);
       if (error) throw error;
       toastSafe('Success', 'Member removed.');
       showTeamModal();
@@ -5377,9 +5518,10 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     const previousTeamId = _activeTeamId;
     _activeTeamId = null;
     const personalData = await loadAllData();
+    const teamCopyPayload = cloneWorkspacePayloadForTeamCopy(personalData || {});
     await persistActiveTeam(teamId, { persistRemote: true, role: 'owner', permissions: permissionsForRole('owner') });
-    if (personalData) {
-      await saveAllData(personalData);
+    if (teamCopyPayload && Object.keys(teamCopyPayload).length) {
+      await saveAllData(teamCopyPayload, { reason: 'migratePersonalDataToTeamCopy' });
     }
     await reloadForResolvedWorkspace({ forceShowApp: true, runMigration: false });
     if (previousTeamId !== teamId && previousTeamId) {
@@ -5568,230 +5710,350 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   }
 
   // ── TEAM UI ─────────────────────────────────────────────────────────────────
-  function legacyTeamPanelMarkupRemoved(teams, activeTeamId, members) {
-    const membersHTML = members.map(m => `
-      <div class="sp-team-member">
-        <div class="sp-team-member-avatar">${(m.username || m.email || '?')[0].toUpperCase()}</div>
-        <div class="sp-team-member-info">
-          <div class="sp-team-member-name">${m.username || m.email}</div>
-          <div class="sp-team-member-role">${m.role}</div>
-        </div>
-      </div>
-    `).join('');
+  function bindTeamModalActions(modal) {
+    if (!modal || modal.dataset.spTeamActionsBound === '1') return;
+    modal.dataset.spTeamActionsBound = '1';
 
-    const personalWorkspaceHTML = `
-      <div class="sp-team-item ${!activeTeamId ? 'sp-team-item--active' : ''}"
-           onclick="window.SP.switchTeam('')">
-        <div class="sp-team-name">Personal Workspace</div>
-        <div class="sp-team-role">solo</div>
-      </div>
-    `;
+    modal.addEventListener('click', (event) => {
+      const actionEl = event.target.closest('[data-sp-team-action]');
+      if (!actionEl || !modal.contains(actionEl)) return;
+      const action = actionEl.dataset.spTeamAction;
+      if (!action) return;
+      event.preventDefault();
 
-    const teamsHTML = teams.map(t => `
-      <div class="sp-team-item ${t.id === activeTeamId ? 'sp-team-item--active' : ''}"
-           onclick="window.SP.switchTeam('${t.id}')">
-        <div class="sp-team-name">${t.name}</div>
-        <div class="sp-team-role">${t.myRole}</div>
-      </div>
-    `).join('');
+      if (action === 'close') {
+        closeTeamModal();
+      } else if (action === 'login') {
+        showLoginPrompt();
+      } else if (action === 'retry') {
+        showTeamModal();
+      } else if (action === 'create') {
+        showCreateTeamForm();
+      } else if (action === 'join') {
+        showJoinTeamForm();
+      } else if (action === 'copy-invite') {
+        copyInviteCode();
+      } else if (action === 'send-chat') {
+        sendChatMessage();
+      } else if (action === 'switch-team') {
+        const teamId = actionEl.dataset.spTeamId || '';
+        if (teamId && !normalizeCloudId(teamId)) return;
+        switchTeam(teamId);
+      } else if (action === 'remove-member') {
+        removeTeamMember(actionEl.dataset.spTeamId, actionEl.dataset.spMemberId);
+      }
+    });
 
-    return `
-      <div class="sp-team-panel">
-        <div class="sp-team-panel-header">
-          <h3>Team Workspace</h3>
-          <button class="sp-modal-close" onclick="document.getElementById('spTeamModal').style.display='none'"><i class="ph ph-x" aria-hidden="true"></i></button>
-        </div>
+    modal.addEventListener('change', (event) => {
+      const select = event.target.closest('[data-sp-team-action="update-member-role"]');
+      if (!select || !modal.contains(select)) return;
+      updateTeamMemberRole(select.dataset.spTeamId, select.dataset.spMemberId, select.value);
+    });
 
-        <div class="sp-team-section">
-          <h4>My Teams</h4>
-          ${personalWorkspaceHTML}
-          ${teamsHTML || '<p class="sp-muted">No teams yet</p>'}
-          <div class="sp-team-actions">
-            <button class="action-btn" onclick="window.SP.showCreateTeamForm()">+ Create Team</button>
-            <button class="action-btn" onclick="window.SP.showJoinTeamForm()"><i class="ph ph-link" aria-hidden="true"></i> Join by Code</button>
-          </div>
-        </div>
-
-        ${activeTeamId ? `
-        <div class="sp-team-section">
-          <h4>Team Members</h4>
-          ${membersHTML}
-          <div class="sp-team-invite-code">
-            <label>Invite Code</label>
-            <div class="sp-team-code-row">
-              <code id="spTeamInviteCode">${teams.find(t => t.id === activeTeamId)?.invite_code || '\u2014'}</code>
-              <button class="action-btn" onclick="window.SP.copyInviteCode()">Copy</button>
-            </div>
-            <p class="sp-muted">Share this code so others can join your team.</p>
-          </div>
-        </div>
-        <div class="sp-team-section">
-          <h4>Team Chat</h4>
-          <div id="spTeamChatMessages" class="sp-chat-messages"></div>
-          <div class="sp-chat-input-row">
-            <input type="text" id="spChatInput" class="form-input" placeholder="Type a message&hellip;" 
-                   onkeydown="if(event.key==='Enter')window.SP.sendChatMessage()">
-            <button class="action-btn" onclick="window.SP.sendChatMessage()">Send</button>
-          </div>
-        </div>
-        ` : ''}
-      </div>
-    `;
+    modal.addEventListener('keydown', (event) => {
+      const actionEl = event.target.closest('[data-sp-team-action]');
+      if (!actionEl || !modal.contains(actionEl)) return;
+      const action = actionEl.dataset.spTeamAction;
+      if (action === 'send-chat' && event.key === 'Enter') {
+        event.preventDefault();
+        sendChatMessage();
+      } else if (action === 'switch-team' && (event.key === 'Enter' || event.key === ' ')) {
+        event.preventDefault();
+        const teamId = actionEl.dataset.spTeamId || '';
+        if (teamId && !normalizeCloudId(teamId)) return;
+        switchTeam(teamId);
+      }
+    });
   }
 
-  function buildTeamPermissionChips(permissions = {}) {
+  function domEl(tag, options = {}, children = []) {
+    const el = document.createElement(tag);
+    if (options.id) el.id = options.id;
+    if (options.className) el.className = options.className;
+    if (options.text !== undefined) el.textContent = String(options.text);
+    if (options.type) el.type = options.type;
+    if (options.value !== undefined) el.value = String(options.value);
+    if (options.title) el.title = options.title;
+    if (options.role) el.setAttribute('role', options.role);
+    if (options.tabIndex !== undefined) el.tabIndex = options.tabIndex;
+    if (options.ariaLabel) el.setAttribute('aria-label', options.ariaLabel);
+    if (options.attrs) {
+      for (const [key, value] of Object.entries(options.attrs)) {
+        if (value !== undefined && value !== null) el.setAttribute(key, String(value));
+      }
+    }
+    if (options.data) {
+      for (const [key, value] of Object.entries(options.data)) {
+        if (value !== undefined && value !== null) el.dataset[key] = String(value);
+      }
+    }
+    for (const child of Array.isArray(children) ? children : [children]) {
+      if (child === null || child === undefined) continue;
+      el.appendChild(typeof child === 'string' ? document.createTextNode(child) : child);
+    }
+    return el;
+  }
+
+  function phosphorIcon(iconClass) {
+    return domEl('i', {
+      className: `ph ${iconClass}`,
+      attrs: { 'aria-hidden': 'true' },
+    });
+  }
+
+  function teamActionButton(label, action, options = {}) {
+    const children = [];
+    if (options.icon) {
+      children.push(phosphorIcon(options.icon), document.createTextNode(' '));
+    }
+    children.push(document.createTextNode(label));
+    const button = domEl('button', {
+      className: options.className || 'action-btn',
+      type: 'button',
+      data: {
+        spTeamAction: action,
+        ...(options.data || {}),
+      },
+    }, children);
+    return button;
+  }
+
+  function createMuted(text) {
+    return domEl('p', { className: 'sp-muted', text });
+  }
+
+  function buildTeamPermissionChipsElement(permissions = {}) {
     const chips = [];
     if (permissions.read) chips.push('Read');
     if (permissions.edit) chips.push('Edit');
     if (permissions.finance) chips.push('Finance');
     if (permissions.reports) chips.push('Reports');
     if (permissions.admin) chips.push('Admin');
-    return `<div class="sp-team-permissions">${chips.map(chip => `<span>${chip}</span>`).join('')}</div>`;
+    return domEl('div', { className: 'sp-team-permissions' }, chips.map((chip) => domEl('span', { text: chip })));
   }
 
-  function buildTeamModalStateHTML(title, message, actions = '') {
-    return `
-      <div class="sp-team-panel">
-        <div class="sp-team-panel-header">
-          <h3>Team Workspace</h3>
-          <button class="sp-modal-close" onclick="window.SP.closeTeamModal()"><i class="ph ph-x" aria-hidden="true"></i></button>
-        </div>
-        <div class="sp-team-empty-state">
-          <div class="sp-team-empty-title">${escapeHTML(title)}</div>
-          <p>${escapeHTML(message)}</p>
-          ${actions}
-        </div>
-      </div>
-    `;
+  function buildTeamPanelHeaderElement() {
+    return domEl('div', { className: 'sp-team-panel-header' }, [
+      domEl('h3', { text: 'Team Workspace' }),
+      teamActionButton('', 'close', {
+        className: 'sp-modal-close',
+        icon: 'ph-x',
+      }),
+    ]);
   }
 
-  function buildTeamPanelHTML(teams, activeTeamId, members, options = {}) {
+  function buildTeamStatusCardElement(label, title, detail = '') {
+    const children = [
+      domEl('div', { className: 'sp-team-status-label', text: label }),
+      domEl('div', { className: 'sp-team-status-title', text: title }),
+    ];
+    if (detail) children.push(createMuted(detail));
+    return domEl('div', { className: 'sp-team-status-card sp-team-inline-status' }, children);
+  }
+
+  function buildTeamModalStateElement(title, message, actionsElement = null) {
+    const emptyChildren = [
+      domEl('div', { className: 'sp-team-empty-title', text: title }),
+      domEl('p', { text: message }),
+    ];
+    if (actionsElement) emptyChildren.push(actionsElement);
+    return domEl('div', { className: 'sp-team-panel' }, [
+      buildTeamPanelHeaderElement(),
+      domEl('div', { className: 'sp-team-empty-state' }, emptyChildren),
+    ]);
+  }
+
+  function replaceTeamPanelContent(content, element) {
+    if (content) content.replaceChildren(element);
+  }
+
+  function buildTeamItemElement({ label, role, teamId = '', active = false, permissions = null }) {
+    const info = domEl('div', {}, [
+      domEl('div', { className: 'sp-team-name', text: label }),
+    ]);
+    if (permissions) info.appendChild(buildTeamPermissionChipsElement(permissions));
+    const item = domEl('div', {
+      className: `sp-team-item${active ? ' sp-team-item--active' : ''}`,
+      role: 'button',
+      tabIndex: 0,
+      data: {
+        spTeamAction: 'switch-team',
+        spTeamId: teamId,
+      },
+    }, [
+      info,
+      domEl('div', { className: 'sp-team-role', text: role }),
+    ]);
+    return item;
+  }
+
+  function buildMembersElement(members, options, isAdmin, safeActiveTeamId, safeOwnerId) {
+    const root = domEl('div', { id: 'spTeamMembers' });
+    if (options.membersLoading) {
+      root.appendChild(createMuted('Loading members...'));
+      return root;
+    }
+    if (options.membersFailed) {
+      root.appendChild(domEl('div', { className: 'sp-team-empty-state' }, [
+        domEl('div', { className: 'sp-team-empty-title', text: 'Members are still loading' }),
+        domEl('p', { text: 'Team switching, creating, and joining still work. Retry member loading when your connection settles.' }),
+        domEl('div', { className: 'sp-team-actions' }, [
+          teamActionButton('Retry', 'retry'),
+        ]),
+      ]));
+      return root;
+    }
+    if (!members.length) {
+      root.appendChild(createMuted('No members yet'));
+      return root;
+    }
+    members.forEach((member) => {
+      const displayName = member.username || member.email || 'Member';
+      const safeMemberId = normalizeCloudId(member.userId);
+      const isSelf = safeMemberId && safeMemberId === safeOwnerId;
+      const canManageMember = Boolean(isAdmin && safeActiveTeamId && safeMemberId && !isSelf && member.role !== 'owner');
+      const memberName = domEl('div', { className: 'sp-team-member-name' }, [
+        document.createTextNode(displayName),
+      ]);
+      if (isSelf) {
+        memberName.appendChild(document.createTextNode(' '));
+        memberName.appendChild(domEl('span', { className: 'sp-team-self', text: '(you)' }));
+      }
+      const infoChildren = [memberName];
+      if (canManageMember) {
+        const roleSelect = domEl('select', {
+          className: 'sp-team-role-select',
+          data: {
+            spTeamAction: 'update-member-role',
+            spTeamId: safeActiveTeamId,
+            spMemberId: safeMemberId,
+          },
+        });
+        SP_TEAM_ROLE_ORDER.forEach((role) => {
+          const option = domEl('option', { value: role, text: roleLabel(role) });
+          option.selected = member.role === role;
+          roleSelect.appendChild(option);
+        });
+        infoChildren.push(roleSelect);
+      } else {
+        infoChildren.push(domEl('div', { className: 'sp-team-member-role', text: member.roleLabel || roleLabel(member.role) }));
+      }
+      infoChildren.push(buildTeamPermissionChipsElement(member.permissions));
+      const rowChildren = [
+        domEl('div', { className: 'sp-team-member-avatar', text: String(displayName[0] || 'M').toUpperCase() }),
+        domEl('div', { className: 'sp-team-member-info' }, infoChildren),
+      ];
+      if (canManageMember) {
+        rowChildren.push(teamActionButton('Remove', 'remove-member', {
+          className: 'action-btn action-btn--danger sp-team-remove-btn',
+          data: { spTeamId: safeActiveTeamId, spMemberId: safeMemberId },
+        }));
+      }
+      root.appendChild(domEl('div', { className: 'sp-team-member' }, rowChildren));
+    });
+    return root;
+  }
+
+  function buildTeamPanelElement(teams, activeTeamId, members, options = {}) {
     teams = Array.isArray(teams) ? teams : [];
     members = Array.isArray(members) ? members : [];
-    const activeTeam = teams.find(t => t.id === activeTeamId);
+    const safeActiveTeamId = normalizeCloudId(activeTeamId);
+    const safeOwnerId = normalizeCloudId(getOwnerId());
+    const activeTeam = teams.find(t => normalizeCloudId(t.id) === safeActiveTeamId);
     const activeAccess = activeTeam?.myPermissions || getActiveTeamPermissions();
-    const isAdmin = Boolean(activeTeam && (activeTeam.owner_id === getOwnerId() || activeAccess.admin));
+    const isAdmin = Boolean(activeTeam && (normalizeCloudId(activeTeam.owner_id) === safeOwnerId || activeAccess.admin));
     const statusText = activeTeam
-      ? `Logged in as ${activeTeam.myRoleLabel || roleLabel(activeTeam.myRole)} for ${activeTeam.name}`
+      ? `Logged in as ${activeTeam.myRoleLabel || roleLabel(activeTeam.myRole)} for ${activeTeam.name || 'Team'}`
       : teams.length
         ? 'Logged in on your personal workspace'
         : 'Logged in with no team yet';
-    const personalWorkspaceHTML = `
-      <div class="sp-team-item ${!activeTeamId ? 'sp-team-item--active' : ''}"
-           onclick="window.SP.switchTeam('')">
-        <div class="sp-team-name">Personal Workspace</div>
-        <div class="sp-team-role">solo</div>
-      </div>
-    `;
 
-    const inlineStatusHTML = options.statusMessage
-      ? `<div class="sp-team-status-card sp-team-inline-status">
-          <div class="sp-team-status-label">${escapeHTML(options.statusLabel || 'Team status')}</div>
-          <div class="sp-team-status-title">${escapeHTML(options.statusMessage)}</div>
-          ${options.statusDetail ? `<p class="sp-muted">${escapeHTML(options.statusDetail)}</p>` : ''}
-        </div>`
-      : '';
+    const statusCard = domEl('div', { className: 'sp-team-status-card' }, [
+      domEl('div', { className: 'sp-team-status-label', text: 'Current profile' }),
+      domEl('div', { className: 'sp-team-status-title', text: statusText }),
+      activeTeam
+        ? buildTeamPermissionChipsElement(activeAccess)
+        : createMuted('Personal data stays private until you switch into a team.'),
+    ]);
 
-    const membersHTML = options.membersLoading
-      ? '<p class="sp-muted">Loading members...</p>'
-      : options.membersFailed
-        ? `<div class="sp-team-empty-state">
-            <div class="sp-team-empty-title">Members are still loading</div>
-            <p>Team switching, creating, and joining still work. Retry member loading when your connection settles.</p>
-            <div class="sp-team-actions">
-              <button class="action-btn" onclick="window.SP.showTeamModal()">Retry</button>
-            </div>
-          </div>`
-        : members.length ? members.map(m => {
-      const displayName = m.username || m.email || 'Member';
-      const isSelf = m.userId && m.userId === getOwnerId();
-      const canManageMember = isAdmin && !isSelf && m.role !== 'owner';
-      const roleControl = canManageMember
-        ? `
-            <select class="sp-team-role-select" onchange="window.SP.updateTeamMemberRole('${activeTeamId}','${m.userId}', this.value)">
-              ${SP_TEAM_ROLE_ORDER.map(role => `
-                <option value="${role}" ${m.role === role ? 'selected' : ''}>${roleLabel(role)}</option>
-              `).join('')}
-            </select>
-          `
-        : `<div class="sp-team-member-role">${m.roleLabel || roleLabel(m.role)}</div>`;
-      const removeButton = canManageMember
-        ? `<button class="action-btn action-btn--danger sp-team-remove-btn" onclick="window.SP.removeTeamMember('${activeTeamId}','${m.userId}')">Remove</button>`
-        : '';
-      return `
-        <div class="sp-team-member">
-          <div class="sp-team-member-avatar">${escapeHTML(displayName[0].toUpperCase())}</div>
-          <div class="sp-team-member-info">
-            <div class="sp-team-member-name">${escapeHTML(displayName)} ${isSelf ? '<span class="sp-team-self">(you)</span>' : ''}</div>
-            ${roleControl}
-            ${buildTeamPermissionChips(m.permissions)}
-          </div>
-          ${removeButton}
-        </div>
-      `;
-    }).join('') : '<p class="sp-muted">No members yet</p>';
+    const teamsSection = domEl('div', { className: 'sp-team-section' }, [
+      domEl('h4', { text: 'My Teams' }),
+      buildTeamItemElement({
+        label: 'Personal Workspace',
+        role: 'solo',
+        active: !safeActiveTeamId,
+      }),
+    ]);
+    let visibleTeamCount = 0;
+    teams.forEach((team) => {
+      const safeTeamId = normalizeCloudId(team.id);
+      if (!safeTeamId) return;
+      visibleTeamCount += 1;
+      teamsSection.appendChild(buildTeamItemElement({
+        label: team.name || 'Team',
+        role: team.myRoleLabel || roleLabel(team.myRole),
+        teamId: safeTeamId,
+        active: safeTeamId === safeActiveTeamId,
+        permissions: safeTeamId === safeActiveTeamId ? team.myPermissions : null,
+      }));
+    });
+    if (!visibleTeamCount) teamsSection.appendChild(createMuted('No teams yet'));
+    teamsSection.appendChild(domEl('div', { className: 'sp-team-actions' }, [
+      teamActionButton('+ Create Team', 'create'),
+      teamActionButton('Join by Code', 'join', { icon: 'ph-link' }),
+    ]));
 
-    const teamsHTML = teams.map(t => `
-      <div class="sp-team-item ${t.id === activeTeamId ? 'sp-team-item--active' : ''}"
-           onclick="window.SP.switchTeam('${t.id}')">
-        <div>
-          <div class="sp-team-name">${escapeHTML(t.name || 'Team')}</div>
-          ${t.id === activeTeamId ? buildTeamPermissionChips(t.myPermissions) : ''}
-        </div>
-        <div class="sp-team-role">${escapeHTML(t.myRoleLabel || roleLabel(t.myRole))}</div>
-      </div>
-    `).join('');
+    const children = [
+      buildTeamPanelHeaderElement(),
+      statusCard,
+    ];
+    if (options.statusMessage) {
+      children.push(buildTeamStatusCardElement(
+        options.statusLabel || 'Team status',
+        options.statusMessage,
+        options.statusDetail || ''
+      ));
+    }
+    children.push(teamsSection);
 
-    return `
-      <div class="sp-team-panel">
-        <div class="sp-team-panel-header">
-          <h3>Team Workspace</h3>
-          <button class="sp-modal-close" onclick="window.SP.closeTeamModal()"><i class="ph ph-x" aria-hidden="true"></i></button>
-        </div>
+    if (safeActiveTeamId) {
+      const membersSection = domEl('div', { className: 'sp-team-section' }, [
+        domEl('h4', { text: 'Team Members' }),
+        buildMembersElement(members, options, isAdmin, safeActiveTeamId, safeOwnerId),
+      ]);
+      const inviteChildren = [
+        domEl('label', { text: 'Invite Code' }),
+        domEl('div', { className: 'sp-team-code-row' }, [
+          domEl('code', { id: 'spTeamInviteCode', text: activeTeam?.invite_code || '-' }),
+        ]),
+        createMuted(isAdmin ? 'Share this code so others can join as read-only members.' : 'Only admins can share invite codes.'),
+      ];
+      if (isAdmin) {
+        inviteChildren[1].appendChild(teamActionButton('Copy', 'copy-invite'));
+      }
+      membersSection.appendChild(domEl('div', { className: 'sp-team-invite-code' }, inviteChildren));
+      children.push(membersSection);
 
-        <div class="sp-team-status-card">
-          <div class="sp-team-status-label">Current profile</div>
-          <div class="sp-team-status-title">${escapeHTML(statusText)}</div>
-          ${activeTeam ? buildTeamPermissionChips(activeAccess) : '<p class="sp-muted">Personal data stays private until you switch into a team.</p>'}
-        </div>
+      const chatMessages = domEl('div', { id: 'spTeamChatMessages', className: 'sp-chat-messages' }, options.chatLoading
+        ? [createMuted('Loading chat...')]
+        : []);
+      children.push(domEl('div', { className: 'sp-team-section' }, [
+        domEl('h4', { text: 'Team Chat' }),
+        chatMessages,
+        domEl('div', { className: 'sp-chat-input-row' }, [
+          domEl('input', {
+            id: 'spChatInput',
+            className: 'form-input',
+            type: 'text',
+            attrs: { placeholder: 'Type a message...' },
+            data: { spTeamAction: 'send-chat' },
+          }),
+          teamActionButton('Send', 'send-chat'),
+        ]),
+      ]));
+    }
 
-        ${inlineStatusHTML}
-
-        <div class="sp-team-section">
-          <h4>My Teams</h4>
-          ${personalWorkspaceHTML}
-          ${teamsHTML || '<p class="sp-muted">No teams yet</p>'}
-          <div class="sp-team-actions">
-            <button class="action-btn" onclick="window.SP.showCreateTeamForm()">+ Create Team</button>
-            <button class="action-btn" onclick="window.SP.showJoinTeamForm()"><i class="ph ph-link" aria-hidden="true"></i> Join by Code</button>
-          </div>
-        </div>
-
-        ${activeTeamId ? `
-        <div class="sp-team-section">
-          <h4>Team Members</h4>
-          <div id="spTeamMembers">${membersHTML}</div>
-          <div class="sp-team-invite-code">
-            <label>Invite Code</label>
-            <div class="sp-team-code-row">
-              <code id="spTeamInviteCode">${activeTeam?.invite_code || '-'}</code>
-              ${isAdmin ? '<button class="action-btn" onclick="window.SP.copyInviteCode()">Copy</button>' : ''}
-            </div>
-            <p class="sp-muted">${isAdmin ? 'Share this code so others can join as read-only members.' : 'Only admins can share invite codes.'}</p>
-          </div>
-        </div>
-        <div class="sp-team-section">
-          <h4>Team Chat</h4>
-          <div id="spTeamChatMessages" class="sp-chat-messages">${options.chatLoading ? '<p class="sp-muted">Loading chat...</p>' : ''}</div>
-          <div class="sp-chat-input-row">
-            <input type="text" id="spChatInput" class="form-input" placeholder="Type a message..." 
-                   onkeydown="if(event.key==='Enter')window.SP.sendChatMessage()">
-            <button class="action-btn" onclick="window.SP.sendChatMessage()">Send</button>
-          </div>
-        </div>
-        ` : ''}
-      </div>
-    `;
+    return domEl('div', { className: 'sp-team-panel' }, children);
   }
 
   function closeTeamModal() {
@@ -5806,125 +6068,38 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     showLoginScreen({ reason: 'team-login-prompt' });
   }
 
-  async function legacyTeamModalRemoved() {
+  function ensureTeamModalElement() {
     let modal = document.getElementById('spTeamModal');
     if (!modal) {
       modal = document.createElement('div');
       modal.id = 'spTeamModal';
       modal.className = 'sp-admin-modal';
       modal.style.display = 'none';
-      modal.innerHTML = `
-        <div class="sp-modal-backdrop" onclick="window.SP.closeTeamModal()"></div>
-        <div class="sp-modal-box" style="max-width:560px;padding:0;">
-          <div id="spTeamPanelContent" style="padding:24px;">
-            <div style="text-align:center;padding:24px;opacity:0.6;">Loading&hellip;</div>
-          </div>
-        </div>`;
+      modal.append(
+        domEl('div', { className: 'sp-modal-backdrop', data: { spTeamAction: 'close' } }),
+        domEl('div', { className: 'sp-modal-box sp-team-modal-box' }, [
+          domEl('div', { id: 'spTeamPanelContent', className: 'sp-team-panel-content' }),
+        ])
+      );
       document.body.appendChild(modal);
     }
-
-    // Show modal immediately with loading state
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-    const content = document.getElementById('spTeamPanelContent');
-    if (content) {
-      content.innerHTML = buildTeamModalStateHTML('Checking your session', 'One moment while Star Paper confirms your signed-in account.');
-    }
-
-    const session = getOwnerId()
-      ? (_session || await ensureTeamActionSession())
-      : await ensureTeamActionSession();
-
-    if (!session?.user && !getOwnerId()) {
-      if (content) {
-        content.innerHTML = buildTeamModalStateHTML(
-          'Sign in required',
-          'You need an active account session before creating or joining a team.',
-          '<div class="sp-team-actions"><button class="action-btn" onclick="window.SP.showLoginPrompt()">Log in</button></div>'
-        );
-      }
-      return;
-    }
-
-    // Hard 8-second timeout — if the DB query hangs (e.g. recursive RLS),
-    // we reject immediately so the user sees an error instead of infinite spin.
-    const withTimeout = (promise, ms, label) =>
-      Promise.race([
-        promise,
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s \u2014 check Supabase RLS policies`)), ms)
-        ),
-      ]);
-
-    try {
-      const teams   = [];
-      const active = teams.find(t => t.id === _activeTeamId);
-      setActiveTeamRole(active?.myRole || null, active?.myPermissions || null);
-      const members = _activeTeamId
-        ? await withTimeout(getTeamMembers(_activeTeamId), 8000, 'getTeamMembers')
-        : [];
-
-      document.getElementById('spTeamPanelContent').innerHTML =
-        buildTeamPanelHTML(teams, _activeTeamId, members);
-
-      // Load and subscribe to chat if team active
-      if (_activeTeamId) {
-        const msgs = await withTimeout(loadMessages(_activeTeamId), 8000, 'loadMessages');
-        renderChatMessages(msgs);
-        subscribeToTeamChat(_activeTeamId, (newMsg) => {
-          const container = document.getElementById('spTeamChatMessages');
-          if (container) {
-            container.insertAdjacentHTML('beforeend', buildMessageHTML(newMsg));
-            container.scrollTop = container.scrollHeight;
-          }
-        });
-      }
-    } catch (err) {
-      warn('showTeamModal error:', err);
-      const content = document.getElementById('spTeamPanelContent');
-      if (content) {
-        const isTimeout = err.message && err.message.includes('timed out');
-        content.innerHTML = `
-          <div class="sp-team-panel-header">
-            <h3>Team Workspace</h3>
-            <button class="sp-modal-close" onclick="document.getElementById('spTeamModal').style.display='none'"><i class="ph ph-x" aria-hidden="true"></i></button>
-          </div>
-          <p style="color:#ef4444;padding:16px 0;">
-            ${isTimeout
-              ? 'Team data is still loading. You can retry, create a team, or join by code.'
-              : 'Failed to load team data. Check your connection and try again.'}
-          </p>
-        `;
-      }
-    }
+    bindTeamModalActions(modal);
+    return modal;
   }
 
   showTeamModal = async function showTeamModal() {
-    let modal = document.getElementById('spTeamModal');
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.id = 'spTeamModal';
-      modal.className = 'sp-admin-modal';
-      modal.style.display = 'none';
-      modal.innerHTML = `
-        <div class="sp-modal-backdrop" onclick="window.SP.closeTeamModal()"></div>
-        <div class="sp-modal-box" style="max-width:560px;padding:0;">
-          <div id="spTeamPanelContent" style="padding:24px;">
-            <div style="text-align:center;padding:24px;opacity:0.6;">Loading...</div>
-          </div>
-        </div>`;
-      document.body.appendChild(modal);
-    }
+    const modal = ensureTeamModalElement();
 
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
     const content = document.getElementById('spTeamPanelContent');
-    if (content) {
-      content.innerHTML = buildTeamModalStateHTML(
+    replaceTeamPanelContent(
+      content,
+      buildTeamModalStateElement(
         'Checking your session',
         'One moment while Star Paper confirms your signed-in account.'
-      );
-    }
+      )
+    );
 
     let session = null;
     try {
@@ -5937,13 +6112,16 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
     const ownerId = session?.user?.id || getOwnerId();
     if (!ownerId) {
-      if (content) {
-        content.innerHTML = buildTeamModalStateHTML(
+      replaceTeamPanelContent(
+        content,
+        buildTeamModalStateElement(
           'Sign in required',
           'You need an active account session before creating or joining a team.',
-          '<div class="sp-team-actions"><button class="action-btn" onclick="window.SP.showLoginPrompt()">Log in</button></div>'
-        );
-      }
+          domEl('div', { className: 'sp-team-actions' }, [
+            teamActionButton('Log in', 'login'),
+          ])
+        )
+      );
       return;
     }
 
@@ -5958,7 +6136,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       const hasVisibleActiveTeam = Boolean(
         _activeTeamId && Array.isArray(nextTeams) && nextTeams.some((team) => team.id === _activeTeamId)
       );
-      content.innerHTML = buildTeamPanelHTML(nextTeams, hasVisibleActiveTeam ? _activeTeamId : null, members, panelOptions);
+      content.replaceChildren(buildTeamPanelElement(nextTeams, hasVisibleActiveTeam ? _activeTeamId : null, members, panelOptions));
     };
 
     renderTeamPanel(teams, [], {
@@ -6026,45 +6204,64 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       renderChatMessages(msgs);
       subscribeToTeamChat(_activeTeamId, (newMsg) => {
         const container = document.getElementById('spTeamChatMessages');
-        if (container) {
-          container.insertAdjacentHTML('beforeend', buildMessageHTML(newMsg));
-          container.scrollTop = container.scrollHeight;
-        }
+        appendChatMessage(container, newMsg);
       });
     } catch (err) {
       warn('showTeamModal chat load delayed:', err);
       const chatContainer = document.getElementById('spTeamChatMessages');
       if (chatContainer) {
-        chatContainer.innerHTML = `
-          <div class="sp-team-empty-state">
-            <div class="sp-team-empty-title">Chat is still loading</div>
-            <p>Team workspace actions are ready. Retry the modal if chat does not appear.</p>
-            <div class="sp-team-actions">
-              <button class="action-btn" onclick="window.SP.showTeamModal()">Retry</button>
-            </div>
-          </div>
-        `;
+        chatContainer.replaceChildren(domEl('div', { className: 'sp-team-empty-state' }, [
+          domEl('div', { className: 'sp-team-empty-title', text: 'Chat is still loading' }),
+          domEl('p', { text: 'Team workspace actions are ready. Retry the modal if chat does not appear.' }),
+          domEl('div', { className: 'sp-team-actions' }, [
+            teamActionButton('Retry', 'retry'),
+          ]),
+        ]));
       }
     }
   };
 
-  function buildMessageHTML(msg) {
+  function buildMessageElement(msg) {
     const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const isOwn = msg.user_id === getOwnerId();
-    return `
-      <div class="sp-chat-message ${isOwn ? 'sp-chat-message--own' : ''}">
-        <div class="sp-chat-message-header">
-          <span class="sp-chat-username">${escapeHTML(msg.username)}</span>
-          <span class="sp-chat-time">${time}</span>
-        </div>
-        <div class="sp-chat-bubble">${escapeHTML(msg.content)}</div>
-      </div>`;
+    const root = document.createElement('div');
+    root.className = 'sp-chat-message';
+    if (isOwn) root.classList.add('sp-chat-message--own');
+
+    const header = document.createElement('div');
+    header.className = 'sp-chat-message-header';
+
+    const username = document.createElement('span');
+    username.className = 'sp-chat-username';
+    username.textContent = msg.username || 'Teammate';
+
+    const timeEl = document.createElement('span');
+    timeEl.className = 'sp-chat-time';
+    timeEl.textContent = time;
+
+    const bubble = document.createElement('div');
+    bubble.className = 'sp-chat-bubble';
+    bubble.textContent = msg.content || '';
+
+    header.append(username, timeEl);
+    root.append(header, bubble);
+    return root;
+  }
+
+  function appendChatMessage(container, msg) {
+    if (!container) return;
+    container.appendChild(buildMessageElement(msg || {}));
+    container.scrollTop = container.scrollHeight;
   }
 
   function renderChatMessages(msgs) {
     const container = document.getElementById('spTeamChatMessages');
     if (!container) return;
-    container.innerHTML = msgs.map(buildMessageHTML).join('');
+    const fragment = document.createDocumentFragment();
+    (Array.isArray(msgs) ? msgs : []).forEach((msg) => {
+      fragment.appendChild(buildMessageElement(msg || {}));
+    });
+    container.replaceChildren(fragment);
     container.scrollTop = container.scrollHeight;
   }
 
@@ -6090,10 +6287,10 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       // fires getMyTeams(), otherwise two lock acquisitions overlap and race.
       const team = await createTeam(name.trim());
       if (copyPersonalData) {
-        toastSafe('Success', `Team "${escapeHTML(team.name)}" created. Copying your personal data...`);
+        toastSafe('Success', `Team "${team.name}" created. Copying your personal data...`);
         await migratePersonalDataToTeam(team.id);
       } else {
-        toastSafe('Success', `Team "${escapeHTML(team.name)}" created. Starting empty.`);
+        toastSafe('Success', `Team "${team.name}" created. Starting empty.`);
         await persistActiveTeam(team.id, {
           persistRemote: true,
           role: 'owner',
@@ -6114,7 +6311,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     if (!code?.trim()) return;
     try {
       const team = await joinTeamByCode(code.trim());
-      toastSafe('Success', `Joined team "${escapeHTML(team.name)}"!`);
+      toastSafe('Success', `Joined team "${team.name}"!`);
       // 500ms yield — lets Postgres fully commit the new team_members row
       // before getMyTeams() reads it back inside showTeamModal.
       await new Promise(r => setTimeout(r, 500));
@@ -6127,38 +6324,77 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
   function copyInviteCode() {
     const code = document.getElementById('spTeamInviteCode')?.textContent;
-    if (!code) return;
+    if (!/^[0-9a-f]{32}$/.test(String(code || '').trim())) {
+      toastSafe('Invite unavailable', 'Only team admins can share invite codes.');
+      return;
+    }
     navigator.clipboard?.writeText(code).then(() => toastSafe('Success', 'Invite code copied!'));
   }
 
   // ── CURRENCY SWITCHER UI ──────────────────────────────────────────────────────
+  function bindCurrencyModalActions(modal) {
+    if (!modal || modal.dataset.spCurrencyActionsBound === '1') return;
+    modal.dataset.spCurrencyActionsBound = '1';
+    modal.addEventListener('click', (event) => {
+      const actionEl = event.target.closest('[data-sp-currency-action]');
+      if (!actionEl || !modal.contains(actionEl)) return;
+      event.preventDefault();
+      const action = actionEl.dataset.spCurrencyAction;
+      if (action === 'close') {
+        modal.style.display = 'none';
+      } else if (action === 'set') {
+        const code = actionEl.dataset.spCurrencyCode;
+        if (Object.prototype.hasOwnProperty.call(SP_CURRENCIES, code)) {
+          setCurrency(code);
+          modal.style.display = 'none';
+        }
+      }
+    });
+  }
+
   function showCurrencySwitcher() {
     let modal = document.getElementById('spCurrencyModal');
     if (!modal) {
       modal = document.createElement('div');
       modal.id = 'spCurrencyModal';
       modal.className = 'sp-admin-modal';
-      modal.innerHTML = `
-        <div class="sp-modal-backdrop" onclick="this.parentElement.style.display='none'"></div>
-        <div class="sp-modal-box" style="max-width:380px;">
-          <button class="sp-modal-close" onclick="document.getElementById('spCurrencyModal').style.display='none'">&#x2715;</button>
-          <div style="padding:8px 0 16px;">
-            <div class="sp-modal-title">Currency</div>
-            <div class="sp-modal-subtitle">All figures will convert in real-time</div>
-          </div>
-          <div id="spCurrencyList" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;"></div>
-        </div>`;
+      modal.append(
+        domEl('div', { className: 'sp-modal-backdrop', data: { spCurrencyAction: 'close' } }),
+        domEl('div', { className: 'sp-modal-box sp-currency-modal-box' }, [
+          domEl('button', {
+            className: 'sp-modal-close',
+            type: 'button',
+            text: '\u00d7',
+            data: { spCurrencyAction: 'close' },
+            ariaLabel: 'Close',
+          }),
+          domEl('div', { className: 'sp-currency-modal-header' }, [
+            domEl('div', { className: 'sp-modal-title', text: 'Currency' }),
+            domEl('div', { className: 'sp-modal-subtitle', text: 'All figures will convert in real-time' }),
+          ]),
+          domEl('div', { id: 'spCurrencyList', className: 'sp-currency-list' }),
+        ])
+      );
       document.body.appendChild(modal);
     }
+    bindCurrencyModalActions(modal);
 
     const list = document.getElementById('spCurrencyList');
-    list.innerHTML = Object.entries(SP_CURRENCIES).map(([code, c]) => `
-      <button class="action-btn ${_currency === code ? 'action-btn--active' : ''}"
-              style="text-align:left;justify-content:flex-start;gap:12px;font-size:13px;"
-              onclick="window.SP.setCurrency('${code}');document.getElementById('spCurrencyModal').style.display='none'">
-        <strong>${c.symbol}</strong> ${c.name} <span style="margin-left:auto;opacity:.5">${code}</span>
-      </button>
-    `).join('');
+    if (list) {
+      const options = Object.entries(SP_CURRENCIES).map(([code, currency]) => {
+        const button = domEl('button', {
+          className: `action-btn sp-currency-option${_currency === code ? ' action-btn--active' : ''}`,
+          type: 'button',
+          data: { spCurrencyAction: 'set', spCurrencyCode: code },
+        }, [
+          domEl('strong', { text: currency.symbol }),
+          document.createTextNode(` ${currency.name} `),
+          domEl('span', { className: 'sp-currency-code', text: code }),
+        ]);
+        return button;
+      });
+      list.replaceChildren(...options);
+    }
 
     modal.style.display = 'flex';
   }
@@ -6193,8 +6429,9 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       btn.id = 'spTeamBtn';
       btn.className = 'sp-team-sidebar-btn';
       btn.title = 'Team workspace';
-      btn.innerHTML = `<i class="ph ph-users-three" aria-hidden="true" style="font-size:16px;"></i> Team`;
-      btn.onclick = () => window.SP.showTeamModal();
+      btn.type = 'button';
+      btn.append(phosphorIcon('ph-users-three'), document.createTextNode(' Team'));
+      btn.addEventListener('click', () => window.SP.showTeamModal());
       stack.appendChild(btn);
     }
   }
@@ -6448,6 +6685,14 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         if (window.location.hash) window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
       } catch (_err) {}
       showLandingScreen({ keepLoader: true, flowId, reason: 'logout-complete', minDelayMs: 350 }); // FIXED: mobile/desktop logout returns to landing with Supabase artifacts cleared.
+      setTimeout(() => {
+        try {
+          const landing = document.getElementById('landingScreen');
+          if (landing?.classList.contains('screen-active') && typeof window.hideBootLoaderElement === 'function') {
+            window.hideBootLoaderElement({ force: true });
+          }
+        } catch (_err) {}
+      }, 450);
       if (typeof window.toastInfo === 'function') window.toastInfo('Logged out');
 
       // AUTH FIXPACK 2 2026-04-27 (Fix 10): more lenient integrity check.
@@ -6890,100 +7135,3 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
 })();
 
-// ── SIDEBAR BUTTON STYLES (injected dynamically) ──────────────────────────────
-(function injectTeamCurrencyStyles() {
-  const style = document.createElement('style');
-  style.textContent = `
-    #spCurrencyBadge {
-      font-weight: 700;
-      color: var(--gold-amber, #d4a843);
-      min-width: 28px;
-    }
-    #spCurrencyModal .sp-modal-box {
-      border: 1px solid var(--sp-shell-border-strong, rgba(212,168,67,.3));
-      border-radius: 24px;
-      background: var(--sp-shell-panel, #14151c);
-      color: var(--text-primary, #f5f1e8);
-      box-shadow: 0 28px 80px rgba(0,0,0,.48);
-    }
-    #spCurrencyList .action-btn {
-      border-radius: 16px;
-      border-color: var(--sp-shell-border, rgba(58,61,82,.84));
-      background: rgba(255,255,255,.035);
-      color: var(--text-primary, #f5f1e8);
-      font-weight: 750;
-      justify-content: space-between;
-    }
-    #spCurrencyList .action-btn span {
-      color: var(--text-primary, #f5f1e8);
-    }
-    #spCurrencyList .action-btn--active,
-    #spCurrencyList .action-btn:hover {
-      border-color: var(--sp-shell-border-strong, rgba(212,168,67,.3));
-      background: rgba(212,168,67,.12);
-      color: #ffe8a3;
-    }
-    body.light-theme #spCurrencyList .action-btn {
-      color: #20160a;
-      background: rgba(255,255,255,.92);
-      border-color: rgba(120,94,33,.32);
-    }
-    body.light-theme #spCurrencyList .action-btn span {
-      color: #20160a;
-    }
-    /* Team panel */
-    .sp-team-panel { display:flex; flex-direction:column; gap:16px; }
-    .sp-team-panel-header { display:flex; justify-content:space-between; align-items:center; }
-    .sp-team-panel-header h3 { margin:0; font-size:16px; }
-    .sp-team-section h4 { font-size:12px; text-transform:uppercase; letter-spacing:.07em; color:var(--text-muted,#888); margin:0 0 10px; }
-    .sp-team-item { display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-radius:8px; border:1px solid var(--border,rgba(255,255,255,.08)); cursor:pointer; margin-bottom:6px; }
-    .sp-team-item--active { border-color:var(--gold,#FFB300); background:rgba(255,179,0,.05); }
-    .sp-team-name { font-size:14px; font-weight:700; color:var(--text-primary,#f5f1e8); }
-    .sp-team-role { font-size:11px; text-transform:uppercase; color:var(--gold,#FFB300); }
-    .sp-team-member { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border,rgba(255,255,255,.05)); }
-    .sp-team-member-avatar { width:32px; height:32px; border-radius:50%; background:var(--gold,#FFB300); color:#000; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex-shrink:0; }
-    .sp-team-member-name { font-size:13px; font-weight:700; color:var(--text-primary,#f5f1e8); }
-    .sp-team-member-role { font-size:11px; color:var(--text-muted,#888); text-transform:uppercase; }
-    .sp-team-invite-code { margin-top:10px; }
-    .sp-team-invite-code label { font-size:12px; text-transform:uppercase; color:var(--text-muted,#888); display:block; margin-bottom:6px; }
-    .sp-team-code-row { display:flex; align-items:center; gap:8px; }
-    .sp-team-code-row code { background:var(--surface,rgba(255,255,255,.05)); padding:6px 12px; border-radius:6px; font-size:16px; letter-spacing:.1em; font-family:monospace; }
-    .sp-team-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
-    .sp-team-status-card,
-    .sp-team-empty-state {
-      border:1px solid var(--sp-shell-border,rgba(58,61,82,.84));
-      background:rgba(255,255,255,.045);
-      border-radius:14px;
-      padding:14px;
-    }
-    .sp-team-status-label { font-size:11px; text-transform:uppercase; color:var(--gold,#FFB300); letter-spacing:.07em; }
-    .sp-team-status-title,
-    .sp-team-empty-title { color:var(--text-primary,#f5f1e8); font-weight:800; margin-top:4px; }
-    .sp-team-empty-state p { color:var(--text-secondary,#d9d0be); line-height:1.5; }
-    .sp-team-permissions { display:flex; gap:5px; flex-wrap:wrap; margin-top:6px; }
-    .sp-team-permissions span {
-      border:1px solid rgba(212,168,67,.28);
-      background:rgba(212,168,67,.1);
-      color:#ffe8a3;
-      border-radius:999px;
-      padding:2px 7px;
-      font-size:10px;
-      font-weight:750;
-    }
-    .sp-team-self { color:var(--text-muted,#aaa); font-weight:600; }
-    /* Chat */
-    .sp-chat-messages { max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding:8px 0; border-top:1px solid var(--border,rgba(255,255,255,.08)); }
-    .sp-chat-message { display:flex; flex-direction:column; gap:2px; max-width:88%; }
-    .sp-chat-message--own { align-self:flex-end; }
-    .sp-chat-message-header { display:flex; gap:8px; align-items:baseline; }
-    .sp-chat-username { font-size:11px; font-weight:700; color:var(--gold,#FFB300); }
-    .sp-chat-time { font-size:10px; color:var(--text-muted,#888); }
-    .sp-chat-bubble { background:var(--surface,rgba(255,255,255,.06)); padding:8px 12px; border-radius:12px; font-size:13px; line-height:1.4; }
-    .sp-chat-message--own .sp-chat-bubble { background:rgba(255,179,0,.12); }
-    .sp-chat-input-row { display:flex; gap:8px; margin-top:10px; }
-    .sp-chat-input-row .form-input { flex:1; font-size:13px; }
-    .sp-muted { font-size:12px; color:var(--text-muted,#888); margin:0; }
-    .action-btn--active { background:var(--gold,#FFB300) !important; color:#000 !important; }
-  `;
-  document.head.appendChild(style);
-})();

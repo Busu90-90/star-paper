@@ -23,16 +23,20 @@
   }
 
   function applyRootState() {
+    var premOff = readFlag(PREM_OFF_KEY);
+    var handcraftOff = readFlag(HANDCRAFT_OFF_KEY);
     var allowed = isAllowed();
     var html = document.documentElement;
     html.classList.toggle('sp-shell-refined', allowed);
     html.classList.toggle('sp-shell-off', !allowed);
+    html.classList.toggle('sp-prem-off', premOff);
+    html.classList.toggle('sp-handcraft-off', premOff || handcraftOff);
     if (document.body) {
       document.body.classList.toggle('sp-shell-refined', allowed);
       document.body.classList.toggle('sp-shell-off', !allowed);
+      document.body.classList.toggle('sp-prem-off', premOff);
+      document.body.classList.toggle('sp-handcraft-off', premOff || handcraftOff);
     }
-    if (readFlag(PREM_OFF_KEY)) html.classList.add('sp-prem-off');
-    if (readFlag(PREM_OFF_KEY) || readFlag(HANDCRAFT_OFF_KEY)) html.classList.add('sp-handcraft-off');
     return allowed;
   }
 
@@ -126,7 +130,7 @@
   document.addEventListener('sp-render', scheduleEnhance);
   global.addEventListener('sp:app-boot-helpers-ready', scheduleEnhance);
   global.addEventListener('storage', function (event) {
-    if ([SHELL_OFF_KEY, PREM_OFF_KEY, HANDCRAFT_OFF_KEY].indexOf(event.key) >= 0) applyRootState();
+    if ([SHELL_OFF_KEY, PREM_OFF_KEY, HANDCRAFT_OFF_KEY].indexOf(event.key) >= 0) scheduleEnhance();
   });
 
   if (document.readyState === 'loading') {

@@ -19,13 +19,27 @@
         return days[date.getDay()];
     }
 
-    function escapeText(value) {
-        return String(value ?? "")
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#39;");
+    function appendText(parent, value) {
+        parent.appendChild(document.createTextNode(String(value ?? "")));
+    }
+
+    function createElement(tagName, classNames = [], text = "") {
+        const element = document.createElement(tagName);
+        classNames.filter(Boolean).forEach((className) => element.classList.add(className));
+        if (text !== "") element.textContent = String(text);
+        return element;
+    }
+
+    function normalizeAlertType(type) {
+        const value = String(type || "info").toLowerCase();
+        return ["urgent", "warning", "info"].includes(value) ? value : "info";
+    }
+
+    function normalizeAlertAction(action) {
+        const value = String(action || "");
+        return ["editBooking", "showBookingDetails", "showPendingBookings", "showBalancesDue"].includes(value)
+            ? value
+            : "";
     }
 
     function updateTodayBoard() {
@@ -155,43 +169,61 @@
         if (!container) return;
 
         if (alerts.length === 0) {
-            container.innerHTML = `
-                <div class="timeline-item dashboard-stream-item dashboard-alert-item dashboard-alert-item--clear">
-                    <div class="timeline-meta">
-                        <div class="timeline-title">
-                            <span class="dashboard-alert-icon" aria-hidden="true">OK</span>
-                            <span>All Clear</span>
-                        </div>
-                        <div class="timeline-sub">No urgent items require your attention today</div>
-                    </div>
-                    <div class="timeline-amount">
-                        <span class="booking-status-pill status-confirmed">CLEAR</span>
-                    </div>
-                </div>
-            `;
+            container.replaceChildren(createAlertItem({
+                type: "clear",
+                title: "All Clear",
+                message: "No urgent items require your attention today",
+                icon: "OK",
+                label: "CLEAR",
+                statusClass: "status-confirmed"
+            }));
             return;
         }
 
-        container.innerHTML = alerts.map((alert) => {
-            const alertType = String(alert?.type || "info").toLowerCase();
-            return `
-            <div
-                class="timeline-item dashboard-stream-item dashboard-alert-item dashboard-alert-item--${escapeText(alertType)} ${alert.action ? "dashboard-alert-item--clickable" : ""}"
-                ${alert.action ? `data-alert-action="${escapeText(alert.action)}" data-alert-id="${escapeText(alert.actionData || "")}" tabindex="0" role="button"` : ""}
-            >
-                <div class="timeline-meta">
-                    <div class="timeline-title">
-                        <span class="dashboard-alert-icon" aria-hidden="true">${escapeText(getAlertIcon(alertType))}</span>
-                        <span>${escapeText(alert.title)}</span>
-                    </div>
-                    <div class="timeline-sub">${escapeText(alert.message)}</div>
-                </div>
-                <div class="timeline-amount">
-                    <span class="booking-status-pill ${escapeText(getAlertStatusClass(alertType))}">${escapeText(getAlertLabel(alertType))}</span>
-                </div>
-            </div>
-        `;
-        }).join("");
+        const fragment = document.createDocumentFragment();
+        alerts.forEach((alert) => fragment.appendChild(createAlertItem(alert)));
+        container.replaceChildren(fragment);
+    }
+
+    function createAlertItem(alert) {
+        const alertType = normalizeAlertType(alert?.type);
+        const action = normalizeAlertAction(alert?.action);
+        const itemType = alert?.type === "clear" ? "clear" : alertType;
+        const item = createElement("div", [
+            "timeline-item",
+            "dashboard-stream-item",
+            "dashboard-alert-item",
+            `dashboard-alert-item--${itemType}`,
+            action ? "dashboard-alert-item--clickable" : ""
+        ]);
+
+        if (action) {
+            item.dataset.alertAction = action;
+            item.dataset.alertId = String(alert?.actionData || "");
+            item.tabIndex = 0;
+            item.setAttribute("role", "button");
+        }
+
+        const meta = createElement("div", ["timeline-meta"]);
+        const title = createElement("div", ["timeline-title"]);
+        const icon = createElement("span", ["dashboard-alert-icon"], alert?.icon || getAlertIcon(alertType));
+        icon.setAttribute("aria-hidden", "true");
+        const titleText = createElement("span", [], alert?.title || "");
+        title.append(icon, titleText);
+
+        const sub = createElement("div", ["timeline-sub"]);
+        appendText(sub, alert?.message || "");
+        meta.append(title, sub);
+
+        const amount = createElement("div", ["timeline-amount"]);
+        const label = createElement(
+            "span",
+            ["booking-status-pill", alert?.statusClass || getAlertStatusClass(alertType)],
+            alert?.label || getAlertLabel(alertType)
+        );
+        amount.appendChild(label);
+        item.append(meta, amount);
+        return item;
     }
 
     function getAlertIcon(type) {

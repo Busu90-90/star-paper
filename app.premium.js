@@ -318,8 +318,8 @@
     var ns = 'http://www.w3.org/2000/svg';
     var svg = document.createElementNS(ns, 'svg');
     svg.setAttribute('id', 'spPremSparkDefs');
+    svg.setAttribute('class', 'sp-prem-spark-defs');
     svg.setAttribute('width', '0'); svg.setAttribute('height', '0');
-    svg.setAttribute('style', 'position:absolute;pointer-events:none;');
     svg.setAttribute('aria-hidden', 'true');
 
     var defs = document.createElementNS(ns, 'defs');

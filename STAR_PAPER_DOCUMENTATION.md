@@ -113,6 +113,67 @@ Owns:
 
 - task rendering and task interactions
 
+### `app.globe.js`
+
+Owns:
+
+- Schedule > Global three.js scene setup
+- local-first land topology loading from `assets/world-atlas/land-50m.json`
+- globe pins, route arcs, selected-booking sync, deselection, and reduced-motion behavior
+- desktop right-side itinerary panel, mobile `peek` / `half` / `full` bottom sheet, compact itinerary rows, and booking detail sheet interactions
+- UGX integer itinerary/detail money formatting and local-calendar booking date parsing
+
+The land data lookup order is local asset, then built-in continent fallback. The local asset and the vendored `assets/vendor/` globe modules should stay in the service worker app shell list so the globe remains sharp when public CDN access is blocked. The globe module is presentation-only; it must not change Supabase booking queries, schema shape, or the underlying self-hosted Three.js scene/data pipeline.
+
+### `app.shell.js`
+
+Owns:
+
+- refined app-shell class toggles
+- the `localStorage.sp_shell_refined_off` kill switch
+- runtime polish classes for app-owned cards, primary actions, and in-app links
+
+The shell relayer is additive and gated by `html.sp-shell-refined`. It must also respect `sp_prem_off` and `sp_handcraft_off`, because those switches are intended to disable premium/handcrafted visual relayering across the app shell.
+
+### `app.boot-head.js`, `app.boot-flags.js`, and `app.boot-body.js`
+
+Own:
+
+- canonical legacy-host redirect cleanup
+- public landing route isolation before the app shell renders
+- prepaint premium/handcraft/shell kill-switch classes
+- initial body theme classes
+- auth-callback and app-route boot-loader forcing
+
+These files replace the old inline boot scripts in `index.html`. They must remain versioned in `index.html` and precached in `sw.js`, and `script-src` must stay free of `'unsafe-inline'`.
+
+### `app.public-pages.js`
+
+Owns the public root HTML manifest: root file markers plus clean and `.html` landing route pairs. `app.boot-head.js`, `sw.js`, and `scripts/preflight.mjs` consume this file so the browser redirect guard, service-worker landing map, `.netlifyignore` unignore set, `_redirects`, and service-worker app shell stay synchronized.
+
+### `public-page-head.js` and `public-page-theme.js`
+
+Own the intentionally public landing-page boot path:
+
+- app-route hash stripping on public landing URLs
+- prepaint premium/handcraft kill-switch class setup
+- initial body theme class setup
+- landing theme-toggle binding
+
+These files replace the old inline scripts in `how-it-works.html`, `proof.html`, and `testimonials.html`. Public landing pages must not contain inline script blocks, inline style blocks, or inline style attributes, and their document CSP must not allow `'unsafe-inline'`.
+
+### `app.root-shell.js`
+
+Owns:
+
+- deferred Sentry, Chart.js, jsPDF, globe, premium, and shell module loading
+- the local-development cold-start guard
+- the `file://` local-file warning
+- the capture-phase root-shell `data-action` bridge
+- forgot-password UI wiring
+
+This file must load before `supabase.js` and `app.js` as a deferred root-shell asset. It keeps late executable runtime code out of `index.html`; `index.html` must not contain inline script blocks or an import map.
+
 ### `schema.sql`
 
 Defines:
@@ -122,6 +183,8 @@ Defines:
 - RLS policies
 - RPCs
 - indexes
+
+The live project must match the runtime contract in `schema.sql`, not just the initial `CREATE TABLE` blocks. Required contract surfaces include the bootstrap RPC (`get_bootstrap_payload`), profile/team RPC helpers, `profiles.last_active_team_id`, `team_members.permissions`, business-table `team_id`/`legacy_id` scope columns, and scope-aware legacy-ID uniqueness for personal versus team rows.
 
 ### `sw.js`
 
@@ -166,6 +229,7 @@ Expected behavior:
 - rehydrate cloud data
 - restore the last in-app section/tab
 - return directly to the app shell
+- clear any boot overlay once the app shell is visibly painted, even if an older boot flow id has been superseded
 
 ### Sign-out
 
@@ -174,7 +238,10 @@ Expected behavior:
 - clear runtime session state
 - set the logout guard
 - remove authoritative local auth remnants
+- remove exact and chunked Supabase auth storage keys from both `localStorage` and `sessionStorage`
 - return to login or landing as designed
+- clear `sp-force-boot` after the landing screen is active so the public screen is not hidden behind the signing-out overlay
+- treat `sp_logged_out = '1'` as stronger than app-route hashes such as `#dashboard` or `#settings`; refresh after logout must stay public until the user signs in again
 
 ## Workspace Model
 
@@ -346,9 +413,45 @@ The following old categories must not drive authenticated runtime truth:
 - local BBF entries
 - local closing-thought records
 
+## Production Security Model
+
+The browser app is public code. Treat everything shipped to Netlify as readable by an attacker, including the Supabase anon key in `supabase.js`. The live data boundary is Supabase Auth plus RLS, authenticated RPC grants, actor checks inside SECURITY DEFINER functions, and team role permissions.
+
+Security invariants enforced in source and preflight:
+
+- Team invite codes are high-entropy bearer tokens. `schema.sql` uses `pgcrypto` and `public.generate_team_invite_code()` to create 32-character hex codes, rotates malformed/legacy codes when applied, makes `join_team_by_code` reject malformed codes before lookup, and exposes invite codes only through owner/admin RPC context rather than direct `teams` table SELECT.
+- Team role permissions are database-bound. `team_members.permissions` must match `public.team_role_permissions(role)` so direct Supabase updates cannot assign custom privilege JSON outside the role model.
+- Anonymous RPC execution is allowlisted. Signup username availability is intentionally anonymous; sensitive team/profile/data RPCs must remain authenticated-only.
+- Every public table created by `schema.sql` must have RLS enabled, RLS policies must explicitly target `TO authenticated`, and SECURITY DEFINER functions must set the fixed path `search_path = public, pg_temp`.
+- Workspace scope is immutable after row creation for business data and team membership. Trigger guards reject updates that change `owner_id`, `user_id`, or `team_id`; copying personal data into a team must insert cloned rows rather than reassign existing rows.
+- Browser-rendered images must go through safe source normalization. Upload inputs accept PNG, JPG, WebP, or GIF only; avatars are capped at 1 MB and receipt/proof images at 4 MB.
+- Empty-state CTAs, receipt/proof buttons, nudge dismissals, task controls, report filters, globe actions, calendar date picks, root-shell controls, and team modal actions dispatch through data attributes or explicit event listeners instead of raw JavaScript strings. Booking map/calendar labels, dashboard activity/cash-flow timeline labels, artist dropdown options, command-palette labels/subtitles, and fallback icon text must be escaped before insertion into HTML; command-palette and nudge icon rendering must use validated Phosphor icon class tokens. Globe hover cards, itinerary rows, sheet cards, and detail panels, report focus text, Today Board alerts, handcraft arrow icons, toast titles/messages, and team chat messages must render through DOM nodes or `textContent`, team member mutations must validate UUID-shaped IDs, and legacy admin user rows must escape local identity fields before rendering. Root boot/runtime logic lives in `app.boot-*.js`, `public-page-*.js`, and `app.root-shell.js`; preflight fails if script blocks drift back into inline public root HTML, if landing pages regain inline style allowances, if loose icon/raw palette HTML sinks return, if dashboard timeline or artist-option stored-data sinks return, if any `app.globe.js` `innerHTML`, handcraft icon `innerHTML`, report focus `innerHTML`, Today Board alert `innerHTML`, task/report/globe inline event handlers, or Supabase team chat `insertAdjacentHTML` return.
+- Service worker navigation caching must treat OAuth/Supabase callback parameters as fetch-only. URLs containing `access_token`, `refresh_token`, `code`, `state`, token metadata, or auth error parameters must not be written to or read from Cache Storage under the sensitive request URL.
+- Classic CDN script resources are pinned with SRI where browser-supported. `app.browser-assets.js` owns those CDN URLs/hashes plus local browser asset versions and vendored runtime file hashes. Brand fonts, Phosphor icon CSS/fonts, and the Schedule > Global Three.js, OrbitControls, and TopoJSON client modules are self-hosted under `assets/vendor/`; CSP and preflight must reject public-CDN regressions, version drift, or vendored hash drift for those runtime paths. `script-src` and `style-src-elem` must not include `'unsafe-inline'`; root and public landing document CSPs use `style-src-attr 'none'`. The remaining security work is the audited `app.js` `innerHTML` surface and any future dynamic style-attribute emitters, not a required CDN/font exception.
+
+Security review artifacts:
+
+- `star-paper-main-threat-model.md`
+- `security_best_practices_report.md`
+
+Those Markdown files are intentionally ignored from Netlify deploy packaging.
+
 ## Deployment and Caching
 
 Star Paper uses a service worker, so deploy hygiene matters.
+
+### Public root HTML contract
+
+Netlify publishes the repository root. Root HTML is therefore deny-by-default in `.netlifyignore`, and preflight fails if any root HTML file exists outside this intentional public set:
+
+- `index.html`
+- `how-it-works.html`
+- `proof.html`
+- `testimonials.html`
+
+Each public root HTML file must carry `<meta name="star-paper:public-root" ...>`. Use `content="app-shell"` for `index.html` and `content="public-landing"` for the public landing pages. Any new public landing page must be added to `app.public-pages.js`, the `.netlifyignore` unignore rules, the service-worker app shell, and `_redirects` if it needs an extensionless URL; preflight fails if those surfaces drift. Public landing pages must stay on the external `public-page-head.js` and `public-page-theme.js` boot path and must not reintroduce inline script/style blocks, inline style attributes, or CSP `unsafe-inline`.
+
+Do not keep private briefs, ad hoc documents, tests, local agent config, schemas, package metadata, or scripts in the deployable surface. Deleted files disappear from the live production URL after the next successful atomic deploy, but old Netlify deploy permalinks may retain prior deploy contents until those deploys are deleted or expire.
 
 ### Deploy together
 
@@ -358,13 +461,24 @@ When shipping auth, sync, reports, or boot changes, deploy matching versions of:
 - `supabase.js`
 - `app.reports.js`
 - `app.tasks.js`
+- `app.globe.js`
+- `app.shell.js`
+- `app.boot-head.js`
+- `app.boot-flags.js`
+- `app.boot-body.js`
+- `app.root-shell.js`
 - `styles.css`
+- `styles.shell.css`
 - `index.html`
+- `app.public-pages.js`
+- `app.browser-assets.js`
 - `sw.js`
+- `assets/world-atlas/land-50m.json`
+- `assets/vendor/` runtime assets
 
 ### Cache rule
 
-If asset versions change in `index.html`, the service worker cache list and cache name must be updated as well.
+If browser asset versions or pinned CDN hashes change, update `app.browser-assets.js` first. The service worker cache list, runtime loaders, static HTML, and vendor CSS references must match that contract or preflight fails.
 
 This prevents stale boot or auth code from surviving a deploy.
 

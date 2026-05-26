@@ -1,11 +1,14 @@
--- ============================================================
--- STAR PAPER — SUPABASE DATABASE SCHEMA
+﻿-- ============================================================
+-- STAR PAPER â€” SUPABASE DATABASE SCHEMA
 -- Run this entire file in your Supabase SQL Editor
--- Dashboard → SQL Editor → New Query → Paste → Run
+-- Dashboard â†’ SQL Editor â†’ New Query â†’ Paste â†’ Run
 -- ============================================================
 
 -- Enable UUID extension (usually already enabled)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- High-entropy invite codes use pgcrypto's CSPRNG. Supabase projects normally
+-- have this extension available, and CREATE EXTENSION is idempotent here.
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- New functions should not become publicly executable by default.
 ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
@@ -25,7 +28,7 @@ BEGIN
 END $$;
 
 -- ============================================================
--- PROFILES (extends auth.users — one row per user)
+-- PROFILES (extends auth.users â€” one row per user)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS public.profiles (
   id           UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -45,20 +48,55 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
 CREATE POLICY "Users can view their own profile"
   ON public.profiles FOR SELECT
+  TO authenticated
   USING (auth.uid() = id);
 
 DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 CREATE POLICY "Users can update their own profile"
   ON public.profiles FOR UPDATE
-  USING (auth.uid() = id);
+  TO authenticated
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
 
 DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can insert their own profile"
   ON public.profiles FOR INSERT
+  TO authenticated
   WITH CHECK (auth.uid() = id);
 
 ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS username TEXT;
+ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS preferred_theme TEXT DEFAULT 'dark';
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS preferred_currency TEXT DEFAULT 'UGX';
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS bio TEXT DEFAULT '';
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS avatar TEXT DEFAULT '';
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+UPDATE public.profiles
+SET username = lower('user_' || substr(replace(id::TEXT, '-', ''), 1, 12))
+WHERE username IS NULL OR trim(username) = '';
+
+ALTER TABLE public.profiles
+  ALTER COLUMN username SET NOT NULL;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'profiles_username_key'
+  ) THEN
+    ALTER TABLE public.profiles ADD CONSTRAINT profiles_username_key UNIQUE (username);
+  END IF;
+END $$;
 
 -- Auto-create profile on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -103,7 +141,7 @@ BEGIN
   SET email = EXCLUDED.email;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
@@ -122,7 +160,7 @@ RETURNS BOOLEAN
 LANGUAGE sql
 SECURITY DEFINER
 STABLE
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
   SELECT NOT EXISTS (
     SELECT 1 FROM public.profiles
@@ -138,6 +176,20 @@ DROP FUNCTION IF EXISTS public.get_email_for_username(TEXT);
 REVOKE EXECUTE ON FUNCTION public.is_username_available(TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.is_username_available(TEXT) TO anon, authenticated;
 
+-- Team invite codes are public bearer tokens. Keep them long, random, and
+-- lower-case URL-safe so a leaked or guessed code is the only join path.
+CREATE OR REPLACE FUNCTION public.generate_team_invite_code()
+RETURNS TEXT
+LANGUAGE sql
+VOLATILE
+SET search_path = public, pg_temp
+AS $$
+  SELECT encode(gen_random_bytes(16), 'hex');
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.generate_team_invite_code() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.generate_team_invite_code() TO authenticated;
+
 -- ============================================================
 -- TEAMS
 -- ============================================================
@@ -145,11 +197,48 @@ CREATE TABLE IF NOT EXISTS public.teams (
   id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name         TEXT NOT NULL,
   owner_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  invite_code  TEXT UNIQUE DEFAULT substr(md5(random()::TEXT), 1, 8),
+  invite_code  TEXT UNIQUE DEFAULT public.generate_team_invite_code(),
   created_at   TIMESTAMPTZ DEFAULT NOW()
 );
 
 ALTER TABLE public.teams ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.teams
+  ADD COLUMN IF NOT EXISTS invite_code TEXT;
+ALTER TABLE public.teams
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
+UPDATE public.teams
+SET invite_code = public.generate_team_invite_code()
+WHERE invite_code IS NULL
+   OR trim(invite_code) = ''
+   OR invite_code !~ '^[0-9a-f]{32}$';
+
+ALTER TABLE public.teams
+  ALTER COLUMN invite_code SET DEFAULT public.generate_team_invite_code();
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'teams_invite_code_key'
+  ) THEN
+    ALTER TABLE public.teams ADD CONSTRAINT teams_invite_code_key UNIQUE (invite_code);
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'teams_invite_code_format_check'
+  ) THEN
+    ALTER TABLE public.teams
+      ADD CONSTRAINT teams_invite_code_format_check
+      CHECK (invite_code ~ '^[0-9a-f]{32}$');
+  END IF;
+END $$;
+
+-- Invite codes are bearer tokens. Direct table reads only expose non-secret team
+-- metadata; admin-visible invite codes are returned through SECURITY DEFINER RPCs.
+REVOKE SELECT ON public.teams FROM PUBLIC, anon, authenticated;
+GRANT SELECT (id, name, owner_id, created_at) ON public.teams TO authenticated;
 
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS last_active_team_id UUID REFERENCES public.teams(id) ON DELETE SET NULL;
@@ -196,7 +285,7 @@ CREATE OR REPLACE FUNCTION public.team_role_permissions(p_role TEXT)
 RETURNS JSONB
 LANGUAGE sql
 IMMUTABLE
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
   SELECT CASE lower(coalesce(p_role, 'viewer'))
     WHEN 'owner' THEN '{"read":true,"edit":true,"finance":true,"reports":true,"admin":true}'::jsonb
@@ -211,14 +300,21 @@ $$;
 
 UPDATE public.team_members
 SET permissions = public.team_role_permissions(role)
-WHERE permissions = '{}'::jsonb OR permissions IS NULL;
+WHERE permissions IS DISTINCT FROM public.team_role_permissions(role);
+
+ALTER TABLE public.team_members
+  DROP CONSTRAINT IF EXISTS team_members_permissions_match_role_check;
+
+ALTER TABLE public.team_members
+  ADD CONSTRAINT team_members_permissions_match_role_check
+  CHECK (permissions = public.team_role_permissions(role));
 
 CREATE OR REPLACE FUNCTION public.has_team_permission(p_team_id UUID, p_permission TEXT)
 RETURNS BOOLEAN
 LANGUAGE sql
 SECURITY DEFINER
 STABLE
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
   SELECT EXISTS (
     SELECT 1
@@ -251,7 +347,7 @@ RETURNS SETOF UUID
 LANGUAGE sql
 SECURITY DEFINER
 STABLE
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
   SELECT team_id
   FROM public.team_members
@@ -268,7 +364,7 @@ RETURNS SETOF UUID
 LANGUAGE sql
 SECURITY DEFINER
 STABLE
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
   SELECT * FROM public.get_my_team_ids(uid);
 $$;
@@ -276,7 +372,7 @@ $$;
 REVOKE EXECUTE ON FUNCTION public.getmyteamids(UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.getmyteamids(UUID) TO authenticated;
 
--- ── ATOMIC TEAM CREATION ────────────────────────────────────────────────────────
+-- â”€â”€ ATOMIC TEAM CREATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- Creates a team AND adds the creator as owner in a single transaction.
 -- Using one RPC call = one Supabase auth-lock acquisition instead of two,
 -- which eliminates the "AbortError: Lock broken by steal" race condition.
@@ -294,12 +390,17 @@ RETURNS TABLE (
 LANGUAGE sql
 SECURITY DEFINER
 STABLE
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
   SELECT
     t.id,
     t.name,
-    t.invite_code,
+    CASE
+      WHEN tm.role IN ('owner', 'admin')
+        OR COALESCE(tm.permissions, public.team_role_permissions(tm.role)) @> '{"admin": true}'::jsonb
+      THEN t.invite_code
+      ELSE NULL
+    END AS invite_code,
     t.owner_id,
     tm.role AS my_role,
     COALESCE(tm.permissions, public.team_role_permissions(tm.role)) AS my_permissions
@@ -321,7 +422,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 STABLE
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_actor UUID := auth.uid();
@@ -356,7 +457,12 @@ BEGIN
     jsonb_build_object(
       'id', t.id,
       'name', t.name,
-      'invite_code', t.invite_code,
+      'invite_code', CASE
+        WHEN tm.role IN ('owner', 'admin')
+          OR COALESCE(tm.permissions, public.team_role_permissions(tm.role)) @> '{"admin": true}'::jsonb
+        THEN t.invite_code
+        ELSE NULL
+      END,
       'owner_id', t.owner_id,
       'my_role', tm.role,
       'my_permissions', COALESCE(tm.permissions, public.team_role_permissions(tm.role))
@@ -549,7 +655,7 @@ RETURNS TABLE (
 LANGUAGE sql
 SECURITY DEFINER
 STABLE
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
   SELECT
     tm.user_id,
@@ -558,7 +664,12 @@ AS $$
     tm.joined_at,
     p.id AS profile_id,
     p.username,
-    p.email,
+    CASE
+      WHEN tm.user_id = auth.uid()
+        OR public.has_team_permission(p_team_id, 'admin')
+      THEN p.email
+      ELSE NULL
+    END AS email,
     p.avatar
   FROM public.team_members tm
   LEFT JOIN public.profiles p ON p.id = tm.user_id
@@ -582,7 +693,7 @@ CREATE OR REPLACE FUNCTION public.create_team_with_member(
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_actor UUID;
@@ -620,7 +731,7 @@ $$;
 REVOKE EXECUTE ON FUNCTION public.create_team_with_member(TEXT, UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.create_team_with_member(TEXT, UUID) TO authenticated;
 
--- ── ATOMIC TEAM JOIN ────────────────────────────────────────────────────────────
+-- â”€â”€ ATOMIC TEAM JOIN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- Looks up a team by invite code and inserts the member row in one transaction.
 -- Replaces two sequential SELECT + INSERT calls, eliminating the lock contention
 -- that caused "AbortError: Lock broken by steal" during the join flow.
@@ -632,11 +743,12 @@ CREATE OR REPLACE FUNCTION public.join_team_by_code(
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_actor UUID;
   v_team public.teams;
+  v_invite_code TEXT;
 BEGIN
   v_actor := auth.uid();
   IF v_actor IS NULL THEN
@@ -644,24 +756,35 @@ BEGIN
   END IF;
 
   IF p_user_id IS NOT NULL AND p_user_id <> v_actor THEN
-    RAISE EXCEPTION 'Cannot join a team for another user';
+    RAISE EXCEPTION 'Invalid invite request';
   END IF;
 
-  -- Look up team by normalised invite code
+  v_invite_code := lower(trim(coalesce(p_invite_code, '')));
+  IF v_invite_code !~ '^[0-9a-f]{32}$' THEN
+    RAISE EXCEPTION 'Invalid invite code';
+  END IF;
+
+  -- Look up team by a high-entropy invite code; short legacy codes fail closed.
   SELECT * INTO v_team
   FROM public.teams
-  WHERE invite_code = lower(trim(p_invite_code));
+  WHERE invite_code = v_invite_code;
 
   IF v_team.id IS NULL THEN
     RAISE EXCEPTION 'Invalid invite code';
   END IF;
 
-  -- Insert member (ignore duplicate — already a member is fine)
+  -- Insert member (ignore duplicate â€” already a member is fine)
   INSERT INTO public.team_members (team_id, user_id, role, permissions)
   VALUES (v_team.id, v_actor, 'viewer', public.team_role_permissions('viewer'))
   ON CONFLICT (team_id, user_id) DO NOTHING;
 
-  RETURN row_to_json(v_team);
+  RETURN json_build_object(
+    'id', v_team.id,
+    'name', v_team.name,
+    'invite_code', NULL,
+    'owner_id', v_team.owner_id,
+    'created_at', v_team.created_at
+  );
 END;
 $$;
 
@@ -671,6 +794,7 @@ GRANT EXECUTE ON FUNCTION public.join_team_by_code(TEXT, UUID) TO authenticated;
 DROP POLICY IF EXISTS "Team members can view other team members" ON public.team_members;
 CREATE POLICY "Team members can view other team members"
   ON public.team_members FOR SELECT
+  TO authenticated
   USING (
     team_id IN (SELECT public.get_my_team_ids(auth.uid()))
   );
@@ -680,11 +804,12 @@ DROP POLICY IF EXISTS "Team owners can update members" ON public.team_members;
 DROP POLICY IF EXISTS "Team owners can delete members" ON public.team_members;
 -- Split the old FOR ALL into UPDATE and DELETE only.
 -- A FOR ALL policy applies its USING clause to SELECT as well, causing a second
--- cross-table RLS evaluation on every team_members SELECT — this is what causes
+-- cross-table RLS evaluation on every team_members SELECT â€” this is what causes
 -- the 8-second timeout for non-owner members. Limiting to UPDATE+DELETE means
 -- the expensive EXISTS(FROM teams ...) check only runs when actually needed.
 CREATE POLICY "Team owners can update members"
   ON public.team_members FOR UPDATE
+  TO authenticated
   USING (
     team_members.role <> 'owner'
     AND public.has_team_permission(team_members.team_id, 'admin')
@@ -696,6 +821,7 @@ CREATE POLICY "Team owners can update members"
 
 CREATE POLICY "Team owners can delete members"
   ON public.team_members FOR DELETE
+  TO authenticated
   USING (
     team_members.role <> 'owner'
     AND public.has_team_permission(team_members.team_id, 'admin')
@@ -708,6 +834,7 @@ DROP POLICY IF EXISTS "Users can join teams (insert themselves)" ON public.team_
 DROP POLICY IF EXISTS "Team members can view their teams" ON public.teams;
 CREATE POLICY "Team members can view their teams"
   ON public.teams FOR SELECT
+  TO authenticated
   USING (
     auth.uid() = owner_id OR
     id IN (SELECT public.get_my_team_ids(auth.uid()))
@@ -716,11 +843,14 @@ CREATE POLICY "Team members can view their teams"
 DROP POLICY IF EXISTS "Only owner can update team" ON public.teams;
 CREATE POLICY "Only owner can update team"
   ON public.teams FOR UPDATE
-  USING (auth.uid() = owner_id);
+  TO authenticated
+  USING (auth.uid() = owner_id)
+  WITH CHECK (auth.uid() = owner_id);
 
 DROP POLICY IF EXISTS "Authenticated users can create teams" ON public.teams;
 CREATE POLICY "Authenticated users can create teams"
   ON public.teams FOR INSERT
+  TO authenticated
   WITH CHECK (auth.uid() = owner_id);
 
 -- ============================================================
@@ -745,13 +875,22 @@ CREATE TABLE IF NOT EXISTS public.artists (
 ALTER TABLE public.artists ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.artists
+  ADD COLUMN IF NOT EXISTS legacy_id TEXT;
+ALTER TABLE public.artists
+  ADD COLUMN IF NOT EXISTS team_id UUID REFERENCES public.teams(id) ON DELETE CASCADE;
+ALTER TABLE public.artists
   ADD COLUMN IF NOT EXISTS strategic_goal TEXT DEFAULT '';
 ALTER TABLE public.artists
   ADD COLUMN IF NOT EXISTS avatar TEXT DEFAULT '';
+ALTER TABLE public.artists
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.artists
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 DROP POLICY IF EXISTS "Users can read artists" ON public.artists;
 CREATE POLICY "Users can read artists"
   ON public.artists FOR SELECT
+  TO authenticated
   USING (
     (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND EXISTS (
@@ -764,6 +903,7 @@ CREATE POLICY "Users can read artists"
 DROP POLICY IF EXISTS "Managers can insert artists" ON public.artists;
 CREATE POLICY "Managers can insert artists"
   ON public.artists FOR INSERT
+  TO authenticated
   WITH CHECK (
     (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND owner_id = auth.uid() AND public.has_team_permission(artists.team_id, 'edit'))
@@ -772,6 +912,7 @@ CREATE POLICY "Managers can insert artists"
 DROP POLICY IF EXISTS "Managers can update artists" ON public.artists;
 CREATE POLICY "Managers can update artists"
   ON public.artists FOR UPDATE
+  TO authenticated
   USING (
     (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(artists.team_id, 'edit'))
@@ -784,6 +925,7 @@ CREATE POLICY "Managers can update artists"
 DROP POLICY IF EXISTS "Managers can delete artists" ON public.artists;
 CREATE POLICY "Managers can delete artists"
   ON public.artists FOR DELETE
+  TO authenticated
   USING (
     (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(artists.team_id, 'edit'))
@@ -817,11 +959,28 @@ CREATE TABLE IF NOT EXISTS public.bookings (
 ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.bookings
+  ADD COLUMN IF NOT EXISTS legacy_id TEXT;
+ALTER TABLE public.bookings
+  ADD COLUMN IF NOT EXISTS team_id UUID REFERENCES public.teams(id) ON DELETE CASCADE;
+ALTER TABLE public.bookings
+  ADD COLUMN IF NOT EXISTS artist_id UUID REFERENCES public.artists(id) ON DELETE SET NULL;
+ALTER TABLE public.bookings
+  ADD COLUMN IF NOT EXISTS artist_name TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.bookings
   ADD COLUMN IF NOT EXISTS capacity INTEGER DEFAULT 0;
+ALTER TABLE public.bookings
+  ADD COLUMN IF NOT EXISTS location_type TEXT DEFAULT 'uganda';
+ALTER TABLE public.bookings
+  ADD COLUMN IF NOT EXISTS location TEXT DEFAULT '';
+ALTER TABLE public.bookings
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.bookings
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 DROP POLICY IF EXISTS "Users can read bookings" ON public.bookings;
 CREATE POLICY "Users can read bookings"
   ON public.bookings FOR SELECT
+  TO authenticated
   USING (
     (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND EXISTS (
@@ -834,6 +993,7 @@ CREATE POLICY "Users can read bookings"
 DROP POLICY IF EXISTS "Managers can insert bookings" ON public.bookings;
 CREATE POLICY "Managers can insert bookings"
   ON public.bookings FOR INSERT
+  TO authenticated
   WITH CHECK (
     (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND owner_id = auth.uid() AND public.has_team_permission(bookings.team_id, 'edit'))
@@ -842,6 +1002,7 @@ CREATE POLICY "Managers can insert bookings"
 DROP POLICY IF EXISTS "Managers can update bookings" ON public.bookings;
 CREATE POLICY "Managers can update bookings"
   ON public.bookings FOR UPDATE
+  TO authenticated
   USING (
     (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(bookings.team_id, 'edit'))
@@ -854,6 +1015,7 @@ CREATE POLICY "Managers can update bookings"
 DROP POLICY IF EXISTS "Managers can delete bookings" ON public.bookings;
 CREATE POLICY "Managers can delete bookings"
   ON public.bookings FOR DELETE
+  TO authenticated
   USING (
     (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(bookings.team_id, 'edit'))
@@ -881,13 +1043,22 @@ CREATE TABLE IF NOT EXISTS public.expenses (
 ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.expenses
+  ADD COLUMN IF NOT EXISTS legacy_id TEXT;
+ALTER TABLE public.expenses
+  ADD COLUMN IF NOT EXISTS team_id UUID REFERENCES public.teams(id) ON DELETE CASCADE;
+ALTER TABLE public.expenses
   ADD COLUMN IF NOT EXISTS artist_id UUID REFERENCES public.artists(id) ON DELETE SET NULL;
 ALTER TABLE public.expenses
   ADD COLUMN IF NOT EXISTS artist_name TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.expenses
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.expenses
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 DROP POLICY IF EXISTS "Users can read expenses" ON public.expenses;
 CREATE POLICY "Users can read expenses"
   ON public.expenses FOR SELECT
+  TO authenticated
   USING (
     (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND (
@@ -899,6 +1070,7 @@ CREATE POLICY "Users can read expenses"
 DROP POLICY IF EXISTS "Managers can insert expenses" ON public.expenses;
 CREATE POLICY "Managers can insert expenses"
   ON public.expenses FOR INSERT
+  TO authenticated
   WITH CHECK (
     (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND owner_id = auth.uid() AND public.has_team_permission(expenses.team_id, 'finance'))
@@ -907,6 +1079,7 @@ CREATE POLICY "Managers can insert expenses"
 DROP POLICY IF EXISTS "Managers can update expenses" ON public.expenses;
 CREATE POLICY "Managers can update expenses"
   ON public.expenses FOR UPDATE
+  TO authenticated
   USING (
     (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(expenses.team_id, 'finance'))
@@ -919,6 +1092,7 @@ CREATE POLICY "Managers can update expenses"
 DROP POLICY IF EXISTS "Managers can delete expenses" ON public.expenses;
 CREATE POLICY "Managers can delete expenses"
   ON public.expenses FOR DELETE
+  TO authenticated
   USING (
     (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(expenses.team_id, 'finance'))
@@ -949,13 +1123,22 @@ CREATE TABLE IF NOT EXISTS public.other_income (
 ALTER TABLE public.other_income ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.other_income
+  ADD COLUMN IF NOT EXISTS legacy_id TEXT;
+ALTER TABLE public.other_income
+  ADD COLUMN IF NOT EXISTS team_id UUID REFERENCES public.teams(id) ON DELETE CASCADE;
+ALTER TABLE public.other_income
   ADD COLUMN IF NOT EXISTS artist_id UUID REFERENCES public.artists(id) ON DELETE SET NULL;
 ALTER TABLE public.other_income
   ADD COLUMN IF NOT EXISTS artist_name TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.other_income
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.other_income
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 DROP POLICY IF EXISTS "Users can read other income" ON public.other_income;
 CREATE POLICY "Users can read other income"
   ON public.other_income FOR SELECT
+  TO authenticated
   USING (
     (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND (
@@ -967,6 +1150,7 @@ CREATE POLICY "Users can read other income"
 DROP POLICY IF EXISTS "Managers can insert other income" ON public.other_income;
 CREATE POLICY "Managers can insert other income"
   ON public.other_income FOR INSERT
+  TO authenticated
   WITH CHECK (
     (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND owner_id = auth.uid() AND public.has_team_permission(other_income.team_id, 'finance'))
@@ -975,6 +1159,7 @@ CREATE POLICY "Managers can insert other income"
 DROP POLICY IF EXISTS "Managers can update other income" ON public.other_income;
 CREATE POLICY "Managers can update other income"
   ON public.other_income FOR UPDATE
+  TO authenticated
   USING (
     (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(other_income.team_id, 'finance'))
@@ -987,6 +1172,7 @@ CREATE POLICY "Managers can update other income"
 DROP POLICY IF EXISTS "Managers can delete other income" ON public.other_income;
 CREATE POLICY "Managers can delete other income"
   ON public.other_income FOR DELETE
+  TO authenticated
   USING (
     (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(other_income.team_id, 'finance'))
@@ -999,7 +1185,7 @@ CREATE OR REPLACE FUNCTION public.sync_finance_artist_fields()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_artist_owner UUID;
@@ -1130,9 +1316,29 @@ CREATE TABLE IF NOT EXISTS public.audience_metrics (
 
 ALTER TABLE public.audience_metrics ENABLE ROW LEVEL SECURITY;
 
+ALTER TABLE public.audience_metrics
+  ADD COLUMN IF NOT EXISTS legacy_id TEXT;
+ALTER TABLE public.audience_metrics
+  ADD COLUMN IF NOT EXISTS team_id UUID REFERENCES public.teams(id) ON DELETE CASCADE;
+ALTER TABLE public.audience_metrics
+  ADD COLUMN IF NOT EXISTS artist_id UUID REFERENCES public.artists(id) ON DELETE CASCADE;
+ALTER TABLE public.audience_metrics
+  ADD COLUMN IF NOT EXISTS artist_name TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.audience_metrics
+  ADD COLUMN IF NOT EXISTS social_followers NUMERIC DEFAULT 0;
+ALTER TABLE public.audience_metrics
+  ADD COLUMN IF NOT EXISTS spotify_listeners NUMERIC DEFAULT 0;
+ALTER TABLE public.audience_metrics
+  ADD COLUMN IF NOT EXISTS youtube_listeners NUMERIC DEFAULT 0;
+ALTER TABLE public.audience_metrics
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.audience_metrics
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 DROP POLICY IF EXISTS "Users can read audience metrics" ON public.audience_metrics;
 CREATE POLICY "Users can read audience metrics"
   ON public.audience_metrics FOR SELECT
+  TO authenticated
   USING (
     (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND EXISTS (
@@ -1145,6 +1351,7 @@ CREATE POLICY "Users can read audience metrics"
 DROP POLICY IF EXISTS "Managers can insert audience metrics" ON public.audience_metrics;
 CREATE POLICY "Managers can insert audience metrics"
   ON public.audience_metrics FOR INSERT
+  TO authenticated
   WITH CHECK (
     (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND owner_id = auth.uid() AND public.has_team_permission(audience_metrics.team_id, 'edit'))
@@ -1153,6 +1360,7 @@ CREATE POLICY "Managers can insert audience metrics"
 DROP POLICY IF EXISTS "Managers can update audience metrics" ON public.audience_metrics;
 CREATE POLICY "Managers can update audience metrics"
   ON public.audience_metrics FOR UPDATE
+  TO authenticated
   USING (
     (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(audience_metrics.team_id, 'edit'))
@@ -1165,6 +1373,7 @@ CREATE POLICY "Managers can update audience metrics"
 DROP POLICY IF EXISTS "Managers can delete audience metrics" ON public.audience_metrics;
 CREATE POLICY "Managers can delete audience metrics"
   ON public.audience_metrics FOR DELETE
+  TO authenticated
   USING (
     (team_id IS NULL AND owner_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(audience_metrics.team_id, 'edit'))
@@ -1206,6 +1415,7 @@ ALTER TABLE public.revenue_goals
 DROP POLICY IF EXISTS "Users can read revenue goals" ON public.revenue_goals;
 CREATE POLICY "Users can read revenue goals"
   ON public.revenue_goals FOR SELECT
+  TO authenticated
   USING (
     (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND (
@@ -1217,6 +1427,7 @@ CREATE POLICY "Users can read revenue goals"
 DROP POLICY IF EXISTS "Managers can insert revenue goals" ON public.revenue_goals;
 CREATE POLICY "Managers can insert revenue goals"
   ON public.revenue_goals FOR INSERT
+  TO authenticated
   WITH CHECK (
     (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(revenue_goals.team_id, 'finance'))
@@ -1225,6 +1436,7 @@ CREATE POLICY "Managers can insert revenue goals"
 DROP POLICY IF EXISTS "Managers can update revenue goals" ON public.revenue_goals;
 CREATE POLICY "Managers can update revenue goals"
   ON public.revenue_goals FOR UPDATE
+  TO authenticated
   USING (
     (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(revenue_goals.team_id, 'finance'))
@@ -1237,6 +1449,7 @@ CREATE POLICY "Managers can update revenue goals"
 DROP POLICY IF EXISTS "Managers can delete revenue goals" ON public.revenue_goals;
 CREATE POLICY "Managers can delete revenue goals"
   ON public.revenue_goals FOR DELETE
+  TO authenticated
   USING (
     (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(revenue_goals.team_id, 'finance'))
@@ -1278,6 +1491,7 @@ ALTER TABLE public.bbf_entries
 DROP POLICY IF EXISTS "Users can read BBF" ON public.bbf_entries;
 CREATE POLICY "Users can read BBF"
   ON public.bbf_entries FOR SELECT
+  TO authenticated
   USING (
     (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND (
@@ -1289,6 +1503,7 @@ CREATE POLICY "Users can read BBF"
 DROP POLICY IF EXISTS "Managers can insert BBF" ON public.bbf_entries;
 CREATE POLICY "Managers can insert BBF"
   ON public.bbf_entries FOR INSERT
+  TO authenticated
   WITH CHECK (
     (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(bbf_entries.team_id, 'finance'))
@@ -1297,6 +1512,7 @@ CREATE POLICY "Managers can insert BBF"
 DROP POLICY IF EXISTS "Managers can update BBF" ON public.bbf_entries;
 CREATE POLICY "Managers can update BBF"
   ON public.bbf_entries FOR UPDATE
+  TO authenticated
   USING (
     (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(bbf_entries.team_id, 'finance'))
@@ -1309,6 +1525,7 @@ CREATE POLICY "Managers can update BBF"
 DROP POLICY IF EXISTS "Managers can delete BBF" ON public.bbf_entries;
 CREATE POLICY "Managers can delete BBF"
   ON public.bbf_entries FOR DELETE
+  TO authenticated
   USING (
     (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(bbf_entries.team_id, 'finance'))
@@ -1330,9 +1547,17 @@ CREATE TABLE IF NOT EXISTS public.tasks (
 
 ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 
+ALTER TABLE public.tasks
+  ADD COLUMN IF NOT EXISTS team_id UUID REFERENCES public.teams(id) ON DELETE CASCADE;
+ALTER TABLE public.tasks
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.tasks
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 DROP POLICY IF EXISTS "Users can read tasks" ON public.tasks;
 CREATE POLICY "Users can read tasks"
   ON public.tasks FOR SELECT
+  TO authenticated
   USING (
     (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND EXISTS (
@@ -1345,6 +1570,7 @@ CREATE POLICY "Users can read tasks"
 DROP POLICY IF EXISTS "Managers can insert tasks" ON public.tasks;
 CREATE POLICY "Managers can insert tasks"
   ON public.tasks FOR INSERT
+  TO authenticated
   WITH CHECK (
     (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND user_id = auth.uid() AND public.has_team_permission(tasks.team_id, 'edit'))
@@ -1353,6 +1579,7 @@ CREATE POLICY "Managers can insert tasks"
 DROP POLICY IF EXISTS "Managers can update tasks" ON public.tasks;
 CREATE POLICY "Managers can update tasks"
   ON public.tasks FOR UPDATE
+  TO authenticated
   USING (
     (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(tasks.team_id, 'edit'))
@@ -1365,6 +1592,7 @@ CREATE POLICY "Managers can update tasks"
 DROP POLICY IF EXISTS "Managers can delete tasks" ON public.tasks;
 CREATE POLICY "Managers can delete tasks"
   ON public.tasks FOR DELETE
+  TO authenticated
   USING (
     (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(tasks.team_id, 'edit'))
@@ -1406,6 +1634,7 @@ ALTER TABLE public.closing_thoughts
 DROP POLICY IF EXISTS "Users can read closing thoughts" ON public.closing_thoughts;
 CREATE POLICY "Users can read closing thoughts"
   ON public.closing_thoughts FOR SELECT
+  TO authenticated
   USING (
     (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND EXISTS (
@@ -1418,6 +1647,7 @@ CREATE POLICY "Users can read closing thoughts"
 DROP POLICY IF EXISTS "Managers can insert closing thoughts" ON public.closing_thoughts;
 CREATE POLICY "Managers can insert closing thoughts"
   ON public.closing_thoughts FOR INSERT
+  TO authenticated
   WITH CHECK (
     (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(closing_thoughts.team_id, 'edit'))
@@ -1426,6 +1656,7 @@ CREATE POLICY "Managers can insert closing thoughts"
 DROP POLICY IF EXISTS "Managers can update closing thoughts" ON public.closing_thoughts;
 CREATE POLICY "Managers can update closing thoughts"
   ON public.closing_thoughts FOR UPDATE
+  TO authenticated
   USING (
     (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(closing_thoughts.team_id, 'edit'))
@@ -1438,6 +1669,7 @@ CREATE POLICY "Managers can update closing thoughts"
 DROP POLICY IF EXISTS "Managers can delete closing thoughts" ON public.closing_thoughts;
 CREATE POLICY "Managers can delete closing thoughts"
   ON public.closing_thoughts FOR DELETE
+  TO authenticated
   USING (
     (team_id IS NULL AND user_id = auth.uid()) OR
     (team_id IS NOT NULL AND public.has_team_permission(closing_thoughts.team_id, 'edit'))
@@ -1459,9 +1691,17 @@ CREATE TABLE IF NOT EXISTS public.messages (
 
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
+ALTER TABLE public.messages
+  ADD COLUMN IF NOT EXISTS msg_type TEXT DEFAULT 'text';
+ALTER TABLE public.messages
+  ADD COLUMN IF NOT EXISTS pinned BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.messages
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
 DROP POLICY IF EXISTS "Team members can view messages" ON public.messages;
 CREATE POLICY "Team members can view messages"
   ON public.messages FOR SELECT
+  TO authenticated
   USING (
     EXISTS (
       SELECT 1 FROM public.team_members
@@ -1473,6 +1713,7 @@ CREATE POLICY "Team members can view messages"
 DROP POLICY IF EXISTS "Team members can post messages" ON public.messages;
 CREATE POLICY "Team members can post messages"
   ON public.messages FOR INSERT
+  TO authenticated
   WITH CHECK (
     user_id = auth.uid() AND
     EXISTS (
@@ -1485,7 +1726,135 @@ CREATE POLICY "Team members can post messages"
 DROP POLICY IF EXISTS "Users can delete own messages" ON public.messages;
 CREATE POLICY "Users can delete own messages"
   ON public.messages FOR DELETE
+  TO authenticated
   USING (user_id = auth.uid());
+
+-- ============================================================
+-- WORKSPACE SCOPE IMMUTABILITY
+-- ============================================================
+-- RLS checks row visibility and the proposed new row separately. These triggers
+-- close the row-reassignment gap where a crafted UPDATE could otherwise move a
+-- visible team row into a personal workspace, another team, or another owner.
+CREATE OR REPLACE FUNCTION public.prevent_owner_workspace_reassignment()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF NEW.owner_id IS DISTINCT FROM OLD.owner_id THEN
+    RAISE EXCEPTION 'Workspace owner cannot be changed';
+  END IF;
+
+  IF NEW.team_id IS DISTINCT FROM OLD.team_id THEN
+    RAISE EXCEPTION 'Workspace scope cannot be changed';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.prevent_user_workspace_reassignment()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF NEW.user_id IS DISTINCT FROM OLD.user_id THEN
+    RAISE EXCEPTION 'Workspace user cannot be changed';
+  END IF;
+
+  IF NEW.team_id IS DISTINCT FROM OLD.team_id THEN
+    RAISE EXCEPTION 'Workspace scope cannot be changed';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.prevent_team_member_reassignment()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF NEW.team_id IS DISTINCT FROM OLD.team_id THEN
+    RAISE EXCEPTION 'Team membership cannot be moved between teams';
+  END IF;
+
+  IF NEW.user_id IS DISTINCT FROM OLD.user_id THEN
+    RAISE EXCEPTION 'Team membership cannot be moved between users';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.prevent_owner_workspace_reassignment() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.prevent_user_workspace_reassignment() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.prevent_team_member_reassignment() FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS prevent_artists_workspace_reassignment ON public.artists;
+CREATE TRIGGER prevent_artists_workspace_reassignment
+  BEFORE UPDATE OF owner_id, team_id ON public.artists
+  FOR EACH ROW
+  EXECUTE FUNCTION public.prevent_owner_workspace_reassignment();
+
+DROP TRIGGER IF EXISTS prevent_bookings_workspace_reassignment ON public.bookings;
+CREATE TRIGGER prevent_bookings_workspace_reassignment
+  BEFORE UPDATE OF owner_id, team_id ON public.bookings
+  FOR EACH ROW
+  EXECUTE FUNCTION public.prevent_owner_workspace_reassignment();
+
+DROP TRIGGER IF EXISTS prevent_expenses_workspace_reassignment ON public.expenses;
+CREATE TRIGGER prevent_expenses_workspace_reassignment
+  BEFORE UPDATE OF owner_id, team_id ON public.expenses
+  FOR EACH ROW
+  EXECUTE FUNCTION public.prevent_owner_workspace_reassignment();
+
+DROP TRIGGER IF EXISTS prevent_other_income_workspace_reassignment ON public.other_income;
+CREATE TRIGGER prevent_other_income_workspace_reassignment
+  BEFORE UPDATE OF owner_id, team_id ON public.other_income
+  FOR EACH ROW
+  EXECUTE FUNCTION public.prevent_owner_workspace_reassignment();
+
+DROP TRIGGER IF EXISTS prevent_audience_metrics_workspace_reassignment ON public.audience_metrics;
+CREATE TRIGGER prevent_audience_metrics_workspace_reassignment
+  BEFORE UPDATE OF owner_id, team_id ON public.audience_metrics
+  FOR EACH ROW
+  EXECUTE FUNCTION public.prevent_owner_workspace_reassignment();
+
+DROP TRIGGER IF EXISTS prevent_tasks_workspace_reassignment ON public.tasks;
+CREATE TRIGGER prevent_tasks_workspace_reassignment
+  BEFORE UPDATE OF user_id, team_id ON public.tasks
+  FOR EACH ROW
+  EXECUTE FUNCTION public.prevent_user_workspace_reassignment();
+
+DROP TRIGGER IF EXISTS prevent_revenue_goals_workspace_reassignment ON public.revenue_goals;
+CREATE TRIGGER prevent_revenue_goals_workspace_reassignment
+  BEFORE UPDATE OF user_id, team_id ON public.revenue_goals
+  FOR EACH ROW
+  EXECUTE FUNCTION public.prevent_user_workspace_reassignment();
+
+DROP TRIGGER IF EXISTS prevent_bbf_entries_workspace_reassignment ON public.bbf_entries;
+CREATE TRIGGER prevent_bbf_entries_workspace_reassignment
+  BEFORE UPDATE OF user_id, team_id ON public.bbf_entries
+  FOR EACH ROW
+  EXECUTE FUNCTION public.prevent_user_workspace_reassignment();
+
+DROP TRIGGER IF EXISTS prevent_closing_thoughts_workspace_reassignment ON public.closing_thoughts;
+CREATE TRIGGER prevent_closing_thoughts_workspace_reassignment
+  BEFORE UPDATE OF user_id, team_id ON public.closing_thoughts
+  FOR EACH ROW
+  EXECUTE FUNCTION public.prevent_user_workspace_reassignment();
+
+DROP TRIGGER IF EXISTS prevent_team_members_reassignment ON public.team_members;
+CREATE TRIGGER prevent_team_members_reassignment
+  BEFORE UPDATE OF user_id, team_id ON public.team_members
+  FOR EACH ROW
+  EXECUTE FUNCTION public.prevent_team_member_reassignment();
 
 -- ============================================================
 -- INDEXES for performance
@@ -1525,47 +1894,43 @@ CREATE INDEX IF NOT EXISTS idx_team_members_team ON public.team_members(team_id)
 CREATE INDEX IF NOT EXISTS idx_messages_team_created ON public.messages(team_id, created_at DESC);
 
 -- ============================================================
--- UNIQUE CONSTRAINTS for legacy_id + owner_id
--- Required for cloud-first upsert deduplication (legacy numeric IDs
--- from localStorage records need a stable conflict target that is NOT
--- the auto-generated UUID primary key).
--- Run these once — they are idempotent (IF NOT EXISTS guard via DO block).
+-- Scope-aware uniqueness for legacy-origin IDs.
+-- The runtime resolves rows by id/legacy_id inside the active workspace before
+-- insert/update, so owner-only uniqueness is too broad: it can block a team row
+-- when the same user's personal workspace already has the same legacy_id.
+-- Run these once â€” they are idempotent (IF NOT EXISTS guard via DO block).
 -- ============================================================
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'bookings_legacy_id_owner_id_key'
-  ) THEN
-    ALTER TABLE public.bookings ADD CONSTRAINT bookings_legacy_id_owner_id_key
-      UNIQUE (legacy_id, owner_id);
-  END IF;
-END $$;
+ALTER TABLE public.bookings DROP CONSTRAINT IF EXISTS bookings_legacy_id_owner_id_key;
+CREATE UNIQUE INDEX IF NOT EXISTS bookings_legacy_id_owner_personal_idx
+  ON public.bookings(legacy_id, owner_id)
+  WHERE team_id IS NULL AND legacy_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS bookings_legacy_id_team_idx
+  ON public.bookings(legacy_id, team_id)
+  WHERE team_id IS NOT NULL AND legacy_id IS NOT NULL;
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'expenses_legacy_id_owner_id_key'
-  ) THEN
-    ALTER TABLE public.expenses ADD CONSTRAINT expenses_legacy_id_owner_id_key
-      UNIQUE (legacy_id, owner_id);
-  END IF;
-END $$;
+ALTER TABLE public.expenses DROP CONSTRAINT IF EXISTS expenses_legacy_id_owner_id_key;
+CREATE UNIQUE INDEX IF NOT EXISTS expenses_legacy_id_owner_personal_idx
+  ON public.expenses(legacy_id, owner_id)
+  WHERE team_id IS NULL AND legacy_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS expenses_legacy_id_team_idx
+  ON public.expenses(legacy_id, team_id)
+  WHERE team_id IS NOT NULL AND legacy_id IS NOT NULL;
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'other_income_legacy_id_owner_id_key'
-  ) THEN
-    ALTER TABLE public.other_income ADD CONSTRAINT other_income_legacy_id_owner_id_key
-      UNIQUE (legacy_id, owner_id);
-  END IF;
-END $$;
+ALTER TABLE public.other_income DROP CONSTRAINT IF EXISTS other_income_legacy_id_owner_id_key;
+CREATE UNIQUE INDEX IF NOT EXISTS other_income_legacy_id_owner_personal_idx
+  ON public.other_income(legacy_id, owner_id)
+  WHERE team_id IS NULL AND legacy_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS other_income_legacy_id_team_idx
+  ON public.other_income(legacy_id, team_id)
+  WHERE team_id IS NOT NULL AND legacy_id IS NOT NULL;
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'artists_legacy_id_owner_id_key'
-  ) THEN
-    ALTER TABLE public.artists ADD CONSTRAINT artists_legacy_id_owner_id_key
-      UNIQUE (legacy_id, owner_id);
-  END IF;
-END $$;
+ALTER TABLE public.artists DROP CONSTRAINT IF EXISTS artists_legacy_id_owner_id_key;
+CREATE UNIQUE INDEX IF NOT EXISTS artists_legacy_id_owner_personal_idx
+  ON public.artists(legacy_id, owner_id)
+  WHERE team_id IS NULL AND legacy_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS artists_legacy_id_team_idx
+  ON public.artists(legacy_id, team_id)
+  WHERE team_id IS NOT NULL AND legacy_id IS NOT NULL;
 
 DO $$ BEGIN
   IF NOT EXISTS (

@@ -3,60 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="star-paper:public-root" content="public-landing">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:; frame-ancestors 'none';">
     <title>Star Paper Testimonials</title>
-    <script>
-      (function stripAppHashFromPublicPage() {
-        var appHashPattern = /^(artists|bookings|calendar|dashboard|expenses|financials|global|money|otherIncome|reports|schedule|settings|tasks)(?:[?&/].*)?$/i;
-        function getDecodedHash() {
-          try {
-            return decodeURIComponent(String(window.location.hash || '').replace(/^#/, '')).trim();
-          } catch (_err) {
-            return String(window.location.hash || '').replace(/^#/, '').trim();
-          }
-        }
-        function stripIfAppHash() {
-          if (appHashPattern.test(getDecodedHash())) {
-            window.history.replaceState(null, '', window.location.pathname + (window.location.search || ''));
-          }
-        }
-        stripIfAppHash();
-        window.addEventListener('hashchange', stripIfAppHash);
-        window.addEventListener('popstate', stripIfAppHash);
-      })();
-    </script>
+    <script src="public-page-head.js?v=1"></script>
     <link rel="icon" type="image/png" sizes="32x32" href="/star_paper_logo_pack/star_paper_32.png?v=3">
     <link rel="icon" type="image/png" sizes="256x256" href="/star_paper_logo_pack/star_paper_256.png?v=3">
     <link rel="shortcut icon" type="image/png" href="/star_paper_logo_pack/star_paper_32.png?v=3">
     <link rel="apple-touch-icon" sizes="256x256" href="/star_paper_logo_pack/star_paper_256.png?v=3">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,300..700;1,300..700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
-    <link rel="stylesheet" href="styles.css?v=53">
+    <link rel="stylesheet" href="assets/vendor/fonts/star-paper-fonts.css?v=1">
+    <link rel="stylesheet" href="styles.css?v=56">
     <link rel="stylesheet" href="star-paper-tokens.css?v=21">
     <link rel="stylesheet" href="styles.premium.css?v=8">
     <link rel="stylesheet" href="styles.handcraft.css?v=33">
-    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
-    <style>
-      html.sp-handcraft-off .sp-handcraft-widget { display: none !important; }
-    </style>
-    <script>
-      (function applyHandcraftFlagBeforePaint() {
-        try {
-          if (localStorage.getItem('sp_handcraft_off') === '1' || localStorage.getItem('sp_prem_off') === '1') {
-            document.documentElement.classList.add('sp-handcraft-off');
-          }
-        } catch (_e) {}
-      })();
-    </script>
+    <link rel="stylesheet" href="assets/vendor/phosphor-icons/regular/style.css?v=1">
 </head>
 <body>
-    <script>
-      (function applyStoredThemeBeforePaint() {
-        try {
-          document.body.classList.toggle('light-theme', localStorage.getItem('starPaperTheme') === 'light');
-        } catch (_err) {}
-      })();
-    </script>
+    <script src="public-page-theme.js?v=1"></script>
     <div class="landing-container sp-prem-landing-refine" id="landingScreen">
         <div class="landing-mini-nav" id="landingMiniNav" aria-hidden="true">
             <a class="landing-mini-nav-brand" href="./index.html" aria-label="Go to Star Paper home">
@@ -83,7 +46,7 @@
                             <a class="landing-shell-login" href="./index.html">Home</a>
                             <div class="landing-top-controls" data-inline="1">
                                 <button class="theme-toggle icon-toggle landing-theme-toggle" id="landingThemeToggle" type="button" aria-label="Toggle theme">
-                                    <i class="ph ph-moon" aria-hidden="true" style="font-size:15px;"></i>
+                                    <i class="ph ph-moon" aria-hidden="true"></i>
                                 </button>
                             </div>
                         </div>
@@ -193,41 +156,6 @@
         </footer>
     </div>
 
-    <script>
-      (function () {
-        const storageKey = 'starPaperTheme';
-        const toggle = document.getElementById('landingThemeToggle');
-        const icon = toggle?.querySelector('i');
-
-        function applyTheme(theme, options = {}) {
-          const normalizedTheme = theme === 'light' ? 'light' : 'dark';
-          const isLight = normalizedTheme === 'light';
-          document.body.classList.toggle('light-theme', isLight);
-          if (icon) {
-            icon.className = isLight ? 'ph ph-sun' : 'ph ph-moon';
-          }
-          if (options.persist !== false) {
-            try {
-              localStorage.setItem(storageKey, normalizedTheme);
-            } catch (_err) {}
-          }
-        }
-
-        const savedTheme = (() => {
-          try {
-            return localStorage.getItem(storageKey);
-          } catch (_err) {
-            return null;
-          }
-        })();
-
-        applyTheme(savedTheme === 'light' ? 'light' : 'dark', { persist: false });
-
-        toggle?.addEventListener('click', function () {
-          applyTheme(document.body.classList.contains('light-theme') ? 'dark' : 'light');
-        });
-      })();
-    </script>
-    <script src="app.handcraft.js?v=18" defer></script>
+    <script src="app.handcraft.js?v=19" defer></script>
 </body>
 </html>

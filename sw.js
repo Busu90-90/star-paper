@@ -48,60 +48,26 @@ if (IS_LEGACY_NETLIFY_WORKER) {
     event.respondWith(Response.redirect(toCanonicalUrl(event.request.url), 302));
   });
 } else {
-const SHELL_VERSION = "147";
-const REPORT_BUNDLE_VERSION = "17";
-const APP_BUNDLE_VERSION = "124";
+importScripts("./app.browser-assets.js");
+importScripts("./app.public-pages.js");
+
+const SP_ASSET_MANIFEST = self.SP_BROWSER_ASSETS;
+const SP_PUBLIC_PAGES = self.SP_PUBLIC_PAGES;
+const SHELL_VERSION = SP_ASSET_MANIFEST.version("sw.js");
+const REPORT_BUNDLE_VERSION = SP_ASSET_MANIFEST.version("app.reports.js");
+const APP_BUNDLE_VERSION = SP_ASSET_MANIFEST.version("app.js");
 const CACHE_NAME = `star-paper-shell-v${SHELL_VERSION}`;
 const REPORT_RUNTIME_ASSETS = new Set(
   [
-    `./app.reports.js?v=${REPORT_BUNDLE_VERSION}`,
-    `./app.js?v=${APP_BUNDLE_VERSION}`,
+    SP_ASSET_MANIFEST.url("./app.reports.js"),
+    SP_ASSET_MANIFEST.url("./app.js"),
   ].map((asset) => {
     const url = new URL(asset, self.location.href);
     return `${url.pathname}${url.search}`;
   })
 );
-const PUBLIC_LANDING_PAGES = new Map([
-  ["/how-it-works", "./how-it-works.html"],
-  ["/how-it-works.html", "./how-it-works.html"],
-  ["/proof", "./proof.html"],
-  ["/proof.html", "./proof.html"],
-  ["/testimonials", "./testimonials.html"],
-  ["/testimonials.html", "./testimonials.html"],
-]);
-const APP_SHELL = [
-  "./index.html",
-  "./how-it-works.html",
-  "./proof.html",
-  "./testimonials.html",
-  "./styles.css?v=53",
-  "./styles.premium.css?v=8",
-  "./styles.shell.css?v=11",
-  "./styles.handcraft.css?v=33",
-  "./star-paper-tokens.css?v=21",
-  "./supabase.js?v=71",
-  "./app.migrations.js?v=10",
-  "./app.actions.js?v=8",
-  "./app.todayboard.js?v=1",
-  "./app.tasks.js?v=4",
-  `./app.reports.js?v=${REPORT_BUNDLE_VERSION}`,
-  `./app.js?v=${APP_BUNDLE_VERSION}`,
-  "./app.handcraft.js?v=18",
-  "./app.globe.js?v=6",
-  "./app.premium.js?v=4",
-  "/assets/landing/notebook-board-desktop.webp?v=3",
-  "/assets/landing/notebook-board-mobile.webp?v=3",
-  "/manifest.json?v=24",
-  "/star_paper_logo_pack/star_paper_32.png?v=3",
-  "/star_paper_logo_pack/star_paper_64.png?v=3",
-  "/star_paper_logo_pack/star_paper_128.png?v=3",
-  "/star_paper_logo_pack/star_paper_256.png?v=3",
-  "/star_paper_logo_pack/star_paper_512.png?v=3",
-  "/star_paper_logo_pack/star_paper_1024.png?v=3",
-  "/star_paper_logo_pack/star_paper_transparent.png?v=3",
-  "/star_paper_logo_pack/star_paper_black.png?v=3",
-  "/star_paper_logo_pack/star_paper_white.png?v=3",
-];
+const PUBLIC_LANDING_PAGES = SP_PUBLIC_PAGES.publicLandingRouteMap();
+const APP_SHELL = SP_ASSET_MANIFEST.appShell;
 
 const APP_SHELL_URLS = new Set(
   APP_SHELL.map((asset) => {
@@ -109,6 +75,18 @@ const APP_SHELL_URLS = new Set(
     return `${url.pathname}${url.search}`;
   })
 );
+const AUTH_CALLBACK_CACHE_BYPASS_PARAMS = new Set([
+  "access_token",
+  "refresh_token",
+  "code",
+  "state",
+  "type",
+  "token_type",
+  "expires_in",
+  "error",
+  "error_code",
+  "error_description",
+]);
 
 function isSameOrigin(requestUrl) {
   return requestUrl.origin === self.location.origin;
@@ -139,26 +117,39 @@ function freshRequest(request) {
   return new Request(request, { cache: "reload" });
 }
 
+function hasAuthCallbackCacheBypassParam(url) {
+  for (const param of AUTH_CALLBACK_CACHE_BYPASS_PARAMS) {
+    if (url.searchParams.has(param)) return true;
+  }
+  return false;
+}
+
 function isFreshOnlyReportRuntimeAsset(url) {
   return REPORT_RUNTIME_ASSETS.has(`${url.pathname}${url.search}`);
 }
 
 function networkFirstNavigation(request, fallbackShell) {
   const networkRequest = fallbackShell || request;
+  const requestUrl = new URL(request.url);
+  const canCacheRequestUrl = !hasAuthCallbackCacheBypassParam(requestUrl);
   return fetch(freshRequest(networkRequest))
     .then((response) => {
-      if (response && response.ok) {
+      if (response && response.ok && canCacheRequestUrl) {
         const clone = response.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
       }
       return response;
     })
-    .catch(() =>
-      caches.match(request).then((cached) => {
+    .catch(() => {
+      if (!canCacheRequestUrl) {
+        if (!fallbackShell) return Response.error();
+        return caches.match(fallbackShell).then((fallback) => fallback || Response.error());
+      }
+      return caches.match(request).then((cached) => {
         if (cached || !fallbackShell) return cached || Response.error();
         return caches.match(fallbackShell).then((fallback) => fallback || Response.error());
-      })
-    );
+      });
+    });
 }
 
 function isCacheableAppShellRequest(request) {
@@ -168,6 +159,7 @@ function isCacheableAppShellRequest(request) {
   if (url.searchParams.has("access_token") || url.searchParams.has("refresh_token") || url.searchParams.has("code")) {
     return false;
   }
+  if (hasAuthCallbackCacheBypassParam(url)) return false;
   return APP_SHELL_URLS.has(`${url.pathname}${url.search}`);
 }
 
