@@ -1,0 +1,8 @@
+# Vendored deploy-critical text assets: force LF so SRI hashes are stable across OS
+assets/vendor/**/*.css   text eol=lf
+assets/vendor/**/*.js    text eol=lf
+assets/vendor/**/*.svg   text eol=lf
+# Vendored binary assets: never line-ending normalize
+assets/vendor/**/*.woff2 binary
+assets/vendor/**/*.woff  binary
+assets/vendor/**/*.ttf   binary
