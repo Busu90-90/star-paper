@@ -3,7 +3,6 @@
 
   const versionGroups = [
     ['1', [
-      'app.browser-assets.js',
       'app.public-pages.js',
       'app.boot-head.js',
       'app.boot-flags.js',
@@ -58,9 +57,11 @@
       'assets/vendor/phosphor-icons/duotone/Phosphor-Duotone.woff2',
       'assets/vendor/three/three.module.js',
       'assets/vendor/three/OrbitControls.js',
-      'assets/vendor/topojson-client/topojson-client.esm.js'
+      'assets/vendor/topojson-client/topojson-client.esm.js',
+      'assets/vendor/supabase/supabase.min.js'
     ]],
     ['2', ['app.todayboard.js']],
+    ['10', ['app.browser-assets.js']],
     ['3', [
       'app.root-shell.js',
       'assets/landing/notebook-board-desktop.webp',
@@ -86,9 +87,9 @@
     ['24', ['manifest.json']],
     ['33', ['styles.handcraft.css']],
     ['56', ['styles.css']],
-    ['78', ['supabase.js']],
-    ['139', ['app.js']],
-    ['173', ['sw.js']]
+    ['87', ['supabase.js']],
+    ['141', ['app.js']],
+    ['182', ['sw.js']]
   ];
 
   const assetVersions = {};
@@ -147,15 +148,11 @@
     'assets/vendor/phosphor-icons/regular/style.css': 'sha384-dHSMQqnwmlotmEIitaE+e1kuhc61kwyNCRN4FK1SVwsJwnNbLjZvOQXdo8YZijg3',
     'assets/vendor/three/OrbitControls.js': 'sha384-9ARkq6u238/D+0NF0Ffr9QEp5rJxTgjvtTM3C4GaemdEasTzxR4XsHq2ty9yN/gZ',
     'assets/vendor/three/three.module.js': 'sha384-GY5FqjttLCFRt/McQbyaVdCk2O1IQtOeX8Py6NfD89BIAsIyJFRl4UgSXrk2vXAk',
-    'assets/vendor/topojson-client/topojson-client.esm.js': 'sha384-g9qzod68SznNKO92TeZZCaahSrwK8XHoddw9zDBgXBgAFJCrKc3/OZBH9dGqw/qo'
+    'assets/vendor/topojson-client/topojson-client.esm.js': 'sha384-g9qzod68SznNKO92TeZZCaahSrwK8XHoddw9zDBgXBgAFJCrKc3/OZBH9dGqw/qo',
+    'assets/vendor/supabase/supabase.min.js': 'sha384-dzQgxMPp/h+N0t5qDf6Bp516wKZr3pXgGMpA7/ZM6tiWkqYo90N060L03dxnZ8Tf'
   });
 
   const externalScripts = Object.freeze({
-    supabase: Object.freeze({
-      src: 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js',
-      crossOrigin: 'anonymous',
-      integrity: 'sha384-zfshMiFERdyezN/WZXzHe9g53pOZCrLPBj/qC0ohHnxQ20c3zXwFqbtRAwvZMacA'
-    }),
     sentry: Object.freeze({
       src: 'https://browser.sentry-cdn.com/8.53.0/bundle.min.js',
       crossOrigin: 'anonymous',
@@ -171,6 +168,10 @@
       crossOrigin: 'anonymous',
       integrity: 'sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk'
     })
+  });
+
+  const runtimeScriptPaths = Object.freeze({
+    supabase: 'assets/vendor/supabase/supabase.min.js'
   });
 
   function stripQueryAndHash(value) {
@@ -206,6 +207,16 @@
 
   function external(name) {
     return externalScripts[name] || null;
+  }
+
+  function runtimeScript(name) {
+    const path = runtimeScriptPaths[name];
+    if (!path) return null;
+    return Object.freeze({
+      src: url(path),
+      integrity: integrityFor(path),
+      crossOrigin: ''
+    });
   }
 
   const appShell = Object.freeze([
@@ -256,6 +267,7 @@
     url('./assets/vendor/three/three.module.js'),
     url('./assets/vendor/three/OrbitControls.js'),
     url('./assets/vendor/topojson-client/topojson-client.esm.js'),
+    url('./assets/vendor/supabase/supabase.min.js'),
     url('./app.browser-assets.js'),
     url('./app.public-pages.js'),
     url('./app.boot-head.js'),
@@ -294,11 +306,13 @@
     versions: Object.freeze(assetVersions),
     integrity: assetIntegrity,
     externalScripts,
+    runtimeScriptPaths,
     selfHostedRuntimeAssets: Object.freeze(Object.keys(assetIntegrity)),
     appShell,
     version,
     url,
     integrityFor,
+    runtimeScript,
     external
   });
 })(typeof globalThis !== 'undefined' ? globalThis : (typeof self !== 'undefined' ? self : window));

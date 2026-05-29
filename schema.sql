@@ -735,7 +735,7 @@ GRANT EXECUTE ON FUNCTION public.create_team_with_member(TEXT, UUID) TO authenti
 -- Looks up a team by invite code and inserts the member row in one transaction.
 -- Replaces two sequential SELECT + INSERT calls, eliminating the lock contention
 -- that caused "AbortError: Lock broken by steal" during the join flow.
--- Returns the team row as JSON, or raises an exception if code is invalid.
+-- Returns the team row as JSON, or raises a generic exception if the join fails.
 CREATE OR REPLACE FUNCTION public.join_team_by_code(
   p_invite_code TEXT,
   p_user_id     UUID
@@ -761,7 +761,7 @@ BEGIN
 
   v_invite_code := lower(trim(coalesce(p_invite_code, '')));
   IF v_invite_code !~ '^[0-9a-f]{32}$' THEN
-    RAISE EXCEPTION 'Invalid invite code';
+    RAISE EXCEPTION 'Invalid invite request';
   END IF;
 
   -- Look up team by a high-entropy invite code; short legacy codes fail closed.
@@ -770,7 +770,7 @@ BEGIN
   WHERE invite_code = v_invite_code;
 
   IF v_team.id IS NULL THEN
-    RAISE EXCEPTION 'Invalid invite code';
+    RAISE EXCEPTION 'Invalid invite request';
   END IF;
 
   -- Insert member (ignore duplicate â€” already a member is fine)

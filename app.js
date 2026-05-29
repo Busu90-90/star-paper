@@ -276,10 +276,23 @@ function shouldBootAuthenticatedApp(locationLike = window.location) {
         Boolean(getAppHashSection(locationLike?.hash || window.location.hash));
 }
 
+function shouldShowLoginForAppRouteWithoutSession(locationLike = window.location) {
+    try {
+        if (hasAuthCallbackParams(locationLike?.href || window.location.href)) return false;
+        if (!isAppShellPath(locationLike?.pathname || window.location.pathname)) return false;
+        if (!getAppHashSection(locationLike?.hash || window.location.hash)) return false;
+        if (readBootContextMarker() === APP_BOOT_CONTEXT_AUTH_RETURN) return false;
+        return !hasStoredCloudSessionHint();
+    } catch (_err) {
+        return false;
+    }
+}
+
 window.isAppShellPath = isAppShellPath;
 window.getAppHashSection = getAppHashSection;
 window.isPublicShellRoute = isPublicShellRoute;
 window.shouldBootAuthenticatedApp = shouldBootAuthenticatedApp;
+window.shouldShowLoginForAppRouteWithoutSession = shouldShowLoginForAppRouteWithoutSession;
 
 function sanitizeOutboundPublicHref(href) {
     try {
@@ -441,11 +454,16 @@ function scheduleLocalBootFallback(bootContext, flowId = null) {
             return;
         }
         if (bootContext === 'app-refresh' || shouldBootAuthenticatedApp()) {
-            setBootState('boot-error', {
-                text: 'Session restore stalled',
-                subtext: 'Retry to reconnect to Star Paper, or log out and sign in again.',
-                showActions: true
-            });
+            window.__spSuppressStoredSessionBootstrap = true;
+            if (typeof window.showLoginForm === 'function') {
+                window.showLoginForm({ instant: true, reason: 'local-session-restore-fallback' });
+            } else {
+                setBootState('auth-required', {
+                    text: 'Sign in to continue',
+                    subtext: 'Your secure session could not be restored.',
+                    showActions: false
+                });
+            }
             return;
         }
         clearAppShellBootContext();
@@ -582,6 +600,14 @@ function initializeBootSequence() {
     window.__spBootContext = bootContext;
 
     if (bootContext === 'auth-callback' || bootContext === 'app-refresh') {
+        if (shouldShowLoginForAppRouteWithoutSession()) {
+            if (typeof showLoginForm === 'function') {
+                showLoginForm({ instant: true, reason: 'app-route-without-session' });
+            } else {
+                revealPublicScreenInstant('loginScreen');
+            }
+            return;
+        }
         const flowId = beginBootTransition(`startup:${bootContext}`, 'loading-session');
         scheduleLocalBootFallback(bootContext, flowId);
         return;

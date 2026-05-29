@@ -38,12 +38,12 @@ Do not open `index.html` through `file://`; Google OAuth and email-confirm redir
 - `app.shell.js` - additive app-shell refinement bootstrap that gates landing-aligned shell polish behind `localStorage.sp_shell_refined_off`.
 - `app.boot-head.js`, `app.boot-flags.js`, `app.boot-body.js` - externalized prepaint and route/auth boot guards required before the main app bundle.
 - `app.public-pages.js` - source of truth for public root HTML markers and clean/`.html` landing route pairs consumed by boot, service-worker, and preflight checks.
-- `app.browser-assets.js` - browser asset contract for local version query strings, service-worker precache URLs, external CDN SRI pins, and vendored runtime file hashes.
+- `app.browser-assets.js` - browser asset contract for local version query strings, service-worker precache URLs, same-origin runtime scripts, external CDN SRI pins, and vendored runtime file hashes.
 - `app.root-shell.js` - externalized root-shell runtime guards, deferred library loader, critical action bridge, local-file warning, and forgot-password wiring.
 - `schema.sql` - database schema, constraints, RLS policies, and RPCs for the live Supabase project.
 - `sw.js` - network-first shell caching for safe deploy refreshes.
 - `assets/world-atlas/land-50m.json` - local world-atlas land TopoJSON used before the globe falls back to built-in continents.
-- `assets/vendor/` - self-hosted browser runtime assets for brand fonts, Phosphor icon CSS/fonts, and the Schedule > Global Three.js, OrbitControls, and TopoJSON client modules.
+- `assets/vendor/` - self-hosted browser runtime assets for the Supabase auth SDK, brand fonts, Phosphor icon CSS/fonts, and the Schedule > Global Three.js, OrbitControls, and TopoJSON client modules.
 
 ## Supabase Runtime Contract
 
@@ -78,12 +78,16 @@ Post-apply pass condition: the base result set has no `severity = 'blocker'` row
 - The Supabase anon key in `supabase.js` is public browser configuration, not a secret. RLS policies, authenticated RPC grants, actor checks, and team permissions are the real data boundary.
 - RLS policies in `schema.sql` are scoped with `TO authenticated`; anonymous table access is not part of the production contract.
 - Supabase service-role credentials, JWT secrets, database passwords, and access tokens must never be committed or shipped. `npm run preflight` scans source files for service-role env assignments, sensitive Supabase env assignments, and service-role JWT payloads.
-- Team invite codes are bearer tokens. `schema.sql` now generates 32-character hex codes with `pgcrypto`, rotates malformed or legacy short codes when applied, makes `join_team_by_code` reject malformed codes before lookup, and keeps invite-code disclosure behind owner/admin RPC views instead of direct table SELECT.
+- Team invite codes are bearer tokens. `schema.sql` now generates 32-character hex codes with `pgcrypto`, rotates malformed or legacy short codes when applied, makes `join_team_by_code` reject malformed codes before lookup with the same generic failure used for unknown codes, and keeps invite-code disclosure behind owner/admin RPC views instead of direct table SELECT.
 - SECURITY DEFINER RPCs in `schema.sql` must keep a fixed `search_path = public, pg_temp`; preflight fails if a new definer function omits that bound path.
 - Team role permissions are database-bound. `team_members.permissions` is normalized from `team_role_permissions(role)` and constrained to that preset, so direct browser/Supabase updates cannot create impossible privilege combinations outside the role model.
 - Business rows are workspace-scoped once created. `schema.sql` blocks updates that change `owner_id`, `user_id`, or `team_id` on personal/team data tables so a crafted browser request cannot move team records into a personal workspace or another team.
 - User-controlled images must pass the browser-side image guardrails in `app.js`: PNG, JPG, WebP, or GIF only; avatars are capped at 1 MB and receipts/proofs at 4 MB. Rendered image URLs are normalized to safe data, same-origin, or HTTPS sources.
-- Classic third-party CDN scripts are pinned with SRI where browser-supported. `app.browser-assets.js` is the source of truth for those CDN URLs/hashes and for local version query strings. Brand fonts, Phosphor icon CSS/fonts, and the Schedule > Global Three.js, OrbitControls, and TopoJSON client modules are self-hosted under `assets/vendor/`; preflight fails if those runtime paths drift back to public CDNs or if vendored file hashes drift.
+- The Supabase auth SDK is a same-origin runtime script at `assets/vendor/supabase/supabase.min.js`, pinned in `app.browser-assets.js` through `runtimeScript('supabase')`, synchronously loaded before `supabase.js`, and precached by the service worker. Preflight fails if `index.html`, `supabase.js`, or `app.browser-assets.js` drifts back to the floating Supabase CDN URL or if the vendored SRI hash changes.
+- Supabase browser requests use a bounded fetch wrapper so stale session restore, login, and signup attempts resolve to a visible login/cloud-unavailable state instead of leaving the app on a stalled boot overlay.
+- Signed-out app-route refreshes such as `/#settings` must show the Supabase login screen with patched cloud auth handlers, not the app-refresh loader. Password-login errors must not show stale credential/cloud-data toasts after a real Supabase session has already started booting through the auth-state path.
+- If `get_bootstrap_payload` does not return a usable first-paint payload, `supabase.js` falls back to direct cloud loads before declaring cloud data unavailable. This keeps empty/new accounts bootable while still surfacing real load failures through the boot recovery UI.
+- Classic third-party CDN scripts that remain out of auth boot are pinned with SRI where browser-supported. `app.browser-assets.js` is the source of truth for those CDN URLs/hashes and for local version query strings. Brand fonts, Phosphor icon CSS/fonts, and the Schedule > Global Three.js, OrbitControls, and TopoJSON client modules are self-hosted under `assets/vendor/`; preflight fails if those runtime paths drift back to public CDNs or if vendored file hashes drift.
 - Browser storage and Cache Storage are not confidentiality boundaries. The app reduces XSS risk with DOM-rendered performance-map pins/panels/legends, globe hover cards/itinerary/detail sheets, report focus text, Today Board alerts, handcraft arrow icons, team and currency modals, escaped booking map/calendar/dashboard timeline labels, escaped artist dropdown options, escaped command-palette labels/subtitles, validated Phosphor icon tokens, `textContent` toast and team-chat rendering, constrained action dispatch, delegated receipt/proof/nudge/task/report/globe/team modal/root-shell actions, UUID-validated team mutations, image validation, service-worker auth-callback cache bypasses, CSP, and preflight checks. Root app-shell and public-landing boot scripts are externalized, public landing pages carry a stricter document CSP with no inline script/style allowance, `script-src` does not allow `'unsafe-inline'`, `style-src-elem` is self-only, and `style-src-attr` is blocked with `'none'`; residual XSS work is primarily the remaining audited `innerHTML` render paths in `app.js`.
 
 Security reports for this pass:
@@ -96,6 +100,7 @@ Security reports for this pass:
 The app is considered healthy when all of the following hold:
 
 - A signed-out visit opens on the landing page.
+- A signed-out refresh on an app hash such as `/#settings` opens a working Supabase login screen, never a terminal session-restore loader.
 - Google or email sign-in goes straight into the app shell after boot.
 - Refresh while signed in keeps the user in the app and restores the last section/tab.
 - Saving data persists to Supabase and reappears after refresh, re-login, or opening the same account in another browser.
@@ -135,10 +140,10 @@ Always deploy the matching versions of:
 - `app.browser-assets.js`
 - `sw.js`
 - `assets/world-atlas/land-50m.json`
-- `assets/vendor/` runtime assets
+- `assets/vendor/` runtime assets, including the same-origin Supabase auth SDK
 - `schema.sql` when the database contract changes
 
-If a browser asset version, vendored runtime file, or pinned CDN URL/hash changes, update `app.browser-assets.js` first. `scripts/preflight.mjs` then fails until `index.html`, `sw.js`, the lazy loaders, and vendor CSS references match that contract.
+If a browser asset version, vendored runtime file, or pinned CDN URL/hash changes, update `app.browser-assets.js` first. `scripts/preflight.mjs` then fails until `index.html`, `sw.js`, the lazy loaders, Supabase auth runtime loader, and vendor CSS references match that contract.
 
 Residual deploy risk: old Netlify deploy permalinks can still expose files that existed in previous successful deploys until those deploys are deleted or expire. The next production deploy removes deleted files from the live production URL because Netlify deploys atomically, but do not place private briefs, secrets, tests, or local agent config in the repo root.
 

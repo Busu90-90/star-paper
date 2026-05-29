@@ -18,6 +18,7 @@ const SP_SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhY
 const SP_SUPABASE_STORAGE_KEY = 'sp-starpaper-auth-v1';
 const SP_SUPABASE_PKCE_KEY = `${SP_SUPABASE_STORAGE_KEY}-code-verifier`;
 const SP_SUPABASE_PROJECT_REF = SP_SUPABASE_URL.replace('https://', '').replace('.supabase.co', '');
+const SP_SUPABASE_FETCH_TIMEOUT_MS = 20000;
 const SP_SUPABASE_CONFIGURED =
   typeof SP_SUPABASE_URL === 'string' &&
   typeof SP_SUPABASE_KEY === 'string' &&
@@ -34,14 +35,171 @@ window.__spCloudOnly = SP_CLOUD_ONLY_MODE;
 
 function getSupabaseSdkAsset() {
   const manifest = window.SP_BROWSER_ASSETS;
-  if (!manifest || typeof manifest.external !== 'function') {
+  if (!manifest || typeof manifest.runtimeScript !== 'function') {
     throw new Error('[StarPaper Supabase] Browser asset manifest is unavailable.');
   }
-  const sdk = manifest.external('supabase');
+  const sdk = manifest.runtimeScript('supabase');
   if (!sdk || !sdk.src || !sdk.integrity) {
     throw new Error('[StarPaper Supabase] Supabase SDK asset metadata is incomplete.');
   }
   return sdk;
+}
+
+function toAbsoluteScriptUrl(src) {
+  try {
+    return new URL(src, document.baseURI).href;
+  } catch (_error) {
+    return String(src || '');
+  }
+}
+
+function findExistingSupabaseSdkScript(src) {
+  const expectedUrl = toAbsoluteScriptUrl(src);
+  return Array.from(document.scripts || []).find((script) => script.src && script.src === expectedUrl) || null;
+}
+
+function makeSupabaseSdkLoadError(sdk, cause) {
+  const assetUrl = sdk?.src || '(missing Supabase SDK asset URL)';
+  const reason = cause?.message || cause?.type || 'script load error';
+  const error = new Error(`[StarPaper Supabase] Supabase SDK failed to load from ${assetUrl}: ${reason}`);
+  error.name = 'SupabaseSdkLoadError';
+  error.assetUrl = assetUrl;
+  error.cause = cause;
+  return error;
+}
+
+function afterDomReady(fn) {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', fn, { once: true });
+  } else {
+    fn();
+  }
+}
+
+function showSupabaseSdkUnavailable(error) {
+  window.__spCloudLoginUnavailable = true;
+  window.__spSupabaseSdkLoadError = error;
+  console.error('[StarPaper Supabase] Cloud login unavailable:', error);
+
+  const cloudUnavailable = () => {
+    const loader = document.getElementById('appBootLoader');
+    const loaderText = document.getElementById('appBootLoaderText');
+    const loaderSubtext = document.getElementById('appBootLoaderSubtext');
+    const loaderActions = document.getElementById('appBootLoaderActions');
+    const loginScreen = document.getElementById('loginScreen');
+    const loginForm = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
+    const heading = document.getElementById('loginBoxHeading');
+    const subtext = document.getElementById('loginBoxSubtext');
+    const loginButton = document.getElementById('loginButton');
+    const signupButton = document.querySelector('#signupForm [data-action="signup"]');
+
+    document.documentElement.classList.remove('sp-force-boot');
+    document.body?.classList.add('sp-auth-open');
+
+    if (loader) {
+      loader.dataset.state = 'cloud-login-unavailable';
+      loader.classList.add('hidden');
+      loader.setAttribute('aria-hidden', 'true');
+    }
+    if (loaderText) loaderText.textContent = 'Cloud login unavailable';
+    if (loaderSubtext) loaderSubtext.textContent = 'The Supabase auth runtime did not initialize. Reload after the deploy finishes.';
+    if (loaderActions) loaderActions.hidden = true;
+    if (loginScreen) loginScreen.style.display = 'flex';
+    if (loginForm) loginForm.style.display = 'block';
+    if (signupForm) signupForm.style.display = 'none';
+    if (heading) heading.textContent = 'Cloud login unavailable';
+    if (subtext) subtext.textContent = 'Star Paper could not initialize its Supabase auth runtime. Reload the page after the deploy is refreshed.';
+    if (loginButton) loginButton.disabled = true;
+    if (signupButton) signupButton.disabled = true;
+  };
+
+  window.login = function blockedCloudLogin() {
+    cloudUnavailable();
+    return false;
+  };
+  window.signup = function blockedCloudSignup() {
+    cloudUnavailable();
+    return false;
+  };
+
+  afterDomReady(cloudUnavailable);
+}
+
+function loadSupabaseSdkScript(sdk) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = sdk.src;
+    if (sdk.integrity) script.integrity = sdk.integrity;
+    if (sdk.crossOrigin) script.crossOrigin = sdk.crossOrigin;
+    script.onload = resolve;
+    script.onerror = (event) => reject(makeSupabaseSdkLoadError(sdk, event));
+    document.head.appendChild(script);
+  });
+}
+
+async function ensureSupabaseSdkLoaded() {
+  if (window.supabase?.createClient) return;
+
+  const sdk = getSupabaseSdkAsset();
+  const existingScript = findExistingSupabaseSdkScript(sdk.src);
+  if (existingScript) {
+    if (document.readyState !== 'loading') {
+      throw makeSupabaseSdkLoadError(sdk, new Error('existing Supabase SDK script did not initialize window.supabase'));
+    }
+    await new Promise((resolve, reject) => {
+      existingScript.addEventListener('load', resolve, { once: true });
+      existingScript.addEventListener('error', (event) => reject(makeSupabaseSdkLoadError(sdk, event)), { once: true });
+    });
+  } else {
+    await loadSupabaseSdkScript(sdk);
+  }
+
+  if (!window.supabase?.createClient) {
+    throw makeSupabaseSdkLoadError(sdk, new Error('window.supabase.createClient is unavailable after SDK load'));
+  }
+}
+
+function supabaseTimeoutError(timeoutMs, cause) {
+  const error = new Error(`Supabase request timed out after ${timeoutMs}ms.`);
+  error.name = 'SupabaseRequestTimeoutError';
+  error.cause = cause;
+  return error;
+}
+
+function supabaseFetchWithTimeout(input, init = {}) {
+  const timeoutMs = SP_SUPABASE_FETCH_TIMEOUT_MS;
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || typeof AbortController !== 'function') {
+    return fetch(input, init);
+  }
+
+  const controller = new AbortController();
+  const upstreamSignal = init?.signal;
+  let upstreamAbortHandler = null;
+  const timer = setTimeout(() => controller.abort(supabaseTimeoutError(timeoutMs)), timeoutMs);
+
+  if (upstreamSignal) {
+    if (upstreamSignal.aborted) {
+      controller.abort(upstreamSignal.reason);
+    } else if (typeof upstreamSignal.addEventListener === 'function') {
+      upstreamAbortHandler = () => controller.abort(upstreamSignal.reason);
+      upstreamSignal.addEventListener('abort', upstreamAbortHandler, { once: true });
+    }
+  }
+
+  return fetch(input, { ...init, signal: controller.signal })
+    .catch((error) => {
+      if (controller.signal.aborted && !upstreamSignal?.aborted) {
+        throw supabaseTimeoutError(timeoutMs, error);
+      }
+      throw error;
+    })
+    .finally(() => {
+      clearTimeout(timer);
+      if (upstreamSignal && upstreamAbortHandler && typeof upstreamSignal.removeEventListener === 'function') {
+        upstreamSignal.removeEventListener('abort', upstreamAbortHandler);
+      }
+    });
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -78,18 +236,11 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     return;
   }
 
-  // Load Supabase JS SDK from CDN
-  if (!window.supabase) {
-    await new Promise((resolve, reject) => {
-      const sdk = getSupabaseSdkAsset();
-      const s = document.createElement('script');
-      s.src = sdk.src;
-      s.crossOrigin = sdk.crossOrigin || 'anonymous';
-      s.integrity = sdk.integrity;
-      s.onload = resolve;
-      s.onerror = reject;
-      document.head.appendChild(s);
-    });
+  try {
+    await ensureSupabaseSdkLoaded();
+  } catch (error) {
+    showSupabaseSdkUnavailable(error);
+    return;
   }
 
   const _initialAuthCallbackState = detectAuthCallbackState();
@@ -109,6 +260,9 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
   const { createClient } = window.supabase;
   const db = createClient(SP_SUPABASE_URL, SP_SUPABASE_KEY, {
+    global: {
+      fetch: supabaseFetchWithTimeout,
+    },
     auth: {
       persistSession:     true,
       autoRefreshToken:   true,
@@ -1166,6 +1320,11 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   function showStalledBootError(message, detail, reason = 'bootstrap-stalled') {
     abandonActiveBootstrapWork(reason);
     if (clearBootOverlayOverVisibleApp(reason)) return;
+    if (String(reason || '').includes('session-restore') || reason === 'bootstrap-inflight-timeout') {
+      window.__spSuppressStoredSessionBootstrap = true;
+      showLoginScreen({ flowId: getBootTransitionIdSafe(), reason });
+      return;
+    }
     beginBootTransitionSafe(reason, 'boot-error', {
       text: message || 'Session restore stalled',
       subtext: detail || 'Retry to reconnect to Star Paper, or log out and sign in again.',
@@ -1250,7 +1409,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         showLandingScreen({ flowId, reason: 'session-restore-cold-start' });
         return;
       }
-      showBootErrorState('Session restore stalled', 'Retry to reconnect to Star Paper, or log out and sign in again.');
+      window.__spSuppressStoredSessionBootstrap = true;
+      showLoginScreen({ flowId, reason: 'session-restore-fallback' });
     };
     _localBootFallbackTimer = setTimeout(tick, timeoutMs);
   }
@@ -1517,6 +1677,14 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       try { return Boolean(window.shouldBootAuthenticatedApp(window.location)); } catch (_err) {}
     }
     return !hasAuthCallbackInUrl() && isAppShellPath(window.location.pathname) && hasExplicitAppRouteHash();
+  }
+
+  function shouldShowLoginForAppRouteWithoutSession() {
+    if (hasAuthCallbackInUrl() || window.__spAuthRedirectInProgress || window.__spUserInitiatedAuth) return false;
+    if (typeof window.shouldShowLoginForAppRouteWithoutSession === 'function') {
+      try { return Boolean(window.shouldShowLoginForAppRouteWithoutSession(window.location)); } catch (_err) {}
+    }
+    return isAppShellPath(window.location.pathname) && hasExplicitAppRouteHash() && !hasStoredSupabaseSessionHint();
   }
 
   function shouldStayOnPublicShell() {
@@ -4747,6 +4915,27 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         log('bootstrap.firstPaint.missing', { source: 'get_bootstrap_payload' });
       }
 
+      if (!fresh) {
+        try {
+          fresh = await loadAllDataWithRetry({
+            label: 'loadAllData[bootstrap-fallback]',
+            retries: 0,
+            timeoutMs: options.bootstrapFallbackTimeoutMs || 18000,
+            workspaceMeta,
+          });
+          if (fresh) {
+            workspaceMeta = fresh.__workspace || workspaceMeta;
+            shouldRunBackgroundRefresh = options.skipPostBootstrapRefresh !== true;
+            log('bootstrap.firstPaint.fallback', {
+              source: 'loadAllData',
+              ms: Math.round(nowMs() - bootstrapStartedAt),
+            });
+          }
+        } catch (err) {
+          warn('Bootstrap fallback cloud data load failed:', err);
+        }
+      }
+
       if (fresh) {
         const meta = fresh.__meta || null;
         if (meta?.allCriticalTimedOut) {
@@ -6506,9 +6695,19 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         }
       } catch (err) {
         const errMsg = String(err?.message || '').toLowerCase();
+        if (_session?.user && (
+          window.__spAppBooted ||
+          isAppShellVisible() ||
+          errMsg.includes('could not initialise session')
+        )) {
+          return;
+        }
         const isCloudUnavailable =
           errMsg.includes('failed to fetch') ||
           errMsg.includes('network') ||
+          errMsg.includes('timeout') ||
+          errMsg.includes('timed out') ||
+          errMsg.includes('abort') ||
           errMsg.includes('invalid url') ||
           errMsg.includes('api key');
         if (isCloudUnavailable) {
@@ -6582,6 +6781,9 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         const isCloudUnavailable =
           errMsg.includes('failed to fetch') ||
           errMsg.includes('network') ||
+          errMsg.includes('timeout') ||
+          errMsg.includes('timed out') ||
+          errMsg.includes('abort') ||
           errMsg.includes('invalid url') ||
           errMsg.includes('api key');
         if (isCloudUnavailable) {
@@ -6869,7 +7071,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       if (quietIfNoSession && loggedOutScreen === 'landing') {
         showLandingScreen({ flowId: activeFlowId, reason: 'initial-session-timeout' });
       } else {
-        showBootErrorState('Session restore took too long', 'Retry to reconnect to Star Paper, or log out and sign in again.');
+        window.__spSuppressStoredSessionBootstrap = true;
+        showLoginScreen({ flowId: activeFlowId, reason: 'initial-session-timeout' });
       }
       return false;
     }
@@ -6914,12 +7117,14 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     bindAutoSync();
     const localMarker = readBootContextMarker();
     const publicShellColdStart = shouldStayOnPublicShell();
+    const appRouteWithoutStoredSession = shouldShowLoginForAppRouteWithoutSession();
     const localColdStart = isLocalDevOrigin() &&
       !hasAuthCallbackInUrl() &&
       localMarker !== APP_SHELL_BOOT_CONTEXT &&
       localMarker !== AUTH_RETURN_BOOT_CONTEXT &&
+      !hasExplicitAppRouteHash() &&
       !hasStoredSupabaseSessionHint();
-    if (publicShellColdStart || localColdStart) {
+    if (publicShellColdStart || localColdStart || appRouteWithoutStoredSession) {
       window.__spSuppressStoredSessionBootstrap = true;
     }
 
@@ -6927,15 +7132,25 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     // app.js has fully executed — otherwise showApp/loadUserData don’t exist yet
     // and the OAuth callback lands on the landing page instead of the dashboard.
     // We defer everything that calls bootstrapFromSupabaseSession to DOMContentLoaded.
-    const onAppReady = () => {
+    const onAppReady = async () => {
+      await waitForAppBootReady(5000, 50);
       const bootContext = getStartupBootContext();
       const shouldShowBootLoader = bootContext === 'auth-callback' || bootContext === 'app-refresh';
+      if (appRouteWithoutStoredSession) {
+        patchAppAuth();
+        showLoginScreen({
+          instant: true,
+          reason: 'app-route-without-session',
+        });
+        setTimeout(injectSidebarButtons, 1200);
+        return;
+      }
       if (publicShellColdStart || localColdStart) {
-        setTimeout(() => showLandingScreen({
+        patchAppAuth();
+        showLandingScreen({
           instant: true,
           reason: publicShellColdStart ? 'public-shell-cold-start' : 'local-cold-start',
-        }), 0);
-        setTimeout(patchAppAuth, 0);
+        });
         setTimeout(injectSidebarButtons, 1200);
         return;
       }
@@ -6950,7 +7165,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         warn('Auth redirect handling timed out:', err);
         window.__spAuthRedirectInProgress = false;
         if (bootContext === 'auth-callback') {
-          showBootErrorState('Session restore stalled', 'Retry to reconnect to Star Paper, or log out and sign in again.');
+          window.__spSuppressStoredSessionBootstrap = true;
+          showLoginScreen({ reason: 'auth-redirect-timeout' });
           return { status: 'timeout', shouldBootstrapStoredSession: false };
         }
         return { status: 'timeout', shouldBootstrapStoredSession: true };

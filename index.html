@@ -6,7 +6,7 @@
     <meta name="star-paper:public-root" content="app-shell">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:; frame-ancestors 'none';">
     <title>Star Paper</title>
-    <script src="app.browser-assets.js?v=1"></script>
+<script src="app.browser-assets.js?v=10"></script>
     <script src="app.public-pages.js?v=1"></script>
     <script src="app.boot-head.js?v=1"></script>
     <link rel="manifest" href="manifest.json?v=24">
@@ -21,16 +21,10 @@
     <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
     <!-- Handcraft variable + display fonts (loaded before styles.handcraft.css applies them) -->
     <link rel="stylesheet" href="assets/vendor/fonts/star-paper-fonts.css?v=1">
-    <link rel="preload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" as="script" crossorigin integrity="sha384-zfshMiFERdyezN/WZXzHe9g53pOZCrLPBj/qC0ohHnxQ20c3zXwFqbtRAwvZMacA">
+    <link rel="preload" href="assets/vendor/supabase/supabase.min.js?v=1" as="script" integrity="sha384-dzQgxMPp/h+N0t5qDf6Bp516wKZr3pXgGMpA7/ZM6tiWkqYo90N060L03dxnZ8Tf">
 
-    <!--
-      FIX: Load the Supabase JS SDK synchronously in <head> so window.supabase
-      is guaranteed to exist before supabase.js runs. Without this, supabase.js
-      hits `await new Promise(loadCDN)` which yields the thread — app.js then
-      calls checkAuth() while window.SP is still undefined, causing "stuck on
-      landing" for every user with a valid session.
-    -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" crossorigin="anonymous" integrity="sha384-zfshMiFERdyezN/WZXzHe9g53pOZCrLPBj/qC0ohHnxQ20c3zXwFqbtRAwvZMacA"></script>
+    <!-- Same-origin Supabase SDK keeps auth boot independent of mutable CDN/SRI state. -->
+    <script src="assets/vendor/supabase/supabase.min.js?v=1" integrity="sha384-dzQgxMPp/h+N0t5qDf6Bp516wKZr3pXgGMpA7/ZM6tiWkqYo90N060L03dxnZ8Tf"></script>
     <script src="app.boot-flags.js?v=1"></script>
 
     <link rel="stylesheet" href="styles.css?v=56">
@@ -1525,13 +1519,13 @@
           Supabase boot wiring is installed before app.js initializes UI helpers.
         -->
 <script src="app.root-shell.js?v=3" defer></script>
-<script src="supabase.js?v=78" defer></script>
+<script src="supabase.js?v=87" defer></script>
         <script src="app.migrations.js?v=10"></script>
         <script src="app.actions.js?v=8"></script>
         <script src="app.todayboard.js?v=2"></script>
         <script src="app.tasks.js?v=5"></script>
     <script src="app.reports.js?v=19"></script>
-<script src="app.js?v=139" defer></script>
+<script src="app.js?v=141" defer></script>
 <script src="app.handcraft.js?v=19" defer></script>
 
     <!-- Premium toast stack -->

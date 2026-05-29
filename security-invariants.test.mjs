@@ -28,6 +28,8 @@ test('team invite codes are high entropy and legacy short codes fail closed', ()
   assert.match(schema, /CREATE OR REPLACE FUNCTION public\.get_my_team_context[\s\S]*CASE\s+WHEN[\s\S]*THEN\s+t\.invite_code[\s\S]*ELSE\s+NULL[\s\S]*END\s+AS\s+invite_code/i);
   assert.match(schema, /CREATE OR REPLACE FUNCTION public\.get_bootstrap_payload[\s\S]*'invite_code'\s*,\s*CASE\s+WHEN[\s\S]*THEN\s+t\.invite_code[\s\S]*ELSE\s+NULL/i);
   assert.match(schema, /CREATE OR REPLACE FUNCTION public\.join_team_by_code[\s\S]*RETURN\s+json_build_object\([\s\S]*'invite_code'\s*,\s*NULL/i);
+  assert.match(schema, /CREATE OR REPLACE FUNCTION public\.join_team_by_code[\s\S]*RAISE\s+EXCEPTION\s+'Invalid invite request'/i);
+  assert.doesNotMatch(schema.match(/CREATE OR REPLACE FUNCTION public\.join_team_by_code[\s\S]*?\$\$;/i)?.[0] || '', /Invalid invite code/i);
   assert.match(schema, /CREATE OR REPLACE FUNCTION public\.get_team_members_context[\s\S]*public\.has_team_permission\(p_team_id,\s*'admin'\)[\s\S]*THEN\s+p\.email[\s\S]*ELSE\s+NULL[\s\S]*END\s+AS\s+email/i);
   for (const block of schema.match(/CREATE\s+OR\s+REPLACE\s+FUNCTION[\s\S]*?\$\$;/gi) || []) {
     if (/SECURITY\s+DEFINER/i.test(block)) {
@@ -219,11 +221,18 @@ test('third-party script loaders and deploy preflight pin browser supply-chain c
   const fontCss = read('./assets/vendor/fonts/star-paper-fonts.css');
   const styles = read('./styles.css');
   const tokensCss = read('./star-paper-tokens.css');
-  const supabaseSdk = assets.external('supabase');
+  const supabaseSdk = assets.runtimeScript('supabase');
 
   assert.ok(index.includes(`href="${supabaseSdk.src}"`));
   assert.ok(index.includes(`src="${supabaseSdk.src}"`));
   assert.ok(index.includes(`integrity="${supabaseSdk.integrity}"`));
+  assert.equal(supabaseSdk.src, assets.url('assets/vendor/supabase/supabase.min.js'));
+  assert.equal(supabaseSdk.integrity, assets.integrityFor('assets/vendor/supabase/supabase.min.js'));
+  assert.ok(sw.includes('SP_ASSET_MANIFEST.appShell'));
+  assert.ok(assets.appShell.includes(assets.url('./assets/vendor/supabase/supabase.min.js')));
+  assert.doesNotMatch(index, /cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@2/i);
+  assert.doesNotMatch(supabase, /cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@2/i);
+  assert.doesNotMatch(assetContract, /cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@2/i);
   assert.ok(index.includes(assets.url('app.browser-assets.js')));
   assert.ok(index.includes(assets.url('app.public-pages.js')));
   assert.ok(index.includes(assets.url('app.boot-head.js')));
@@ -246,6 +255,7 @@ test('third-party script loaders and deploy preflight pin browser supply-chain c
   assert.match(assetContract, /sentry:[\s\S]*integrity: 'sha384-/);
   assert.match(assetContract, /chart:[\s\S]*integrity: 'sha384-/);
   assert.match(assetContract, /jspdf:[\s\S]*integrity: 'sha384-/);
+  assert.match(assetContract, /runtimeScriptPaths[\s\S]*supabase: 'assets\/vendor\/supabase\/supabase\.min\.js'/);
   assert.match(rootShell, /externalLibrary\('sentry', 'Sentry'\)/);
   assert.match(rootShell, /externalLibrary\('chart', 'Chart'\)/);
   assert.match(rootShell, /externalLibrary\('jspdf', 'jspdf'\)/);
@@ -276,7 +286,7 @@ test('third-party script loaders and deploy preflight pin browser supply-chain c
   assert.match(sw, /const canCacheRequestUrl = !hasAuthCallbackCacheBypassParam\(requestUrl\);/);
   assert.match(sw, /response && response\.ok && canCacheRequestUrl/);
   assert.match(sw, /if \(hasAuthCallbackCacheBypassParam\(url\)\) return false;/);
-  assert.match(supabase, /manifest\.external\('supabase'\)/);
+  assert.match(supabase, /manifest\.runtimeScript\('supabase'\)/);
   assert.match(preflight, /assertExternalTagsHaveIntegrity/);
   assert.match(preflight, /loadBrowserAssets/);
   assert.match(preflight, /sha384Integrity/);

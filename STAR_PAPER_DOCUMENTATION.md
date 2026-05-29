@@ -210,6 +210,14 @@ Expected behavior:
 - do not trap the user behind a full-screen loader
 - allow the user to choose sign-in normally
 
+### Signed-out app-route refresh
+
+Expected behavior:
+
+- a URL such as `/#settings` or `/#dashboard` without a stored Supabase session shows the login screen
+- Supabase-owned `login`, `signup`, and Google handlers are patched only after the app boot helpers are ready, so `app.js` cannot overwrite them with fallback stubs
+- the app must not leave the user on `Session restore stalled` or an app-refresh loader when no session exists
+
 ### Auth callback return
 
 Expected behavior:
@@ -267,7 +275,7 @@ For an authenticated session:
 
 1. Restore session through Supabase.
 2. Resolve workspace.
-3. Load cloud data.
+3. Load cloud data through `get_bootstrap_payload`; if that RPC has no usable first-paint payload, fall back to direct table loads before declaring cloud data unavailable.
 4. Sync that snapshot into the UI runtime.
 5. Render the app.
 
@@ -419,7 +427,7 @@ The browser app is public code. Treat everything shipped to Netlify as readable 
 
 Security invariants enforced in source and preflight:
 
-- Team invite codes are high-entropy bearer tokens. `schema.sql` uses `pgcrypto` and `public.generate_team_invite_code()` to create 32-character hex codes, rotates malformed/legacy codes when applied, makes `join_team_by_code` reject malformed codes before lookup, and exposes invite codes only through owner/admin RPC context rather than direct `teams` table SELECT.
+- Team invite codes are high-entropy bearer tokens. `schema.sql` uses `pgcrypto` and `public.generate_team_invite_code()` to create 32-character hex codes, rotates malformed/legacy codes when applied, makes `join_team_by_code` reject malformed codes before lookup with the same generic failure used for unknown codes, and exposes invite codes only through owner/admin RPC context rather than direct `teams` table SELECT.
 - Team role permissions are database-bound. `team_members.permissions` must match `public.team_role_permissions(role)` so direct Supabase updates cannot assign custom privilege JSON outside the role model.
 - Anonymous RPC execution is allowlisted. Signup username availability is intentionally anonymous; sensitive team/profile/data RPCs must remain authenticated-only.
 - Every public table created by `schema.sql` must have RLS enabled, RLS policies must explicitly target `TO authenticated`, and SECURITY DEFINER functions must set the fixed path `search_path = public, pg_temp`.
@@ -427,7 +435,9 @@ Security invariants enforced in source and preflight:
 - Browser-rendered images must go through safe source normalization. Upload inputs accept PNG, JPG, WebP, or GIF only; avatars are capped at 1 MB and receipt/proof images at 4 MB.
 - Empty-state CTAs, receipt/proof buttons, nudge dismissals, task controls, report filters, globe actions, calendar date picks, root-shell controls, and team modal actions dispatch through data attributes or explicit event listeners instead of raw JavaScript strings. Booking map/calendar labels, dashboard activity/cash-flow timeline labels, artist dropdown options, command-palette labels/subtitles, and fallback icon text must be escaped before insertion into HTML; command-palette and nudge icon rendering must use validated Phosphor icon class tokens. Globe hover cards, itinerary rows, sheet cards, and detail panels, report focus text, Today Board alerts, handcraft arrow icons, toast titles/messages, and team chat messages must render through DOM nodes or `textContent`, team member mutations must validate UUID-shaped IDs, and legacy admin user rows must escape local identity fields before rendering. Root boot/runtime logic lives in `app.boot-*.js`, `public-page-*.js`, and `app.root-shell.js`; preflight fails if script blocks drift back into inline public root HTML, if landing pages regain inline style allowances, if loose icon/raw palette HTML sinks return, if dashboard timeline or artist-option stored-data sinks return, if any `app.globe.js` `innerHTML`, handcraft icon `innerHTML`, report focus `innerHTML`, Today Board alert `innerHTML`, task/report/globe inline event handlers, or Supabase team chat `insertAdjacentHTML` return.
 - Service worker navigation caching must treat OAuth/Supabase callback parameters as fetch-only. URLs containing `access_token`, `refresh_token`, `code`, `state`, token metadata, or auth error parameters must not be written to or read from Cache Storage under the sensitive request URL.
-- Classic CDN script resources are pinned with SRI where browser-supported. `app.browser-assets.js` owns those CDN URLs/hashes plus local browser asset versions and vendored runtime file hashes. Brand fonts, Phosphor icon CSS/fonts, and the Schedule > Global Three.js, OrbitControls, and TopoJSON client modules are self-hosted under `assets/vendor/`; CSP and preflight must reject public-CDN regressions, version drift, or vendored hash drift for those runtime paths. `script-src` and `style-src-elem` must not include `'unsafe-inline'`; root and public landing document CSPs use `style-src-attr 'none'`. The remaining security work is the audited `app.js` `innerHTML` surface and any future dynamic style-attribute emitters, not a required CDN/font exception.
+- The Supabase auth SDK is a same-origin runtime script at `assets/vendor/supabase/supabase.min.js`, pinned by `app.browser-assets.js` through `runtimeScript('supabase')`, loaded synchronously before `supabase.js`, and included in the service-worker app shell. Preflight must fail if auth boot drifts back to the floating Supabase CDN URL, if the vendored SDK is missing, if the SRI hash changes, or if the service worker stops precaching it.
+- Supabase browser requests are bounded by the auth fetch timeout. If session restore or a user-triggered login/signup request cannot reach the live project, the app must recover to a visible login/cloud-unavailable state and must not leave `Session restore stalled` as the terminal screen.
+- Classic CDN script resources that remain out of the auth boot path are pinned with SRI where browser-supported. `app.browser-assets.js` owns those CDN URLs/hashes plus local browser asset versions and vendored runtime file hashes. Brand fonts, Phosphor icon CSS/fonts, and the Schedule > Global Three.js, OrbitControls, and TopoJSON client modules are self-hosted under `assets/vendor/`; CSP and preflight must reject public-CDN regressions, version drift, or vendored hash drift for those runtime paths. `script-src` and `style-src-elem` must not include `'unsafe-inline'`; root and public landing document CSPs use `style-src-attr 'none'`. The remaining security work is the audited `app.js` `innerHTML` surface and any future dynamic style-attribute emitters, not a required CDN/font exception.
 
 Security review artifacts:
 
@@ -474,11 +484,11 @@ When shipping auth, sync, reports, or boot changes, deploy matching versions of:
 - `app.browser-assets.js`
 - `sw.js`
 - `assets/world-atlas/land-50m.json`
-- `assets/vendor/` runtime assets
+- `assets/vendor/` runtime assets, including the same-origin Supabase auth SDK
 
 ### Cache rule
 
-If browser asset versions or pinned CDN hashes change, update `app.browser-assets.js` first. The service worker cache list, runtime loaders, static HTML, and vendor CSS references must match that contract or preflight fails.
+If browser asset versions, same-origin runtime scripts, vendored hashes, or pinned CDN hashes change, update `app.browser-assets.js` first. The service worker cache list, runtime loaders, static HTML, Supabase auth boot path, and vendor CSS references must match that contract or preflight fails.
 
 This prevents stale boot or auth code from surviving a deploy.
 
