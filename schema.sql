@@ -7,8 +7,10 @@
 -- Enable UUID extension (usually already enabled)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- High-entropy invite codes use pgcrypto's CSPRNG. Supabase projects normally
--- have this extension available, and CREATE EXTENSION is idempotent here.
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+-- install extensions under the extensions schema; schema-qualify calls from
+-- functions with fixed search_path values.
+CREATE SCHEMA IF NOT EXISTS extensions;
+CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA extensions;
 
 -- New functions should not become publicly executable by default.
 ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
@@ -213,7 +215,7 @@ LANGUAGE sql
 VOLATILE
 SET search_path = public, pg_temp
 AS $$
-  SELECT encode(gen_random_bytes(16), 'hex');
+  SELECT encode(extensions.gen_random_bytes(16), 'hex');
 $$;
 
 REVOKE EXECUTE ON FUNCTION public.generate_team_invite_code() FROM PUBLIC, anon;

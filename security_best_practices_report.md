@@ -11,7 +11,7 @@ This pass focused on the production static app and Supabase boundary. The most s
 Impact: an authenticated attacker who guessed or obtained an old short code could join a team as a viewer and read team-scoped data allowed by RLS.
 
 - Evidence: `schema.sql` previously generated `teams.invite_code` with an 8-character MD5 substring and `join_team_by_code` looked up that value directly. A later audit also found ordinary members could still receive or direct-select `teams.invite_code`.
-- Fix applied: `schema.sql` now enables `pgcrypto`, generates 32-hex invite codes with `gen_random_bytes(16)`, rotates malformed/legacy source rows when the migration is run, adds a check constraint, rejects non-32-hex join attempts, removes direct `teams.invite_code` SELECT from authenticated users, and returns invite codes only through owner/admin team context RPCs.
+- Fix applied: `schema.sql` now enables `pgcrypto` in the Supabase `extensions` schema, generates 32-hex invite codes with schema-qualified `extensions.gen_random_bytes(16)`, rotates malformed/legacy source rows when the migration is run, adds a check constraint, rejects non-32-hex join attempts, removes direct `teams.invite_code` SELECT from authenticated users, and returns invite codes only through owner/admin team context RPCs.
 - Residual risk: this is source-side until the updated `schema.sql` is run in the live Supabase project and `scripts/supabase-post-apply-verification.sql` returns no invite-code blockers there.
 
 ### SBP-002: Browser XSS has high impact because the SPA holds Supabase sessions

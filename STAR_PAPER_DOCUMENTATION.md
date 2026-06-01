@@ -429,7 +429,7 @@ The browser app is public code. Treat everything shipped to Netlify as readable 
 
 Security invariants enforced in source and preflight:
 
-- Team invite codes are high-entropy bearer tokens. `schema.sql` uses `pgcrypto` and `public.generate_team_invite_code()` to create 32-character hex codes, rotates malformed/legacy codes when applied, makes `join_team_by_code` reject malformed codes before lookup with the same generic failure used for unknown codes, and exposes invite codes only through owner/admin RPC context rather than direct `teams` table SELECT.
+- Team invite codes are high-entropy bearer tokens. `schema.sql` uses schema-qualified `extensions.gen_random_bytes(16)` inside `public.generate_team_invite_code()` to create 32-character hex codes, rotates malformed/legacy codes when applied, makes `join_team_by_code` reject malformed codes before lookup with the same generic failure used for unknown codes, and exposes invite codes only through owner/admin RPC context rather than direct `teams` table SELECT.
 - Team role permissions are database-bound. `team_members.permissions` must match `public.team_role_permissions(role)` so direct Supabase updates cannot assign custom privilege JSON outside the role model.
 - Anonymous RPC execution is allowlisted. Signup username availability is intentionally anonymous; sensitive team/profile/data RPCs must remain authenticated-only.
 - Every public table created by `schema.sql` must have RLS enabled, RLS policies must explicitly target `TO authenticated`, and SECURITY DEFINER functions must set the fixed path `search_path = public, pg_temp`.

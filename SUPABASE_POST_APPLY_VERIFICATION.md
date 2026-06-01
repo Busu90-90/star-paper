@@ -12,7 +12,7 @@ Run this after:
 
 ## What It Verifies
 
-- Invite-code invariant: `pgcrypto` is installed, `generate_team_invite_code()` returns lower-case 32-hex values, existing `teams.invite_code` values are present/unique/well-formed, malformed join codes fail closed, and browser roles cannot directly select `teams.invite_code`.
+- Invite-code invariant: `pgcrypto` is installed with `extensions.gen_random_bytes(integer)` available, `generate_team_invite_code()` schema-qualifies that function and returns lower-case 32-hex values, existing `teams.invite_code` values are present/unique/well-formed, malformed join codes fail closed, and browser roles cannot directly select `teams.invite_code`.
 - Advisor-surface invariant: `public.ai_context` is explicitly service-role-only, browser roles have no direct table grants on it, its `user_id` foreign key has a covering index, `get_email_for_username(text)` is absent, and every browser-executable `SECURITY DEFINER` function is on the documented authenticated allowlist.
 - Workspace-scope immutability invariant: the trigger-only immutability functions exist, direct execute grants are revoked, every protected table has its enabled `BEFORE UPDATE` trigger, and direct scope-changing UPDATE probes fail.
 - Team-permission invariant: `team_role_permissions(role)` returns the runtime presets, `team_members.permissions` is constrained to those presets, existing rows match their roles, and a direct mismatch UPDATE probe fails.
