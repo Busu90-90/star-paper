@@ -37,7 +37,7 @@ test('team invite codes are high entropy and legacy short codes fail closed', ()
     }
   }
   for (const block of schema.match(/CREATE\s+POLICY[\s\S]*?;/gi) || []) {
-    assert.match(block, /\bTO\s+authenticated\b/i);
+    assert.match(block, /\bTO\s+[^;]*\bauthenticated\b/i);
   }
   assert.doesNotMatch(supabase, /teams\(id,\s*name,\s*invite_code/i);
   assert.match(supabase, /const inviteCode = \/\^\[0-9a-f\]\{32\}\$\/\.test\(rawInviteCode\) \? rawInviteCode : null;/);

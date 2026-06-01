@@ -169,9 +169,22 @@
   if (hasAuthCallback) return;
   var marker = '';
   var hasAppHash = false;
+  var hasStoredSession = false;
   var publicAuthIntent = '';
   try {
     marker = sessionStorage.getItem('sp_boot_context') || '';
+    if (localStorage.getItem('sp_logged_out') !== '1') {
+      hasStoredSession = Boolean(localStorage.getItem('sp-starpaper-auth-v1'));
+      if (!hasStoredSession) {
+        for (var i = 0; i < localStorage.length; i += 1) {
+          var key = localStorage.key(i) || '';
+          if (key.indexOf('sb-fxcyocdwvjiyatqnaahg-auth-token') === 0 || key.indexOf('sp-starpaper-auth-v1.') === 0) {
+            hasStoredSession = true;
+            break;
+          }
+        }
+      }
+    }
     publicAuthIntent = (url.searchParams.get('auth') || url.searchParams.get('screen') || '').toLowerCase();
     var publicHash = decodeURIComponent((url.hash || '').replace(/^#/, '')).toLowerCase();
     if (!publicAuthIntent && (publicHash === 'signup' || publicHash === 'create-account')) publicAuthIntent = 'signup';
@@ -183,7 +196,9 @@
   } catch (_err) {}
   if (
     window.__spAppBooted ||
+    marker === 'app-shell' ||
     marker === 'auth-return' ||
+    hasStoredSession ||
     hasAppHash
   ) {
     return;

@@ -1676,7 +1676,10 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     if (typeof window.shouldBootAuthenticatedApp === 'function') {
       try { return Boolean(window.shouldBootAuthenticatedApp(window.location)); } catch (_err) {}
     }
-    return !hasAuthCallbackInUrl() && isAppShellPath(window.location.pathname) && hasExplicitAppRouteHash();
+    if (hasAuthCallbackInUrl()) return false;
+    const marker = readBootContextMarker();
+    if (marker === APP_SHELL_BOOT_CONTEXT || hasStoredSupabaseSessionHint()) return true;
+    return isAppShellPath(window.location.pathname) && hasExplicitAppRouteHash();
   }
 
   function shouldShowLoginForAppRouteWithoutSession() {
@@ -1689,7 +1692,9 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
   function shouldStayOnPublicShell() {
     if (hasAuthCallbackInUrl() || window.__spAuthRedirectInProgress || window.__spUserInitiatedAuth) return false;
-    return isPublicShellRoute() && !hasExplicitAppRouteHash();
+    if (!isPublicShellRoute() || hasExplicitAppRouteHash()) return false;
+    if (_session?.user || hasStoredSupabaseSessionHint() || readBootContextMarker() === APP_SHELL_BOOT_CONTEXT) return false;
+    return true;
   }
 
   function shouldSuppressPassiveAuthBootstrap(event) {
@@ -4645,7 +4650,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     // created by the trigger; we just patch the phone number if provided.
     if (data.user && data.session && phone) {
       await db.from('profiles')
-        .update({ phone, username })
+        .update({ phone })
         .eq('id', data.user.id);
     }
     return data;
@@ -6748,13 +6753,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       try {
         window.__spUserInitiatedAuth = true;
         window.__spSuppressStoredSessionBootstrap = false;
-        const available = await isUsernameAvailable(name);
-        if (available === false) {
-          if (typeof window.toastError === 'function') {
-            window.toastError('That username is already taken. Please choose another.');
-          }
-          return;
-        }
+        // Do not call the username availability RPC before auth. Duplicate
+        // requested names are resolved by handle_new_user() in schema.sql.
         const result = await signUp(name, email, pw, phone);
         if (result?.session) {
           const flowId = beginBootTransitionSafe('signup-session', 'signing-in');
@@ -6965,6 +6965,11 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
   // ── INIT ────────────────────────────────────────────────────────────────────────────
   function bindAutoSync() {
+    if (window.__spCloudRefreshInterval) {
+      clearInterval(window.__spCloudRefreshInterval);
+      window.__spCloudRefreshInterval = null;
+    }
+
     if (window.__spAutoSyncBound) return;
     window.__spAutoSyncBound = true;
 
@@ -7005,11 +7010,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         triggerCloudRefresh('visibility');
       }
     });
-    if (!window.__spCloudRefreshInterval) {
-      window.__spCloudRefreshInterval = setInterval(() => {
-        triggerCloudRefresh('interval');
-      }, 10000);
-    }
+    // Freshness is event-driven; a fixed foreground interval reloads every core table.
   }
 
   async function bootstrapInitialSession(options = {}) {

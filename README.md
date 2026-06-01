@@ -51,7 +51,9 @@ The cloud-only runtime expects the live Supabase project to match `schema.sql`, 
 
 - RPCs: `get_bootstrap_payload`, `is_username_available`, `get_my_team_context`, `get_team_members_context`, `create_team_with_member`, `join_team_by_code`, `get_my_team_ids`, `has_team_permission`, and `team_role_permissions`.
 - Workspace columns: `profiles.last_active_team_id`, every business table's `team_id`, and `team_members.permissions`.
+- Residual AI context table: `public.ai_context` is service-role-only extension state, not a browser runtime table. `schema.sql` keeps RLS enabled, installs an explicit deny policy for `anon`/`authenticated`, revokes browser-role table privileges, and indexes `user_id` so the live advisor does not rely on zero-policy fail-closed behavior.
 - Bootstrap payload keys: `profile`, `teams`, `workspace`, and `data.bookings`, `data.expenses`, `data.otherIncome`, `data.artists`, `data.audienceMetrics`, `data.tasks`, `data.revenueGoal`, `data.bbfEntries`, and `data.closingThoughts`.
+- Cloud refresh contract: full snapshots load on bootstrap/workspace reload and on actual sync signals: Supabase realtime changes, same-account tab broadcasts, reconnect, focus, and visibility resume. The browser runtime must not poll the core business tables on a fixed 10-second foreground interval.
 - Retry transport: `sp_retry_queue` is browser-local, account/workspace-scoped transport state. There is no Supabase retry-queue table.
 - Legacy ID uniqueness: personal rows are unique on `legacy_id, owner_id` only when `team_id IS NULL`; team rows are unique on `legacy_id, team_id`.
 
@@ -63,7 +65,7 @@ Runbook:
 
 1. Open the Supabase project SQL Editor.
 2. Paste and run `scripts/supabase-migration-readiness.sql`.
-3. Treat any `severity = 'blocker'` row as a migration stop. Resolve duplicate nonblank `profiles.username`, duplicate valid nonblank `teams.invite_code`, and duplicate `legacy_id` values inside the same personal or team workspace before continuing.
+3. Treat any `severity = 'blocker'` row as a migration stop. Resolve duplicate nonblank `profiles.username`, duplicate valid nonblank `teams.invite_code`, and duplicate `legacy_id` values inside the same personal or team workspace before continuing. `public.ai_context` rows are not a browser-runtime blocker; readiness warnings for its policy/grant/index posture mean `schema.sql` still needs to be applied and then verified.
 4. Rerun the readiness SQL until it returns no blocker rows.
 5. Apply the latest `schema.sql`, then run the readiness SQL once more to confirm no duplicate blocker remains.
 
@@ -73,10 +75,13 @@ After `schema.sql` is applied, run [`scripts/supabase-post-apply-verification.sq
 
 Post-apply pass condition: the base result set has no `severity = 'blocker'` rows. `severity = 'warning'` usually means the schema catalog checks passed but production had no sample row for an active mutation probe, so treat it as a direct-update proof gap for the named table rather than as a runtime contract change. Run [`scripts/supabase-post-apply-canary-proof.sql`](./scripts/supabase-post-apply-canary-proof.sql) to close helper-covered `team_members` and workspace-trigger warnings with rollback-contained disposable rows instead of app-created sample data; final signoff requires that helper result set to have no blockers and `canary.rollback_contained = pass`.
 
+The post-apply SQL also proves the live advisor-facing surface: `public.ai_context` has an explicit deny policy and no browser-role table grants, `public.get_email_for_username(text)` is absent, and the executable `SECURITY DEFINER` allowlist is limited to authenticated runtime RPCs/helpers: `create_team_with_member`, `get_bootstrap_payload`, `get_my_team_context`, `get_my_team_ids`, `get_team_members_context`, `has_team_permission`, `is_username_available`, and `join_team_by_code`. `getmyteamids` may remain in the catalog for compatibility, but it must not be executable by `anon` or `authenticated`.
+
 ## Production Security Contract
 
 - The Supabase anon key in `supabase.js` is public browser configuration, not a secret. RLS policies, authenticated RPC grants, actor checks, and team permissions are the real data boundary.
-- RLS policies in `schema.sql` are scoped with `TO authenticated`; anonymous table access is not part of the production contract.
+- Browser data-access RLS policies in `schema.sql` are scoped with `TO authenticated`; anonymous table access is not part of the production contract. Explicit deny policies may name `anon` only to document a closed surface such as `public.ai_context`.
+- Anonymous browser callers have no executable Star Paper RPCs. Username availability is authenticated-only for profile edits; signup no longer depends on a pre-auth username probe because `handle_new_user()` and `profiles_username_key` resolve duplicate requested usernames at account creation.
 - Supabase service-role credentials, JWT secrets, database passwords, and access tokens must never be committed or shipped. `npm run preflight` scans source files for service-role env assignments, sensitive Supabase env assignments, and service-role JWT payloads.
 - Team invite codes are bearer tokens. `schema.sql` now generates 32-character hex codes with `pgcrypto`, rotates malformed or legacy short codes when applied, makes `join_team_by_code` reject malformed codes before lookup with the same generic failure used for unknown codes, and keeps invite-code disclosure behind owner/admin RPC views instead of direct table SELECT.
 - SECURITY DEFINER RPCs in `schema.sql` must keep a fixed `search_path = public, pg_temp`; preflight fails if a new definer function omits that bound path.

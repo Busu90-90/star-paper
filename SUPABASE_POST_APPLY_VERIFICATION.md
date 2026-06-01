@@ -13,6 +13,7 @@ Run this after:
 ## What It Verifies
 
 - Invite-code invariant: `pgcrypto` is installed, `generate_team_invite_code()` returns lower-case 32-hex values, existing `teams.invite_code` values are present/unique/well-formed, malformed join codes fail closed, and browser roles cannot directly select `teams.invite_code`.
+- Advisor-surface invariant: `public.ai_context` is explicitly service-role-only, browser roles have no direct table grants on it, its `user_id` foreign key has a covering index, `get_email_for_username(text)` is absent, and every browser-executable `SECURITY DEFINER` function is on the documented authenticated allowlist.
 - Workspace-scope immutability invariant: the trigger-only immutability functions exist, direct execute grants are revoked, every protected table has its enabled `BEFORE UPDATE` trigger, and direct scope-changing UPDATE probes fail.
 - Team-permission invariant: `team_role_permissions(role)` returns the runtime presets, `team_members.permissions` is constrained to those presets, existing rows match their roles, and a direct mismatch UPDATE probe fails.
 - Rollback-contained canary invariant: disposable `teams`, `team_members`, and workspace rows can be created inside one SQL helper, forbidden reassignment and role/permission mismatch updates are blocked by the live database, and all disposable rows are rolled back before signoff evidence is returned.
@@ -33,6 +34,7 @@ The live project is verified only when:
 
 - `scripts/supabase-migration-readiness.sql` has no `severity = 'blocker'` rows before applying `schema.sql`.
 - `scripts/supabase-post-apply-verification.sql` has no `severity = 'blocker'` rows after applying `schema.sql`.
+- The post-apply output includes `advisor.ai_context.rls_explicit_policy = pass`, `advisor.ai_context.browser_grants_revoked = pass`, `advisor.security_definer_rpc_surface = pass`, and `advisor.username_email_lookup_absent = pass`. If `advisor.ai_context.user_id_index` is only a warning, reapply the `idx_ai_context_user_id` statement from `schema.sql` before considering the live advisor drift closed.
 - If the base post-apply SQL reports helper-covered active-probe warnings, `scripts/supabase-post-apply-canary-proof.sql` has no `severity = 'blocker'` rows.
 - The helper result set includes `canary.fixtures.created = pass`, the expected workspace and `team_members` block rows, the expected `permissions.canary.team_members.mismatch = pass` row, and `canary.rollback_contained = pass`.
 
@@ -41,6 +43,7 @@ The live project is verified only when:
 ## Stop Rules
 
 - Any invite-code blocker means the live project can still expose weak, malformed, duplicated, or directly readable invite codes. Do not claim invite-code hardening is live.
+- Any advisor-surface blocker means the live project still has real drift from the repo contract: either `ai_context` is not explicitly denied, username-to-email lookup exists, anonymous RPC execution remains exposed, or an unexpected `SECURITY DEFINER` function is executable by browser roles. Do not claim the Supabase advisor surface is closed.
 - Any workspace immutability blocker means a crafted direct update may still move rows across personal/team workspaces. Do not claim the RLS reassignment gap is closed.
 - Any team-permission blocker means direct Supabase writes may still create role/permission combinations the UI never emits. Do not claim team permissions are database-bound.
 - Any canary rollback blocker means disposable proof rows may have persisted. Do not sign off until the sentinel rows named by the helper are removed or the rollback failure is understood.

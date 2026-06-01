@@ -130,6 +130,7 @@ The live Supabase project must be kept in lockstep with `schema.sql`. The runtim
 - `teams`: `name`, `owner_id`, `invite_code`, and `created_at`
 - `team_members`: `team_id`, `user_id`, `role`, `permissions`, and `joined_at`; `permissions` is role-derived and must match `team_role_permissions(role)`
 - business tables: `owner_id` or `user_id`, `team_id`, `legacy_id` where present, cloud UUID `id`, and the domain columns selected by `supabase.js`
+- `ai_context`: residual service-role-only extension state. Browser roles must have no table grants, and its RLS policy is an explicit deny rather than an accidental zero-policy fail-closed state.
 - helper RPCs: `get_bootstrap_payload`, `get_my_team_context`, `get_team_members_context`, `create_team_with_member`, `join_team_by_code`, `is_username_available`, `get_my_team_ids`, `has_team_permission`, and `team_role_permissions`
 
 `get_bootstrap_payload(uid)` is the loader-blocking fast path. It must return `profile`, `teams`, `workspace.ownerId/teamId/scopeKey/source/role/permissions`, the `data.*` payload for bookings, expenses, other income, artists, audience metrics, tasks, revenue goal, BBF entries, and closing thoughts, plus `meta.complete`, `meta.missingKeys`, and `meta.generatedAt`.
@@ -138,7 +139,7 @@ The retry queue remains browser-local transport state. It replays only under the
 
 Before live constraint hardening, run `scripts/supabase-migration-readiness.sql` in the Supabase SQL Editor. Any blocker row means the live project still has data that can stop `schema.sql`, especially duplicate nonblank `profiles.username`, duplicate valid nonblank `teams.invite_code`, or duplicate `legacy_id` values inside the same personal or team workspace.
 
-After applying `schema.sql`, run `scripts/supabase-post-apply-verification.sql`. If production has no sample rows for helper-covered active probes, run `scripts/supabase-post-apply-canary-proof.sql`; it creates disposable team/workspace rows, proves the live triggers and `team_members` permission constraint reject forbidden updates, and rolls those rows back before returning findings.
+After applying `schema.sql`, run `scripts/supabase-post-apply-verification.sql`. It must pass the advisor-surface checks for `ai_context`, username-to-email lookup absence, and the authenticated-only `SECURITY DEFINER` RPC allowlist. If production has no sample rows for helper-covered active probes, run `scripts/supabase-post-apply-canary-proof.sql`; it creates disposable team/workspace rows, proves the live triggers and `team_members` permission constraint reject forbidden updates, and rolls those rows back before returning findings.
 
 ### Report totals
 

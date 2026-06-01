@@ -299,6 +299,8 @@ On refresh, Star Paper should:
 3. restore the last section/tab
 4. avoid bouncing to landing or login unless the session is truly gone
 
+After boot, data freshness is event-driven. Full cloud refreshes run after Supabase realtime table changes, same-account tab broadcasts, reconnect, focus, and visibility resume. The runtime must not keep the Android or browser client polling bookings, expenses, other income, artists, audience metrics, tasks, revenue goals, BBF entries, and closing thoughts every 10 seconds.
+
 ## Sync Model
 
 Star Paper is designed for:
@@ -312,7 +314,7 @@ Sync depends on:
 
 - successful cloud writes
 - valid RLS and schema in the live Supabase project
-- refresh/focus/interval/realtime refresh behavior
+- bootstrap/workspace reload, focus/visibility resume, online recovery, cross-tab broadcast, and Supabase realtime refresh behavior
 
 ### Success definition
 

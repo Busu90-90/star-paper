@@ -98,6 +98,33 @@ DO $$ BEGIN
   END IF;
 END $$;
 
+-- ============================================================
+-- AI CONTEXT (service-role only)
+-- ============================================================
+-- Residual AI instruction state is not part of the browser runtime. Keep the
+-- table explicit in the schema so live advisor checks do not rely on an
+-- accidental "RLS enabled with no policies" fail-closed state.
+CREATE TABLE IF NOT EXISTS public.ai_context (
+  user_id           UUID REFERENCES auth.users(id),
+  instruction_key   TEXT PRIMARY KEY,
+  instruction_value TEXT,
+  updated_at        TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.ai_context ENABLE ROW LEVEL SECURITY;
+
+CREATE INDEX IF NOT EXISTS idx_ai_context_user_id
+  ON public.ai_context (user_id);
+
+REVOKE ALL ON TABLE public.ai_context FROM PUBLIC, anon, authenticated;
+
+DROP POLICY IF EXISTS "Browser roles cannot access AI context" ON public.ai_context;
+CREATE POLICY "Browser roles cannot access AI context"
+  ON public.ai_context FOR ALL
+  TO anon, authenticated
+  USING (false)
+  WITH CHECK (false);
+
 -- Auto-create profile on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
@@ -172,9 +199,11 @@ $$;
 -- account existence and email addresses to anonymous callers.
 DROP FUNCTION IF EXISTS public.get_email_for_username(TEXT);
 
--- Username availability is intentionally anonymous because signup runs before auth.
-REVOKE EXECUTE ON FUNCTION public.is_username_available(TEXT) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.is_username_available(TEXT) TO anon, authenticated;
+-- Username availability is authenticated-only. Signup correctness is enforced
+-- by handle_new_user() and profiles_username_key rather than by an anonymous
+-- account-enumeration RPC.
+REVOKE EXECUTE ON FUNCTION public.is_username_available(TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.is_username_available(TEXT) TO authenticated;
 
 -- Team invite codes are public bearer tokens. Keep them long, random, and
 -- lower-case URL-safe so a leaked or guessed code is the only join path.
@@ -369,8 +398,9 @@ AS $$
   SELECT * FROM public.get_my_team_ids(uid);
 $$;
 
-REVOKE EXECUTE ON FUNCTION public.getmyteamids(UUID) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.getmyteamids(UUID) TO authenticated;
+-- Legacy alias retained for catalog compatibility only; it is not part of the
+-- browser RPC surface and should not be executable through PostgREST.
+REVOKE EXECUTE ON FUNCTION public.getmyteamids(UUID) FROM PUBLIC, anon, authenticated;
 
 -- â”€â”€ ATOMIC TEAM CREATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- Creates a team AND adds the creator as owner in a single transaction.
@@ -1221,6 +1251,8 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+REVOKE EXECUTE ON FUNCTION public.sync_finance_artist_fields() FROM PUBLIC, anon, authenticated;
 
 DROP TRIGGER IF EXISTS sync_expenses_artist_fields ON public.expenses;
 CREATE TRIGGER sync_expenses_artist_fields

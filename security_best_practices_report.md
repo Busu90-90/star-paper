@@ -47,8 +47,8 @@ Impact: a malicious team editor could craft a direct Supabase update that turns 
 ### SBP-006: RLS and SECURITY DEFINER drift must be caught before deploy
 
 - Evidence: `schema.sql` owns RLS policies and SECURITY DEFINER RPCs used by the browser client.
-- Fix applied: preflight now asserts every public table created in `schema.sql` has RLS enabled, every RLS policy explicitly targets `TO authenticated`, anonymous RPC grants match the allowlist, and SECURITY DEFINER function blocks set the fixed path `search_path = public, pg_temp`.
-- Residual risk: repo-side checks do not prove the live Supabase project is already synchronized.
+- Fix applied: preflight now asserts every public table created in `schema.sql` has RLS enabled, browser data-access policies target authenticated users, anonymous RPC grants are empty, and SECURITY DEFINER function blocks set the fixed path `search_path = public, pg_temp`. `schema.sql` also owns the residual `public.ai_context` table with an explicit browser-deny policy, revoked browser table grants, and a covering `user_id` index; `getmyteamids` is retained only as a non-executable legacy alias.
+- Residual risk: repo-side checks do not prove the live Supabase project is already synchronized. The live proof must include the post-apply advisor-surface rows for `ai_context`, username-to-email lookup absence, and the `SECURITY DEFINER` allowlist.
 
 ## Low severity
 
@@ -63,4 +63,4 @@ Impact: a malicious team editor could craft a direct Supabase update that turns 
 - `node --check scripts/preflight.mjs`
 - `npm run preflight`
 - `npm test`
-- Live follow-up: run the updated `schema.sql` in Supabase, then run `scripts/supabase-post-apply-verification.sql`. Treat any `severity = 'blocker'` row as a migration stop; warning rows identify tables without sample rows for active mutation probes. Run `scripts/supabase-post-apply-canary-proof.sql` to close helper-covered `team_members` and workspace-trigger warnings with rollback-contained disposable rows, and require `canary.rollback_contained = pass` before signoff.
+- Live follow-up: run the updated `schema.sql` in Supabase, then run `scripts/supabase-post-apply-verification.sql`. Treat any `severity = 'blocker'` row as a migration stop; the advisor-surface checks must show `advisor.ai_context.rls_explicit_policy`, `advisor.ai_context.browser_grants_revoked`, `advisor.security_definer_rpc_surface`, and `advisor.username_email_lookup_absent` as `pass`. Warning rows otherwise identify tables without sample rows for active mutation probes. Run `scripts/supabase-post-apply-canary-proof.sql` to close helper-covered `team_members` and workspace-trigger warnings with rollback-contained disposable rows, and require `canary.rollback_contained = pass` before signoff.

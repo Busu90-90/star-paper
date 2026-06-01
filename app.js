@@ -272,6 +272,8 @@ function shouldBootAuthenticatedApp(locationLike = window.location) {
     } catch (_err) {}
     const href = locationLike?.href || window.location.href;
     if (hasAuthCallbackParams(href)) return false;
+    const marker = readBootContextMarker();
+    if (marker === APP_BOOT_CONTEXT_APP_SHELL || hasStoredCloudSessionHint()) return true;
     return isAppShellPath(locationLike?.pathname || window.location.pathname) &&
         Boolean(getAppHashSection(locationLike?.hash || window.location.hash));
 }
