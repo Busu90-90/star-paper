@@ -118,6 +118,98 @@ BEGIN
     HAVING COUNT(DISTINCT username) > 1;
   END IF;
 
+  IF to_regclass('public.ai_context') IS NOT NULL THEN
+    IF EXISTS (
+      SELECT 1
+      FROM pg_class c
+      LEFT JOIN pg_policy pol ON pol.polrelid = c.oid
+      WHERE c.oid = 'public.ai_context'::regclass
+      GROUP BY c.oid, c.relrowsecurity
+      HAVING c.relrowsecurity AND COUNT(pol.oid) = 0
+    ) THEN
+      INSERT INTO sp_migration_readiness_findings (
+        check_name, severity, relation_name, details, remediation
+      )
+      VALUES (
+        'ai_context.rls_policy',
+        'warning',
+        'public.ai_context',
+        '{"rls_enabled": true, "policy_count": 0}'::jsonb,
+        'Apply schema.sql to install the explicit deny policy for browser roles, then rerun post-apply verification.'
+      );
+    END IF;
+
+    IF to_regrole('anon') IS NOT NULL
+      AND to_regrole('authenticated') IS NOT NULL
+      AND (
+        has_table_privilege('anon', 'public.ai_context', 'SELECT')
+        OR has_table_privilege('anon', 'public.ai_context', 'INSERT')
+        OR has_table_privilege('anon', 'public.ai_context', 'UPDATE')
+        OR has_table_privilege('anon', 'public.ai_context', 'DELETE')
+        OR has_table_privilege('authenticated', 'public.ai_context', 'SELECT')
+        OR has_table_privilege('authenticated', 'public.ai_context', 'INSERT')
+        OR has_table_privilege('authenticated', 'public.ai_context', 'UPDATE')
+        OR has_table_privilege('authenticated', 'public.ai_context', 'DELETE')
+      )
+    THEN
+      INSERT INTO sp_migration_readiness_findings (
+        check_name, severity, relation_name, details, remediation
+      )
+      VALUES (
+        'ai_context.browser_table_grants',
+        'warning',
+        'public.ai_context',
+        jsonb_build_object(
+          'anon', jsonb_build_object(
+            'select', has_table_privilege('anon', 'public.ai_context', 'SELECT'),
+            'insert', has_table_privilege('anon', 'public.ai_context', 'INSERT'),
+            'update', has_table_privilege('anon', 'public.ai_context', 'UPDATE'),
+            'delete', has_table_privilege('anon', 'public.ai_context', 'DELETE')
+          ),
+          'authenticated', jsonb_build_object(
+            'select', has_table_privilege('authenticated', 'public.ai_context', 'SELECT'),
+            'insert', has_table_privilege('authenticated', 'public.ai_context', 'INSERT'),
+            'update', has_table_privilege('authenticated', 'public.ai_context', 'UPDATE'),
+            'delete', has_table_privilege('authenticated', 'public.ai_context', 'DELETE')
+          )
+        ),
+        'Apply schema.sql to revoke direct browser-role table privileges from public.ai_context.'
+      );
+    END IF;
+
+    IF EXISTS (
+      SELECT 1
+      FROM pg_attribute
+      WHERE attrelid = 'public.ai_context'::regclass
+        AND attname = 'user_id'
+        AND NOT attisdropped
+    )
+      AND NOT EXISTS (
+        SELECT 1
+        FROM pg_index i
+        WHERE i.indrelid = 'public.ai_context'::regclass
+          AND i.indkey::int2[] @> ARRAY[(
+            SELECT attnum
+            FROM pg_attribute
+            WHERE attrelid = 'public.ai_context'::regclass
+              AND attname = 'user_id'
+              AND NOT attisdropped
+          )]::int2[]
+      )
+    THEN
+      INSERT INTO sp_migration_readiness_findings (
+        check_name, severity, relation_name, details, remediation
+      )
+      VALUES (
+        'ai_context.user_id_index',
+        'warning',
+        'public.ai_context',
+        '{"missing_index": "idx_ai_context_user_id"}'::jsonb,
+        'Apply schema.sql to install idx_ai_context_user_id and close the foreign-key advisor drift.'
+      );
+    END IF;
+  END IF;
+
   IF to_regclass('public.teams') IS NULL THEN
     INSERT INTO sp_migration_readiness_findings (
       check_name, severity, relation_name, details, remediation

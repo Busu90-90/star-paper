@@ -25,6 +25,7 @@ CREATE TEMP TABLE sp_post_apply_verification_findings (
 
 DO $$
 DECLARE
+  v_details JSONB;
   v_bad_count INTEGER;
   v_bool BOOLEAN;
   v_error TEXT;
@@ -37,6 +38,255 @@ DECLARE
   v_trigger_name TEXT;
   v_trigger_function TEXT;
 BEGIN
+  -- Advisor/security-surface invariant: residual AI context stays explicitly
+  -- service-role-only, and only the documented SECURITY DEFINER RPCs remain
+  -- executable by browser roles.
+  IF to_regclass('public.ai_context') IS NULL THEN
+    INSERT INTO sp_post_apply_verification_findings
+    VALUES (
+      'advisor.ai_context.table',
+      'blocker',
+      'advisor-surface',
+      'public.ai_context',
+      '{}'::jsonb,
+      'Apply schema.sql so the residual ai_context table is explicitly declared and hardened.'
+    );
+  ELSE
+    SELECT c.relrowsecurity
+      AND EXISTS (
+        SELECT 1
+        FROM pg_policy pol
+        WHERE pol.polrelid = c.oid
+      )
+    INTO v_bool
+    FROM pg_class c
+    WHERE c.oid = 'public.ai_context'::regclass;
+
+    INSERT INTO sp_post_apply_verification_findings
+    VALUES (
+      'advisor.ai_context.rls_explicit_policy',
+      CASE WHEN v_bool THEN 'pass' ELSE 'blocker' END,
+      'advisor-surface',
+      'public.ai_context',
+      jsonb_build_object(
+        'rls_enabled', (
+          SELECT relrowsecurity
+          FROM pg_class
+          WHERE oid = 'public.ai_context'::regclass
+        ),
+        'policy_count', (
+          SELECT COUNT(*)
+          FROM pg_policy
+          WHERE polrelid = 'public.ai_context'::regclass
+        )
+      ),
+      CASE
+        WHEN v_bool THEN 'No action.'
+        ELSE 'Reapply schema.sql; ai_context must have RLS enabled with an explicit deny policy so the live advisor does not rely on zero-policy fail-closed behavior.'
+      END
+    );
+
+    IF to_regrole('anon') IS NULL OR to_regrole('authenticated') IS NULL THEN
+      INSERT INTO sp_post_apply_verification_findings
+      VALUES (
+        'advisor.ai_context.browser_grants_revoked',
+        'warning',
+        'advisor-surface',
+        'public.ai_context',
+        jsonb_build_object('missing_role_check', 'anon/authenticated'),
+        'Supabase roles were not visible to this session; rerun in the live Supabase project SQL Editor.'
+      );
+    ELSE
+      v_bool :=
+        NOT has_table_privilege('anon', 'public.ai_context', 'SELECT')
+        AND NOT has_table_privilege('anon', 'public.ai_context', 'INSERT')
+        AND NOT has_table_privilege('anon', 'public.ai_context', 'UPDATE')
+        AND NOT has_table_privilege('anon', 'public.ai_context', 'DELETE')
+        AND NOT has_table_privilege('authenticated', 'public.ai_context', 'SELECT')
+        AND NOT has_table_privilege('authenticated', 'public.ai_context', 'INSERT')
+        AND NOT has_table_privilege('authenticated', 'public.ai_context', 'UPDATE')
+        AND NOT has_table_privilege('authenticated', 'public.ai_context', 'DELETE');
+
+      INSERT INTO sp_post_apply_verification_findings
+      VALUES (
+        'advisor.ai_context.browser_grants_revoked',
+        CASE WHEN v_bool THEN 'pass' ELSE 'blocker' END,
+        'advisor-surface',
+        'public.ai_context',
+        jsonb_build_object(
+          'anon', jsonb_build_object(
+            'select', has_table_privilege('anon', 'public.ai_context', 'SELECT'),
+            'insert', has_table_privilege('anon', 'public.ai_context', 'INSERT'),
+            'update', has_table_privilege('anon', 'public.ai_context', 'UPDATE'),
+            'delete', has_table_privilege('anon', 'public.ai_context', 'DELETE')
+          ),
+          'authenticated', jsonb_build_object(
+            'select', has_table_privilege('authenticated', 'public.ai_context', 'SELECT'),
+            'insert', has_table_privilege('authenticated', 'public.ai_context', 'INSERT'),
+            'update', has_table_privilege('authenticated', 'public.ai_context', 'UPDATE'),
+            'delete', has_table_privilege('authenticated', 'public.ai_context', 'DELETE')
+          )
+        ),
+        CASE
+          WHEN v_bool THEN 'No action.'
+          ELSE 'Reapply schema.sql; browser roles must not have direct table privileges on public.ai_context.'
+        END
+      );
+    END IF;
+
+    IF EXISTS (
+      SELECT 1
+      FROM pg_attribute
+      WHERE attrelid = 'public.ai_context'::regclass
+        AND attname = 'user_id'
+        AND NOT attisdropped
+    ) THEN
+      SELECT EXISTS (
+        SELECT 1
+        FROM pg_index i
+        WHERE i.indrelid = 'public.ai_context'::regclass
+          AND i.indkey::int2[] @> ARRAY[(
+            SELECT attnum
+            FROM pg_attribute
+            WHERE attrelid = 'public.ai_context'::regclass
+              AND attname = 'user_id'
+              AND NOT attisdropped
+          )]::int2[]
+      )
+      INTO v_bool;
+
+      INSERT INTO sp_post_apply_verification_findings
+      VALUES (
+        'advisor.ai_context.user_id_index',
+        CASE WHEN v_bool THEN 'pass' ELSE 'warning' END,
+        'advisor-surface',
+        'public.ai_context.user_id',
+        jsonb_build_object('index', 'idx_ai_context_user_id'),
+        CASE
+          WHEN v_bool THEN 'No action.'
+          ELSE 'Reapply schema.sql to install idx_ai_context_user_id and close the foreign-key advisor drift.'
+        END
+      );
+    END IF;
+  END IF;
+
+  IF to_regrole('anon') IS NULL OR to_regrole('authenticated') IS NULL THEN
+    INSERT INTO sp_post_apply_verification_findings
+    VALUES (
+      'advisor.security_definer_rpc_surface',
+      'warning',
+      'security-definer-rpc-surface',
+      'public',
+      jsonb_build_object('missing_role_check', 'anon/authenticated'),
+      'Supabase roles were not visible to this session; rerun in the live Supabase project SQL Editor.'
+    );
+  ELSE
+    WITH expected(function_name, args, allow_anon, allow_authenticated) AS (
+      VALUES
+        ('create_team_with_member', 'p_name text, p_owner_id uuid', false, true),
+        ('get_bootstrap_payload', 'uid uuid', false, true),
+        ('get_my_team_context', 'uid uuid', false, true),
+        ('get_my_team_ids', 'uid uuid', false, true),
+        ('get_team_members_context', 'p_team_id uuid', false, true),
+        ('has_team_permission', 'p_team_id uuid, p_permission text', false, true),
+        ('is_username_available', 'p_username text', false, true),
+        ('join_team_by_code', 'p_invite_code text, p_user_id uuid', false, true)
+    ),
+    definer AS (
+      SELECT
+        p.oid,
+        p.proname AS function_name,
+        pg_get_function_identity_arguments(p.oid) AS args,
+        p.proconfig,
+        EXISTS (
+          SELECT 1
+          FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) AS x
+          WHERE (x).grantee = 0
+            AND (x).privilege_type = 'EXECUTE'
+        ) AS public_execute,
+        has_function_privilege('anon', p.oid, 'EXECUTE') AS anon_execute,
+        has_function_privilege('authenticated', p.oid, 'EXECUTE') AS authenticated_execute,
+        EXISTS (
+          SELECT 1
+          FROM unnest(COALESCE(p.proconfig, ARRAY[]::TEXT[])) AS cfg(value)
+          WHERE cfg.value = 'search_path=public, pg_temp'
+        ) AS search_path_ok
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public'
+        AND p.prosecdef
+    ),
+    issues AS (
+      SELECT jsonb_build_object(
+        'issue', 'missing_expected_function',
+        'function', e.function_name,
+        'args', e.args
+      ) AS issue
+      FROM expected e
+      LEFT JOIN definer d
+        ON d.function_name = e.function_name
+       AND d.args = e.args
+      WHERE d.oid IS NULL
+
+      UNION ALL
+
+      SELECT jsonb_build_object(
+        'issue', 'grant_or_search_path_mismatch',
+        'function', d.function_name,
+        'args', d.args,
+        'public_execute', d.public_execute,
+        'anon_execute', d.anon_execute,
+        'authenticated_execute', d.authenticated_execute,
+        'expected_anon_execute', COALESCE(e.allow_anon, false),
+        'expected_authenticated_execute', COALESCE(e.allow_authenticated, false),
+        'search_path', d.proconfig
+      ) AS issue
+      FROM definer d
+      LEFT JOIN expected e
+        ON e.function_name = d.function_name
+       AND e.args = d.args
+      WHERE d.public_execute
+        OR d.anon_execute IS DISTINCT FROM COALESCE(e.allow_anon, false)
+        OR d.authenticated_execute IS DISTINCT FROM COALESCE(e.allow_authenticated, false)
+        OR (
+          (COALESCE(e.allow_anon, false) OR COALESCE(e.allow_authenticated, false))
+          AND NOT d.search_path_ok
+        )
+    )
+    SELECT
+      COUNT(*)::INTEGER,
+      COALESCE(jsonb_agg(issue ORDER BY issue->>'function', issue->>'issue'), '[]'::jsonb)
+    INTO v_bad_count, v_details
+    FROM issues;
+
+    INSERT INTO sp_post_apply_verification_findings
+    VALUES (
+      'advisor.security_definer_rpc_surface',
+      CASE WHEN v_bad_count = 0 THEN 'pass' ELSE 'blocker' END,
+      'security-definer-rpc-surface',
+      'public SECURITY DEFINER functions',
+      jsonb_build_object('unexpected_or_missing', v_details),
+      CASE
+        WHEN v_bad_count = 0 THEN 'No action.'
+        ELSE 'Reapply schema.sql and inspect the listed functions. The only browser-executable SECURITY DEFINER functions should be the documented authenticated RPC/helper allowlist; none should be anonymous.'
+      END
+    );
+  END IF;
+
+  v_oid := to_regprocedure('public.get_email_for_username(text)');
+  INSERT INTO sp_post_apply_verification_findings
+  VALUES (
+    'advisor.username_email_lookup_absent',
+    CASE WHEN v_oid IS NULL THEN 'pass' ELSE 'blocker' END,
+    'security-definer-rpc-surface',
+    'public.get_email_for_username(text)',
+    '{}'::jsonb,
+    CASE
+      WHEN v_oid IS NULL THEN 'No action.'
+      ELSE 'Drop public.get_email_for_username(text); username-to-email lookup must not be exposed to browser callers.'
+    END
+  );
+
   -- Invite-code invariant: codes are high-entropy, well-formed bearer tokens
   -- and the table does not disclose them directly to browser roles.
   IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pgcrypto') THEN
@@ -57,7 +307,29 @@ BEGIN
       'invite-code',
       'extension.pgcrypto',
       '{}'::jsonb,
-      'Reapply schema.sql from the CREATE EXTENSION section; invite-code generation depends on gen_random_bytes.'
+      'Reapply schema.sql from the CREATE EXTENSION section; invite-code generation depends on extensions.gen_random_bytes.'
+    );
+  END IF;
+
+  IF to_regprocedure('extensions.gen_random_bytes(integer)') IS NOT NULL THEN
+    INSERT INTO sp_post_apply_verification_findings
+    VALUES (
+      'invite.pgcrypto.gen_random_bytes_namespace',
+      'pass',
+      'invite-code',
+      'extensions.gen_random_bytes(integer)',
+      '{}'::jsonb,
+      'No action.'
+    );
+  ELSE
+    INSERT INTO sp_post_apply_verification_findings
+    VALUES (
+      'invite.pgcrypto.gen_random_bytes_namespace',
+      'blocker',
+      'invite-code',
+      'extensions.gen_random_bytes(integer)',
+      '{}'::jsonb,
+      'Reapply schema.sql from the CREATE EXTENSION section; Supabase pgcrypto calls must resolve as extensions.gen_random_bytes(integer).'
     );
   END IF;
 
@@ -73,12 +345,33 @@ BEGIN
       'Reapply the invite-code function section from schema.sql.'
     );
   ELSE
-    SELECT bool_and(code ~ '^[0-9a-f]{32}$')
-    INTO v_bool
-    FROM (
-      SELECT public.generate_team_invite_code() AS code
-      FROM generate_series(1, 12)
-    ) generated;
+    SELECT pg_get_functiondef(v_oid) INTO v_function_def;
+
+    INSERT INTO sp_post_apply_verification_findings
+    VALUES (
+      'invite.generator.uses_extensions_pgcrypto',
+      CASE WHEN v_function_def ~ 'extensions\.gen_random_bytes\s*\(\s*16\s*\)' THEN 'pass' ELSE 'blocker' END,
+      'invite-code',
+      'public.generate_team_invite_code()',
+      '{}'::jsonb,
+      CASE
+        WHEN v_function_def ~ 'extensions\.gen_random_bytes\s*\(\s*16\s*\)' THEN 'No action.'
+        ELSE 'Reapply schema.sql so generate_team_invite_code schema-qualifies pgcrypto as extensions.gen_random_bytes(16).'
+      END
+    );
+
+    v_error := NULL;
+    BEGIN
+      SELECT bool_and(code ~ '^[0-9a-f]{32}$')
+      INTO v_bool
+      FROM (
+        SELECT public.generate_team_invite_code() AS code
+        FROM generate_series(1, 12)
+      ) generated;
+    EXCEPTION WHEN OTHERS THEN
+      v_bool := FALSE;
+      v_error := SQLERRM;
+    END;
 
     INSERT INTO sp_post_apply_verification_findings
     VALUES (
@@ -86,10 +379,10 @@ BEGIN
       CASE WHEN v_bool THEN 'pass' ELSE 'blocker' END,
       'invite-code',
       'public.generate_team_invite_code()',
-      jsonb_build_object('sample_count', 12),
+      jsonb_build_object('sample_count', CASE WHEN v_error IS NULL THEN 12 ELSE 0 END, 'error', v_error),
       CASE
         WHEN v_bool THEN 'No action.'
-        ELSE 'Reapply schema.sql and confirm generate_team_invite_code returns lower-case 32-hex values.'
+        ELSE 'Reapply schema.sql and confirm generate_team_invite_code returns lower-case 32-hex values without pgcrypto resolution errors.'
       END
     );
 

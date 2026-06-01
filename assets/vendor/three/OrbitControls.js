@@ -1,4 +1,4 @@
-﻿import {
+import {
 	Controls,
 	MOUSE,
 	Quaternion,
@@ -1521,4 +1521,3 @@ function interceptControlUp( event ) {
 }
 
 export { OrbitControls };
-

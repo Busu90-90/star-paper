@@ -933,14 +933,25 @@ assert(!/GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.get_email_for_username/i.test
 assert(!/get_email_for_username/.test(index), 'index.html must not call get_email_for_username');
 assert(!/get_email_for_username/.test(supabase), 'supabase.js must not call get_email_for_username');
 assert(!/No cloud account was found/i.test(index), 'Forgot-password UI must not reveal missing accounts');
+const signupSource = sourceSlice(supabase, 'window.signup = async function supabaseSignup()', 'window.logout = async function supabaseLogout()', 'supabase.js signup');
+assert(!/isUsernameAvailable/.test(signupSource), 'signup must not call username availability before authentication');
+assert(!/\.update\s*\(\s*\{\s*phone\s*,\s*username\s*\}\s*\)/.test(supabase), 'signup phone patch must not overwrite the trigger-assigned unique username');
+assert(/REVOKE\s+EXECUTE\s+ON\s+FUNCTION\s+public\.is_username_available\(TEXT\)\s+FROM\s+PUBLIC,\s*anon/i.test(schema), 'schema.sql must revoke anonymous is_username_available execution');
+assert(/GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.is_username_available\(TEXT\)\s+TO\s+authenticated/i.test(schema), 'schema.sql must keep authenticated is_username_available for profile edits');
 
-assert(schema.includes('CREATE EXTENSION IF NOT EXISTS "pgcrypto";'), 'schema.sql must enable pgcrypto for high-entropy invite codes');
+assert(schema.includes('CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA extensions;'), 'schema.sql must enable pgcrypto in the extensions schema for high-entropy invite codes');
 assert(schema.includes('public.generate_team_invite_code()'), 'schema.sql must use generate_team_invite_code for team invites');
+assert(schema.includes('extensions.gen_random_bytes(16)'), 'generate_team_invite_code must schema-qualify pgcrypto because Supabase installs pgcrypto under extensions');
 assert(!/substr\s*\(\s*md5\s*\(/i.test(schema), 'schema.sql must not use md5/substr invite-code generation');
 assert(/teams_invite_code_format_check[\s\S]*invite_code\s*~\s*'\^\[0-9a-f\]\{32\}\$'/i.test(schema), 'schema.sql must enforce 32-hex team invite codes');
 assert(/v_invite_code\s*!\~\s*'\^\[0-9a-f\]\{32\}\$'/i.test(schema), 'join_team_by_code must reject malformed or legacy short invite codes');
 assert(/REVOKE\s+SELECT\s+ON\s+public\.teams\s+FROM\s+PUBLIC,\s*anon,\s*authenticated/i.test(schema), 'schema.sql must revoke direct teams table SELECT before column-granting safe team metadata');
 assert(/GRANT\s+SELECT\s*\(\s*id\s*,\s*name\s*,\s*owner_id\s*,\s*created_at\s*\)\s+ON\s+public\.teams\s+TO\s+authenticated/i.test(schema), 'schema.sql must not column-grant teams.invite_code to authenticated clients');
+assert(/CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+public\.ai_context/i.test(schema), 'schema.sql must declare public.ai_context so live advisor drift is repo-owned');
+assert(/ALTER\s+TABLE\s+public\.ai_context\s+ENABLE\s+ROW\s+LEVEL\s+SECURITY/i.test(schema), 'schema.sql must enable RLS on public.ai_context');
+assert(/REVOKE\s+ALL\s+ON\s+TABLE\s+public\.ai_context\s+FROM\s+PUBLIC,\s*anon,\s*authenticated/i.test(schema), 'schema.sql must revoke browser table grants on public.ai_context');
+assert(/CREATE\s+POLICY\s+"Browser roles cannot access AI context"[\s\S]*TO\s+anon,\s*authenticated[\s\S]*USING\s*\(\s*false\s*\)[\s\S]*WITH\s+CHECK\s*\(\s*false\s*\)/i.test(schema), 'schema.sql must install an explicit deny policy for public.ai_context');
+assert(/CREATE\s+INDEX\s+IF\s+NOT\s+EXISTS\s+idx_ai_context_user_id[\s\S]*ON\s+public\.ai_context\s*\(\s*user_id\s*\)/i.test(schema), 'schema.sql must index public.ai_context.user_id');
 function schemaFunctionBlock(name) {
   const match = schema.match(new RegExp(`CREATE\\s+OR\\s+REPLACE\\s+FUNCTION\\s+public\\.${escapeRegex(name)}\\b[\\s\\S]*?\\$\\$;`, 'i'));
   assert(Boolean(match), `schema.sql missing function public.${name}`);
@@ -983,6 +994,9 @@ assert(migrationReadinessSql.includes('scripts/supabase-post-apply-canary-proof.
 assert(postApplyVerificationSql.includes('scripts/supabase-post-apply-canary-proof.sql'), 'post-apply verification SQL must point sample-row warnings to the canary proof helper');
 assert(postApplyCanarySql.includes('RAISE EXCEPTION \'SP_POST_APPLY_CANARY_ROLLBACK\''), 'canary proof helper must force rollback of disposable proof rows');
 assert(postApplyCanarySql.includes('canary.rollback_contained'), 'canary proof helper must report rollback containment');
+assert(postApplyVerificationSql.includes('advisor.ai_context.rls_explicit_policy'), 'post-apply verification must prove ai_context has explicit RLS policy posture');
+assert(postApplyVerificationSql.includes('advisor.security_definer_rpc_surface'), 'post-apply verification must prove the SECURITY DEFINER RPC allowlist');
+assert(postApplyVerificationSql.includes('advisor.username_email_lookup_absent'), 'post-apply verification must prove username-to-email lookup remains absent');
 assert(/UPDATE\s+public\.team_members[\s\S]*SET\s+team_id\s*=/i.test(postApplyCanarySql), 'canary proof helper must actively probe team_members team_id reassignment');
 assert(/UPDATE\s+public\.team_members[\s\S]*SET\s+user_id\s*=/i.test(postApplyCanarySql), 'canary proof helper must actively probe team_members user_id reassignment');
 assert(/UPDATE\s+public\.team_members[\s\S]*SET\s+permissions\s*=/i.test(postApplyCanarySql), 'canary proof helper must actively probe team_members permission mismatch rejection');
@@ -1004,7 +1018,10 @@ for (const doc of [
 assert(postApplyRunbook.includes('canary.rollback_contained = pass'), 'post-apply runbook must require rollback containment evidence');
 const anonFunctionGrants = [...schema.matchAll(/GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.([a-zA-Z0-9_]+)\([^)]*\)\s+TO\s+anon\b/gi)]
   .map((match) => match[1]);
-assertExactSet(new Set(anonFunctionGrants), new Set(['is_username_available']), 'anonymous RPC grant allowlist');
+assertExactSet(new Set(anonFunctionGrants), new Set(), 'anonymous RPC grant allowlist');
+assert(/REVOKE\s+EXECUTE\s+ON\s+FUNCTION\s+public\.getmyteamids\(UUID\)\s+FROM\s+PUBLIC,\s*anon,\s*authenticated/i.test(schema), 'schema.sql must revoke browser execution from legacy getmyteamids alias');
+assert(!/GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.getmyteamids\(UUID\)\s+TO\s+authenticated/i.test(schema), 'schema.sql must not grant authenticated execution to legacy getmyteamids alias');
+assert(/REVOKE\s+EXECUTE\s+ON\s+FUNCTION\s+public\.sync_finance_artist_fields\(\)\s+FROM\s+PUBLIC,\s*anon,\s*authenticated/i.test(schema), 'schema.sql must revoke browser execution from sync_finance_artist_fields trigger function');
 const publicTables = [...schema.matchAll(/CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+public\.([a-zA-Z0-9_]+)/gi)].map((match) => match[1]);
 for (const tableName of publicTables) {
   assert(
@@ -1015,7 +1032,7 @@ for (const tableName of publicTables) {
 const policyBlocks = schema.match(/CREATE\s+POLICY[\s\S]*?;/gi) || [];
 for (const block of policyBlocks) {
   const policyName = block.match(/CREATE\s+POLICY\s+"([^"]+)"/i)?.[1] || 'unknown';
-  assert(/\bTO\s+authenticated\b/i.test(block), `RLS policy "${policyName}" must explicitly target authenticated users`);
+  assert(/\bTO\s+[^;]*\bauthenticated\b/i.test(block), `RLS policy "${policyName}" must explicitly target authenticated users`);
 }
 const functionBlocks = schema.match(/CREATE\s+OR\s+REPLACE\s+FUNCTION[\s\S]*?\$\$;/gi) || [];
 for (const block of functionBlocks) {
