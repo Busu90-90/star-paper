@@ -226,6 +226,7 @@ Expected behavior:
 
 - show the boot loader while the auth callback is processed
 - exchange or restore the Supabase session
+- if the callback flow ID is superseded while a session is being recovered, rebase the auth boot flow and continue bootstrap; do not return `stale` with stored-session bootstrap disabled
 - resolve workspace
 - load cloud data
 - enter the app shell
@@ -442,6 +443,7 @@ Security invariants enforced in source and preflight:
 - Service worker navigation caching must treat OAuth/Supabase callback parameters as fetch-only. URLs containing `access_token`, `refresh_token`, `code`, `state`, token metadata, or auth error parameters must not be written to or read from Cache Storage under the sensitive request URL.
 - The Supabase auth SDK is a same-origin runtime script at `assets/vendor/supabase/supabase.min.js`, pinned by `app.browser-assets.js` through `runtimeScript('supabase')`, loaded synchronously before `supabase.js`, and included in the service-worker app shell. Preflight must fail if auth boot drifts back to the floating Supabase CDN URL, if the vendored SDK is missing, if the SRI hash changes, or if the service worker stops precaching it.
 - Supabase browser requests are bounded by the auth fetch timeout. If session restore or a user-triggered login/signup request cannot reach the live project, the app must recover to a visible login/cloud-unavailable state and must not leave `Session restore stalled` as the terminal screen.
+- OAuth callback session recovery is bounded by the same boot contract: a recovered session must rebase stale boot flow IDs and enter `bootstrapFromSupabaseSession()` directly, even if Supabase's passive `SIGNED_IN` event is delayed.
 - Classic CDN script resources that remain out of the auth boot path are pinned with SRI where browser-supported. `app.browser-assets.js` owns those CDN URLs/hashes plus local browser asset versions and vendored runtime file hashes. Brand fonts, Phosphor icon CSS/fonts, and the Schedule > Global Three.js, OrbitControls, and TopoJSON client modules are self-hosted under `assets/vendor/`; CSP and preflight must reject public-CDN regressions, version drift, or vendored hash drift for those runtime paths. `script-src` and `style-src-elem` must not include `'unsafe-inline'`; root and public landing document CSPs use `style-src-attr 'none'`. The remaining security work is the audited `app.js` `innerHTML` surface and any future dynamic style-attribute emitters, not a required CDN/font exception.
 
 Security review artifacts:

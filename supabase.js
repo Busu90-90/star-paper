@@ -1064,7 +1064,16 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
     let flowId = options.flowId || pending.flowId || getBootTransitionIdSafe();
     if (flowId && !isBootTransitionCurrentSafe(flowId)) {
-      flowId = null;
+      flowId = rebaseAuthBootFlow(
+        flowId,
+        options.reason ? `${options.reason}:rebased` : 'auth-redirect-pending-session:rebased',
+        'loading-session',
+        {
+          bootContext: options.bootContext || getStartupBootContext(),
+          force: true,
+          scheduleFallback: false,
+        }
+      );
     }
     if (!flowId) {
       flowId = beginBootTransitionSafe(options.reason || 'auth-redirect-pending-session', 'loading-session');
@@ -1293,6 +1302,22 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     return true;
   }
 
+  const AUTH_BOOT_BLOCKING_STATES = new Set([
+    'booting-auth',
+    'loading-session',
+    'signing-in',
+    'booting-data',
+    'loading-app',
+  ]);
+
+  function getBootLoaderStateSafe() {
+    return document.getElementById('appBootLoader')?.dataset.state || '';
+  }
+
+  function isAuthBootBlockingState(state) {
+    return AUTH_BOOT_BLOCKING_STATES.has(String(state || ''));
+  }
+
   function isLocalDevOrigin() {
     return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
   }
@@ -1370,10 +1395,37 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     );
   }
 
+  function rebaseAuthBootFlow(flowId, reason = 'auth-flow-rebased', state = 'loading-session', options = {}) {
+    if (!flowId || isBootTransitionCurrentSafe(flowId)) return flowId || getBootTransitionIdSafe();
+    if (clearBootOverlayOverVisibleApp(reason)) return getBootTransitionIdSafe();
+    const bootContext = options.bootContext || getStartupBootContext();
+    const loaderState = getBootLoaderStateSafe();
+    const shouldRebase =
+      options.force === true ||
+      hasActiveBootstrapWork() ||
+      hasAuthCallbackInUrl() ||
+      bootContext === 'auth-callback' ||
+      isAuthBootBlockingState(loaderState);
+    if (!shouldRebase) return flowId;
+    const nextFlowId = beginBootTransitionSafe(reason, state, options.stateOptions || {});
+    if (options.scheduleFallback !== false) {
+      scheduleLocalSessionRestoreFallback({ bootContext, flowId: nextFlowId });
+    }
+    recordBootstrapTiming('auth.flow.rebased', {
+      reason,
+      bootContext,
+      fromFlowId: flowId,
+      toFlowId: nextFlowId,
+      state,
+      loaderState,
+    });
+    return nextFlowId;
+  }
+
   function scheduleLocalSessionRestoreFallback(options = {}) {
     clearLocalBootFallback();
     const bootContext = options.bootContext || getStartupBootContext();
-    const flowId = options.flowId || getBootTransitionIdSafe();
+    let flowId = options.flowId || getBootTransitionIdSafe();
     const isAuthCallback = bootContext === 'auth-callback' || hasAuthCallbackInUrl();
     const timeoutMs = Number.isFinite(options.timeoutMs)
       ? Math.max(3000, Number(options.timeoutMs))
@@ -1384,11 +1436,22 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     const startedAt = nowMs();
     const tick = () => {
       _localBootFallbackTimer = null;
-      if (flowId && !isBootTransitionCurrentSafe(flowId)) return;
       const loader = document.getElementById('appBootLoader');
       const state = loader?.dataset.state || '';
-      const blockingStates = new Set(['booting-auth', 'loading-session', 'signing-in', 'booting-data', 'loading-app']);
-      if (window.__spAppBooted || !blockingStates.has(state)) return;
+      if (flowId && !isBootTransitionCurrentSafe(flowId)) {
+        if (window.__spAppBooted || !isAuthBootBlockingState(state)) return;
+        if (clearBootOverlayOverVisibleApp('session-restore-fallback-stale-flow')) return;
+        const currentFlowId = getBootTransitionIdSafe();
+        flowId = currentFlowId && isBootTransitionCurrentSafe(currentFlowId)
+          ? currentFlowId
+          : beginBootTransitionSafe('session-restore-fallback:rebased', state || 'loading-session');
+        recordBootstrapTiming('session.restore.fallback.rebased', {
+          bootContext,
+          state,
+          flowId,
+        });
+      }
+      if (window.__spAppBooted || !isAuthBootBlockingState(state)) return;
       if (clearBootOverlayOverVisibleApp('session-restore-fallback')) return;
       if (hasActiveBootstrapWork()) {
         const elapsed = nowMs() - startedAt;
@@ -4390,7 +4453,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
 
     window.__spAuthRedirectInProgress = true;
-    const flowId = beginBootTransitionSafe('auth-redirect', 'loading-session');
+    let flowId = beginBootTransitionSafe('auth-redirect', 'loading-session');
     recordBootstrapTiming('auth.callback.start', {
       hasCode: Boolean(code),
       hasTokenPair: Boolean(accessToken && refreshToken),
@@ -4526,14 +4589,21 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       }
 
       if (!isBootTransitionCurrentSafe(flowId)) {
-        return finishWith('stale', {
-          shouldBootstrapStoredSession: false,
-        });
+        flowId = rebaseAuthBootFlow(
+          flowId,
+          session?.user ? 'auth-redirect:bootstrap-rebased' : 'auth-redirect:callback-rebased',
+          session?.user ? 'loading-session' : 'auth-required',
+          {
+            bootContext: 'auth-callback',
+            force: Boolean(session?.user),
+          }
+        );
       }
 
       if (session) {
         _pendingAuthRedirectSession = null;
         window.__spSuppressStoredSessionBootstrap = false;
+        markInitialAuthBootstrapStarted();
         await runBootstrapTask(() => bootstrapFromSupabaseSession(session, {
           remember: true,
           showWelcome: true,
@@ -4788,7 +4858,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
   async function bootstrapFromSupabaseSession(session, options = {}) {
     clearLocalBootFallback();
-    const flowId = options.flowId || beginBootTransitionSafe('bootstrap-session', 'loading-session');
+    let flowId = options.flowId || beginBootTransitionSafe('bootstrap-session', 'loading-session');
     if (
       localStorage.getItem('sp_logged_out') === '1' &&
       options.ignoreLoggedOut !== true &&
@@ -4817,7 +4887,12 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       return false;
     }
     log('bootstrap.start');
-    if (!isBootTransitionCurrentSafe(flowId)) return false;
+    if (!isBootTransitionCurrentSafe(flowId)) {
+      flowId = rebaseAuthBootFlow(flowId, 'bootstrap-session:rebased', 'booting-data', {
+        bootContext: options.bootContext || getStartupBootContext(),
+        force: true,
+      });
+    }
     setBootStateSafe('booting-data');
 
     // Step C: A real authenticated user exists — clear the "explicitly logged out"
@@ -4851,7 +4926,12 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
 
     const appReady = await waitForAppBootReady(options.appReadyTimeoutMs || 5000);
-    if (!isBootTransitionCurrentSafe(flowId)) return false;
+    if (!isBootTransitionCurrentSafe(flowId)) {
+      flowId = rebaseAuthBootFlow(flowId, 'bootstrap-session:app-ready-rebased', 'booting-data', {
+        bootContext: options.bootContext || getStartupBootContext(),
+        force: true,
+      });
+    }
     if (!appReady) {
       warn('App boot helpers were not ready before Supabase bootstrap; showing retryable boot error.');
       showStalledBootError('App startup took too long', 'Retry to reconnect to Star Paper, or log out and sign in again.', 'app-helpers-timeout');
@@ -4962,7 +5042,12 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       }
 
       if (!fresh) {
-        if (!isBootTransitionCurrentSafe(flowId)) return false;
+        if (!isBootTransitionCurrentSafe(flowId)) {
+          flowId = rebaseAuthBootFlow(flowId, 'bootstrap-session:empty-data-rebased', 'booting-data', {
+            bootContext: options.bootContext || getStartupBootContext(),
+            force: true,
+          });
+        }
         showBootErrorState('Cloud data is still syncing', 'Retry to reload your workspace data, or log out and sign in again.');
         return false;
       }
@@ -4984,7 +5069,12 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       }
 
       if (typeof window.showApp === 'function' && !window.__spAppBooted) {
-        if (!isBootTransitionCurrentSafe(flowId)) return false;
+        if (!isBootTransitionCurrentSafe(flowId)) {
+          flowId = rebaseAuthBootFlow(flowId, 'bootstrap-session:show-app-rebased', 'booting-data', {
+            bootContext: options.bootContext || getStartupBootContext(),
+            force: true,
+          });
+        }
         window.showApp();
         window.__spDataLoaded = true;
         recordBootstrapTiming('bootstrap.uiReady', {
@@ -7104,7 +7194,11 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
     let bootstrapFlowId = activeFlowId;
     if (bootstrapFlowId && !isBootTransitionCurrentSafe(bootstrapFlowId)) {
-      bootstrapFlowId = beginBootTransitionSafe('initial-session:bootstrap-rebased', 'loading-session');
+      bootstrapFlowId = rebaseAuthBootFlow(bootstrapFlowId, 'initial-session:bootstrap-rebased', 'loading-session', {
+        bootContext,
+        force: true,
+        scheduleFallback: false,
+      });
     }
     setBootStateSafe('loading-session');
     scheduleLocalSessionRestoreFallback({ bootContext, flowId: bootstrapFlowId });

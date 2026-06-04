@@ -61,7 +61,7 @@
       'assets/vendor/supabase/supabase.min.js'
     ]],
     ['2', ['app.todayboard.js']],
-    ['11', ['app.browser-assets.js']],
+    ['12', ['app.browser-assets.js']],
     ['3', [
       'app.root-shell.js',
       'assets/landing/notebook-board-desktop.webp',
@@ -87,9 +87,9 @@
     ['24', ['manifest.json']],
     ['33', ['styles.handcraft.css']],
     ['57', ['styles.css']],
-    ['88', ['supabase.js']],
+    ['89', ['supabase.js']],
     ['142', ['app.js']],
-    ['183', ['sw.js']]
+    ['184', ['sw.js']]
   ];
 
   const assetVersions = {};

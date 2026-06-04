@@ -429,6 +429,7 @@ const securityReport = read('security_best_practices_report.md');
 const supabase = read('supabase.js');
 const manifest = readJson('manifest.json') || {};
 const packageJson = readJson('package.json') || {};
+const docs = read('STAR_PAPER_DOCUMENTATION.md');
 
 for (const [fileName, text] of [
   ['index.html', index],
@@ -447,7 +448,7 @@ for (const [fileName, text] of [
   ['star-paper-tokens.css', tokensCss],
   ['_headers', headers],
   ['README.md', readme],
-  ['STAR_PAPER_DOCUMENTATION.md', read('STAR_PAPER_DOCUMENTATION.md')],
+  ['STAR_PAPER_DOCUMENTATION.md', docs],
 ]) {
   assertNoForbiddenRuntimeDependency(fileName, text);
 }
@@ -580,6 +581,8 @@ assert(readme.includes('Do not start `backend/` for app development.'), 'README.
 assert(readme.includes('local auth redirects must be configured against the frontend preview origin you use'), 'README.md must tie local auth redirects to the preview origin');
 assert(readme.includes('Do not open `index.html` through `file://`; Google OAuth and email-confirm redirects require an `http://localhost` or deployed `https://` origin.'), 'README.md must warn that file:// cannot support OAuth/email-confirm redirects');
 assert(readme.includes('After explicit logout, `sp_logged_out` blocks stored-session bootstrap until a fresh OAuth callback or user-initiated login clears it.'), 'README.md must document the explicit-logout bootstrap guard');
+assert(readme.includes('Once `handleAuthRedirect()` recovers a Supabase session, stale boot flow IDs are rebased'), 'README.md must document OAuth callback stale-flow bootstrap recovery');
+assert(docs.includes('do not return `stale` with stored-session bootstrap disabled'), 'STAR_PAPER_DOCUMENTATION.md must document OAuth callback stale-flow recovery');
 assert(backendReadme.includes('# Star Paper Backend (Retired)'), 'backend/README.md must label the backend as retired');
 assert(backendReadme.includes('This directory is not a developer launch target. Use the root static frontend preview instead:'), 'backend/README.md must keep backend/ out of the app launch path');
 assert(backendReadme.includes('SP_ENABLE_RETIRED_BACKEND_DIAGNOSTIC=1'), 'backend/README.md must keep the retired backend behind the diagnostics flag');
@@ -592,6 +595,9 @@ assert(/const redirectTo = getSafeRedirectUrl\(\{\s*requireHttpOrigin:\s*true,\s
 
 const authRedirectSource = sourceSlice(supabase, 'async function handleAuthRedirect()', 'async function isUsernameAvailable', 'supabase.js handleAuthRedirect');
 assert(authRedirectSource.includes('localStorage.removeItem(\'sp_logged_out\');'), 'handleAuthRedirect must clear explicit logout only for an OAuth callback');
+assert(authRedirectSource.includes("'auth-redirect:bootstrap-rebased'"), 'handleAuthRedirect must rebase a recovered OAuth session before bootstrapping when its callback flow goes stale');
+assert(authRedirectSource.includes('markInitialAuthBootstrapStarted();'), 'handleAuthRedirect must mark that a recovered OAuth session owns bootstrap before running it');
+assert(!/finishWith\('stale'[\s\S]*?shouldBootstrapStoredSession:\s*false/.test(authRedirectSource), 'handleAuthRedirect must not return stale with stored-session bootstrap disabled after recovering a session');
 
 const googleSignInSource = sourceSlice(supabase, 'async function signInWithGoogle()', 'window.signInWithGoogle = async function signInWithGoogleAction()', 'supabase.js signInWithGoogle');
 assertOrderedSnippets(googleSignInSource, [
@@ -615,6 +621,15 @@ assertOrderedSnippets(bootstrapSessionSource, [
 ], 'bootstrapFromSupabaseSession explicit-logout guard');
 assert(bootstrapSessionSource.includes("label: 'loadAllData[bootstrap-fallback]'"), 'bootstrapFromSupabaseSession must fall back to direct cloud loads when bootstrap RPC returns no first-paint payload');
 assert(bootstrapSessionSource.includes('Bootstrap fallback cloud data load failed'), 'bootstrapFromSupabaseSession fallback load failures must stay visible in diagnostics');
+assert(bootstrapSessionSource.includes("'bootstrap-session:rebased'"), 'bootstrapFromSupabaseSession must rebase stale auth boot flow ids before first shell paint');
+assert(bootstrapSessionSource.includes("'bootstrap-session:app-ready-rebased'"), 'bootstrapFromSupabaseSession must rebase stale flow ids after app readiness waits');
+assert(bootstrapSessionSource.includes("'bootstrap-session:show-app-rebased'"), 'bootstrapFromSupabaseSession must rebase stale flow ids before showing the app shell');
+assert(!/if\s*\(!isBootTransitionCurrentSafe\(flowId\)\)\s*return\s+false;/.test(bootstrapSessionSource), 'bootstrapFromSupabaseSession must not return false solely because an auth boot flow id went stale');
+
+const sessionRestoreFallbackSource = sourceSlice(supabase, 'function scheduleLocalSessionRestoreFallback(options = {})', 'function hasLocalThemePreference()', 'supabase.js scheduleLocalSessionRestoreFallback');
+assert(sessionRestoreFallbackSource.includes("'session-restore-fallback:rebased'"), 'session restore fallback must rebind stale flow ids while the boot loader is still blocking');
+assert(sessionRestoreFallbackSource.includes('isAuthBootBlockingState(state)'), 'session restore fallback must inspect blocking loader states before exiting on stale flow');
+assert(!/if\s*\(flowId\s*&&\s*!isBootTransitionCurrentSafe\(flowId\)\)\s*return;/.test(sessionRestoreFallbackSource), 'session restore fallback must not silently return on a stale flow while the loader is blocking');
 
 const authStateSource = sourceSlice(supabase, 'db.auth.onAuthStateChange((event, session) => {', 'async function createTeam(name)', 'supabase.js onAuthStateChange');
 assertOrderedSnippets(authStateSource, [
@@ -649,7 +664,7 @@ assertOrderedSnippets(initialSessionSource, [
   'showLandingScreen({ instant: true, flowId, reason: \'initial-session-explicit-logout\' });',
   'return false;',
 ], 'bootstrapInitialSession explicit-logout guard');
-assert(initialSessionSource.includes("beginBootTransitionSafe('initial-session:bootstrap-rebased', 'loading-session')"), 'bootstrapInitialSession must recover stale initial-session boot flows before loading cloud data');
+assert(initialSessionSource.includes("rebaseAuthBootFlow(bootstrapFlowId, 'initial-session:bootstrap-rebased', 'loading-session'"), 'bootstrapInitialSession must recover stale initial-session boot flows before loading cloud data');
 assert(initialSessionSource.includes('markInitialAuthBootstrapStarted();'), 'bootstrapInitialSession must mark that a real bootstrap task owns initial session recovery');
 
 assert(app.includes('function shouldShowLoginForAppRouteWithoutSession'), 'app.js must detect signed-out app-route refreshes without a stored Supabase session');

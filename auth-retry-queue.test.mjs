@@ -107,6 +107,33 @@ test('initial session bootstrap cannot be skipped by a merely observed auth even
   assert.doesNotMatch(initSource, /window\.__spInitialAuthEventSeen\s*&&[\s\S]*?_pendingAuthRedirectSession\?\.session\?\.user/);
 });
 
+test('OAuth callback stale flow still bootstraps recovered sessions', () => {
+  const authRedirectSource = sourceSlice(
+    supabase,
+    'async function handleAuthRedirect()',
+    'async function isUsernameAvailable',
+    'handleAuthRedirect'
+  );
+  const bootstrapSessionSource = sourceSlice(
+    supabase,
+    'async function bootstrapFromSupabaseSession(session, options = {})',
+    'async function signInWithGoogle()',
+    'bootstrapFromSupabaseSession'
+  );
+  const sessionRestoreFallbackSource = extractFunction(supabase, 'scheduleLocalSessionRestoreFallback');
+
+  assert.match(authRedirectSource, /auth-redirect:bootstrap-rebased/);
+  assert.match(authRedirectSource, /markInitialAuthBootstrapStarted\(\);/);
+  assert.doesNotMatch(authRedirectSource, /finishWith\('stale'[\s\S]*?shouldBootstrapStoredSession:\s*false/);
+  assert.match(bootstrapSessionSource, /bootstrap-session:rebased/);
+  assert.match(bootstrapSessionSource, /bootstrap-session:app-ready-rebased/);
+  assert.match(bootstrapSessionSource, /bootstrap-session:show-app-rebased/);
+  assert.doesNotMatch(bootstrapSessionSource, /if\s*\(!isBootTransitionCurrentSafe\(flowId\)\)\s*return\s+false;/);
+  assert.match(sessionRestoreFallbackSource, /session-restore-fallback:rebased/);
+  assert.match(sessionRestoreFallbackSource, /isAuthBootBlockingState\(state\)/);
+  assert.doesNotMatch(sessionRestoreFallbackSource, /if\s*\(flowId\s*&&\s*!isBootTransitionCurrentSafe\(flowId\)\)\s*return;/);
+});
+
 test('visible app shell clears stale blocking boot overlay', () => {
   const showApp = extractFunction(app, 'showApp');
 
