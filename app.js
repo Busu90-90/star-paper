@@ -4439,11 +4439,18 @@ function showLoginForm(options = {}) {
 
                 window.__spAppBooted = true;
                 applyReadOnlyMode();
-                if (ownsBootLoader) {
+                const bootLoader = document.getElementById('appBootLoader');
+                const bootLoaderState = bootLoader?.dataset.state || '';
+                const hasStaleBlockingBootOverlay =
+                    !ownsBootLoader &&
+                    !window.__spAuthRedirectInProgress &&
+                    isBootRevealBlockingState(bootLoaderState) &&
+                    isAppShellVisible();
+                if (ownsBootLoader || hasStaleBlockingBootOverlay) {
                     commitBootTransition('appContainer', {
                         flowId,
                         requireAppReady: true,
-                        minDelayMs: hydrationPending ? 80 : 220
+                        minDelayMs: hydrationPending || hasStaleBlockingBootOverlay ? 80 : 220
                     });
                 }
 

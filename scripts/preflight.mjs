@@ -626,6 +626,10 @@ assertOrderedSnippets(authStateSource, [
   'showLandingScreen({ instant: true, reason: \'explicit-logout-stale-auth\' });',
   'return;',
 ], 'onAuthStateChange explicit-logout stale-session guard');
+assert(authStateSource.includes('let bootstrapFlowId = flowId;'), 'onAuthStateChange must keep a mutable bootstrap flow id for stale-flow recovery');
+assert(authStateSource.includes("beginBootTransitionSafe(`auth-event:${event}:bootstrap-rebased`, 'loading-session')"), 'onAuthStateChange must rebase stale auth-event bootstrap flows instead of returning silently');
+assert(authStateSource.includes('markInitialAuthBootstrapStarted();'), 'onAuthStateChange must mark when an initial auth event actually starts bootstrap');
+assert(!/if\s*\(!isBootTransitionCurrentSafe\(flowId\)\s*\|\|\s*window\.__spAppBooted\s*\|\|\s*_bootstrapping\)\s*return;/.test(authStateSource), 'onAuthStateChange must not abandon bootstrap solely because the captured flow id went stale');
 
 const logoutSource = sourceSlice(supabase, 'window.logout = async function supabaseLogout()', '    // Lightweight fallback', 'supabase.js logout');
 assertOrderedSnippets(logoutSource, [
@@ -645,12 +649,24 @@ assertOrderedSnippets(initialSessionSource, [
   'showLandingScreen({ instant: true, flowId, reason: \'initial-session-explicit-logout\' });',
   'return false;',
 ], 'bootstrapInitialSession explicit-logout guard');
+assert(initialSessionSource.includes("beginBootTransitionSafe('initial-session:bootstrap-rebased', 'loading-session')"), 'bootstrapInitialSession must recover stale initial-session boot flows before loading cloud data');
+assert(initialSessionSource.includes('markInitialAuthBootstrapStarted();'), 'bootstrapInitialSession must mark that a real bootstrap task owns initial session recovery');
 
 assert(app.includes('function shouldShowLoginForAppRouteWithoutSession'), 'app.js must detect signed-out app-route refreshes without a stored Supabase session');
 assert(app.includes('window.shouldShowLoginForAppRouteWithoutSession = shouldShowLoginForAppRouteWithoutSession;'), 'app.js must publish the signed-out app-route helper for supabase.js');
 assert(app.includes("showLoginForm({ instant: true, reason: 'app-route-without-session' });"), 'app.js app-refresh boot path must show login instead of a stalled loader for signed-out app routes');
 
-const initSource = sourceSlice(supabase, 'function init()', '      // Order matters:', 'supabase.js init signed-out app-route handling');
+const showAppSource = sourceSlice(app, 'function showApp(options = {})', 'const SP_MONEY_TAB_IDS', 'app.js showApp boot overlay cleanup');
+assertOrderedSnippets(showAppSource, [
+  'window.__spAppBooted = true;',
+  'const hasStaleBlockingBootOverlay =',
+  'isBootRevealBlockingState(bootLoaderState)',
+  'isAppShellVisible()',
+  'if (ownsBootLoader || hasStaleBlockingBootOverlay) {',
+  'commitBootTransition(\'appContainer\'',
+], 'showApp must clear stale blocking boot overlays once the app shell is visible');
+
+const initSource = sourceSlice(supabase, 'function init()', 'setTimeout(patchAppAuth, 0);', 'supabase.js init signed-out app-route handling');
 assertOrderedSnippets(initSource, [
   'const appRouteWithoutStoredSession = shouldShowLoginForAppRouteWithoutSession();',
   'if (publicShellColdStart || localColdStart || appRouteWithoutStoredSession) {',
@@ -662,6 +678,9 @@ assertOrderedSnippets(initSource, [
   'reason: \'app-route-without-session\'',
   'return;',
 ], 'supabase.js signed-out app-route login screen must patch Supabase auth before showing the form');
+assert(initSource.includes('const initialSessionBootstrapOwned ='), 'supabase.js init must distinguish auth event observation from bootstrap ownership');
+assert(initSource.includes('_initialAuthBootstrapStarted'), 'supabase.js init must only skip fallback bootstrap after an auth event starts real bootstrap work');
+assert(!/window\.__spInitialAuthEventSeen\s*&&[\s\S]*?_pendingAuthRedirectSession\?\.session\?\.user/.test(initSource), 'supabase.js init must not skip initial-session fallback solely because the first auth event was seen');
 
 const passwordLoginSource = sourceSlice(supabase, 'window.login = async function supabaseLogin()', 'window.signup = async function supabaseSignup()', 'supabase.js password login');
 assert(passwordLoginSource.includes('_session?.user && ('), 'supabase.js password login must suppress stale credential-style errors once a real Supabase session exists');

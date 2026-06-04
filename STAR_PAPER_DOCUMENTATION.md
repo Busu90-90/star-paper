@@ -125,6 +125,8 @@ Owns:
 
 The land data lookup order is local asset, then built-in continent fallback. The local asset and the vendored `assets/vendor/` globe modules should stay in the service worker app shell list so the globe remains sharp when public CDN access is blocked. The globe module is presentation-only; it must not change Supabase booking queries, schema shape, or the underlying self-hosted Three.js scene/data pipeline.
 
+Desktop Schedule > Global layout reserves separate rails for the left booking detail card and the right itinerary panel. The Three.js stage and globe toolbar belong in the center lane between those rails, so cards must not intrude into the globe's visual space. On mobile, the itinerary remains a bottom sheet and its scrollable body should use native vertical scrolling rather than trapping page scroll.
+
 ### `app.shell.js`
 
 Owns:
@@ -238,6 +240,7 @@ Expected behavior:
 - restore the last in-app section/tab
 - return directly to the app shell
 - clear any boot overlay once the app shell is visibly painted, even if an older boot flow id has been superseded
+- do not treat an observed `INITIAL_SESSION`/auth event as handled until a bootstrap task actually starts; stale auth-event boot flows must rebase and continue instead of silently abandoning session restore
 
 ### Sign-out
 

@@ -28,6 +28,14 @@ function extractFunction(source, name) {
   assert.fail(`Missing closing brace for ${name}`);
 }
 
+function sourceSlice(source, startMarker, endMarker, label) {
+  const start = source.indexOf(startMarker);
+  assert.notEqual(start, -1, `Missing start marker for ${label}`);
+  const end = source.indexOf(endMarker, start + startMarker.length);
+  assert.notEqual(end, -1, `Missing end marker for ${label}`);
+  return source.slice(start, end);
+}
+
 test('retry queue persistence is enabled and owner scoped', () => {
   const persistRetryQueue = extractFunction(supabase, 'persistRetryQueue');
   const readStoredRetryQueue = extractFunction(supabase, 'readStoredRetryQueue');
@@ -69,6 +77,44 @@ test('public save wrapper surfaces queued retry state without treating it as sav
   assert.match(supabase, /queueCloudSync,\s*\n/);
   assert.match(app, /queued:\s*Boolean\(result\.queued\s*\|\|\s*result\.context\?\.queued\)/);
   assert.match(app, /if\s*\(result\?\.ok\s*\|\|\s*result\?\.cloudSynced\)/);
+});
+
+test('initial session bootstrap cannot be skipped by a merely observed auth event', () => {
+  const authStateSource = sourceSlice(
+    supabase,
+    'db.auth.onAuthStateChange((event, session) => {',
+    'async function createTeam(name)',
+    'onAuthStateChange'
+  );
+  const initSource = sourceSlice(
+    supabase,
+    'function init()',
+    'setTimeout(patchAppAuth, 0);',
+    'init'
+  );
+  const initialSessionSource = extractFunction(supabase, 'bootstrapInitialSession');
+
+  assert.match(supabase, /let\s+_initialAuthBootstrapStarted\s*=\s*false/);
+  assert.match(supabase, /function\s+markInitialAuthBootstrapStarted\s*\(/);
+  assert.match(authStateSource, /let\s+bootstrapFlowId\s*=\s*flowId/);
+  assert.match(authStateSource, /bootstrap-rebased/);
+  assert.match(authStateSource, /markInitialAuthBootstrapStarted\(\);/);
+  assert.doesNotMatch(authStateSource, /if\s*\(!isBootTransitionCurrentSafe\(flowId\)\s*\|\|\s*window\.__spAppBooted\s*\|\|\s*_bootstrapping\)\s*return;/);
+  assert.match(initialSessionSource, /initial-session:bootstrap-rebased/);
+  assert.match(initialSessionSource, /markInitialAuthBootstrapStarted\(\);/);
+  assert.match(initSource, /const\s+initialSessionBootstrapOwned\s*=/);
+  assert.match(initSource, /_initialAuthBootstrapStarted/);
+  assert.doesNotMatch(initSource, /window\.__spInitialAuthEventSeen\s*&&[\s\S]*?_pendingAuthRedirectSession\?\.session\?\.user/);
+});
+
+test('visible app shell clears stale blocking boot overlay', () => {
+  const showApp = extractFunction(app, 'showApp');
+
+  assert.match(showApp, /const\s+hasStaleBlockingBootOverlay\s*=/);
+  assert.match(showApp, /isBootRevealBlockingState\(bootLoaderState\)/);
+  assert.match(showApp, /isAppShellVisible\(\)/);
+  assert.match(showApp, /ownsBootLoader\s*\|\|\s*hasStaleBlockingBootOverlay/);
+  assert.match(showApp, /hydrationPending\s*\|\|\s*hasStaleBlockingBootOverlay\s*\?\s*80\s*:\s*220/);
 });
 
 test('docs describe retry queue as account-scoped transport only', () => {

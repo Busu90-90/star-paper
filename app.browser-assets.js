@@ -61,7 +61,7 @@
       'assets/vendor/supabase/supabase.min.js'
     ]],
     ['2', ['app.todayboard.js']],
-    ['10', ['app.browser-assets.js']],
+    ['11', ['app.browser-assets.js']],
     ['3', [
       'app.root-shell.js',
       'assets/landing/notebook-board-desktop.webp',
@@ -86,10 +86,10 @@
     ['21', ['star-paper-tokens.css']],
     ['24', ['manifest.json']],
     ['33', ['styles.handcraft.css']],
-    ['56', ['styles.css']],
-    ['87', ['supabase.js']],
-    ['141', ['app.js']],
-    ['182', ['sw.js']]
+    ['57', ['styles.css']],
+    ['88', ['supabase.js']],
+    ['142', ['app.js']],
+    ['183', ['sw.js']]
   ];
 
   const assetVersions = {};

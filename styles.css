@@ -3237,6 +3237,8 @@ body.light-theme .custom-select__option { color: #1b1b1b; }
     scrollbar-width: thin;
     scrollbar-color: rgba(212, 168, 67, 0.42) transparent;
     overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
 }
 .sp-global-sheet__empty {
     padding: 20px 4px;
@@ -3714,8 +3716,13 @@ body.light-theme .custom-select__option { color: #1b1b1b; }
 
 /* ========== Desktop (≥769px) — static side panel ========== */
 @media (min-width: 769px) {
+    .sp-global-schedule {
+        --sp-global-detail-rail: clamp(236px, 28%, 292px);
+        --sp-global-itinerary-rail: 304px;
+    }
     .sp-global-schedule__stage {
-        right: 304px;
+        left: var(--sp-global-detail-rail);
+        right: var(--sp-global-itinerary-rail);
     }
     .sp-global-schedule__sheet {
         inset: 14px 14px 14px auto;
@@ -3740,7 +3747,7 @@ body.light-theme .custom-select__option { color: #1b1b1b; }
         left: 18px;
         right: auto;
         top: 18px;
-        width: min(244px, calc(100% - 340px));
+        width: min(244px, calc(var(--sp-global-detail-rail) - 42px), calc(100% - 340px));
         max-width: 244px;
         max-height: min(286px, calc(100% - 112px));
         padding: 12px;
@@ -3749,10 +3756,11 @@ body.light-theme .custom-select__option { color: #1b1b1b; }
         box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
     }
     .sp-global-schedule__key {
-        right: 304px;
+        right: var(--sp-global-itinerary-rail);
     }
     .sp-global-schedule__toolbar {
-        left: calc(50% - 138px);
+        left: calc(var(--sp-global-detail-rail) + ((100% - var(--sp-global-detail-rail) - var(--sp-global-itinerary-rail)) / 2));
+        width: min(360px, calc(100% - var(--sp-global-detail-rail) - var(--sp-global-itinerary-rail) - 28px));
     }
     .sp-global-schedule__detail-sheet {
         inset: 14px 14px 14px auto;

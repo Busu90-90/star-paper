@@ -312,6 +312,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   let _authEventWorkTimer = null;
   let _pendingAuthRedirectSession = null;
   let _lastBootstrapOutcome = null;
+  let _initialAuthBootstrapStarted = false;
   let _teamContextCache = [];
   let _teamContextCacheAt = 0;
   let _teamContextRefreshPromise = null;
@@ -1041,6 +1042,11 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     return _bootstrapPromise;
   }
 
+  function markInitialAuthBootstrapStarted() {
+    _initialAuthBootstrapStarted = true;
+    window.__spInitialAuthBootstrapStarted = true;
+  }
+
   function queueAuthRedirectSession(event, session, flowId) {
     if (!session?.user) return;
     _pendingAuthRedirectSession = {
@@ -1311,6 +1317,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     _bootstrapping = false;
     _bootstrapPromise = null;
     _refreshInFlight = false;
+    _initialAuthBootstrapStarted = false;
+    window.__spInitialAuthBootstrapStarted = false;
     window.__spCloudBootstrapPending = false;
     window.__spSupabaseBootPromise = null;
     window.__spAuthRedirectInProgress = false;
@@ -5437,11 +5445,17 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       const flowId = authEventFlowId || beginBootTransitionSafe(`auth-event:${event}:bootstrap`, 'loading-session');
       scheduleLocalSessionRestoreFallback({ bootContext: getStartupBootContext(), flowId });
       deferAuthEventWork(`auth-event:${event}:bootstrap`, async () => {
-        if (!isBootTransitionCurrentSafe(flowId) || window.__spAppBooted || _bootstrapping) return;
+        if (window.__spAppBooted || _bootstrapping) return;
+        let bootstrapFlowId = flowId;
+        if (!isBootTransitionCurrentSafe(bootstrapFlowId)) {
+          bootstrapFlowId = beginBootTransitionSafe(`auth-event:${event}:bootstrap-rebased`, 'loading-session');
+          scheduleLocalSessionRestoreFallback({ bootContext: getStartupBootContext(), flowId: bootstrapFlowId });
+        }
+        markInitialAuthBootstrapStarted();
         await runBootstrapTask(() => bootstrapFromSupabaseSession(session, {
           remember: true,
           showWelcome: event === 'SIGNED_IN',
-          flowId,
+          flowId: bootstrapFlowId,
         }));
       });
       return;
@@ -7088,13 +7102,17 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       }
       return false;
     }
-    if (activeFlowId && !isBootTransitionCurrentSafe(activeFlowId)) return false;
+    let bootstrapFlowId = activeFlowId;
+    if (bootstrapFlowId && !isBootTransitionCurrentSafe(bootstrapFlowId)) {
+      bootstrapFlowId = beginBootTransitionSafe('initial-session:bootstrap-rebased', 'loading-session');
+    }
     setBootStateSafe('loading-session');
-    scheduleLocalSessionRestoreFallback({ bootContext, flowId: activeFlowId });
+    scheduleLocalSessionRestoreFallback({ bootContext, flowId: bootstrapFlowId });
+    markInitialAuthBootstrapStarted();
     return runBootstrapTask(() => bootstrapFromSupabaseSession(session, {
       remember: true,
       showWelcome: false,
-      flowId: activeFlowId,
+      flowId: bootstrapFlowId,
       allowRepeatBootstrap: options.allowRepeatBootstrap === true,
     }));
   }
@@ -7179,15 +7197,16 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         // queueMicrotask yields once so handleAuthRedirect's `.then` chain
         // settles, but doesn't burn a fixed 150-300 ms before bootstrap.
         queueMicrotask(() => {
-          const initialEventAlreadyHandled =
-            window.__spInitialAuthEventSeen &&
-            bootContext !== 'auth-callback' &&
-            !_pendingAuthRedirectSession?.session?.user;
-          if (
-            initialEventAlreadyHandled ||
+          const initialSessionBootstrapOwned =
+            _initialAuthBootstrapStarted ||
+            window.__spInitialAuthBootstrapStarted ||
+            _bootstrapping ||
             _bootstrapPromise ||
             window.__spAppBooted ||
-            window.__spAuthRedirectInProgress
+            window.__spAuthRedirectInProgress ||
+            Boolean(_pendingAuthRedirectSession?.session?.user);
+          if (
+            initialSessionBootstrapOwned
           ) {
             return;
           }
