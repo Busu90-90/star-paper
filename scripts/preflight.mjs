@@ -226,8 +226,12 @@ function assertPublicRootMarker(fileName, text, marker) {
 }
 
 function assertDocumentCspMeta(fileName, text) {
-  const cspPattern = /<meta\s+http-equiv=["']Content-Security-Policy["']\s+content="[^"]*default-src 'self'[^"]*object-src 'none'[^"]*frame-ancestors 'none';?"\s*\/?>/i;
-  assert(cspPattern.test(text), `${fileName} missing document Content-Security-Policy meta`);
+  const csp = documentCsp(text);
+  assert(Boolean(csp), `${fileName} missing document Content-Security-Policy meta`);
+  assert(/default-src\s+'self'/i.test(csp), `${fileName} document CSP missing default-src 'self'`);
+  assert(/object-src\s+'none'/i.test(csp), `${fileName} document CSP missing object-src 'none'`);
+  assert(/worker-src\s+'self'\s+blob:/i.test(csp), `${fileName} document CSP missing worker-src 'self' blob:`);
+  assert(!/frame-ancestors/i.test(csp), `${fileName} document CSP meta must not include frame-ancestors; keep it in _headers`);
 }
 
 function countMatches(text, pattern) {
@@ -307,6 +311,16 @@ function headerCsp(text) {
 
 function normalizeCsp(value) {
   return value.split(';').map((part) => part.trim()).filter(Boolean).join('; ');
+}
+
+function normalizeDocumentComparableCsp(value) {
+  return normalizeCsp(
+    value
+      .split(';')
+      .map((part) => part.trim())
+      .filter((part) => part && !/^frame-ancestors\b/i.test(part))
+      .join('; ')
+  );
 }
 
 const forbiddenSelfHostedRuntimeDependencies = [
@@ -468,6 +482,11 @@ for (const [fileName, marker] of publicRootHtml) {
   assertDocumentCspMeta(fileName, html);
   assertNoForbiddenRuntimeDependency(fileName, html);
   assertExternalTagsHaveIntegrity(fileName, html);
+  if (marker === 'app-shell') {
+    assert(/\blanding-home-page\b[\s\S]*\blanding-snap-page\b|\blanding-snap-page\b[\s\S]*\blanding-home-page\b/.test(html), `${fileName} must mark #landingScreen as the landing home snap container`);
+  } else {
+    assert(/\blanding-snap-page\b[\s\S]*\blanding-public-page\b|\blanding-public-page\b[\s\S]*\blanding-snap-page\b/.test(html), `${fileName} must mark #landingScreen as a public landing snap container`);
+  }
 }
 
 const indexInlineScripts = [...index.matchAll(/<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/gi)].map((match) => match[0]);
@@ -517,6 +536,7 @@ assert(index.includes(versionedAssetUrl('app.boot-body.js')), `index.html does n
 assert(index.includes(versionedAssetUrl('app.todayboard.js')), `index.html does not load ${versionedAssetUrl('app.todayboard.js')}`);
 assert(index.includes(versionedAssetUrl('app.reports.js')), `index.html does not load ${versionedAssetUrl('app.reports.js')}`);
 assert(index.includes(versionedAssetUrl('app.handcraft.js')), `index.html does not load ${versionedAssetUrl('app.handcraft.js')}`);
+assert(!index.includes('how-it-works.html#landing-features'), 'index.html How It Works links must not route to #landing-features');
 assert(index.includes(versionedAssetUrl('styles.css')), `index.html does not load ${versionedAssetUrl('styles.css')}`);
 assert(index.includes(versionedAssetUrl('supabase.js')), `index.html does not load ${versionedAssetUrl('supabase.js')}`);
 assert(index.includes(versionedAssetUrl('manifest.json')), `index.html does not load ${versionedAssetUrl('manifest.json')}`);
@@ -532,7 +552,18 @@ for (const [fileName, marker] of publicRootHtml) {
   assert(!/style-src[^;]*'unsafe-inline'/i.test(documentCsp(html)), `${fileName} CSP style-src directives must not allow unsafe-inline`);
   assert(html.includes(versionedAssetUrl('public-page-head.js')), `${fileName} does not load ${versionedAssetUrl('public-page-head.js')}`);
   assert(html.includes(versionedAssetUrl('public-page-theme.js')), `${fileName} does not load ${versionedAssetUrl('public-page-theme.js')}`);
+  assert(html.includes(versionedAssetUrl('app.handcraft.js')), `${fileName} does not load ${versionedAssetUrl('app.handcraft.js')}`);
 }
+assert(publicPageHead.includes("window.history.scrollRestoration = 'manual';"), 'public-page-head.js must force manual scroll restoration');
+assert(publicPageHead.includes('publicSectionHashPattern'), 'public-page-head.js must strip known public section hashes');
+assert(publicPageHead.includes('function resetPublicScrollTop()'), 'public-page-head.js must expose the public landing scroll-top reset');
+assert(publicPageHead.includes("window.addEventListener('pageshow', resetPublicScrollTop);"), 'public-page-head.js must reset public landing scroll on pageshow');
+assert(handcraft.includes('function resetLandingScrollTop(landing)'), 'app.handcraft.js must reset the landing snap container on mount');
+assert(handcraft.includes("landing.classList.contains('landing-snap-page')"), 'app.handcraft.js must use #landingScreen as the scroll source in snap mode');
+assert(handcraftCss.includes('#landingScreen.landing-snap-page'), 'styles.handcraft.css must define the landing snap page contract');
+assert(handcraftCss.includes('scroll-snap-type: y mandatory'), 'styles.handcraft.css must enforce vertical mandatory snap on landing pages');
+assert(handcraftCss.includes('scroll-snap-stop: always'), 'styles.handcraft.css must enforce snap stops on landing sections');
+assert(handcraftCss.includes('height: 100dvh !important;'), 'styles.handcraft.css must keep #landingScreen at the viewport height');
 assert(sw.includes('const AUTH_CALLBACK_CACHE_BYPASS_PARAMS = new Set(['), 'sw.js must define auth callback cache-bypass parameters');
 for (const param of ['access_token', 'refresh_token', 'code', 'state', 'token_type', 'error_description']) {
   assert(sw.includes(`"${param}"`), `sw.js auth callback cache bypass must include ${param}`);
@@ -542,6 +573,14 @@ assert(sw.includes('const canCacheRequestUrl = !hasAuthCallbackCacheBypassParam(
 assert(sw.includes('response && response.ok && canCacheRequestUrl'), 'sw.js must not cache navigation responses for auth callback URLs');
 assert(sw.includes('if (!canCacheRequestUrl) {'), 'sw.js auth callback fallback path must avoid cache lookup by sensitive request URL');
 assert(sw.includes('if (hasAuthCallbackCacheBypassParam(url)) return false;'), 'sw.js app-shell cacheability must reject auth callback URLs');
+assert(sw.includes('function requestTarget(request)'), 'sw.js must normalize fallback string request targets');
+assert(sw.includes('new URL(request, self.location.href).toString()'), 'sw.js must resolve fallback shell paths against the worker origin');
+assert(sw.includes('return new Request(requestTarget(request), { cache: "reload" });'), 'sw.js freshRequest must normalize strings before constructing Request');
+assert(sw.includes('function shouldRedirectNavigationResponse(request, response)'), 'sw.js must detect clean same-origin navigation redirects');
+assert(sw.includes('return Response.redirect(response.url, 302);'), 'sw.js must hand off clean public-route redirects to the browser');
+assert(sw.includes('if (looksLikeFilePath(url.pathname))'), 'sw.js must let direct .html public landing requests reach the browser/network path');
+assert(sw.includes('return fetch(freshRequest(request))'), 'sw.js must fetch requested navigations before falling back');
+assert(sw.includes('return fetch(freshRequest(fallbackShell));'), 'sw.js must fetch manifest fallback shells only after requested public navigation fails');
 
 assert(packageJson.scripts?.preflight === 'node scripts/preflight.mjs', 'package.json preflight script must run scripts/preflight.mjs');
 assert(packageJson.scripts?.build === 'npm run preflight', 'package.json build script must run preflight');
@@ -874,7 +913,9 @@ const cspMeta = documentCsp(index);
 const cspHeader = headerCsp(headers);
 assert(Boolean(cspMeta), 'index.html missing Content-Security-Policy meta content');
 assert(Boolean(cspHeader), '_headers missing Content-Security-Policy value');
-assert(normalizeCsp(cspMeta) === normalizeCsp(cspHeader), 'index.html CSP meta and _headers CSP must match');
+assert(normalizeCsp(cspMeta) === normalizeDocumentComparableCsp(cspHeader), 'index.html CSP meta and _headers CSP must match except frame-ancestors');
+assert(!/frame-ancestors/i.test(cspMeta), 'index.html CSP meta must not include frame-ancestors because browsers ignore it in meta CSP');
+assert(/frame-ancestors\s+'none'/i.test(cspHeader), '_headers CSP must keep frame-ancestors enforced by HTTP headers');
 assert(!/script-src[^;]*'unsafe-inline'/i.test(cspMeta), 'index.html CSP script-src must not allow unsafe-inline');
 assert(!/script-src[^;]*'unsafe-inline'/i.test(cspHeader), '_headers CSP script-src must not allow unsafe-inline');
 assert(!/style-src\s+[^;]*'unsafe-inline'/i.test(cspMeta), 'index.html CSP style-src must not allow unsafe-inline');

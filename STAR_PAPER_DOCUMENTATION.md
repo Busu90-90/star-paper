@@ -158,11 +158,15 @@ Owns the public root HTML manifest: root file markers plus clean and `.html` lan
 Own the intentionally public landing-page boot path:
 
 - app-route hash stripping on public landing URLs
+- public section hash stripping, including stale links such as `#landing-features`
+- manual scroll restoration plus top resets for `window`, `documentElement`, `body`, and `#landingScreen`
 - prepaint premium/handcraft kill-switch class setup
 - initial body theme class setup
 - landing theme-toggle binding
 
-These files replace the old inline scripts in `how-it-works.html`, `proof.html`, and `testimonials.html`. Public landing pages must not contain inline script blocks, inline style blocks, or inline style attributes, and their document CSP must not allow `'unsafe-inline'`.
+These files replace the old inline scripts in `how-it-works.html`, `proof.html`, and `testimonials.html`. Public landing pages must not contain inline script blocks, inline style blocks, or inline style attributes, and their document CSP must not allow `'unsafe-inline'`. Keep `frame-ancestors 'none'` in `_headers`, not the HTML meta CSP, because browsers ignore `frame-ancestors` when it is delivered through a meta tag.
+
+Landing roots use `landing-snap-page`; standalone public pages also use `landing-public-page`. In snap mode, `#landingScreen` is the scroll owner, and the hero/walkthrough/proof/testimonial/final-CTA sections snap as one-viewport panels. Home links to How It Works must target `how-it-works.html` without `#landing-features` so `public-page-head.js` can keep direct and clicked navigation at the top hero.
 
 ### `app.root-shell.js`
 
@@ -195,6 +199,7 @@ Owns:
 - service worker shell caching
 - cache versioning
 - freshness behavior for deployed assets
+- network-first public landing navigation that fetches the requested URL before falling back to the manifest shell, normalizes fallback paths, hands clean same-origin redirects to the browser, and leaves direct `.html` public landing requests on the browser/network path
 
 ## Boot and Auth Flow
 
@@ -466,7 +471,9 @@ Netlify publishes the repository root. Root HTML is therefore deny-by-default in
 - `proof.html`
 - `testimonials.html`
 
-Each public root HTML file must carry `<meta name="star-paper:public-root" ...>`. Use `content="app-shell"` for `index.html` and `content="public-landing"` for the public landing pages. Any new public landing page must be added to `app.public-pages.js`, the `.netlifyignore` unignore rules, the service-worker app shell, and `_redirects` if it needs an extensionless URL; preflight fails if those surfaces drift. Public landing pages must stay on the external `public-page-head.js` and `public-page-theme.js` boot path and must not reintroduce inline script/style blocks, inline style attributes, or CSP `unsafe-inline`.
+Each public root HTML file must carry `<meta name="star-paper:public-root" ...>`. Use `content="app-shell"` for `index.html` and `content="public-landing"` for the public landing pages. Any new public landing page must be added to `app.public-pages.js`, the `.netlifyignore` unignore rules, the service-worker app shell, and `_redirects` if it needs an extensionless URL; preflight fails if those surfaces drift. Public landing pages must stay on the external `public-page-head.js`, `public-page-theme.js`, and `app.handcraft.js` boot path and must not reintroduce inline script/style blocks, inline style attributes, or CSP `unsafe-inline`.
+
+Public landing scroll is owned by `#landingScreen.landing-snap-page`, not by `window`. Standalone public pages also carry `landing-public-page`. `public-page-head.js` sets `history.scrollRestoration = 'manual'`, strips known public section hashes, and resets both the document and `#landingScreen` to the top on early boot, `DOMContentLoaded`, `pageshow`, and `load`.
 
 Do not keep private briefs, ad hoc documents, tests, local agent config, schemas, package metadata, or scripts in the deployable surface. Deleted files disappear from the live production URL after the next successful atomic deploy, but old Netlify deploy permalinks may retain prior deploy contents until those deploys are deleted or expire.
 
@@ -480,12 +487,15 @@ When shipping auth, sync, reports, or boot changes, deploy matching versions of:
 - `app.tasks.js`
 - `app.globe.js`
 - `app.shell.js`
+- `app.handcraft.js`
 - `app.boot-head.js`
 - `app.boot-flags.js`
 - `app.boot-body.js`
+- `public-page-head.js`
 - `app.root-shell.js`
 - `styles.css`
 - `styles.shell.css`
+- `styles.handcraft.css`
 - `index.html`
 - `app.public-pages.js`
 - `app.browser-assets.js`
@@ -495,7 +505,7 @@ When shipping auth, sync, reports, or boot changes, deploy matching versions of:
 
 ### Cache rule
 
-If browser asset versions, same-origin runtime scripts, vendored hashes, or pinned CDN hashes change, update `app.browser-assets.js` first. The service worker cache list, runtime loaders, static HTML, Supabase auth boot path, and vendor CSS references must match that contract or preflight fails.
+If browser asset versions, same-origin runtime scripts, public landing boot scripts, vendored hashes, or pinned CDN hashes change, update `app.browser-assets.js` first. The service worker cache list, runtime loaders, static HTML, public landing HTML files, Supabase auth boot path, and vendor CSS references must match that contract or preflight fails.
 
 This prevents stale boot or auth code from surviving a deploy.
 

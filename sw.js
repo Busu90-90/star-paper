@@ -113,8 +113,13 @@ function getPublicLandingPageShell(url) {
   return PUBLIC_LANDING_PAGES.get(pathname) || null;
 }
 
+function requestTarget(request) {
+  if (typeof request !== "string") return request;
+  return new URL(request, self.location.href).toString();
+}
+
 function freshRequest(request) {
-  return new Request(request, { cache: "reload" });
+  return new Request(requestTarget(request), { cache: "reload" });
 }
 
 function hasAuthCallbackCacheBypassParam(url) {
@@ -128,12 +133,25 @@ function isFreshOnlyReportRuntimeAsset(url) {
   return REPORT_RUNTIME_ASSETS.has(`${url.pathname}${url.search}`);
 }
 
+function shouldRedirectNavigationResponse(request, response) {
+  if (!response || !response.redirected || !response.url || request.mode !== "navigate") return false;
+  const requestUrl = new URL(request.url);
+  const responseUrl = new URL(response.url);
+  return responseUrl.origin === requestUrl.origin && responseUrl.href !== requestUrl.href;
+}
+
 function networkFirstNavigation(request, fallbackShell) {
-  const networkRequest = fallbackShell || request;
   const requestUrl = new URL(request.url);
   const canCacheRequestUrl = !hasAuthCallbackCacheBypassParam(requestUrl);
-  return fetch(freshRequest(networkRequest))
+  return fetch(freshRequest(request))
     .then((response) => {
+      if ((response && response.ok) || !fallbackShell) return response;
+      return fetch(freshRequest(fallbackShell));
+    })
+    .then((response) => {
+      if (shouldRedirectNavigationResponse(request, response)) {
+        return Response.redirect(response.url, 302);
+      }
       if (response && response.ok && canCacheRequestUrl) {
         const clone = response.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
@@ -196,6 +214,9 @@ self.addEventListener("fetch", (event) => {
   if (request.mode === "navigate") {
     const publicLandingPageShell = getPublicLandingPageShell(url);
     if (publicLandingPageShell) {
+      if (looksLikeFilePath(url.pathname)) {
+        return;
+      }
       event.respondWith(networkFirstNavigation(request, publicLandingPageShell));
       return;
     }

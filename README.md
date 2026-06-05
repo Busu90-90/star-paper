@@ -36,6 +36,7 @@ Do not open `index.html` through `file://`; Google OAuth and email-confirm redir
 - `app.tasks.js` - task rendering and task interactions.
 - `app.globe.js` - Schedule Global globe rendering, land topology loading, tour pins/arcs, itinerary panel behavior, and booking-detail sheet wiring.
 - `app.shell.js` - additive app-shell refinement bootstrap that gates landing-aligned shell polish behind `localStorage.sp_shell_refined_off`.
+- `app.handcraft.js` - landing-page interaction, public section progress, and landing snap-container initialization.
 - `app.boot-head.js`, `app.boot-flags.js`, `app.boot-body.js` - externalized prepaint and route/auth boot guards required before the main app bundle.
 - `app.public-pages.js` - source of truth for public root HTML markers and clean/`.html` landing route pairs consumed by boot, service-worker, and preflight checks.
 - `app.browser-assets.js` - browser asset contract for local version query strings, service-worker precache URLs, same-origin runtime scripts, external CDN SRI pins, and vendored runtime file hashes.
@@ -96,7 +97,7 @@ The post-apply SQL also proves the live advisor-facing surface: `public.ai_conte
 - Once the app shell is visibly painted, `app.js` clears stale blocking boot overlays even when older bootstrap owner flags are still settling.
 - If `get_bootstrap_payload` does not return a usable first-paint payload, `supabase.js` falls back to direct cloud loads before declaring cloud data unavailable. This keeps empty/new accounts bootable while still surfacing real load failures through the boot recovery UI.
 - Classic third-party CDN scripts that remain out of auth boot are pinned with SRI where browser-supported. `app.browser-assets.js` is the source of truth for those CDN URLs/hashes and for local version query strings. Brand fonts, Phosphor icon CSS/fonts, and the Schedule > Global Three.js, OrbitControls, and TopoJSON client modules are self-hosted under `assets/vendor/`; preflight fails if those runtime paths drift back to public CDNs or if vendored file hashes drift.
-- Browser storage and Cache Storage are not confidentiality boundaries. The app reduces XSS risk with DOM-rendered performance-map pins/panels/legends, globe hover cards/itinerary/detail sheets, report focus text, Today Board alerts, handcraft arrow icons, team and currency modals, escaped booking map/calendar/dashboard timeline labels, escaped artist dropdown options, escaped command-palette labels/subtitles, validated Phosphor icon tokens, `textContent` toast and team-chat rendering, constrained action dispatch, delegated receipt/proof/nudge/task/report/globe/team modal/root-shell actions, UUID-validated team mutations, image validation, service-worker auth-callback cache bypasses, CSP, and preflight checks. Root app-shell and public-landing boot scripts are externalized, public landing pages carry a stricter document CSP with no inline script/style allowance, `script-src` does not allow `'unsafe-inline'`, `style-src-elem` is self-only, and `style-src-attr` is blocked with `'none'`; residual XSS work is primarily the remaining audited `innerHTML` render paths in `app.js`.
+- Browser storage and Cache Storage are not confidentiality boundaries. The app reduces XSS risk with DOM-rendered performance-map pins/panels/legends, globe hover cards/itinerary/detail sheets, report focus text, Today Board alerts, handcraft arrow icons, team and currency modals, escaped booking map/calendar/dashboard timeline labels, escaped artist dropdown options, escaped command-palette labels/subtitles, validated Phosphor icon tokens, `textContent` toast and team-chat rendering, constrained action dispatch, delegated receipt/proof/nudge/task/report/globe/team modal/root-shell actions, UUID-validated team mutations, image validation, service-worker auth-callback cache bypasses, CSP, and preflight checks. Root app-shell and public-landing boot scripts are externalized, public landing pages carry a stricter document CSP with no inline script/style allowance, `script-src` does not allow `'unsafe-inline'`, `style-src-elem` is self-only, and `style-src-attr` is blocked with `'none'`. `frame-ancestors 'none'` is enforced in `_headers`, not HTML meta CSP, because browsers ignore that directive in meta-delivered CSP. Residual XSS work is primarily the remaining audited `innerHTML` render paths in `app.js`.
 
 Security reports for this pass:
 
@@ -127,7 +128,7 @@ Netlify publishes the repository root, so root HTML is deny-by-default. Only the
 - `proof.html` for `/proof` and `/proof.html`
 - `testimonials.html` for `/testimonials` and `/testimonials.html`
 
-Every public root HTML file must be listed in `app.public-pages.js`, unignored in `.netlifyignore`, and marked with `<meta name="star-paper:public-root" ...>`. `app.boot-head.js`, `sw.js`, and `scripts/preflight.mjs` consume that manifest; preflight fails if the manifest, `.netlifyignore`, `_redirects`, or service-worker app shell drift apart. Public landing pages must load `public-page-head.js` and `public-page-theme.js`; preflight rejects landing inline scripts, inline style blocks, inline style attributes, and landing CSP `unsafe-inline`.
+Every public root HTML file must be listed in `app.public-pages.js`, unignored in `.netlifyignore`, and marked with `<meta name="star-paper:public-root" ...>`. `app.boot-head.js`, `sw.js`, and `scripts/preflight.mjs` consume that manifest; preflight fails if the manifest, `.netlifyignore`, `_redirects`, or service-worker app shell drift apart. Landing roots use `landing-snap-page`, standalone public pages also use `landing-public-page`, and `#landingScreen` owns vertical scrolling with one-viewport snap sections. `public-page-head.js` sets manual scroll restoration, strips known public section hashes such as `#landing-features`, and forces the page and snap container back to the top on boot, `DOMContentLoaded`, `pageshow`, and `load`. Public landing pages must load `public-page-head.js`, `public-page-theme.js`, and `app.handcraft.js`; preflight rejects landing inline scripts, inline style blocks, inline style attributes, and landing CSP `unsafe-inline`. The service worker fetches the requested public navigation URL first, normalizes fallback shell paths only when needed, hands clean same-origin redirects back to the browser, and leaves direct `.html` public landing requests on the browser/network path.
 
 Always deploy the matching versions of:
 
@@ -137,12 +138,15 @@ Always deploy the matching versions of:
 - `app.tasks.js`
 - `app.globe.js`
 - `app.shell.js`
+- `app.handcraft.js`
 - `app.boot-head.js`
 - `app.boot-flags.js`
 - `app.boot-body.js`
+- `public-page-head.js`
 - `app.root-shell.js`
 - `styles.css`
 - `styles.shell.css`
+- `styles.handcraft.css`
 - `index.html`
 - `app.public-pages.js`
 - `app.browser-assets.js`
@@ -151,7 +155,7 @@ Always deploy the matching versions of:
 - `assets/vendor/` runtime assets, including the same-origin Supabase auth SDK
 - `schema.sql` when the database contract changes
 
-If a browser asset version, vendored runtime file, or pinned CDN URL/hash changes, update `app.browser-assets.js` first. `scripts/preflight.mjs` then fails until `index.html`, `sw.js`, the lazy loaders, Supabase auth runtime loader, and vendor CSS references match that contract.
+If a browser asset version, vendored runtime file, public landing boot script, or pinned CDN URL/hash changes, update `app.browser-assets.js` first. `scripts/preflight.mjs` then fails until `index.html`, the public landing HTML files, `sw.js`, the lazy loaders, Supabase auth runtime loader, and vendor CSS references match that contract.
 
 Residual deploy risk: old Netlify deploy permalinks can still expose files that existed in previous successful deploys until those deploys are deleted or expire. The next production deploy removes deleted files from the live production URL because Netlify deploys atomically, but do not place private briefs, secrets, tests, or local agent config in the repo root.
 

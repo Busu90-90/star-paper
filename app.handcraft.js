@@ -41,6 +41,7 @@
     var landing = document.getElementById('landingScreen');
     if (!landing) return;
 
+    resetLandingScrollTop(landing);
     landing.classList.add('sp-handcraft-mounted');
     setupAbHarness();
     setupProofTypewriter(landing);
@@ -50,11 +51,29 @@
     setupBentoMarquee(landing);
     setupMagneticLinks(landing);
     setupCursorFollower();
-    setupScrollProgress();
+    setupScrollProgress(landing);
     setupCountUpTrio(landing);
     setupChorusRotation(landing);
     setupTrioUnderlineReveal(landing);
   });
+
+  function resetLandingScrollTop(landing) {
+    function reset() {
+      try {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      } catch (_err) {
+        window.scrollTo(0, 0);
+      }
+      document.documentElement.scrollTop = 0;
+      if (document.body) document.body.scrollTop = 0;
+      if (landing) landing.scrollTop = 0;
+    }
+
+    reset();
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(reset);
+    }
+  }
 
   function setupProofTypewriter(landing) {
     var proofCopies = landing.querySelectorAll('.sp-handcraft-proof-copy');
@@ -488,22 +507,25 @@
   // ──────────────────────────────────────────────────────────────
   // Top scroll-progress hairline (gold gradient, RAF-throttled).
   // ──────────────────────────────────────────────────────────────
-  function setupScrollProgress() {
+  function setupScrollProgress(landing) {
     var bar = document.createElement('div');
     bar.className = 'sp-handcraft-progress';
     bar.setAttribute('aria-hidden', 'true');
     document.body.appendChild(bar);
 
+    var scrollSource = landing && landing.classList.contains('landing-snap-page')
+      ? landing
+      : document.documentElement;
+    var scrollTarget = scrollSource === document.documentElement ? window : scrollSource;
     var raf = 0;
     function update() {
-      var doc = document.documentElement;
-      var max = doc.scrollHeight - doc.clientHeight;
-      var p = max > 0 ? Math.min(1, Math.max(0, doc.scrollTop / max)) : 0;
+      var max = scrollSource.scrollHeight - scrollSource.clientHeight;
+      var p = max > 0 ? Math.min(1, Math.max(0, scrollSource.scrollTop / max)) : 0;
       bar.style.transform = 'scaleX(' + p.toFixed(4) + ')';
       raf = 0;
     }
 
-    window.addEventListener('scroll', function onScroll() {
+    scrollTarget.addEventListener('scroll', function onScroll() {
       if (!raf) raf = requestAnimationFrame(update);
     }, { passive: true });
     window.addEventListener('resize', function onResize() {

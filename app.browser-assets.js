@@ -7,7 +7,6 @@
       'app.boot-head.js',
       'app.boot-flags.js',
       'app.boot-body.js',
-      'public-page-head.js',
       'public-page-theme.js',
       'app.shell.js',
       'assets/world-atlas/land-50m.json',
@@ -60,8 +59,8 @@
       'assets/vendor/topojson-client/topojson-client.esm.js',
       'assets/vendor/supabase/supabase.min.js'
     ]],
-    ['2', ['app.todayboard.js']],
-    ['12', ['app.browser-assets.js']],
+    ['2', ['app.todayboard.js', 'public-page-head.js']],
+    ['13', ['app.browser-assets.js']],
     ['3', [
       'app.root-shell.js',
       'assets/landing/notebook-board-desktop.webp',
@@ -82,14 +81,15 @@
     ['10', ['app.migrations.js']],
     ['12', ['styles.shell.css']],
     ['14', ['app.globe.js']],
-    ['19', ['app.handcraft.js', 'app.reports.js']],
+    ['19', ['app.reports.js']],
+    ['20', ['app.handcraft.js']],
     ['21', ['star-paper-tokens.css']],
     ['24', ['manifest.json']],
-    ['33', ['styles.handcraft.css']],
+    ['35', ['styles.handcraft.css']],
     ['57', ['styles.css']],
     ['89', ['supabase.js']],
     ['142', ['app.js']],
-    ['184', ['sw.js']]
+    ['188', ['sw.js']]
   ];
 
   const assetVersions = {};
