@@ -60,7 +60,7 @@
       'assets/vendor/supabase/supabase.min.js'
     ]],
     ['2', ['app.todayboard.js', 'public-page-head.js']],
-    ['13', ['app.browser-assets.js']],
+    ['15', ['app.browser-assets.js']],
     ['3', [
       'app.root-shell.js',
       'assets/landing/notebook-board-desktop.webp',
@@ -85,10 +85,10 @@
     ['20', ['app.handcraft.js']],
     ['21', ['star-paper-tokens.css']],
     ['24', ['manifest.json']],
-    ['35', ['styles.handcraft.css']],
+    ['36', ['styles.handcraft.css']],
     ['57', ['styles.css']],
     ['89', ['supabase.js']],
-    ['142', ['app.js']],
+    ['143', ['app.js']],
     ['188', ['sw.js']]
   ];
 

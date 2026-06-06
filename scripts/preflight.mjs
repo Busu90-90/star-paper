@@ -553,6 +553,8 @@ for (const [fileName, marker] of publicRootHtml) {
   assert(html.includes(versionedAssetUrl('public-page-head.js')), `${fileName} does not load ${versionedAssetUrl('public-page-head.js')}`);
   assert(html.includes(versionedAssetUrl('public-page-theme.js')), `${fileName} does not load ${versionedAssetUrl('public-page-theme.js')}`);
   assert(html.includes(versionedAssetUrl('app.handcraft.js')), `${fileName} does not load ${versionedAssetUrl('app.handcraft.js')}`);
+  assert(!html.includes('index.html?auth=signup'), `${fileName} must not route signup CTAs through index.html; static preview canonicalization drops the auth query`);
+  assert(html.includes('./?auth=signup'), `${fileName} must route signup CTAs to the root auth query`);
 }
 assert(publicPageHead.includes("window.history.scrollRestoration = 'manual';"), 'public-page-head.js must force manual scroll restoration');
 assert(publicPageHead.includes('publicSectionHashPattern'), 'public-page-head.js must strip known public section hashes');
@@ -560,10 +562,22 @@ assert(publicPageHead.includes('function resetPublicScrollTop()'), 'public-page-
 assert(publicPageHead.includes("window.addEventListener('pageshow', resetPublicScrollTop);"), 'public-page-head.js must reset public landing scroll on pageshow');
 assert(handcraft.includes('function resetLandingScrollTop(landing)'), 'app.handcraft.js must reset the landing snap container on mount');
 assert(handcraft.includes("landing.classList.contains('landing-snap-page')"), 'app.handcraft.js must use #landingScreen as the scroll source in snap mode');
+assert(app.includes('window.showLoginForm = showLoginForm;'), 'app.js must let the real auth handler replace public boot stubs for Sign in');
+assert(app.includes('window.showSignupForm = showSignupForm;'), 'app.js must let the real signup handler replace public boot stubs for Get Started');
+assert(!app.includes('window.showLoginForm  ||= showLoginForm;'), 'app.js must not preserve stale public boot Sign in stubs after initialization');
+assert(!app.includes('window.showSignupForm ||= showSignupForm;'), 'app.js must not preserve stale public boot signup stubs after initialization');
 assert(handcraftCss.includes('#landingScreen.landing-snap-page'), 'styles.handcraft.css must define the landing snap page contract');
 assert(handcraftCss.includes('scroll-snap-type: y mandatory'), 'styles.handcraft.css must enforce vertical mandatory snap on landing pages');
 assert(handcraftCss.includes('scroll-snap-stop: always'), 'styles.handcraft.css must enforce snap stops on landing sections');
 assert(handcraftCss.includes('height: 100dvh !important;'), 'styles.handcraft.css must keep #landingScreen at the viewport height');
+assert(handcraftCss.includes('--landing-max-width: 1180px'), 'styles.handcraft.css must define the shared public landing max width');
+assert(handcraftCss.includes('--landing-section-pad-x'), 'styles.handcraft.css must define shared public landing horizontal gutters');
+assert(handcraftCss.includes('--landing-section-pad-y'), 'styles.handcraft.css must define shared public landing section padding');
+assert(handcraftCss.includes('--landing-cta-min-height'), 'styles.handcraft.css must define compact public landing CTA spacing');
+assert(handcraftCss.includes('width: min(100%, var(--landing-max-width))'), 'styles.handcraft.css must center public landing content on the shared max-width rail');
+assert(handcraftCss.includes('overscroll-behavior-x: contain'), 'styles.handcraft.css must keep carousel overflow inside the carousel track');
+assert(handcraftCss.includes('overflow-x: clip !important;'), 'styles.handcraft.css must prevent document-level horizontal overflow on landing pages');
+assert(!handcraftCss.includes('height: 100dvh !important;\n  min-height: 100dvh !important;\n  scroll-snap-align: start;'), 'styles.handcraft.css landing content sections must not be forced into clipped 100dvh slabs');
 assert(sw.includes('const AUTH_CALLBACK_CACHE_BYPASS_PARAMS = new Set(['), 'sw.js must define auth callback cache-bypass parameters');
 for (const param of ['access_token', 'refresh_token', 'code', 'state', 'token_type', 'error_description']) {
   assert(sw.includes(`"${param}"`), `sw.js auth callback cache bypass must include ${param}`);

@@ -4608,7 +4608,7 @@ html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen .mini-nav-logo {
   }
 }
 
-/* Landing snap contract: one scroll owner, full-viewport sections, compact hero. */
+/* Landing snap/rhythm contract: one scroll owner, compact hero, natural sections. */
 html:not(.sp-prem-off):not(.sp-handcraft-off):has(#landingScreen.landing-snap-page),
 html:not(.sp-prem-off):not(.sp-handcraft-off):has(#landingScreen.landing-snap-page) body {
   height: 100%;
@@ -4616,6 +4616,16 @@ html:not(.sp-prem-off):not(.sp-handcraft-off):has(#landingScreen.landing-snap-pa
 }
 
 html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page {
+  --landing-max-width: 1180px;
+  --landing-section-pad-x: clamp(1rem, 4vw, 3rem);
+  --landing-section-pad-y: clamp(2rem, 5dvh, 4.75rem);
+  --landing-section-gap: clamp(1.5rem, 4dvh, 3.25rem);
+  --landing-section-min-height: min(100dvh, 760px);
+  --landing-cta-min-height: min(86dvh, 620px);
+  --landing-cta-card-min-height: clamp(260px, 40dvh, 380px);
+  --landing-cta-card-pad-y: clamp(1.75rem, 4dvh, 3.5rem);
+  --landing-cta-card-pad-x: clamp(1.25rem, 5vw, 4rem);
+  --landing-footer-pad-y: clamp(1rem, 2.6dvh, 1.75rem);
   display: block !important;
   height: 100dvh !important;
   min-height: 100dvh !important;
@@ -4630,7 +4640,6 @@ html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page {
 }
 
 html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page > :is(
-  .landing-hero-stage,
   .sp-handcraft-bento,
   .landing-walkthrough-section,
   .landing-testimonials-section,
@@ -4638,16 +4647,22 @@ html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page >
   .sp-prem-final-cta
 ) {
   box-sizing: border-box;
-  height: 100dvh !important;
-  min-height: 100dvh !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: var(--landing-section-min-height) !important;
   scroll-snap-align: start;
   scroll-snap-stop: always;
 }
 
 html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page > .landing-hero-stage {
   display: flex !important;
+  box-sizing: border-box;
+  height: 100dvh !important;
+  min-height: 100dvh !important;
   padding: 0 !important;
   overflow: hidden !important;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 
 html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .landing-hero-shell,
@@ -4791,21 +4806,129 @@ html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page :
   flex-direction: column !important;
   justify-content: center !important;
   margin: 0 !important;
-  padding: clamp(24px, 5dvh, 48px) clamp(22px, 4vw, 56px) !important;
+  padding: var(--landing-section-pad-y) var(--landing-section-pad-x) !important;
+  overflow-x: clip !important;
+  overflow-y: visible !important;
+  gap: var(--landing-section-gap) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page :is(
+  .sp-handcraft-bento-head,
+  .landing-walkthrough-head,
+  .landing-testimonials-head,
+  .landing-proof-head,
+  .landing-proof-copy,
+  .sp-handcraft-marquee,
+  .landing-mobile-slider,
+  .landing-walkthrough-grid,
+  .landing-proof-grid,
+  .landing-proof-metrics,
+  .landing-proof-stack,
+  .sp-handcraft-bento-grid,
+  .sp-prem-final-cta__inner
+) {
+  width: min(100%, var(--landing-max-width)) !important;
+  max-width: var(--landing-max-width) !important;
+  margin-inline: auto !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page :is(
+  .sp-handcraft-bento-head,
+  .landing-walkthrough-head,
+  .landing-testimonials-head,
+  .landing-proof-head
+) {
+  margin-block: 0 !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .sp-handcraft-bento-grid {
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  overscroll-behavior-x: contain !important;
+  padding: 6px 0 clamp(10px, 1.8dvh, 16px) !important;
+  scroll-padding-inline: 0 !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .sp-handcraft-bento-card {
+  flex-basis: clamp(258px, calc((100% - 44px) / 3), 360px) !important;
+  width: clamp(258px, calc((100% - 44px) / 3), 360px) !important;
+  max-width: 360px !important;
+  min-height: clamp(248px, 34dvh, 300px) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .sp-handcraft-bento-card--featured {
+  flex-basis: clamp(278px, calc((100% - 44px) / 3), 390px) !important;
+  width: clamp(278px, calc((100% - 44px) / 3), 390px) !important;
+  max-width: 390px !important;
+  min-height: clamp(270px, 38dvh, 330px) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .sp-handcraft-marquee,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .landing-mobile-slider {
   overflow: hidden !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .landing-testimonials-grid.is-marquee {
+  max-width: none !important;
 }
 
 html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .sp-prem-final-cta {
   align-items: center !important;
+  min-height: var(--landing-cta-min-height) !important;
+  padding-block: clamp(2rem, 6dvh, 4rem) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .sp-prem-final-cta__inner {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: var(--landing-cta-card-min-height) !important;
+  padding: var(--landing-cta-card-pad-y) var(--landing-cta-card-pad-x) !important;
+  gap: clamp(0.9rem, 2.4dvh, 1.5rem) !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .sp-prem-final-cta__title,
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .sp-prem-final-cta__inner p {
+  margin: 0 !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .sp-prem-final-cta__actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: center !important;
+  gap: clamp(0.75rem, 1.8vw, 1rem) !important;
+  margin-top: clamp(0.4rem, 1.4dvh, 0.75rem) !important;
 }
 
 html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .sp-prem-landing-footer {
   height: auto !important;
   min-height: 0 !important;
+  width: min(100%, var(--landing-max-width)) !important;
+  max-width: var(--landing-max-width) !important;
   scroll-snap-align: none;
   scroll-snap-stop: normal;
-  margin: 0 !important;
-  padding: clamp(14px, 3dvh, 26px) clamp(18px, 4vw, 40px) !important;
+  margin: 0 auto !important;
+  padding: var(--landing-footer-pad-y) var(--landing-section-pad-x) !important;
+  border-top: 1px solid rgba(239, 193, 94, 0.18) !important;
+  justify-content: center !important;
+  gap: clamp(1rem, 4vw, 2.75rem) !important;
+  overflow-x: clip !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .sp-prem-landing-footer__trust {
+  padding-inline-end: clamp(1rem, 2.4vw, 1.75rem) !important;
+  border-inline-end: 1px solid rgba(239, 193, 94, 0.22) !important;
+  min-width: 0 !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .sp-prem-landing-footer__brand {
+  min-width: 0 !important;
+  justify-content: center !important;
+}
+
+html:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #landingScreen.landing-snap-page .sp-prem-landing-footer {
+  border-top-color: rgba(111, 79, 11, 0.18) !important;
 }
 
 @media (min-width: 1024px) {
@@ -4816,6 +4939,11 @@ html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .
 }
 
 @media (max-width: 900px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page {
+    --landing-section-pad-y: clamp(2rem, 5.8dvh, 3.75rem);
+    --landing-section-gap: clamp(1.25rem, 3.4dvh, 2.5rem);
+  }
+
   html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .landing-hero-rail {
     padding: clamp(12px, 2.4dvh, 22px) clamp(22px, 7vw, 38px) clamp(14px, 3dvh, 26px) !important;
   }
@@ -4849,6 +4977,13 @@ html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .
     height: min(24dvh, 190px) !important;
     margin-top: clamp(8px, 2dvh, 16px) !important;
   }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .sp-handcraft-bento-card,
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .sp-handcraft-bento-card--featured {
+    flex-basis: min(86vw, 340px) !important;
+    width: min(86vw, 340px) !important;
+    max-width: min(86vw, 340px) !important;
+  }
 }
 
 @media (max-width: 700px) {
@@ -4858,6 +4993,12 @@ html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .
 }
 
 @media (max-width: 420px) {
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page {
+    --landing-section-pad-x: clamp(0.875rem, 5vw, 1.25rem);
+    --landing-section-pad-y: clamp(1.75rem, 5dvh, 3rem);
+    --landing-section-gap: clamp(1rem, 3dvh, 1.75rem);
+  }
+
   html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .landing-shell-brand-text {
     display: none !important;
   }
@@ -4883,6 +5024,18 @@ html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .
     height: 36px !important;
     min-width: 36px !important;
     min-height: 36px !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .sp-prem-landing-footer {
+    flex-direction: column !important;
+    text-align: center !important;
+  }
+
+  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .sp-prem-landing-footer__trust {
+    padding-inline-end: 0 !important;
+    padding-bottom: 0.85rem !important;
+    border-inline-end: 0 !important;
+    border-bottom: 1px solid rgba(239, 193, 94, 0.18) !important;
   }
 }
 

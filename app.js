@@ -4080,9 +4080,9 @@ function showLoginForm(options = {}) {
         window.viewReceiptById   ||= viewReceiptById;
 
         // Auth screens
-        window.showLoginForm  ||= showLoginForm;
-        window.showSignupForm ||= showSignupForm;
-        window.showLanding    ||= showLanding;
+        window.showLoginForm = showLoginForm;
+        window.showSignupForm = showSignupForm;
+        window.showLanding = showLanding;
         window.signup         ||= signup;
 
         // Calendar
