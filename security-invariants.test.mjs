@@ -18,6 +18,7 @@ test('team invite codes are high entropy and legacy short codes fail closed', ()
   const supabase = read('./supabase.js');
 
   assert.match(schema, /CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA extensions;/);
+  assert.match(schema, /ALTER EXTENSION "pgcrypto" SET SCHEMA extensions/);
   assert.match(schema, /CREATE OR REPLACE FUNCTION public\.generate_team_invite_code\(\)/);
   assert.match(schema, /encode\(extensions\.gen_random_bytes\(16\), 'hex'\)/);
   assert.doesNotMatch(schema, /substr\s*\(\s*md5\s*\(/i);

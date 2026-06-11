@@ -210,6 +210,22 @@ BEGIN
     END IF;
   END IF;
 
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pgcrypto') THEN
+    INSERT INTO sp_migration_readiness_findings (
+      check_name, severity, relation_name, details, remediation
+    )
+    SELECT
+      'pgcrypto.extension_schema',
+      'warning',
+      'extension.pgcrypto',
+      jsonb_build_object('schema', n.nspname, 'expected_schema', 'extensions'),
+      'The current schema.sql will move pgcrypto into the extensions schema before recreating the invite-code generator. After apply, post-apply verification must show invite.pgcrypto.extension_schema and invite.pgcrypto.gen_random_bytes_namespace as pass.'
+    FROM pg_extension e
+    JOIN pg_namespace n ON n.oid = e.extnamespace
+    WHERE e.extname = 'pgcrypto'
+      AND n.nspname <> 'extensions';
+  END IF;
+
   IF to_regclass('public.teams') IS NULL THEN
     INSERT INTO sp_migration_readiness_findings (
       check_name, severity, relation_name, details, remediation

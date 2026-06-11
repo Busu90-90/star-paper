@@ -30,6 +30,7 @@ DECLARE
   v_bool BOOLEAN;
   v_error TEXT;
   v_function_def TEXT;
+  v_extension_schema TEXT;
   v_oid OID;
   v_rel REGCLASS;
   v_rows INTEGER;
@@ -290,14 +291,33 @@ BEGIN
   -- Invite-code invariant: codes are high-entropy, well-formed bearer tokens
   -- and the table does not disclose them directly to browser roles.
   IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pgcrypto') THEN
+    SELECT n.nspname
+    INTO v_extension_schema
+    FROM pg_extension e
+    JOIN pg_namespace n ON n.oid = e.extnamespace
+    WHERE e.extname = 'pgcrypto';
+
     INSERT INTO sp_post_apply_verification_findings
     VALUES (
       'invite.pgcrypto.extension',
       'pass',
       'invite-code',
       'extension.pgcrypto',
-      '{}'::jsonb,
+      jsonb_build_object('schema', v_extension_schema),
       'No action.'
+    );
+
+    INSERT INTO sp_post_apply_verification_findings
+    VALUES (
+      'invite.pgcrypto.extension_schema',
+      CASE WHEN v_extension_schema = 'extensions' THEN 'pass' ELSE 'blocker' END,
+      'invite-code',
+      'extension.pgcrypto',
+      jsonb_build_object('schema', v_extension_schema, 'expected_schema', 'extensions'),
+      CASE
+        WHEN v_extension_schema = 'extensions' THEN 'No action.'
+        ELSE 'Reapply schema.sql from the CREATE EXTENSION section; pgcrypto must live in the extensions schema for extensions.gen_random_bytes(integer).'
+      END
     );
   ELSE
     INSERT INTO sp_post_apply_verification_findings
@@ -308,6 +328,16 @@ BEGIN
       'extension.pgcrypto',
       '{}'::jsonb,
       'Reapply schema.sql from the CREATE EXTENSION section; invite-code generation depends on extensions.gen_random_bytes.'
+    );
+
+    INSERT INTO sp_post_apply_verification_findings
+    VALUES (
+      'invite.pgcrypto.extension_schema',
+      'blocker',
+      'invite-code',
+      'extension.pgcrypto',
+      '{}'::jsonb,
+      'Reapply schema.sql from the CREATE EXTENSION section; pgcrypto must be installed in the extensions schema.'
     );
   END IF;
 

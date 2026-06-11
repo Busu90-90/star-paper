@@ -7,7 +7,7 @@
     "preview:alt": "npx --yes serve . -l 8081",
     "preflight": "node scripts/preflight.mjs",
     "build": "npm run preflight",
-    "test": "npm run preflight && node --test mock-removal.test.mjs auth-retry-queue.test.mjs security-invariants.test.mjs",
+    "test": "npm run preflight && node --test mock-removal.test.mjs auth-retry-queue.test.mjs security-invariants.test.mjs money-input.test.mjs offline-cache.test.mjs",
     "prepublishOnly": "npm run preflight"
   }
 }

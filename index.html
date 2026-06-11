@@ -6,10 +6,10 @@
     <meta name="star-paper:public-root" content="app-shell">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:;">
     <title>Star Paper</title>
-<script src="app.browser-assets.js?v=13"></script>
+    <script src="app.browser-assets.js?v=15"></script>
     <script src="app.public-pages.js?v=1"></script>
     <script src="app.boot-head.js?v=1"></script>
-    <link rel="manifest" href="manifest.json?v=24">
+    <link rel="manifest" href="manifest.json?v=25">
     <meta name="theme-color" content="#0B0B0B">
     <link rel="icon" type="image/png" sizes="32x32" href="star_paper_logo_pack/star_paper_32.png?v=3">
     <link rel="icon" type="image/png" sizes="256x256" href="star_paper_logo_pack/star_paper_256.png?v=3">
@@ -27,12 +27,13 @@
     <script src="assets/vendor/supabase/supabase.min.js?v=1" integrity="sha384-dzQgxMPp/h+N0t5qDf6Bp516wKZr3pXgGMpA7/ZM6tiWkqYo90N060L03dxnZ8Tf"></script>
     <script src="app.boot-flags.js?v=1"></script>
 
-    <link rel="stylesheet" href="styles.css?v=57">
+    <link rel="stylesheet" href="styles.css?v=58">
     <!-- UPGRADE: Final premium relayering token layer (additive, kill-switchable via localStorage.sp_prem_off) -->
     <link rel="stylesheet" href="star-paper-tokens.css?v=21">
     <!-- UPGRADE: Premium polish layer (additive, kill-switchable via localStorage.sp_prem_off) -->
     <link rel="stylesheet" href="styles.premium.css?v=8">
     <link rel="stylesheet" href="styles.shell.css?v=12">
+    <link rel="preload" as="image" href="assets/landing/notebook-board-desktop.webp?v=3" imagesrcset="assets/landing/notebook-board-desktop.webp?v=3">
     <link rel="preload" as="image" href="star_paper_logo_pack/star_paper_transparent.png?v=3">
     <link rel="stylesheet" href="styles.handcraft.css?v=35">
     <!-- Vendored Phosphor Icons 2.1.1 - unified icon system -->
@@ -496,16 +497,16 @@
                                 <button class="back-btn" type="button" data-action="toggleMonthlyGoalEditor">Cancel</button>
                             </div>
                         </div>
-                        <div class="dashboard-glance-grid">
+                        <div class="dashboard-glance-grid" id="dashboardGlanceGrid">
                             <div class="mainstage-kpi" data-sp-prem-sparkline="income">
                                 <div class="mainstage-kpi__label" id="dashboardRevenueLabel">Month Year Revenue</div>
                                 <div class="mainstage-kpi__value income-green" id="totalIncome"><span class="sp-skeleton"></span></div>
                             </div>
-                            <div class="mainstage-kpi" data-sp-prem-sparkline="deposits">
+                            <div class="mainstage-kpi mainstage-kpi--secondary" data-sp-prem-sparkline="deposits">
                                 <div class="mainstage-kpi__label">Deposits Received</div>
                                 <div class="mainstage-kpi__value deposit-blue" id="dashboardDepositsReceived"><span class="sp-skeleton"></span></div>
                             </div>
-                            <div class="mainstage-kpi" data-sp-prem-sparkline="expenses">
+                            <div class="mainstage-kpi mainstage-kpi--secondary" data-sp-prem-sparkline="expenses">
                                 <div class="mainstage-kpi__label" id="dashboardExpensesLabel">Expenses (Month Year)</div>
                                 <div class="mainstage-kpi__value expense-red" id="dashboardExpenses"><span class="sp-skeleton"></span></div>
                             </div>
@@ -517,7 +518,7 @@
                                 <div class="mainstage-kpi__label">Balances Due</div>
                                 <div class="mainstage-kpi__value expense-red" id="balancesOverdue"><span class="sp-skeleton"></span></div>
                             </div>
-                            <div class="mainstage-kpi mainstage-kpi--bbf" role="button" tabindex="0" data-action="openBBFModal">
+                            <div class="mainstage-kpi mainstage-kpi--bbf mainstage-kpi--secondary" role="button" tabindex="0" data-action="openBBFModal">
                                 <div class="mainstage-kpi__label">Balance Brought Forward <span class="bbf-month-label" id="bbfMonthLabel">(prev. month)</span></div>
                                 <div class="mainstage-kpi__value deposit-blue" id="dashboardBBF"><span class="sp-skeleton"></span></div>
                                 <div class="mainstage-kpi__sub">
@@ -528,11 +529,12 @@
                                 <div class="mainstage-kpi__label">Upcoming Shows</div>
                                 <div class="mainstage-kpi__value deposit-blue" id="upcomingShows"><span class="sp-skeleton"></span></div>
                             </div>
-                            <div class="mainstage-kpi">
+                            <div class="mainstage-kpi mainstage-kpi--secondary">
                                 <div class="mainstage-kpi__label">Active Artists</div>
                                 <div class="mainstage-kpi__value deposit-blue" id="activeArtistsCount"><span class="sp-skeleton"></span></div>
                             </div>
                         </div>
+                        <button class="glance-more-toggle" type="button" id="glanceMoreToggle" data-action="toggleGlanceKpis" aria-expanded="false" aria-controls="dashboardGlanceGrid">More metrics</button>
                         <!-- Booking Velocity Gauge -->
                         <div class="velocity-gauge-wrap">
                             <div class="velocity-gauge__label">Booking Velocity</div>
@@ -748,6 +750,20 @@
                                 <option value="other">Other</option>
                             </select>
                         </div>
+                        <div class="form-group">
+                            <label>Paid Via</label>
+                            <select id="expensePaymentMethod">
+                                <option value="cash">Cash</option>
+                                <option value="mtn_momo">MTN MoMo</option>
+                                <option value="airtel_money">Airtel Money</option>
+                                <option value="bank">Bank Transfer</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Payment Ref (Optional)</label>
+                            <input type="text" id="expensePaymentRef" placeholder="MoMo TxID or reference" maxlength="64" />
+                        </div>
                     </div>
                     <div class="form-group sp-csp-style-16">
                         <label>Upload Receipt (Optional)</label>
@@ -831,9 +847,11 @@
                             <label>Method</label>
                             <select id="otherIncomeMethod">
                                 <option value="cash">Cash</option>
-                                <option value="mobile">Mobile Money</option>
+                                <option value="mtn_momo">MTN MoMo</option>
+                                <option value="airtel_money">Airtel Money</option>
                                 <option value="bank">Bank Transfer</option>
                                 <option value="online">Online</option>
+                                <option value="mobile">Mobile Money (other)</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -1114,6 +1132,20 @@
                         <div class="form-group">
                             <label>Balance Due (UGX)</label>
                             <input type="number" id="bookingBalance" readonly />
+                        </div>
+                        <div class="form-group">
+                            <label>Deposit Paid Via</label>
+                            <select id="bookingDepositMethod">
+                                <option value="cash">Cash</option>
+                                <option value="mtn_momo">MTN MoMo</option>
+                                <option value="airtel_money">Airtel Money</option>
+                                <option value="bank">Bank Transfer</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Deposit Ref (Optional)</label>
+                            <input type="text" id="bookingDepositRef" placeholder="MoMo TxID or reference" maxlength="64" />
                         </div>
                         <div class="form-group">
                             <label>Estimated Capacity</label>
@@ -1518,13 +1550,14 @@
           Supabase boot wiring is installed before app.js initializes UI helpers.
         -->
 <script src="app.root-shell.js?v=3" defer></script>
-<script src="supabase.js?v=89" defer></script>
+<script src="app.offline-cache.js?v=1"></script>
+<script src="supabase.js?v=90" defer></script>
         <script src="app.migrations.js?v=10"></script>
         <script src="app.actions.js?v=8"></script>
         <script src="app.todayboard.js?v=2"></script>
         <script src="app.tasks.js?v=5"></script>
     <script src="app.reports.js?v=19"></script>
-<script src="app.js?v=142" defer></script>
+<script src="app.js?v=144" defer></script>
 <script src="app.handcraft.js?v=20" defer></script>
 
     <!-- Premium toast stack -->

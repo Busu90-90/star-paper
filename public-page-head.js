@@ -15,18 +15,21 @@
   function resetPublicScrollTop() {
     try {
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    } catch (_err) {
+    } catch (_err1) {
       window.scrollTo(0, 0);
     }
-    document.documentElement.scrollTop = 0;
+
+    var doc = document.documentElement;
+    if (doc) doc.scrollTop = 0;
     if (document.body) document.body.scrollTop = 0;
+
     var landing = document.getElementById('landingScreen');
     if (landing) landing.scrollTop = 0;
   }
 
   function stripIfPublicHash() {
-    var decodedHash = getDecodedHash();
-    if (appHashPattern.test(decodedHash) || publicSectionHashPattern.test(decodedHash)) {
+    var hash = getDecodedHash();
+    if (appHashPattern.test(hash) || publicSectionHashPattern.test(hash)) {
       window.history.replaceState(null, '', window.location.pathname + (window.location.search || ''));
       resetPublicScrollTop();
     }
@@ -36,12 +39,15 @@
     if ('scrollRestoration' in window.history) {
       window.history.scrollRestoration = 'manual';
     }
-  } catch (_err) {}
+  } catch (_err2) {}
 
   stripIfPublicHash();
   resetPublicScrollTop();
   window.addEventListener('hashchange', stripIfPublicHash);
-  window.addEventListener('popstate', stripIfPublicHash);
+  window.addEventListener('popstate', function onPublicPopState() {
+    stripIfPublicHash();
+    resetPublicScrollTop();
+  });
   window.addEventListener('pageshow', resetPublicScrollTop);
   window.addEventListener('load', resetPublicScrollTop);
   if (document.readyState === 'loading') {

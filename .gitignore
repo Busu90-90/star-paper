@@ -9,6 +9,7 @@
 .codex-proof-html-*.png
 .codex-testimonials-html-*.png
 .claude/
+.chrome-*/
 .local-server.*.log
 
 node_modules/

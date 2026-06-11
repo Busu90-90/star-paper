@@ -4857,35 +4857,6 @@ html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .
   }
 }
 
-@media (max-width: 420px) {
-  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .landing-shell-brand-text {
-    display: none !important;
-  }
-
-  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .landing-shell-brand {
-    flex: 1 1 auto !important;
-    min-width: 0 !important;
-  }
-
-  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .landing-shell-nav-actions {
-    flex: 0 0 auto !important;
-    gap: 6px !important;
-  }
-
-  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .landing-shell-login {
-    min-height: 36px !important;
-    padding-inline: 6px !important;
-    font-size: 13px !important;
-  }
-
-  html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page .landing-theme-toggle {
-    width: 36px !important;
-    height: 36px !important;
-    min-width: 36px !important;
-    min-height: 36px !important;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   html:not(.sp-prem-off):not(.sp-handcraft-off) #landingScreen.landing-snap-page {
     scroll-behavior: auto;

@@ -1365,6 +1365,83 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     });
   }
 
+  // ── OFFLINE READ-ONLY BOOT ────────────────────────────────────────────────
+  // When the cloud first paint fails for a signed-in user, hydrate the last
+  // complete snapshot from the IndexedDB offline cache instead of stranding
+  // the user on a retry screen. The hydration is provisional: the workspace
+  // stays marked un-hydrated, so saveUserData() keeps blocking writes until a
+  // real cloud snapshot lands (Supabase remains the single source of truth
+  // for writes). The "Offline — last synced" banner labels the staleness and
+  // the existing online/focus auto-sync handlers replace the data when the
+  // connection returns.
+  let _offlineBootInFlight = false;
+
+  async function tryOfflineSnapshotBoot(reason, flowId) {
+    if (_offlineBootInFlight) return false;
+    _offlineBootInFlight = true;
+    try {
+      const cache = window.SP_OFFLINE_CACHE;
+      if (!cache || typeof cache.loadBootSnapshot !== 'function' || !cache.isSupported()) return false;
+      const ownerId = getOwnerId();
+      if (!ownerId) return false;
+      // App already painted real data — nothing to recover.
+      if (window.__spAppBooted && window.__spWorkspaceDataHydrated) return true;
+      if (!(await waitForAppBootReady(3000))) return false;
+      const activeScopeKey = typeof window.getActiveDataScopeKey === 'function'
+        ? window.getActiveDataScopeKey()
+        : '';
+      const record = await cache.loadBootSnapshot(activeScopeKey, ownerId);
+      if (!record || !record.payload) {
+        log('bootstrap.offlineCache.miss', { reason, activeScopeKey: Boolean(activeScopeKey) });
+        return false;
+      }
+
+      // Provisional keeps markWorkspaceHydrated(false): reads render, writes stay guarded.
+      window.loadUserData({ snapshot: record.payload, source: 'offline-cache', provisional: true });
+      window.__spDataHydrationPending = false;
+      window.__spDataLoaded = true;
+      document.body.classList.remove('sp-data-hydration-pending');
+
+      if (window.__spAppBooted) {
+        renderAppDataViews('offline-cache-boot');
+      } else if (typeof window.showApp === 'function') {
+        window.showApp();
+      }
+      routeAuthenticatedUserToDashboard('offline-cache-boot');
+
+      clearLocalBootFallback();
+      clearBootstrapSafetyTimer();
+      _refreshInFlight = false;
+      window.__spCloudBootstrapPending = false;
+      commitBootTransitionSafe('appContainer', {
+        flowId,
+        requireAppReady: true,
+        minDelayMs: 260,
+      });
+      if (typeof window.hideBootLoaderWhenUiPainted === 'function') {
+        window.__spBootRevealPending = false;
+        window.hideBootLoaderWhenUiPainted({ requireAppReady: true, minDelayMs: 260 });
+      }
+
+      cache.showOfflineBanner(record.savedAt);
+      updateSyncIndicator('offline');
+      if (typeof window.toastInfo === 'function') {
+        window.toastInfo('Offline: showing your last synced data.');
+      }
+      log('bootstrap.offlineCache.hydrated', {
+        reason,
+        savedAt: record.savedAt,
+        scopeKey: record.scopeKey,
+      });
+      return true;
+    } catch (err) {
+      warn('Offline snapshot boot failed:', err);
+      return false;
+    } finally {
+      _offlineBootInFlight = false;
+    }
+  }
+
   function deferAuthEventWork(label, work) {
     const timer = setTimeout(() => {
       if (_authEventWorkTimer === timer) _authEventWorkTimer = null;
@@ -2392,6 +2469,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       fee: Number(row.fee),
       deposit: Number(row.deposit),
       balance: Number(row.balance),
+      depositMethod: row.deposit_method || 'cash',
+      depositRef: row.deposit_ref || '',
       contact: row.contact,
       status: row.status,
       notes: row.notes,
@@ -2416,6 +2495,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       fee: Number(b.fee) || 0,
       deposit: Number(b.deposit) || 0,
       balance: Number(b.balance) || 0,
+      deposit_method: b.depositMethod || 'cash',
+      deposit_ref: b.depositRef || '',
       contact: b.contact || '',
       status: b.status || 'pending',
       notes: b.notes || '',
@@ -2432,6 +2513,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       date: row.date,
       category: row.category,
       receipt: row.receipt || null,
+      paymentMethod: row.payment_method || 'cash',
+      paymentRef: row.payment_ref || '',
       artistId: row.artist_id || null,
       artist: row.artist_name || '',
       teamId: row.team_id,
@@ -2455,6 +2538,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       date: e.date || null,
       category: e.category || 'other',
       receipt: e.receipt || '',
+      payment_method: e.paymentMethod || 'cash',
+      payment_ref: e.paymentRef || '',
     };
   }
 
@@ -4956,8 +5041,11 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       if (!isBootTransitionCurrentSafe(flowId)) return;
       if (window.__spAppBooted) return; // happy path beat us — nothing to do.
       if (_refreshInFlight || window.__spCloudBootstrapPending || _bootstrapPromise) {
-        warn('Bootstrap safety timeout found active cloud boot; abandoning stuck bootstrap owner.');
-        showStalledBootError('Cloud sync took too long', 'Tap Retry to reload your workspace, or Log out.', 'bootstrap-safety-timeout');
+        warn('Bootstrap safety timeout found active cloud boot; trying offline snapshot before abandoning.');
+        tryOfflineSnapshotBoot('bootstrap-safety-timeout', flowId).then((offlineBooted) => {
+          if (offlineBooted) return;
+          showStalledBootError('Cloud sync took too long', 'Tap Retry to reload your workspace, or Log out.', 'bootstrap-safety-timeout');
+        });
         return;
       }
       warn('Bootstrap safety timeout fired with no active cloud boot; showing retryable boot error.');
@@ -5032,6 +5120,10 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       if (fresh) {
         const meta = fresh.__meta || null;
         if (meta?.allCriticalTimedOut) {
+          if (await tryOfflineSnapshotBoot('bootstrap-all-critical-timed-out', flowId)) {
+            bootstrapSucceeded = true;
+            return true;
+          }
           showBootErrorState('Cloud data is still syncing', 'Retry to reload your workspace data, or log out and sign in again.');
           return false;
         }
@@ -5042,6 +5134,10 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       }
 
       if (!fresh) {
+        if (await tryOfflineSnapshotBoot('bootstrap-no-first-paint', flowId)) {
+          bootstrapSucceeded = true;
+          return true;
+        }
         if (!isBootTransitionCurrentSafe(flowId)) {
           flowId = rebaseAuthBootFlow(flowId, 'bootstrap-session:empty-data-rebased', 'booting-data', {
             bootContext: options.bootContext || getStartupBootContext(),
@@ -5158,6 +5254,10 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       }
       try {
         if (_session) {
+          if (await tryOfflineSnapshotBoot('bootstrap-error', flowId)) {
+            bootstrapSucceeded = true;
+            return true;
+          }
           // We had a session; keep the loader/error surface, not an empty app shell.
           showBootErrorState('Cloud sync needs attention', 'We couldn\'t fetch your data. Tap Retry to reload, or Log out.');
         } else if (localStorage.getItem('sp_logged_out') === '1') {
@@ -6985,6 +7085,14 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       // 6. Show landing page immediately — user doesn't wait for any network call.
       if (typeof window.clearLegacyCloudDataKeys === 'function') {
         window.clearLegacyCloudDataKeys();
+      }
+      // Offline snapshots hold financial data; never leave them behind on a
+      // shared device after an explicit logout. Fire-and-forget.
+      if (window.SP_OFFLINE_CACHE) {
+        try {
+          window.SP_OFFLINE_CACHE.hideOfflineBanner();
+          window.SP_OFFLINE_CACHE.clearAll();
+        } catch (_offlineErr) {}
       }
       try {
         if (typeof window.clearAppShellBootContext === 'function') window.clearAppShellBootContext();

@@ -36,15 +36,17 @@ Do not open `index.html` through `file://`; Google OAuth and email-confirm redir
 - `app.tasks.js` - task rendering and task interactions.
 - `app.globe.js` - Schedule Global globe rendering, land topology loading, tour pins/arcs, itinerary panel behavior, and booking-detail sheet wiring.
 - `app.shell.js` - additive app-shell refinement bootstrap that gates landing-aligned shell polish behind `localStorage.sp_shell_refined_off`.
-- `app.handcraft.js` - landing-page interaction, public section progress, and landing snap-container initialization.
 - `app.boot-head.js`, `app.boot-flags.js`, `app.boot-body.js` - externalized prepaint and route/auth boot guards required before the main app bundle.
 - `app.public-pages.js` - source of truth for public root HTML markers and clean/`.html` landing route pairs consumed by boot, service-worker, and preflight checks.
 - `app.browser-assets.js` - browser asset contract for local version query strings, service-worker precache URLs, same-origin runtime scripts, external CDN SRI pins, and vendored runtime file hashes.
+- `app.handcraft.js` - public landing interaction layer for handcraft effects, snap-scroll progress, and landing top-reset behavior.
 - `app.root-shell.js` - externalized root-shell runtime guards, deferred library loader, critical action bridge, local-file warning, and forgot-password wiring.
+- `app.offline-cache.js` - read-only IndexedDB snapshot cache for offline boots: persists the last complete cloud snapshot per workspace scope and renders it provisionally behind an "Offline — last synced" banner when the cloud first paint fails. Writes stay guarded until real cloud data lands; explicit logout wipes the cache. Kill switch: `localStorage.sp_offline_cache_off = '1'`.
 - `schema.sql` - database schema, constraints, RLS policies, and RPCs for the live Supabase project.
 - `sw.js` - network-first shell caching for safe deploy refreshes.
 - `assets/world-atlas/land-50m.json` - local world-atlas land TopoJSON used before the globe falls back to built-in continents.
 - `assets/vendor/` - self-hosted browser runtime assets for the Supabase auth SDK, brand fonts, Phosphor icon CSS/fonts, and the Schedule > Global Three.js, OrbitControls, and TopoJSON client modules.
+- `star_paper_logo_pack/` - the only public brand logo/icon source. Root logo files such as `favicon.ico`, `apple-touch-icon.png`, `logo.png`, and `logo.svg` are retired; public HTML, manifest icons, app image fallbacks, report-logo candidates, and service-worker precache entries must use relative logo-pack paths so local file opens resolve the same assets that deploys serve.
 
 ## Supabase Runtime Contract
 
@@ -57,6 +59,8 @@ The cloud-only runtime expects the live Supabase project to match `schema.sql`, 
 - Cloud refresh contract: full snapshots load on bootstrap/workspace reload and on actual sync signals: Supabase realtime changes, same-account tab broadcasts, reconnect, focus, and visibility resume. The browser runtime must not poll the core business tables on a fixed 10-second foreground interval.
 - Retry transport: `sp_retry_queue` is browser-local, account/workspace-scoped transport state. There is no Supabase retry-queue table.
 - Legacy ID uniqueness: personal rows are unique on `legacy_id, owner_id` only when `team_id IS NULL`; team rows are unique on `legacy_id, team_id`.
+- Payment rails: `other_income.method`, `expenses.payment_method`/`payment_ref`, and `bookings.deposit_method`/`deposit_ref` record how money moved (Cash, MTN MoMo, Airtel Money, Bank Transfer, Online, Other) plus an optional manual transaction reference. Manual entry only — no payment-provider integration.
+- Offline reads: complete cloud snapshots are mirrored into the browser-local IndexedDB `sp-offline-cache` store; on a failed cloud first paint the runtime hydrates that snapshot read-only with a staleness banner (see `app.offline-cache.js` and `STATE_SCHEMA.md` §6). Supabase remains the only write authority.
 
 ### Live Supabase Migration Readiness
 
@@ -66,7 +70,7 @@ Runbook:
 
 1. Open the Supabase project SQL Editor.
 2. Paste and run `scripts/supabase-migration-readiness.sql`.
-3. Treat any `severity = 'blocker'` row as a migration stop. Resolve duplicate nonblank `profiles.username`, duplicate valid nonblank `teams.invite_code`, and duplicate `legacy_id` values inside the same personal or team workspace before continuing. `public.ai_context` rows are not a browser-runtime blocker; readiness warnings for its policy/grant/index posture mean `schema.sql` still needs to be applied and then verified.
+3. Treat any `severity = 'blocker'` row as a migration stop. Resolve duplicate nonblank `profiles.username`, duplicate valid nonblank `teams.invite_code`, and duplicate `legacy_id` values inside the same personal or team workspace before continuing. `public.ai_context` rows are not a browser-runtime blocker; readiness warnings for its policy/grant/index posture or for `pgcrypto` being outside `extensions` mean `schema.sql` still needs to be applied and then verified.
 4. Rerun the readiness SQL until it returns no blocker rows.
 5. Apply the latest `schema.sql`, then run the readiness SQL once more to confirm no duplicate blocker remains.
 
@@ -74,7 +78,7 @@ Runbook:
 
 After `schema.sql` is applied, run [`scripts/supabase-post-apply-verification.sql`](./scripts/supabase-post-apply-verification.sql) in the same Supabase project. It creates only a temporary findings table and uses rollback-contained active probes to confirm the live invite-code, workspace-scope immutability, and team-permission invariants. Follow [`SUPABASE_POST_APPLY_VERIFICATION.md`](./SUPABASE_POST_APPLY_VERIFICATION.md) as the operator runbook.
 
-Post-apply pass condition: the base result set has no `severity = 'blocker'` rows. `severity = 'warning'` usually means the schema catalog checks passed but production had no sample row for an active mutation probe, so treat it as a direct-update proof gap for the named table rather than as a runtime contract change. Run [`scripts/supabase-post-apply-canary-proof.sql`](./scripts/supabase-post-apply-canary-proof.sql) to close helper-covered `team_members` and workspace-trigger warnings with rollback-contained disposable rows instead of app-created sample data; final signoff requires that helper result set to have no blockers and `canary.rollback_contained = pass`.
+Post-apply pass condition: the base result set has no `severity = 'blocker'` rows. It must show `invite.pgcrypto.extension_schema`, `invite.pgcrypto.gen_random_bytes_namespace`, and `invite.generator.uses_extensions_pgcrypto` as `pass` before invite-code generation is considered live-safe. `severity = 'warning'` usually means the schema catalog checks passed but production had no sample row for an active mutation probe, so treat it as a direct-update proof gap for the named table rather than as a runtime contract change. Run [`scripts/supabase-post-apply-canary-proof.sql`](./scripts/supabase-post-apply-canary-proof.sql) to close helper-covered `team_members` and workspace-trigger warnings with rollback-contained disposable rows instead of app-created sample data; final signoff requires that helper result set to have no blockers and `canary.rollback_contained = pass`.
 
 The post-apply SQL also proves the live advisor-facing surface: `public.ai_context` has an explicit deny policy and no browser-role table grants, `public.get_email_for_username(text)` is absent, and the executable `SECURITY DEFINER` allowlist is limited to authenticated runtime RPCs/helpers: `create_team_with_member`, `get_bootstrap_payload`, `get_my_team_context`, `get_my_team_ids`, `get_team_members_context`, `has_team_permission`, `is_username_available`, and `join_team_by_code`. `getmyteamids` may remain in the catalog for compatibility, but it must not be executable by `anon` or `authenticated`.
 
@@ -84,7 +88,7 @@ The post-apply SQL also proves the live advisor-facing surface: `public.ai_conte
 - Browser data-access RLS policies in `schema.sql` are scoped with `TO authenticated`; anonymous table access is not part of the production contract. Explicit deny policies may name `anon` only to document a closed surface such as `public.ai_context`.
 - Anonymous browser callers have no executable Star Paper RPCs. Username availability is authenticated-only for profile edits; signup no longer depends on a pre-auth username probe because `handle_new_user()` and `profiles_username_key` resolve duplicate requested usernames at account creation.
 - Supabase service-role credentials, JWT secrets, database passwords, and access tokens must never be committed or shipped. `npm run preflight` scans source files for service-role env assignments, sensitive Supabase env assignments, and service-role JWT payloads.
-- Team invite codes are bearer tokens. `schema.sql` now generates 32-character hex codes with schema-qualified `extensions.gen_random_bytes(16)`, rotates malformed or legacy short codes when applied, makes `join_team_by_code` reject malformed codes before lookup with the same generic failure used for unknown codes, and keeps invite-code disclosure behind owner/admin RPC views instead of direct table SELECT.
+- Team invite codes are bearer tokens. `schema.sql` now keeps `pgcrypto` in Supabase's `extensions` schema, generates 32-character hex codes with schema-qualified `extensions.gen_random_bytes(16)`, rotates malformed or legacy short codes when applied, makes `join_team_by_code` reject malformed codes before lookup with the same generic failure used for unknown codes, and keeps invite-code disclosure behind owner/admin RPC views instead of direct table SELECT.
 - SECURITY DEFINER RPCs in `schema.sql` must keep a fixed `search_path = public, pg_temp`; preflight fails if a new definer function omits that bound path.
 - Team role permissions are database-bound. `team_members.permissions` is normalized from `team_role_permissions(role)` and constrained to that preset, so direct browser/Supabase updates cannot create impossible privilege combinations outside the role model.
 - Business rows are workspace-scoped once created. `schema.sql` blocks updates that change `owner_id`, `user_id`, or `team_id` on personal/team data tables so a crafted browser request cannot move team records into a personal workspace or another team.
@@ -96,8 +100,8 @@ The post-apply SQL also proves the live advisor-facing surface: `public.ai_conte
 - Signed-out app-route refreshes such as `/#settings` must show the Supabase login screen with patched cloud auth handlers, not the app-refresh loader. Password-login errors must not show stale credential/cloud-data toasts after a real Supabase session has already started booting through the auth-state path.
 - Once the app shell is visibly painted, `app.js` clears stale blocking boot overlays even when older bootstrap owner flags are still settling.
 - If `get_bootstrap_payload` does not return a usable first-paint payload, `supabase.js` falls back to direct cloud loads before declaring cloud data unavailable. This keeps empty/new accounts bootable while still surfacing real load failures through the boot recovery UI.
-- Classic third-party CDN scripts that remain out of auth boot are pinned with SRI where browser-supported. `app.browser-assets.js` is the source of truth for those CDN URLs/hashes and for local version query strings. Brand fonts, Phosphor icon CSS/fonts, and the Schedule > Global Three.js, OrbitControls, and TopoJSON client modules are self-hosted under `assets/vendor/`; preflight fails if those runtime paths drift back to public CDNs or if vendored file hashes drift.
-- Browser storage and Cache Storage are not confidentiality boundaries. The app reduces XSS risk with DOM-rendered performance-map pins/panels/legends, globe hover cards/itinerary/detail sheets, report focus text, Today Board alerts, handcraft arrow icons, team and currency modals, escaped booking map/calendar/dashboard timeline labels, escaped artist dropdown options, escaped command-palette labels/subtitles, validated Phosphor icon tokens, `textContent` toast and team-chat rendering, constrained action dispatch, delegated receipt/proof/nudge/task/report/globe/team modal/root-shell actions, UUID-validated team mutations, image validation, service-worker auth-callback cache bypasses, CSP, and preflight checks. Root app-shell and public-landing boot scripts are externalized, public landing pages carry a stricter document CSP with no inline script/style allowance, `script-src` does not allow `'unsafe-inline'`, `style-src-elem` is self-only, and `style-src-attr` is blocked with `'none'`. `frame-ancestors 'none'` is enforced in `_headers`, not HTML meta CSP, because browsers ignore that directive in meta-delivered CSP. Residual XSS work is primarily the remaining audited `innerHTML` render paths in `app.js`.
+- Classic third-party CDN scripts that remain out of auth boot are pinned with SRI where browser-supported. `app.browser-assets.js` is the source of truth for those CDN URLs/hashes, local version query strings, same-origin app-shell precache URLs, and the relative logo-pack icon contract. Brand fonts, Phosphor icon CSS/fonts, and the Schedule > Global Three.js, OrbitControls, and TopoJSON client modules are self-hosted under `assets/vendor/`; preflight fails if those runtime paths drift back to public CDNs, if vendored file hashes drift, if public logo/icon references point back at deleted root files, or if logo-pack references become root-relative again.
+- Browser storage and Cache Storage are not confidentiality boundaries. The app reduces XSS risk with DOM-rendered performance-map pins/panels/legends, globe hover cards/itinerary/detail sheets, report focus text, Today Board alerts, handcraft arrow icons, team and currency modals, escaped booking map/calendar/dashboard timeline labels, escaped artist dropdown options, escaped command-palette labels/subtitles, validated Phosphor icon tokens, `textContent` toast and team-chat rendering, constrained action dispatch, delegated receipt/proof/nudge/task/report/globe/team modal/root-shell actions, UUID-validated team mutations, image validation, service-worker auth-callback cache bypasses, CSP, and preflight checks. Root app-shell and public-landing boot scripts are externalized, public landing pages carry a stricter document CSP with no inline script/style allowance, `script-src` does not allow `'unsafe-inline'`, `style-src-elem` is self-only, and `style-src-attr` is blocked with `'none'`. `frame-ancestors 'none'` is enforced in `_headers`, not HTML meta CSP, because browsers ignore that directive in meta policies. Residual XSS work is primarily the remaining audited `innerHTML` render paths in `app.js`.
 
 Security reports for this pass:
 
@@ -128,7 +132,7 @@ Netlify publishes the repository root, so root HTML is deny-by-default. Only the
 - `proof.html` for `/proof` and `/proof.html`
 - `testimonials.html` for `/testimonials` and `/testimonials.html`
 
-Every public root HTML file must be listed in `app.public-pages.js`, unignored in `.netlifyignore`, and marked with `<meta name="star-paper:public-root" ...>`. `app.boot-head.js`, `sw.js`, and `scripts/preflight.mjs` consume that manifest; preflight fails if the manifest, `.netlifyignore`, `_redirects`, or service-worker app shell drift apart. Landing roots use `landing-snap-page`, standalone public pages also use `landing-public-page`, and `#landingScreen` owns vertical scrolling with one-viewport snap sections. `public-page-head.js` sets manual scroll restoration, strips known public section hashes such as `#landing-features`, and forces the page and snap container back to the top on boot, `DOMContentLoaded`, `pageshow`, and `load`. Public landing pages must load `public-page-head.js`, `public-page-theme.js`, and `app.handcraft.js`; preflight rejects landing inline scripts, inline style blocks, inline style attributes, and landing CSP `unsafe-inline`. The service worker fetches the requested public navigation URL first, normalizes fallback shell paths only when needed, hands clean same-origin redirects back to the browser, and leaves direct `.html` public landing requests on the browser/network path.
+Every public root HTML file must be listed in `app.public-pages.js`, unignored in `.netlifyignore`, and marked with `<meta name="star-paper:public-root" ...>`. `app.boot-head.js`, `sw.js`, and `scripts/preflight.mjs` consume that manifest; preflight fails if the manifest, `.netlifyignore`, `_redirects`, or service-worker app shell drift apart. Public landing pages must load `public-page-head.js`, `public-page-theme.js`, and `app.handcraft.js`; preflight rejects landing inline scripts, inline style blocks, inline style attributes, and landing CSP `unsafe-inline`. Landing roots use `landing-snap-page` so `#landingScreen` owns viewport scrolling, section snapping, and scroll progress; standalone public pages also use `landing-public-page`, and `public-page-head.js` strips known section hashes before forcing the initial top position. The service worker must fetch the requested public navigation URL first, normalize public landing fallback paths only when needed, and hand same-origin clean-URL redirects back to the navigation client; direct public `.html` navigations stay on the browser network path.
 
 Always deploy the matching versions of:
 
@@ -138,24 +142,24 @@ Always deploy the matching versions of:
 - `app.tasks.js`
 - `app.globe.js`
 - `app.shell.js`
-- `app.handcraft.js`
 - `app.boot-head.js`
 - `app.boot-flags.js`
 - `app.boot-body.js`
-- `public-page-head.js`
 - `app.root-shell.js`
 - `styles.css`
 - `styles.shell.css`
 - `styles.handcraft.css`
 - `index.html`
+- `public-page-head.js`
 - `app.public-pages.js`
 - `app.browser-assets.js`
+- `app.handcraft.js`
 - `sw.js`
 - `assets/world-atlas/land-50m.json`
 - `assets/vendor/` runtime assets, including the same-origin Supabase auth SDK
 - `schema.sql` when the database contract changes
 
-If a browser asset version, vendored runtime file, public landing boot script, or pinned CDN URL/hash changes, update `app.browser-assets.js` first. `scripts/preflight.mjs` then fails until `index.html`, the public landing HTML files, `sw.js`, the lazy loaders, Supabase auth runtime loader, and vendor CSS references match that contract.
+If a browser asset version, vendored runtime file, or pinned CDN URL/hash changes, update `app.browser-assets.js` first. `scripts/preflight.mjs` then fails until `index.html`, `sw.js`, the lazy loaders, Supabase auth runtime loader, and vendor CSS references match that contract.
 
 Residual deploy risk: old Netlify deploy permalinks can still expose files that existed in previous successful deploys until those deploys are deleted or expire. The next production deploy removes deleted files from the live production URL because Netlify deploys atomically, but do not place private briefs, secrets, tests, or local agent config in the repo root.
 

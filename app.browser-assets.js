@@ -59,8 +59,10 @@
       'assets/vendor/topojson-client/topojson-client.esm.js',
       'assets/vendor/supabase/supabase.min.js'
     ]],
-    ['2', ['app.todayboard.js', 'public-page-head.js']],
-    ['13', ['app.browser-assets.js']],
+    ['1', ['app.offline-cache.js']],
+    ['2', ['app.todayboard.js']],
+    ['2', ['public-page-head.js']],
+    ['15', ['app.browser-assets.js']],
     ['3', [
       'app.root-shell.js',
       'assets/landing/notebook-board-desktop.webp',
@@ -84,12 +86,12 @@
     ['19', ['app.reports.js']],
     ['20', ['app.handcraft.js']],
     ['21', ['star-paper-tokens.css']],
-    ['24', ['manifest.json']],
+    ['25', ['manifest.json']],
     ['35', ['styles.handcraft.css']],
-    ['57', ['styles.css']],
-    ['89', ['supabase.js']],
-    ['142', ['app.js']],
-    ['188', ['sw.js']]
+    ['58', ['styles.css']],
+    ['90', ['supabase.js']],
+    ['144', ['app.js']],
+    ['190', ['sw.js']]
   ];
 
   const assetVersions = {};
@@ -276,6 +278,7 @@
     url('./public-page-head.js'),
     url('./public-page-theme.js'),
     url('./app.root-shell.js'),
+    url('./app.offline-cache.js'),
     url('./supabase.js'),
     url('./app.migrations.js'),
     url('./app.actions.js'),
@@ -287,19 +290,19 @@
     url('./app.globe.js'),
     url('./app.premium.js'),
     url('./app.shell.js'),
-    url('/assets/world-atlas/land-50m.json'),
-    url('/assets/landing/notebook-board-desktop.webp'),
-    url('/assets/landing/notebook-board-mobile.webp'),
-    url('/manifest.json'),
-    url('/star_paper_logo_pack/star_paper_32.png'),
-    url('/star_paper_logo_pack/star_paper_64.png'),
-    url('/star_paper_logo_pack/star_paper_128.png'),
-    url('/star_paper_logo_pack/star_paper_256.png'),
-    url('/star_paper_logo_pack/star_paper_512.png'),
-    url('/star_paper_logo_pack/star_paper_1024.png'),
-    url('/star_paper_logo_pack/star_paper_transparent.png'),
-    url('/star_paper_logo_pack/star_paper_black.png'),
-    url('/star_paper_logo_pack/star_paper_white.png')
+    url('./assets/world-atlas/land-50m.json'),
+    url('./assets/landing/notebook-board-desktop.webp'),
+    url('./assets/landing/notebook-board-mobile.webp'),
+    url('./manifest.json'),
+    url('./star_paper_logo_pack/star_paper_32.png'),
+    url('./star_paper_logo_pack/star_paper_64.png'),
+    url('./star_paper_logo_pack/star_paper_128.png'),
+    url('./star_paper_logo_pack/star_paper_256.png'),
+    url('./star_paper_logo_pack/star_paper_512.png'),
+    url('./star_paper_logo_pack/star_paper_1024.png'),
+    url('./star_paper_logo_pack/star_paper_transparent.png'),
+    url('./star_paper_logo_pack/star_paper_black.png'),
+    url('./star_paper_logo_pack/star_paper_white.png')
   ]);
 
   global.SP_BROWSER_ASSETS = Object.freeze({

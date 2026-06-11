@@ -58,21 +58,21 @@
   });
 
   function resetLandingScrollTop(landing) {
-    function reset() {
-      try {
-        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-      } catch (_err) {
-        window.scrollTo(0, 0);
-      }
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    } catch (_err) {
+      window.scrollTo(0, 0);
+    }
+
+    document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+    if (landing) landing.scrollTop = 0;
+
+    requestAnimationFrame(function () {
       document.documentElement.scrollTop = 0;
       if (document.body) document.body.scrollTop = 0;
       if (landing) landing.scrollTop = 0;
-    }
-
-    reset();
-    if (typeof requestAnimationFrame === 'function') {
-      requestAnimationFrame(reset);
-    }
+    });
   }
 
   function setupProofTypewriter(landing) {
@@ -516,7 +516,7 @@
     var scrollSource = landing && landing.classList.contains('landing-snap-page')
       ? landing
       : document.documentElement;
-    var scrollTarget = scrollSource === document.documentElement ? window : scrollSource;
+
     var raf = 0;
     function update() {
       var max = scrollSource.scrollHeight - scrollSource.clientHeight;
@@ -525,7 +525,7 @@
       raf = 0;
     }
 
-    scrollTarget.addEventListener('scroll', function onScroll() {
+    scrollSource.addEventListener('scroll', function onScroll() {
       if (!raf) raf = requestAnimationFrame(update);
     }, { passive: true });
     window.addEventListener('resize', function onResize() {

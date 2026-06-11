@@ -129,15 +129,17 @@ function hasAuthCallbackCacheBypassParam(url) {
   return false;
 }
 
-function isFreshOnlyReportRuntimeAsset(url) {
-  return REPORT_RUNTIME_ASSETS.has(`${url.pathname}${url.search}`);
-}
-
 function shouldRedirectNavigationResponse(request, response) {
-  if (!response || !response.redirected || !response.url || request.mode !== "navigate") return false;
+  if (!response || !response.redirected || !response.url || request.mode !== "navigate") {
+    return false;
+  }
   const requestUrl = new URL(request.url);
   const responseUrl = new URL(response.url);
   return responseUrl.origin === requestUrl.origin && responseUrl.href !== requestUrl.href;
+}
+
+function isFreshOnlyReportRuntimeAsset(url) {
+  return REPORT_RUNTIME_ASSETS.has(`${url.pathname}${url.search}`);
 }
 
 function networkFirstNavigation(request, fallbackShell) {

@@ -10,6 +10,17 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- install extensions under the extensions schema; schema-qualify calls from
 -- functions with fixed search_path values.
 CREATE SCHEMA IF NOT EXISTS extensions;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_extension
+    WHERE extname = 'pgcrypto'
+      AND extnamespace <> 'extensions'::regnamespace
+  ) THEN
+    EXECUTE 'ALTER EXTENSION "pgcrypto" SET SCHEMA extensions';
+  END IF;
+END $$;
 CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA extensions;
 
 -- New functions should not become publicly executable by default.
@@ -979,6 +990,8 @@ CREATE TABLE IF NOT EXISTS public.bookings (
   fee            NUMERIC DEFAULT 0,
   deposit        NUMERIC DEFAULT 0,
   balance        NUMERIC DEFAULT 0,
+  deposit_method TEXT NOT NULL DEFAULT 'cash',
+  deposit_ref    TEXT NOT NULL DEFAULT '',
   contact        TEXT DEFAULT '',
   status         TEXT DEFAULT 'pending' CHECK (status IN ('pending','confirmed','cancelled','completed')),
   notes          TEXT DEFAULT '',
@@ -1008,6 +1021,12 @@ ALTER TABLE public.bookings
   ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE public.bookings
   ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+-- Mobile money first-class: how the deposit was paid (MTN MoMo / Airtel Money
+-- dominate Ugandan payments) plus an optional transaction reference.
+ALTER TABLE public.bookings
+  ADD COLUMN IF NOT EXISTS deposit_method TEXT NOT NULL DEFAULT 'cash';
+ALTER TABLE public.bookings
+  ADD COLUMN IF NOT EXISTS deposit_ref TEXT NOT NULL DEFAULT '';
 
 DROP POLICY IF EXISTS "Users can read bookings" ON public.bookings;
 CREATE POLICY "Users can read bookings"
@@ -1068,6 +1087,8 @@ CREATE TABLE IF NOT EXISTS public.expenses (
   date        DATE,
   category    TEXT DEFAULT 'other',
   receipt     TEXT DEFAULT '',
+  payment_method TEXT NOT NULL DEFAULT 'cash',
+  payment_ref    TEXT NOT NULL DEFAULT '',
   created_at  TIMESTAMPTZ DEFAULT NOW(),
   updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
@@ -1086,6 +1107,11 @@ ALTER TABLE public.expenses
   ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE public.expenses
   ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+-- Mobile money first-class: how the expense was paid plus optional reference.
+ALTER TABLE public.expenses
+  ADD COLUMN IF NOT EXISTS payment_method TEXT NOT NULL DEFAULT 'cash';
+ALTER TABLE public.expenses
+  ADD COLUMN IF NOT EXISTS payment_ref TEXT NOT NULL DEFAULT '';
 
 DROP POLICY IF EXISTS "Users can read expenses" ON public.expenses;
 CREATE POLICY "Users can read expenses"

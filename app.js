@@ -34,7 +34,7 @@ function initScrollAnimations() {
     document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
 }
 
-const STAR_PAPER_IMAGE_FALLBACK = '/favicon.ico';
+const STAR_PAPER_IMAGE_FALLBACK = './star_paper_logo_pack/star_paper_128.png?v=3';
 
 function applyBrandImageFallback(img) {
     if (!img || img.dataset.spBrandFallbackApplied === '1') return;
@@ -1222,7 +1222,7 @@ function getSectionIconMarkup(iconKey) {
 
         function resolveDisplayAvatar(user) {
             const raw = String(user?.avatar || '').trim();
-            if (!raw) return '/star_paper_logo_pack/star_paper_128.png?v=3';
+            if (!raw) return './star_paper_logo_pack/star_paper_128.png?v=3';
             const safeImage = normalizeSafeImageSource(raw);
             if (safeImage) return safeImage;
             return avatarDataUriFromSymbol(raw);
@@ -1920,7 +1920,7 @@ function getSectionIconMarkup(iconKey) {
             editor.style.display = isOpen ? 'none' : openDisplay;
             if (!isOpen && input) {
                 const currentGoal = getCurrentMonthlyRevenueGoal();
-                input.value = currentGoal > 0 ? String(Math.round(currentGoal)) : '';
+                input.value = currentGoal > 0 ? formatMoneyInputDisplay(Math.round(currentGoal)) : '';
                 setTimeout(() => input.focus(), 0);
             }
         }
@@ -1929,7 +1929,7 @@ function getSectionIconMarkup(iconKey) {
             if (guardTeamPermission('finance', 'update revenue goals')) return;
             const input = document.getElementById(inputId);
             if (!input) return;
-            const value = Number(input.value);
+            const value = parseMoneyInputValue(input.value);
             if (!Number.isFinite(value) || value < 0) {
                 toastError('Please enter a valid amount for the goal.');
                 return;
@@ -2221,7 +2221,7 @@ function getSectionIconMarkup(iconKey) {
                 fallbackToGlobal: !artist
             });
 
-            amountInput.value = existingAmount > 0 ? String(Math.round(existingAmount)) : '';
+            amountInput.value = existingAmount > 0 ? formatMoneyInputDisplay(Math.round(existingAmount)) : '';
 
             if (contextEl) {
                 const scopeLabel = artist?.name ? `${artist.name} only` : 'the full roster';
@@ -2279,7 +2279,7 @@ function getSectionIconMarkup(iconKey) {
             const amountInput = document.getElementById('spBbfAmountInput');
             if (!periodInput || !amountInput) return;
 
-            const value = Number(amountInput.value);
+            const value = parseMoneyInputValue(amountInput.value);
             if (!Number.isFinite(value) || value < 0) {
                 toastError('Please enter a valid amount.');
                 return;
@@ -3030,7 +3030,7 @@ function getSectionIconMarkup(iconKey) {
                     amount: { label: 'Amount', type: 'number', required: true, min: 1 },
                     date: { label: 'Date', type: 'date', required: true },
                     payer: { label: 'Payer', type: 'text' },
-                    method: { label: 'Method', type: 'select', options: ['cash', 'mobile', 'bank', 'online'] },
+                    method: { label: 'Method', type: 'select', options: ['cash', 'mtn_momo', 'airtel_money', 'bank', 'online', 'mobile'] },
                     status: { label: 'Status', type: 'select', options: ['received', 'pending'] },
                     notes: { label: 'Notes', type: 'textarea' },
                 },
@@ -3250,7 +3250,7 @@ function getSectionIconMarkup(iconKey) {
                 options.forEach((option) => {
                     const optionEl = document.createElement('option');
                     optionEl.value = option;
-                    optionEl.textContent = formatInlineTitle(option);
+                    optionEl.textContent = SP_PAYMENT_METHODS[option] || formatInlineTitle(option);
                     control.appendChild(optionEl);
                 });
             }
@@ -4760,6 +4760,14 @@ function showLoginForm(options = {}) {
                     source: options.source || 'cloud',
                     keys: Object.keys(cloudData)
                 });
+                // Persist the verified cloud snapshot for offline read-only boots.
+                // Never persist offline-cache re-applies — only real cloud data.
+                if (window.SP_OFFLINE_CACHE && options.source !== 'offline-cache') {
+                    window.SP_OFFLINE_CACHE.saveSnapshot(normalizedActiveScopeKey, cloudData, {
+                        ownerId: window.SP?.getOwnerId?.() || null
+                    });
+                    window.SP_OFFLINE_CACHE.hideOfflineBanner();
+                }
             } else if (options.provisional && activeScopeKey) {
                 markWorkspaceHydrated(activeScopeKey, false, { source: options.source || 'provisional' });
             }
@@ -5145,6 +5153,8 @@ function showLoginForm(options = {}) {
                     fee: document.getElementById('bookingFee')?.value || '',
                     deposit: document.getElementById('bookingDeposit')?.value || '',
                     balance: document.getElementById('bookingBalance')?.value || '',
+                    depositMethod: document.getElementById('bookingDepositMethod')?.value || 'cash',
+                    depositRef: document.getElementById('bookingDepositRef')?.value || '',
                     contact: document.getElementById('bookingContact')?.value || '',
                     status: document.getElementById('bookingStatus')?.value || '',
                     notes: document.getElementById('bookingNotes')?.value || '',
@@ -5159,6 +5169,8 @@ function showLoginForm(options = {}) {
                     date: document.getElementById('expenseDate')?.value || '',
                     artist: document.getElementById('expenseArtist')?.value || '',
                     category: document.getElementById('expenseCategory')?.value || 'transport',
+                    paymentMethod: document.getElementById('expensePaymentMethod')?.value || 'cash',
+                    paymentRef: document.getElementById('expensePaymentRef')?.value || '',
                     formOpen: document.getElementById('addExpenseForm')?.style.display === 'block'
                 },
                 otherIncome: {
@@ -5192,6 +5204,8 @@ function showLoginForm(options = {}) {
                 setVal('bookingFee', drafts.booking.fee || '');
                 setVal('bookingDeposit', drafts.booking.deposit || '');
                 setVal('bookingBalance', drafts.booking.balance || '');
+                setVal('bookingDepositMethod', drafts.booking.depositMethod || 'cash');
+                setVal('bookingDepositRef', drafts.booking.depositRef || '');
                 setVal('bookingContact', drafts.booking.contact || '');
                 setVal('bookingStatus', drafts.booking.status || '');
                 setVal('bookingNotes', drafts.booking.notes || '');
@@ -5215,6 +5229,8 @@ function showLoginForm(options = {}) {
                 setVal('expenseDate', drafts.expense.date || '');
                 populateFinanceArtistDropdown(document.getElementById('expenseArtist'), drafts.expense.artist || '');
                 setVal('expenseCategory', drafts.expense.category || 'transport');
+                setVal('expensePaymentMethod', drafts.expense.paymentMethod || 'cash');
+                setVal('expensePaymentRef', drafts.expense.paymentRef || '');
                 if (drafts.expense.formOpen) {
                     showSection('expenses');
                     showAddExpense();
@@ -6350,10 +6366,11 @@ function showLoginForm(options = {}) {
         function buildReportLogoCandidates(themeMode, withOrigin) {
             const primaryLogo = themeMode === 'light' ? 'star_paper_black.png' : 'star_paper_white.png';
             const candidateNames = ['star_paper_transparent.png', primaryLogo, 'star_paper_512.png'];
-            return [
-                ...candidateNames.map((name) => withOrigin(`/star_paper_logo_pack/${name}?v=${REPORT_LOGO_ASSET_VERSION}`)),
-                ...candidateNames.map((name) => `/star_paper_logo_pack/${name}?v=${REPORT_LOGO_ASSET_VERSION}`)
-            ];
+            const candidatePaths = candidateNames.map((name) => `./star_paper_logo_pack/${name}?v=${REPORT_LOGO_ASSET_VERSION}`);
+            return Array.from(new Set([
+                ...candidatePaths.map((path) => withOrigin(path)),
+                ...candidatePaths
+            ]));
         }
 
         async function getReportLogoDataUrl(options = {}) {
@@ -6366,7 +6383,10 @@ function showLoginForm(options = {}) {
                     const origin = window.location.origin && window.location.origin !== 'null'
                         ? window.location.origin
                         : '';
-                    const withOrigin = (path) => origin ? `${origin}${path}` : path;
+                    const withOrigin = (path) => {
+                        const normalizedPath = String(path || '').replace(/^[./\\]+/, '');
+                        return origin ? `${origin}/${normalizedPath}` : `./${normalizedPath}`;
+                    };
                     const candidateList = buildReportLogoCandidates(themeMode, withOrigin);
                     const isFileProtocol = window.location.protocol === 'file:';
                     for (const logoSrc of candidateList) {
@@ -6513,6 +6533,10 @@ function showLoginForm(options = {}) {
             document.getElementById('expenseAmount').value = '';
             document.getElementById('expenseDate').value = '';
             document.getElementById('expenseCategory').value = 'transport';
+            const paymentMethodSelect = document.getElementById('expensePaymentMethod');
+            if (paymentMethodSelect) paymentMethodSelect.value = 'cash';
+            const paymentRefInput = document.getElementById('expensePaymentRef');
+            if (paymentRefInput) paymentRefInput.value = '';
             const artistSelect = document.getElementById('expenseArtist');
             if (artistSelect) artistSelect.value = '';
             document.getElementById('expenseReceipt').value = '';
@@ -6545,9 +6569,11 @@ function showLoginForm(options = {}) {
                 let expense = {
                     id: editingExpenseId || Date.now(),
                     description: sanitizeTextInput(document.getElementById('expenseDesc').value),
-                    amount: Math.round(Number(document.getElementById('expenseAmount').value) || 0),
+                    amount: parseMoneyInputValue(document.getElementById('expenseAmount').value),
                     date: document.getElementById('expenseDate').value,
                     category: sanitizeTextInput(document.getElementById('expenseCategory').value),
+                    paymentMethod: normalizePaymentMethod(document.getElementById('expensePaymentMethod')?.value),
+                    paymentRef: sanitizeTextInput(document.getElementById('expensePaymentRef')?.value || ''),
                     receipt: receiptSrc,
                     createdAt: existingExpense?.createdAt || Date.now()
                 };
@@ -6701,9 +6727,13 @@ function showLoginForm(options = {}) {
                 saveBtn.textContent = 'Update Expense';
             }
             document.getElementById('expenseDesc').value = expense.description;
-            document.getElementById('expenseAmount').value = expense.amount;
+            document.getElementById('expenseAmount').value = formatMoneyInputDisplay(expense.amount);
             document.getElementById('expenseDate').value = expense.date;
             document.getElementById('expenseCategory').value = expense.category;
+            const editPaymentMethod = document.getElementById('expensePaymentMethod');
+            if (editPaymentMethod) editPaymentMethod.value = normalizePaymentMethod(expense.paymentMethod);
+            const editPaymentRef = document.getElementById('expensePaymentRef');
+            if (editPaymentRef) editPaymentRef.value = expense.paymentRef || '';
             setFinanceArtistSelectValue('expenseArtist', expense);
 
             const safeReceipt = normalizeSafeImageSource(expense.receipt);
@@ -6824,11 +6854,11 @@ function showLoginForm(options = {}) {
                 let incomeItem = {
                     id: editingOtherIncomeId || Date.now(),
                     source: sanitizeTextInput(document.getElementById('otherIncomeSource').value),
-                    amount: Math.round(Number(document.getElementById('otherIncomeAmount').value) || 0),
+                    amount: parseMoneyInputValue(document.getElementById('otherIncomeAmount').value),
                     date: document.getElementById('otherIncomeDate').value,
                     type: sanitizeTextInput(document.getElementById('otherIncomeType').value),
                     payer: sanitizeTextInput(document.getElementById('otherIncomePayer').value),
-                    method: sanitizeTextInput(document.getElementById('otherIncomeMethod').value),
+                    method: normalizePaymentMethod(document.getElementById('otherIncomeMethod').value),
                     status: sanitizeTextInput(document.getElementById('otherIncomeStatus').value),
                     notes: sanitizeTextInput(document.getElementById('otherIncomeNotes').value),
                     proof: proofSrc,
@@ -6916,7 +6946,7 @@ function showLoginForm(options = {}) {
                         <td class="income-green sp-inline-editable" ${inlineEditAttrs('otherIncome', item.id, 'amount', 'Amount')}>${escapeHtml(formatInlineMoney(item.amount))}</td>
                         <td class="sp-inline-editable" ${inlineEditAttrs('otherIncome', item.id, 'date', 'Date')}>${escapeHtml(formatDisplayDate(item.date))}</td>
                         <td class="sp-inline-editable" ${inlineEditAttrs('otherIncome', item.id, 'payer', 'Payer')}>${escapeHtml(item.payer || '-')}</td>
-                        <td class="sp-inline-editable" ${inlineEditAttrs('otherIncome', item.id, 'method', 'Method')}>${escapeHtml(item.method ? item.method.toUpperCase() : '-')}</td>
+                        <td class="sp-inline-editable" ${inlineEditAttrs('otherIncome', item.id, 'method', 'Method')}>${escapeHtml(item.method ? formatPaymentMethodLabel(item.method) : '-')}</td>
                         <td><span class="status-badge ${statusClass} sp-inline-editable" ${inlineEditAttrs('otherIncome', item.id, 'status', 'Status')}>${escapeHtml(item.status || 'received')}</span></td>
                         <td>
                             ${item.proof ?
@@ -6943,7 +6973,7 @@ function showLoginForm(options = {}) {
                                 <div class="expense-field income-green sp-inline-editable" ${inlineEditAttrs('otherIncome', item.id, 'amount', 'Amount')}><span>Amount</span>${escapeHtml(formatInlineMoney(item.amount))}</div>
                                 <div class="expense-field sp-inline-editable" ${inlineEditAttrs('otherIncome', item.id, 'date', 'Date')}><span>Date</span>${escapeHtml(formatDisplayDate(item.date))}</div>
                                 <div class="expense-field sp-inline-editable" ${inlineEditAttrs('otherIncome', item.id, 'payer', 'Payer')}><span>Payer/Brand</span>${escapeHtml(item.payer || '-')}</div>
-                                <div class="expense-field sp-inline-editable" ${inlineEditAttrs('otherIncome', item.id, 'method', 'Method')}><span>Method</span>${escapeHtml(item.method ? item.method.toUpperCase() : '-')}</div>
+                                <div class="expense-field sp-inline-editable" ${inlineEditAttrs('otherIncome', item.id, 'method', 'Method')}><span>Method</span>${escapeHtml(item.method ? formatPaymentMethodLabel(item.method) : '-')}</div>
                                 <div class="expense-field sp-inline-editable" ${inlineEditAttrs('otherIncome', item.id, 'notes', 'Notes')}><span>Notes</span>${escapeHtml(item.notes || 'None')}</div>
                             </div>
                             <div class="expense-actions">
@@ -6997,7 +7027,7 @@ function showLoginForm(options = {}) {
                 saveBtn.textContent = 'Update Other Income';
             }
             document.getElementById('otherIncomeSource').value = item.source;
-            document.getElementById('otherIncomeAmount').value = item.amount;
+            document.getElementById('otherIncomeAmount').value = formatMoneyInputDisplay(item.amount);
             document.getElementById('otherIncomeDate').value = item.date;
             document.getElementById('otherIncomeType').value = item.type;
             document.getElementById('otherIncomePayer').value = item.payer || '';
@@ -7305,10 +7335,10 @@ function showLoginForm(options = {}) {
 
         // Bookings Functions
         function calculateBalance() {
-            const fee = Math.round(Number(document.getElementById('bookingFee').value) || 0);
-            const deposit = Math.round(Number(document.getElementById('bookingDeposit').value) || 0);
+            const fee = parseMoneyInputValue(document.getElementById('bookingFee').value);
+            const deposit = parseMoneyInputValue(document.getElementById('bookingDeposit').value);
             const balance = fee - deposit;
-            document.getElementById('bookingBalance').value = balance;
+            document.getElementById('bookingBalance').value = formatMoneyInputDisplay(balance);
         }
 
         function showAddBooking() {
@@ -7344,6 +7374,10 @@ function showLoginForm(options = {}) {
             document.getElementById('bookingFee').value = '';
             document.getElementById('bookingDeposit').value = '';
             document.getElementById('bookingBalance').value = '';
+            const clearDepositMethod = document.getElementById('bookingDepositMethod');
+            if (clearDepositMethod) clearDepositMethod.value = 'cash';
+            const clearDepositRef = document.getElementById('bookingDepositRef');
+            if (clearDepositRef) clearDepositRef.value = '';
             document.getElementById('bookingCapacity').value = '';
             document.getElementById('bookingContact').value = '';
             document.getElementById('bookingStatus').value = 'confirmed';
@@ -7365,8 +7399,8 @@ function showLoginForm(options = {}) {
                 const location = locationType === 'uganda' 
                     ? document.getElementById('bookingUgandaLocation').value
                     : document.getElementById('bookingAbroadLocation').value;
-                const feeValue = Math.round(Number(document.getElementById('bookingFee').value) || 0);
-                const depositValue = Math.round(Number(document.getElementById('bookingDeposit').value) || 0);
+                const feeValue = parseMoneyInputValue(document.getElementById('bookingFee').value);
+                const depositValue = parseMoneyInputValue(document.getElementById('bookingDeposit').value);
                 const capacityValue = Math.round(Number(document.getElementById('bookingCapacity').value) || 0);
                 const balanceValue = feeValue - depositValue;
                 const existingBooking = editingBookingId ? bookings.find(b => isSameRecordId(b.id, editingBookingId)) : null;
@@ -7381,6 +7415,8 @@ function showLoginForm(options = {}) {
                     fee: feeValue,
                     deposit: depositValue,
                     balance: balanceValue,
+                    depositMethod: normalizePaymentMethod(document.getElementById('bookingDepositMethod')?.value),
+                    depositRef: sanitizeTextInput(document.getElementById('bookingDepositRef')?.value || ''),
                     contact: sanitizeTextInput(document.getElementById('bookingContact').value),
                     status: sanitizeTextInput(document.getElementById('bookingStatus').value),
                     notes: sanitizeTextInput(document.getElementById('bookingNotes').value),
@@ -7910,14 +7946,18 @@ function showLoginForm(options = {}) {
             document.getElementById('bookingEvent').value = booking.event;
             document.getElementById('bookingArtist').value = booking.artist;
             document.getElementById('bookingDate').value = booking.date;
-            document.getElementById('bookingFee').value = booking.fee;
-            document.getElementById('bookingDeposit').value = booking.deposit;
-            document.getElementById('bookingBalance').value = booking.balance;
+            document.getElementById('bookingFee').value = formatMoneyInputDisplay(booking.fee);
+            document.getElementById('bookingDeposit').value = formatMoneyInputDisplay(booking.deposit);
+            document.getElementById('bookingBalance').value = formatMoneyInputDisplay(booking.balance);
             document.getElementById('bookingCapacity').value = booking.capacity || '';
             document.getElementById('bookingContact').value = booking.contact;
             document.getElementById('bookingStatus').value = booking.status;
             document.getElementById('bookingNotes').value = booking.notes;
-            
+            const populateDepositMethod = document.getElementById('bookingDepositMethod');
+            if (populateDepositMethod) populateDepositMethod.value = normalizePaymentMethod(booking.depositMethod);
+            const populateDepositRef = document.getElementById('bookingDepositRef');
+            if (populateDepositRef) populateDepositRef.value = booking.depositRef || '';
+
             // Set location fields
             document.getElementById('bookingLocationType').value = booking.locationType || 'uganda';
             updateLocationDropdown();
@@ -8523,8 +8563,8 @@ function showLoginForm(options = {}) {
                     if (reg) {
                         reg.showNotification(title, {
                             body,
-                            icon: '/star_paper_logo_pack/star_paper_transparent.png?v=3',
-                            badge: '/star_paper_logo_pack/star_paper_transparent.png?v=3'
+                            icon: './star_paper_logo_pack/star_paper_transparent.png?v=3',
+                            badge: './star_paper_logo_pack/star_paper_transparent.png?v=3'
                         });
                     } else {
                         new Notification(title, { body });
@@ -9608,10 +9648,142 @@ function showLoginForm(options = {}) {
 
         // Landing coin rain intentionally removed to reduce visual noise.
 
+        // ── UGX money inputs: live thousands separators ──────────────────────
+        // Large shilling amounts (e.g. 24,000,000) are error-prone to enter and
+        // verify without grouping. These inputs switch to type=text with a
+        // numeric keypad so commas can render while typing; every read goes
+        // through parseMoneyInputValue() to keep the UGX integer discipline.
+        const SP_MONEY_INPUT_IDS = Object.freeze([
+            'bookingFee',
+            'bookingDeposit',
+            'bookingBalance',
+            'expenseAmount',
+            'otherIncomeAmount',
+            'monthlyGoalInput',
+            'financialsMonthlyGoalInput',
+            'spBbfAmountInput'
+        ]);
+
+        function parseMoneyInputValue(value) {
+            const text = String(value ?? '').trim();
+            if (!text) return 0;
+            const negative = text.startsWith('-');
+            const digits = text.replace(/[^0-9]/g, '');
+            if (!digits) return 0;
+            const amount = Math.round(Number(digits) || 0);
+            return negative && amount !== 0 ? -amount : amount;
+        }
+
+        function formatMoneyInputDisplay(value) {
+            const text = String(value ?? '').trim();
+            if (!text) return '';
+            const negative = text.startsWith('-');
+            const digits = text.replace(/[^0-9]/g, '');
+            if (!digits) return '';
+            const grouped = Number(digits).toLocaleString('en-US');
+            return negative ? `-${grouped}` : grouped;
+        }
+
+        function applyMoneyInputFormatting(input) {
+            const raw = input.value;
+            const formatted = formatMoneyInputDisplay(raw);
+            if (formatted === raw) return;
+            const caret = input.selectionStart ?? raw.length;
+            const digitsBeforeCaret = raw.slice(0, caret).replace(/[^0-9]/g, '').length;
+            input.value = formatted;
+            let pos = formatted.length;
+            if (digitsBeforeCaret === 0) {
+                pos = 0;
+            } else {
+                let seen = 0;
+                for (let i = 0; i < formatted.length; i += 1) {
+                    if (formatted[i] >= '0' && formatted[i] <= '9') seen += 1;
+                    if (seen >= digitsBeforeCaret) { pos = i + 1; break; }
+                }
+            }
+            try { input.setSelectionRange(pos, pos); } catch (_err) {}
+        }
+
+        function formatMoneyInputs(ids = SP_MONEY_INPUT_IDS) {
+            ids.forEach((id) => {
+                const input = document.getElementById(id);
+                if (input) input.value = formatMoneyInputDisplay(input.value);
+            });
+        }
+
+        (function setupMoneyInputs() {
+            SP_MONEY_INPUT_IDS.forEach((id) => {
+                const input = document.getElementById(id);
+                if (!input) return;
+                try { input.type = 'text'; } catch (_err) {}
+                input.inputMode = 'numeric';
+                input.autocomplete = 'off';
+                input.classList.add('sp-money-input');
+                input.addEventListener('input', () => applyMoneyInputFormatting(input));
+                input.addEventListener('focus', () => applyMoneyInputFormatting(input));
+            });
+        })();
+        window.parseMoneyInputValue = parseMoneyInputValue;
+        window.formatMoneyInputs = formatMoneyInputs;
+
+        // ── Payment methods (MTN MoMo / Airtel Money first-class) ────────────
+        const SP_PAYMENT_METHODS = Object.freeze({
+            cash: 'Cash',
+            mtn_momo: 'MTN MoMo',
+            airtel_money: 'Airtel Money',
+            bank: 'Bank Transfer',
+            online: 'Online',
+            mobile: 'Mobile Money',
+            other: 'Other'
+        });
+
+        function normalizePaymentMethod(value) {
+            const key = String(value || '').trim().toLowerCase();
+            return Object.prototype.hasOwnProperty.call(SP_PAYMENT_METHODS, key) ? key : 'cash';
+        }
+
+        function formatPaymentMethodLabel(value) {
+            return SP_PAYMENT_METHODS[normalizePaymentMethod(value)];
+        }
+        window.formatPaymentMethodLabel = formatPaymentMethodLabel;
+
+        // ── At-a-Glance KPI triage: 4 primary tiles, the rest behind "More" ──
+        function applyGlanceKpiExpansion(expanded) {
+            const grid = document.getElementById('dashboardGlanceGrid');
+            const toggle = document.getElementById('glanceMoreToggle');
+            if (!grid || !toggle) return;
+            grid.classList.toggle('dashboard-glance-grid--expanded', expanded);
+            toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+            toggle.textContent = expanded ? 'Fewer metrics' : 'More metrics';
+        }
+
+        function toggleGlanceKpis() {
+            const grid = document.getElementById('dashboardGlanceGrid');
+            if (!grid) return;
+            const expanded = !grid.classList.contains('dashboard-glance-grid--expanded');
+            applyGlanceKpiExpansion(expanded);
+            Storage.saveSync('starPaperGlanceExpanded', expanded ? '1' : '0');
+        }
+        window.toggleGlanceKpis = toggleGlanceKpis;
+
+        (function restoreGlanceKpiPreference() {
+            applyGlanceKpiExpansion(Storage.loadSync('starPaperGlanceExpanded', '0') === '1');
+        })();
+
         (function initMainstageCoinRain() {
             const canvas = document.getElementById('mainstageCoinRainCanvas');
             const host = document.getElementById('welcomeMessage');
             if (!canvas || !host) return;
+            // Ambient flourish only: skip it entirely for reduced-motion users
+            // and low-end / data-saver devices (the entry-level Android base).
+            const coinRainReduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true;
+            const coinRainConn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+            const coinRainLowEnd = Boolean(coinRainConn?.saveData) ||
+                (typeof navigator.deviceMemory === 'number' && navigator.deviceMemory < 4);
+            if (coinRainReduceMotion || coinRainLowEnd) {
+                canvas.remove();
+                return;
+            }
             const ctx = canvas.getContext('2d');
             if (!ctx) return;
 
@@ -9684,6 +9856,12 @@ function showLoginForm(options = {}) {
                 return !(host.style.display === 'none' || host.offsetParent === null);
             }
 
+            let rafId = 0;
+
+            function scheduleTick() {
+                rafId = requestAnimationFrame(tick);
+            }
+
             function tick() {
                 frameCount = (frameCount + 1) % 180;
                 if (W <= 1 || H <= 1 || frameCount === 0) {
@@ -9691,7 +9869,7 @@ function showLoginForm(options = {}) {
                 }
                 if (!isVisible()) {
                     ctx.clearRect(0, 0, W, H);
-                    requestAnimationFrame(tick);
+                    scheduleTick();
                     return;
                 }
 
@@ -9706,12 +9884,22 @@ function showLoginForm(options = {}) {
                     }
                     drawCoin(coin);
                 }
-                requestAnimationFrame(tick);
+                scheduleTick();
             }
+
+            // Stop burning frames in background tabs; resume on return.
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    cancelAnimationFrame(rafId);
+                    rafId = 0;
+                } else if (!rafId) {
+                    scheduleTick();
+                }
+            });
 
             window.addEventListener('resize', resize, { passive: true });
             resize();
-            tick();
+            if (!document.hidden) tick();
         })();
 
         (function initLandingFeatureCarousel() {
@@ -10553,6 +10741,7 @@ function showLoginForm(options = {}) {
         (function publishAppBootHelpersReady() {
             window.showApp = showApp;
             window.loadUserData = loadUserData;
+            window.getActiveDataScopeKey = getActiveDataScopeKey;
             window.restorePostBootUiState = restorePostBootUiState;
             window.__spAppBootHelpersReady = true;
             try {

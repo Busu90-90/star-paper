@@ -314,13 +314,11 @@ function normalizeCsp(value) {
 }
 
 function normalizeDocumentComparableCsp(value) {
-  return normalizeCsp(
-    value
-      .split(';')
-      .map((part) => part.trim())
-      .filter((part) => part && !/^frame-ancestors\b/i.test(part))
-      .join('; ')
-  );
+  return value
+    .split(';')
+    .map((part) => part.trim())
+    .filter((part) => part && !/^frame-ancestors\b/i.test(part))
+    .join('; ');
 }
 
 const forbiddenSelfHostedRuntimeDependencies = [
@@ -333,10 +331,49 @@ const forbiddenSelfHostedRuntimeDependencies = [
   [/https:\/\/unpkg\.com\/@phosphor-icons\/web@/i, 'Phosphor Icons CDN stylesheet/font host'],
 ];
 
+const brandLogoPackAssets = [
+  'star_paper_logo_pack/star_paper_32.png',
+  'star_paper_logo_pack/star_paper_64.png',
+  'star_paper_logo_pack/star_paper_128.png',
+  'star_paper_logo_pack/star_paper_256.png',
+  'star_paper_logo_pack/star_paper_512.png',
+  'star_paper_logo_pack/star_paper_1024.png',
+  'star_paper_logo_pack/star_paper_black.png',
+  'star_paper_logo_pack/star_paper_transparent.png',
+  'star_paper_logo_pack/star_paper_white.png',
+];
+
+const deletedRootLogoAssetNames = [
+  'favicon.ico',
+  'apple-touch-icon.png',
+  'logo-192.png',
+  'logo-32.png',
+  'logo-dark.svg',
+  'logo-light.svg',
+  'logo-mono.svg',
+  'logo-report.png',
+  'logo-source.png',
+  'logo-ui-clean-preview-test.png',
+  'logo-ui.png',
+  'logo.png',
+  'logo.svg',
+];
+
 function assertNoForbiddenRuntimeDependency(fileName, text) {
   for (const [pattern, label] of forbiddenSelfHostedRuntimeDependencies) {
     assert(!pattern.test(text), `${fileName} must not depend on ${label}; use assets/vendor instead`);
   }
+}
+
+function assertNoDeletedRootLogoAssetReferences(fileName, text) {
+  for (const assetName of deletedRootLogoAssetNames) {
+    const pattern = new RegExp(`(^|[^A-Za-z0-9_/-])${escapeRegex(assetName)}($|[^A-Za-z0-9_.-])`);
+    assert(!pattern.test(text), `${fileName} must not reference deleted root logo asset: ${assetName}`);
+  }
+}
+
+function assertNoRootRelativeLogoPackReferences(fileName, text) {
+  assert(!/(^|[^.])\/star_paper_logo_pack\//.test(text), `${fileName} must use relative star_paper_logo_pack/ paths for file://-safe local rendering`);
 }
 
 for (const path of [
@@ -351,6 +388,7 @@ for (const path of [
   'app.browser-assets.js',
   'app.public-pages.js',
   'app.root-shell.js',
+  'app.offline-cache.js',
   'app.globe.js',
   'app.tasks.js',
   'supabase.js',
@@ -447,6 +485,25 @@ const docs = read('STAR_PAPER_DOCUMENTATION.md');
 
 for (const [fileName, text] of [
   ['index.html', index],
+  ['how-it-works.html', read('how-it-works.html')],
+  ['proof.html', read('proof.html')],
+  ['testimonials.html', read('testimonials.html')],
+  ['manifest.json', read('manifest.json')],
+  ['app.js', app],
+  ['app.browser-assets.js', read('app.browser-assets.js')],
+]) {
+  assertNoDeletedRootLogoAssetReferences(fileName, text);
+  assertNoRootRelativeLogoPackReferences(fileName, text);
+}
+
+assert(manifest.start_url === './', 'manifest.json start_url must stay relative for root and local preview compatibility');
+assert(manifest.scope === './', 'manifest.json scope must stay relative for root and local preview compatibility');
+for (const shortcut of Array.isArray(manifest.shortcuts) ? manifest.shortcuts : []) {
+  assert(typeof shortcut.url === 'string' && shortcut.url.startsWith('./#'), `manifest shortcut "${shortcut.name || shortcut.short_name || 'unnamed'}" must use a relative hash URL`);
+}
+
+for (const [fileName, text] of [
+  ['index.html', index],
   ['app.root-shell.js', rootShell],
   ['app.globe.js', globe],
   ['assets/vendor/fonts/star-paper-fonts.css', fontCss],
@@ -482,16 +539,16 @@ for (const [fileName, marker] of publicRootHtml) {
   assertDocumentCspMeta(fileName, html);
   assertNoForbiddenRuntimeDependency(fileName, html);
   assertExternalTagsHaveIntegrity(fileName, html);
-  if (marker === 'app-shell') {
-    assert(/\blanding-home-page\b[\s\S]*\blanding-snap-page\b|\blanding-snap-page\b[\s\S]*\blanding-home-page\b/.test(html), `${fileName} must mark #landingScreen as the landing home snap container`);
-  } else {
-    assert(/\blanding-snap-page\b[\s\S]*\blanding-public-page\b|\blanding-public-page\b[\s\S]*\blanding-snap-page\b/.test(html), `${fileName} must mark #landingScreen as a public landing snap container`);
+  if (marker === 'public-landing') {
+    assert(html.includes('landing-snap-page landing-public-page'), `${fileName} must opt into public landing snap-page classes`);
   }
 }
 
 const indexInlineScripts = [...index.matchAll(/<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/gi)].map((match) => match[0]);
 assert(indexInlineScripts.length === 0, `index.html must not ship inline script blocks; found ${indexInlineScripts.length}`);
 assert(!/<script[^>]*\btype=["']importmap["']/i.test(index), 'index.html must not ship an inline importmap');
+assert(index.includes('landing-home-page landing-snap-page'), 'index.html landing screen must opt into snap-page behavior');
+assert(!/how-it-works\.html#landing-features/i.test(index), 'index.html must not route How It Works links to #landing-features');
 assert(index.includes(versionedAssetUrl('app.browser-assets.js')), `index.html must load ${versionedAssetUrl('app.browser-assets.js')}`);
 assert(index.includes(versionedAssetUrl('app.public-pages.js')), `index.html must load ${versionedAssetUrl('app.public-pages.js')}`);
 assert(index.includes(versionedAssetUrl('app.boot-head.js')), `index.html must load external ${versionedAssetUrl('app.boot-head.js')}`);
@@ -526,9 +583,25 @@ assert(sw.includes('importScripts("./app.public-pages.js")'), 'sw.js must load a
 assert(sw.includes('SP_PUBLIC_PAGES.publicLandingRouteMap()'), 'sw.js must derive public landing routes from app.public-pages.js');
 assert(sw.includes('SP_ASSET_MANIFEST.version("sw.js")'), 'sw.js must derive SHELL_VERSION from app.browser-assets.js');
 assert(sw.includes('SP_ASSET_MANIFEST.appShell'), 'sw.js must derive APP_SHELL from app.browser-assets.js');
+assert(sw.includes('function requestTarget(request)'), 'sw.js must normalize string navigation fallback targets before creating reload requests');
+assert(sw.includes('new URL(request, self.location.href).toString()'), 'sw.js must resolve public landing fallback paths against the worker origin');
+assert(sw.includes('return new Request(requestTarget(request), { cache: "reload" });'), 'sw.js freshRequest must use normalized request targets');
+assert(sw.includes('function shouldRedirectNavigationResponse(request, response)'), 'sw.js must detect same-origin navigation redirects before caching public landing responses');
+assert(sw.includes('return Response.redirect(response.url, 302);'), 'sw.js must hand same-origin clean-URL redirects back to navigation clients');
+assert(sw.includes('if (looksLikeFilePath(url.pathname))'), 'sw.js must let direct public .html navigations use the browser network path');
+assert(sw.includes('return fetch(freshRequest(request))'), 'sw.js navigation fetch must try the requested URL before public landing fallback shells');
+assert(sw.includes('return fetch(freshRequest(fallbackShell));'), 'sw.js navigation fetch must fall back to public landing shells when clean routes are not network-usable');
 assert(app.includes("assetManifest.url('sw.js')"), `app.js must register the manifest-provided sw.js?v=${shellVersion}`);
 assert(index.includes(versionedAssetUrl('app.js')), `index.html does not load ${versionedAssetUrl('app.js')}`);
 assert(index.includes(versionedAssetUrl('app.root-shell.js')), `index.html does not load ${versionedAssetUrl('app.root-shell.js')}`);
+assert(index.includes(versionedAssetUrl('app.offline-cache.js')), `index.html does not load ${versionedAssetUrl('app.offline-cache.js')}`);
+assertOrderedSnippets(index, [
+  versionedAssetUrl('app.offline-cache.js'),
+  versionedAssetUrl('supabase.js'),
+], 'index.html offline cache module must load before supabase.js');
+assert(supabase.includes('tryOfflineSnapshotBoot'), 'supabase.js must attempt offline snapshot hydration before stranding boot on a retry screen');
+assert(supabase.includes("window.loadUserData({ snapshot: record.payload, source: 'offline-cache', provisional: true });"), 'supabase.js offline boot must hydrate provisionally so writes stay guarded until real cloud data lands');
+assert(app.includes("options.source !== 'offline-cache'"), 'app.js must not re-persist offline-cache re-applies into the offline cache');
 assert(index.includes(versionedAssetUrl('app.public-pages.js')), `index.html does not load ${versionedAssetUrl('app.public-pages.js')}`);
 assert(index.includes(versionedAssetUrl('app.boot-head.js')), `index.html does not load ${versionedAssetUrl('app.boot-head.js')}`);
 assert(index.includes(versionedAssetUrl('app.boot-flags.js')), `index.html does not load ${versionedAssetUrl('app.boot-flags.js')}`);
@@ -536,7 +609,6 @@ assert(index.includes(versionedAssetUrl('app.boot-body.js')), `index.html does n
 assert(index.includes(versionedAssetUrl('app.todayboard.js')), `index.html does not load ${versionedAssetUrl('app.todayboard.js')}`);
 assert(index.includes(versionedAssetUrl('app.reports.js')), `index.html does not load ${versionedAssetUrl('app.reports.js')}`);
 assert(index.includes(versionedAssetUrl('app.handcraft.js')), `index.html does not load ${versionedAssetUrl('app.handcraft.js')}`);
-assert(!index.includes('how-it-works.html#landing-features'), 'index.html How It Works links must not route to #landing-features');
 assert(index.includes(versionedAssetUrl('styles.css')), `index.html does not load ${versionedAssetUrl('styles.css')}`);
 assert(index.includes(versionedAssetUrl('supabase.js')), `index.html does not load ${versionedAssetUrl('supabase.js')}`);
 assert(index.includes(versionedAssetUrl('manifest.json')), `index.html does not load ${versionedAssetUrl('manifest.json')}`);
@@ -554,16 +626,16 @@ for (const [fileName, marker] of publicRootHtml) {
   assert(html.includes(versionedAssetUrl('public-page-theme.js')), `${fileName} does not load ${versionedAssetUrl('public-page-theme.js')}`);
   assert(html.includes(versionedAssetUrl('app.handcraft.js')), `${fileName} does not load ${versionedAssetUrl('app.handcraft.js')}`);
 }
-assert(publicPageHead.includes("window.history.scrollRestoration = 'manual';"), 'public-page-head.js must force manual scroll restoration');
-assert(publicPageHead.includes('publicSectionHashPattern'), 'public-page-head.js must strip known public section hashes');
-assert(publicPageHead.includes('function resetPublicScrollTop()'), 'public-page-head.js must expose the public landing scroll-top reset');
-assert(publicPageHead.includes("window.addEventListener('pageshow', resetPublicScrollTop);"), 'public-page-head.js must reset public landing scroll on pageshow');
-assert(handcraft.includes('function resetLandingScrollTop(landing)'), 'app.handcraft.js must reset the landing snap container on mount');
-assert(handcraft.includes("landing.classList.contains('landing-snap-page')"), 'app.handcraft.js must use #landingScreen as the scroll source in snap mode');
-assert(handcraftCss.includes('#landingScreen.landing-snap-page'), 'styles.handcraft.css must define the landing snap page contract');
-assert(handcraftCss.includes('scroll-snap-type: y mandatory'), 'styles.handcraft.css must enforce vertical mandatory snap on landing pages');
-assert(handcraftCss.includes('scroll-snap-stop: always'), 'styles.handcraft.css must enforce snap stops on landing sections');
-assert(handcraftCss.includes('height: 100dvh !important;'), 'styles.handcraft.css must keep #landingScreen at the viewport height');
+assert(publicPageHead.includes("window.history.scrollRestoration = 'manual'"), 'public-page-head.js must disable browser scroll restoration for public landing pages');
+assert(publicPageHead.includes('publicSectionHashPattern'), 'public-page-head.js must strip public landing section hashes');
+assert(publicPageHead.includes('function resetPublicScrollTop()'), 'public-page-head.js must own public landing top-scroll reset');
+assert(publicPageHead.includes("window.addEventListener('pageshow', resetPublicScrollTop)"), 'public-page-head.js must reset public landing scroll on bfcache/pageshow restores');
+assert(handcraft.includes('function resetLandingScrollTop(landing)'), 'app.handcraft.js must reset landing scroll on handcraft mount');
+assert(handcraft.includes("landing.classList.contains('landing-snap-page')"), 'app.handcraft.js scroll progress must use #landingScreen when snap-page is active');
+assert(handcraftCss.includes('#landingScreen.landing-snap-page'), 'styles.handcraft.css must define the landing snap-page container contract');
+assert(handcraftCss.includes('scroll-snap-type: y mandatory'), 'styles.handcraft.css must enforce mandatory vertical landing snap');
+assert(handcraftCss.includes('scroll-snap-stop: always'), 'styles.handcraft.css must force full landing section stops');
+assert(handcraftCss.includes('height: 100dvh !important;'), 'styles.handcraft.css must constrain snap sections to the viewport height');
 assert(sw.includes('const AUTH_CALLBACK_CACHE_BYPASS_PARAMS = new Set(['), 'sw.js must define auth callback cache-bypass parameters');
 for (const param of ['access_token', 'refresh_token', 'code', 'state', 'token_type', 'error_description']) {
   assert(sw.includes(`"${param}"`), `sw.js auth callback cache bypass must include ${param}`);
@@ -573,14 +645,6 @@ assert(sw.includes('const canCacheRequestUrl = !hasAuthCallbackCacheBypassParam(
 assert(sw.includes('response && response.ok && canCacheRequestUrl'), 'sw.js must not cache navigation responses for auth callback URLs');
 assert(sw.includes('if (!canCacheRequestUrl) {'), 'sw.js auth callback fallback path must avoid cache lookup by sensitive request URL');
 assert(sw.includes('if (hasAuthCallbackCacheBypassParam(url)) return false;'), 'sw.js app-shell cacheability must reject auth callback URLs');
-assert(sw.includes('function requestTarget(request)'), 'sw.js must normalize fallback string request targets');
-assert(sw.includes('new URL(request, self.location.href).toString()'), 'sw.js must resolve fallback shell paths against the worker origin');
-assert(sw.includes('return new Request(requestTarget(request), { cache: "reload" });'), 'sw.js freshRequest must normalize strings before constructing Request');
-assert(sw.includes('function shouldRedirectNavigationResponse(request, response)'), 'sw.js must detect clean same-origin navigation redirects');
-assert(sw.includes('return Response.redirect(response.url, 302);'), 'sw.js must hand off clean public-route redirects to the browser');
-assert(sw.includes('if (looksLikeFilePath(url.pathname))'), 'sw.js must let direct .html public landing requests reach the browser/network path');
-assert(sw.includes('return fetch(freshRequest(request))'), 'sw.js must fetch requested navigations before falling back');
-assert(sw.includes('return fetch(freshRequest(fallbackShell));'), 'sw.js must fetch manifest fallback shells only after requested public navigation fails');
 
 assert(packageJson.scripts?.preflight === 'node scripts/preflight.mjs', 'package.json preflight script must run scripts/preflight.mjs');
 assert(packageJson.scripts?.build === 'npm run preflight', 'package.json build script must run preflight');
@@ -743,6 +807,11 @@ assert(passwordLoginSource.includes("errMsg.includes('could not initialise sessi
 const appShellUrls = new Set();
 const appShellVersions = new Map();
 for (const asset of browserAssets?.appShell || []) {
+  const cleanAsset = stripQueryAndHash(asset).replaceAll('\\', '/');
+  assert(
+    !/^\/(?:star_paper_logo_pack\/|assets\/landing\/|assets\/world-atlas\/|manifest\.json$)/.test(cleanAsset),
+    `app.browser-assets.js APP_SHELL must keep file-openable assets relative, not root-relative: ${asset}`
+  );
   const url = normalizeAssetUrl(asset);
   const path = assetPath(url);
   const version = assetVersion(url);
@@ -885,8 +954,10 @@ assert(manifestIcons.length > 0, 'manifest.json must define icons');
 for (const [label, icon] of manifestIcons) {
   assert(icon && typeof icon.src === 'string', `${label} entry is missing src`);
   if (!icon?.src) continue;
+  assert(!icon.src.startsWith('/'), `${label} src must use a relative logo-pack path for file://-safe local rendering: ${icon.src}`);
   const iconUrl = normalizeAssetUrl(icon.src);
   const path = assetPath(iconUrl);
+  assert(path.startsWith('star_paper_logo_pack/'), `${label} src must come from star_paper_logo_pack/: ${icon.src}`);
   assert(appShellUrls.has(iconUrl), `${label} src ${icon.src} is not precached in sw.js APP_SHELL`);
   assert(existsSync(join(root, path)), `${label} src missing on disk: ${path}`);
   const fileSize = path.match(/star_paper_(\d+)\.png$/)?.[1];
@@ -913,9 +984,9 @@ const cspMeta = documentCsp(index);
 const cspHeader = headerCsp(headers);
 assert(Boolean(cspMeta), 'index.html missing Content-Security-Policy meta content');
 assert(Boolean(cspHeader), '_headers missing Content-Security-Policy value');
-assert(normalizeCsp(cspMeta) === normalizeDocumentComparableCsp(cspHeader), 'index.html CSP meta and _headers CSP must match except frame-ancestors');
-assert(!/frame-ancestors/i.test(cspMeta), 'index.html CSP meta must not include frame-ancestors because browsers ignore it in meta CSP');
-assert(/frame-ancestors\s+'none'/i.test(cspHeader), '_headers CSP must keep frame-ancestors enforced by HTTP headers');
+assert(normalizeCsp(cspMeta) === normalizeDocumentComparableCsp(cspHeader), 'index.html CSP meta and _headers CSP must match except header-only directives');
+assert(/frame-ancestors\s+'none'(?:\s*;|$)/i.test(cspHeader), '_headers CSP must block framing with frame-ancestors');
+assert(!/frame-ancestors/i.test(cspMeta), 'index.html CSP meta must not include frame-ancestors because browsers ignore it in meta policies');
 assert(!/script-src[^;]*'unsafe-inline'/i.test(cspMeta), 'index.html CSP script-src must not allow unsafe-inline');
 assert(!/script-src[^;]*'unsafe-inline'/i.test(cspHeader), '_headers CSP script-src must not allow unsafe-inline');
 assert(!/style-src\s+[^;]*'unsafe-inline'/i.test(cspMeta), 'index.html CSP style-src must not allow unsafe-inline');
@@ -953,9 +1024,10 @@ for (const fileName of readdirSync(root, { withFileTypes: true })
     `${fileName} must not create inline style attributes, setAttribute("style"), or cssText under style-src-attr 'none'`
   );
 }
-for (const path of ['/', '/index.html', '/*.html', '/app*.js', '/styles*.css', '/star-paper-tokens.css', '/supabase.js', '/manifest.json', '/favicon.ico']) {
+for (const path of ['/', '/index.html', '/*.html', '/app*.js', '/styles*.css', '/star-paper-tokens.css', '/supabase.js', '/manifest.json']) {
   assertHeader(path, 'Cache-Control: no-cache, must-revalidate');
 }
+assert(!headers.includes('/favicon.ico'), '_headers must not keep a cache stanza for deleted root favicon.ico');
 assertHeader('/sw.js', 'Cache-Control: no-cache, no-store, must-revalidate');
 assertHeader('/assets/landing/*', 'Cache-Control: public, max-age=31536000, immutable');
 assertHeader('/assets/vendor/*', 'Cache-Control: public, max-age=31536000, immutable');
@@ -1015,6 +1087,7 @@ assert(/REVOKE\s+EXECUTE\s+ON\s+FUNCTION\s+public\.is_username_available\(TEXT\)
 assert(/GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.is_username_available\(TEXT\)\s+TO\s+authenticated/i.test(schema), 'schema.sql must keep authenticated is_username_available for profile edits');
 
 assert(schema.includes('CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA extensions;'), 'schema.sql must enable pgcrypto in the extensions schema for high-entropy invite codes');
+assert(schema.includes('ALTER EXTENSION "pgcrypto" SET SCHEMA extensions'), 'schema.sql must move an existing pgcrypto extension into extensions before schema-qualified invite-code calls');
 assert(schema.includes('public.generate_team_invite_code()'), 'schema.sql must use generate_team_invite_code for team invites');
 assert(schema.includes('extensions.gen_random_bytes(16)'), 'generate_team_invite_code must schema-qualify pgcrypto because Supabase installs pgcrypto under extensions');
 assert(!/substr\s*\(\s*md5\s*\(/i.test(schema), 'schema.sql must not use md5/substr invite-code generation');
@@ -1072,6 +1145,8 @@ assert(postApplyCanarySql.includes('canary.rollback_contained'), 'canary proof h
 assert(postApplyVerificationSql.includes('advisor.ai_context.rls_explicit_policy'), 'post-apply verification must prove ai_context has explicit RLS policy posture');
 assert(postApplyVerificationSql.includes('advisor.security_definer_rpc_surface'), 'post-apply verification must prove the SECURITY DEFINER RPC allowlist');
 assert(postApplyVerificationSql.includes('advisor.username_email_lookup_absent'), 'post-apply verification must prove username-to-email lookup remains absent');
+assert(migrationReadinessSql.includes('pgcrypto.extension_schema'), 'migration readiness SQL must warn when pgcrypto is installed outside extensions');
+assert(postApplyVerificationSql.includes('invite.pgcrypto.extension_schema'), 'post-apply verification must prove pgcrypto lives in the extensions schema');
 assert(/UPDATE\s+public\.team_members[\s\S]*SET\s+team_id\s*=/i.test(postApplyCanarySql), 'canary proof helper must actively probe team_members team_id reassignment');
 assert(/UPDATE\s+public\.team_members[\s\S]*SET\s+user_id\s*=/i.test(postApplyCanarySql), 'canary proof helper must actively probe team_members user_id reassignment');
 assert(/UPDATE\s+public\.team_members[\s\S]*SET\s+permissions\s*=/i.test(postApplyCanarySql), 'canary proof helper must actively probe team_members permission mismatch rejection');
@@ -1239,6 +1314,7 @@ for (const [fileName, text, budget] of [
   ['public-page-head.js', publicPageHead, { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
   ['public-page-theme.js', publicPageTheme, { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
   ['app.root-shell.js', rootShell, { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
+  ['app.offline-cache.js', read('app.offline-cache.js'), { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
   ['app.globe.js', globe, { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
   ['app.todayboard.js', todayBoard, { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
   ['app.handcraft.js', handcraft, { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
@@ -1281,15 +1357,7 @@ for (const asset of [
   'assets/landing/notebook-board-desktop.webp',
   'assets/landing/notebook-board-mobile.webp',
   'assets/landing/star-mark-gold.webp',
-  'star_paper_logo_pack/star_paper_32.png',
-  'star_paper_logo_pack/star_paper_64.png',
-  'star_paper_logo_pack/star_paper_128.png',
-  'star_paper_logo_pack/star_paper_256.png',
-  'star_paper_logo_pack/star_paper_512.png',
-  'star_paper_logo_pack/star_paper_1024.png',
-  'star_paper_logo_pack/star_paper_black.png',
-  'star_paper_logo_pack/star_paper_transparent.png',
-  'star_paper_logo_pack/star_paper_white.png',
+  ...brandLogoPackAssets,
 ]) {
   requiredFile(asset);
 }

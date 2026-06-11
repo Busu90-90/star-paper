@@ -3237,8 +3237,6 @@ body.light-theme .custom-select__option { color: #1b1b1b; }
     scrollbar-width: thin;
     scrollbar-color: rgba(212, 168, 67, 0.42) transparent;
     overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
 }
 .sp-global-sheet__empty {
     padding: 20px 4px;
@@ -7930,6 +7928,70 @@ body.sp-readonly [data-action="saveBBF"],
 body.sp-readonly [data-action="saveClosingThoughts"],
 body.sp-readonly [data-action="clearClosingThoughts"] {
     display: none !important;
+}
+
+/* UGX amount inputs: grouped digits align better as tabular figures */
+.sp-money-input { font-variant-numeric: tabular-nums; }
+
+/* At-a-Glance triage: 4 primary KPIs by default, the rest behind "More" */
+.dashboard-glance-grid:not(.dashboard-glance-grid--expanded) .mainstage-kpi--secondary {
+    display: none;
+}
+.glance-more-toggle {
+    display: block;
+    margin: 12px auto 0;
+    background: transparent;
+    border: 1px solid rgba(255, 179, 0, 0.28);
+    color: #FFB300;
+    padding: 6px 18px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.glance-more-toggle:hover { background: rgba(255, 179, 0, 0.12); }
+body.light-theme .glance-more-toggle {
+    border-color: rgba(138, 109, 26, 0.32);
+    color: #8a6d1a;
+}
+
+/* Offline read-only boot: stale-snapshot banner (see app.offline-cache.js) */
+.sp-offline-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 179, 0, 0.14);
+    border: 1px solid rgba(255, 179, 0, 0.32);
+    color: #FFB300;
+    padding: 10px 16px;
+    border-radius: 12px;
+    font-size: 13px;
+    margin: 0 0 16px;
+}
+.sp-offline-banner[hidden] { display: none; }
+.sp-offline-banner__icon { font-size: 18px; flex: none; }
+.sp-offline-banner__text { flex: 1 1 auto; min-width: 0; }
+.sp-offline-banner__refresh {
+    flex: none;
+    background: rgba(255, 179, 0, 0.16);
+    border: 1px solid rgba(255, 179, 0, 0.4);
+    color: #FFB300;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.sp-offline-banner__refresh:hover { background: rgba(255, 179, 0, 0.26); }
+body.light-theme .sp-offline-banner {
+    background: rgba(138, 109, 26, 0.12);
+    border-color: rgba(138, 109, 26, 0.28);
+    color: #8a6d1a;
+}
+body.light-theme .sp-offline-banner__refresh {
+    background: rgba(138, 109, 26, 0.12);
+    border-color: rgba(138, 109, 26, 0.34);
+    color: #8a6d1a;
 }
 
 .sp-team-panel { display: flex; flex-direction: column; gap: 0; }
