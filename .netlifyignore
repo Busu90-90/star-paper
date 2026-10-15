@@ -35,3 +35,4 @@ STAR_PAPER_DOCUMENTATION.md
 STATE_SCHEMA.md
 *.md
 schema.sql
+netlify/
