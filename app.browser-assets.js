@@ -89,9 +89,9 @@
     ['25', ['manifest.json']],
     ['35', ['styles.handcraft.css']],
     ['58', ['styles.css']],
-    ['90', ['supabase.js']],
-    ['144', ['app.js']],
-    ['190', ['sw.js']]
+    ['91', ['supabase.js']],
+    ['145', ['app.js']],
+    ['191', ['sw.js']]
   ];
 
   const assetVersions = {};

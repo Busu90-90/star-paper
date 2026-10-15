@@ -962,7 +962,7 @@ CREATE POLICY "Managers can update artists"
   )
   WITH CHECK (
     (team_id IS NULL AND owner_id = auth.uid()) OR
-    (team_id IS NOT NULL AND owner_id = auth.uid() AND public.has_team_permission(artists.team_id, 'edit'))
+    (team_id IS NOT NULL AND public.has_team_permission(artists.team_id, 'edit'))
   );
 
 DROP POLICY IF EXISTS "Managers can delete artists" ON public.artists;
@@ -1060,7 +1060,7 @@ CREATE POLICY "Managers can update bookings"
   )
   WITH CHECK (
     (team_id IS NULL AND owner_id = auth.uid()) OR
-    (team_id IS NOT NULL AND owner_id = auth.uid() AND public.has_team_permission(bookings.team_id, 'edit'))
+    (team_id IS NOT NULL AND public.has_team_permission(bookings.team_id, 'edit'))
   );
 
 DROP POLICY IF EXISTS "Managers can delete bookings" ON public.bookings;
@@ -1144,7 +1144,7 @@ CREATE POLICY "Managers can update expenses"
   )
   WITH CHECK (
     (team_id IS NULL AND owner_id = auth.uid()) OR
-    (team_id IS NOT NULL AND owner_id = auth.uid() AND public.has_team_permission(expenses.team_id, 'finance'))
+    (team_id IS NOT NULL AND public.has_team_permission(expenses.team_id, 'finance'))
   );
 
 DROP POLICY IF EXISTS "Managers can delete expenses" ON public.expenses;
@@ -1224,7 +1224,7 @@ CREATE POLICY "Managers can update other income"
   )
   WITH CHECK (
     (team_id IS NULL AND owner_id = auth.uid()) OR
-    (team_id IS NOT NULL AND owner_id = auth.uid() AND public.has_team_permission(other_income.team_id, 'finance'))
+    (team_id IS NOT NULL AND public.has_team_permission(other_income.team_id, 'finance'))
   );
 
 DROP POLICY IF EXISTS "Managers can delete other income" ON public.other_income;
@@ -1427,7 +1427,7 @@ CREATE POLICY "Managers can update audience metrics"
   )
   WITH CHECK (
     (team_id IS NULL AND owner_id = auth.uid()) OR
-    (team_id IS NOT NULL AND owner_id = auth.uid() AND public.has_team_permission(audience_metrics.team_id, 'edit'))
+    (team_id IS NOT NULL AND public.has_team_permission(audience_metrics.team_id, 'edit'))
   );
 
 DROP POLICY IF EXISTS "Managers can delete audience metrics" ON public.audience_metrics;
@@ -1646,7 +1646,7 @@ CREATE POLICY "Managers can update tasks"
   )
   WITH CHECK (
     (team_id IS NULL AND user_id = auth.uid()) OR
-    (team_id IS NOT NULL AND user_id = auth.uid() AND public.has_team_permission(tasks.team_id, 'edit'))
+    (team_id IS NOT NULL AND public.has_team_permission(tasks.team_id, 'edit'))
   );
 
 DROP POLICY IF EXISTS "Managers can delete tasks" ON public.tasks;
@@ -1738,6 +1738,19 @@ CREATE POLICY "Managers can delete closing thoughts"
 -- ============================================================
 -- TEAM MESSAGES (Chatroom)
 -- ============================================================
+-- ============================================================
+-- LEGACY CATCH-ALL POLICIES
+-- Early versions created FOR ALL policies that let any team member write any
+-- team row (and read finance rows) regardless of role. Policies are OR'ed, so
+-- they silently overrode the role-scoped policies below. Drop them explicitly.
+-- ============================================================
+DROP POLICY IF EXISTS "Users can access their own artists" ON public.artists;
+DROP POLICY IF EXISTS "Users can access their own bookings" ON public.bookings;
+DROP POLICY IF EXISTS "Users can access their own expenses" ON public.expenses;
+DROP POLICY IF EXISTS "Users can access their own other income" ON public.other_income;
+DROP POLICY IF EXISTS "Users manage own BBF" ON public.bbf_entries;
+DROP POLICY IF EXISTS "Users manage own revenue goals" ON public.revenue_goals;
+
 CREATE TABLE IF NOT EXISTS public.messages (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   team_id     UUID NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,

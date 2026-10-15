@@ -2885,6 +2885,17 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     return null;
   }
 
+  // A row's workspace columns are fixed once it exists: the database triggers
+  // reject any change to them. They are sent on insert only, so a teammate can
+  // edit a record someone else created without it looking like a reassignment.
+  const WORKSPACE_SCOPE_COLUMNS = ['owner_id', 'user_id', 'team_id'];
+
+  function withoutWorkspaceScope(row) {
+    const next = { ...row };
+    WORKSPACE_SCOPE_COLUMNS.forEach((column) => { delete next[column]; });
+    return next;
+  }
+
   async function saveScopedRows(table, rows, workspaceMeta, options = {}) {
     const sanitizedRows = (Array.isArray(rows) ? rows : [])
       .map(sanitizeUpsertRow)
@@ -2896,7 +2907,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     for (const row of sanitizedRows) {
       const existing = await findScopedRow(table, row, workspaceMeta, options);
       if (existing?.id) {
-        const { id: _ignoredId, ...updateRow } = row;
+        const { id: _ignoredId, ...updateRow } = withoutWorkspaceScope(row);
         let query = db.from(table)
           .update(updateRow)
           .eq('id', existing.id)
@@ -3439,8 +3450,29 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       .filter((row) => row.id && row.text);
     if (rows.length === 0) return;
     try {
-      const { error } = await db.from('tasks').upsert(rows, { onConflict: 'id' });
-      throwIfSupabaseError('Tasks save', error);
+      // Not an upsert: an upsert would rewrite user_id on tasks a teammate
+      // created, which the workspace trigger rejects.
+      const { data: existing, error: lookupError } = await applyScopeFilterForMeta(
+        db.from('tasks').select('id').in('id', rows.map((row) => row.id)),
+        'user_id',
+        workspaceMeta
+      );
+      throwIfSupabaseError('Tasks lookup', lookupError);
+      const existingIds = new Set((existing || []).map((row) => row.id));
+      const inserts = rows.filter((row) => !existingIds.has(row.id));
+      if (inserts.length) {
+        const { error } = await db.from('tasks').insert(inserts);
+        throwIfSupabaseError('Tasks insert', error);
+      }
+      for (const row of rows.filter((entry) => existingIds.has(entry.id))) {
+        const { id, created_at: _createdAt, ...update } = withoutWorkspaceScope(row);
+        const { error } = await applyScopeFilterForMeta(
+          db.from('tasks').update(update).eq('id', id),
+          'user_id',
+          workspaceMeta
+        );
+        throwIfSupabaseError('Tasks update', error);
+      }
     } catch (err) {
       warn('Tasks save failed:', err);
       throw err;

@@ -1025,6 +1025,20 @@ function getSectionIconMarkup(iconKey) {
             return fallback;
         }
 
+        // Reads the image a preview element actually holds. `img.src` cannot be
+        // used for this: after `img.src = ''` it reports the page's own URL, which
+        // then passes normalizeSafeImageSource and gets saved as a "receipt".
+        function readPreviewImageSource(elementId) {
+            const raw = String(document.getElementById(elementId)?.getAttribute('src') || '').trim();
+            if (!raw) return '';
+            try {
+                const resolved = new URL(raw, window.location.href);
+                const page = new URL(window.location.href);
+                if (resolved.origin === page.origin && resolved.pathname === page.pathname && !resolved.search) return '';
+            } catch (_err) {}
+            return normalizeSafeImageSource(raw);
+        }
+
         function validateImageUpload(file, { label = 'Image', maxBytes = SP_AVATAR_UPLOAD_MAX_BYTES } = {}) {
             if (!file) return false;
             if (!SP_ALLOWED_UPLOAD_IMAGE_TYPES.has(String(file.type || '').toLowerCase())) {
@@ -6563,7 +6577,7 @@ function showLoginForm(options = {}) {
             let previousExpenses = [];
             try {
                 previousExpenses = expenses.slice();
-                const receiptSrc = normalizeSafeImageSource(document.getElementById('receiptPreview').src) || null;
+                const receiptSrc = readPreviewImageSource('receiptPreview') || null;
                 const existingExpense = editingExpenseId ? expenses.find(e => isSameRecordId(e.id, editingExpenseId)) : null;
                 const isEdit = Boolean(editingExpenseId);
                 let expense = {
@@ -6848,7 +6862,7 @@ function showLoginForm(options = {}) {
             let previousOtherIncome = [];
             try {
                 previousOtherIncome = otherIncome.slice();
-                const proofSrc = normalizeSafeImageSource(document.getElementById('otherIncomeProofPreview').src) || null;
+                const proofSrc = readPreviewImageSource('otherIncomeProofPreview') || null;
                 const existingIncome = editingOtherIncomeId ? otherIncome.find(i => isSameRecordId(i.id, editingOtherIncomeId)) : null;
                 const isEdit = Boolean(editingOtherIncomeId);
                 let incomeItem = {
