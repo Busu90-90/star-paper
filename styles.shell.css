@@ -2364,9 +2364,7 @@ html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme 
   color: #991b1b;
 }
 
-html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #profileModal :is(input, textarea),
-html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #spAdminModal :is(input, select),
-html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #spCurrencyModal .sp-modal-content {
+html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #profileModal :is(input, textarea), html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #spAdminModal :is(input, select), html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #spCurrencyModal .sp-modal-content {
   border-color: var(--sp-shell-border);
 }
 

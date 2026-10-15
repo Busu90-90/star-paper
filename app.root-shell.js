@@ -121,6 +121,7 @@
     // The globe (Three.js + world atlas), premium and shell layers only serve the
     // signed-in app, so signed-out visitors never download them.
     whenAppShellActive(function() {
+      loadIconSheets();
       idle(function() { loadScript('globe').catch(function() {}); }, 1600);
       idle(function() {
         loadScript('premium')
@@ -129,6 +130,18 @@
       }, 1800);
     });
   };
+
+  // Fill + duotone Phosphor sheets (~320 KB of CSS) only style the signed-in app.
+  function loadIconSheets() {
+    ['assets/vendor/phosphor-icons/fill/style.css', 'assets/vendor/phosphor-icons/duotone/style.css'].forEach(function(path) {
+      var href = assetManifest().url(path);
+      if (document.querySelector('link[href="' + href + '"]')) return;
+      var link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = href;
+      document.head.appendChild(link);
+    });
+  }
 
   function whenAppShellActive(work) {
     var app = document.getElementById('appContainer');

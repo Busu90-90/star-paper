@@ -461,9 +461,10 @@ const reports = read('app.reports.js');
 const styles = read('styles.css');
 const premiumCss = read('styles.premium.css');
 const shellCss = read('styles.shell.css');
-const handcraftCss = read('styles.handcraft.css');
+const landingCss = read('styles.landing.css');
+const designTokensCss = read('sp-design-tokens.css');
 const tokensCss = read('star-paper-tokens.css');
-const handcraft = read('app.handcraft.js');
+const landing = read('app.landing.js');
 const sw = read('sw.js');
 const headers = read('_headers');
 const redirects = read('_redirects');
@@ -515,7 +516,8 @@ for (const [fileName, text] of [
   ['styles.css', styles],
   ['styles.premium.css', premiumCss],
   ['styles.shell.css', shellCss],
-  ['styles.handcraft.css', handcraftCss],
+  ['styles.landing.css', landingCss],
+  ['sp-design-tokens.css', designTokensCss],
   ['star-paper-tokens.css', tokensCss],
   ['_headers', headers],
   ['README.md', readme],
@@ -540,14 +542,25 @@ for (const [fileName, marker] of publicRootHtml) {
   assertNoForbiddenRuntimeDependency(fileName, html);
   assertExternalTagsHaveIntegrity(fileName, html);
   if (marker === 'public-landing') {
-    assert(html.includes('landing-snap-page landing-public-page'), `${fileName} must opt into public landing snap-page classes`);
+    assert(html.includes('class="lp lp--page" id="landingScreen"'), `${fileName} must render the shared design-system page shell`);
   }
 }
 
 const indexInlineScripts = [...index.matchAll(/<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/gi)].map((match) => match[0]);
 assert(indexInlineScripts.length === 0, `index.html must not ship inline script blocks; found ${indexInlineScripts.length}`);
 assert(!/<script[^>]*\btype=["']importmap["']/i.test(index), 'index.html must not ship an inline importmap');
-assert(index.includes('landing-home-page landing-snap-page'), 'index.html landing screen must opt into snap-page behavior');
+assert(index.includes('class="lp lp--home" id="landingScreen"'), 'index.html landing screen must use the design-system page shell');
+assert(index.includes('class="lp lp-auth" id="loginScreen"'), 'index.html auth screen must use the design-system auth shell');
+{
+  const signedOutMarkup = index.slice(index.indexOf('id="landingScreen"'), index.indexOf('id="confirmDeleteModal"'));
+  assert(!/\sstyle\s*=/.test(signedOutMarkup), 'index.html landing/auth markup must not ship inline style attributes');
+  assert(!/sp-csp-style-\d+/.test(signedOutMarkup), 'index.html landing/auth markup must use semantic classes, not sp-csp-style-N');
+  for (const id of ['loginForm', 'signupForm', 'forgotPasswordForm']) {
+    assert(new RegExp(`id="${id}"`).test(signedOutMarkup), `index.html auth markup missing #${id}`);
+  }
+}
+assert(!/\.style\.display\s*=/.test(app.slice(app.indexOf('function showAuthPanel('), app.indexOf('function clearForms('))), 'app.js auth panels must toggle with hidden, not style.display');
+assert(app.includes('screen.hidden = !isActive;'), 'app.js setActiveScreen must switch screens with the hidden attribute');
 assert(!/how-it-works\.html#landing-features/i.test(index), 'index.html must not route How It Works links to #landing-features');
 assert(index.includes(versionedAssetUrl('app.browser-assets.js')), `index.html must load ${versionedAssetUrl('app.browser-assets.js')}`);
 assert(index.includes(versionedAssetUrl('app.public-pages.js')), `index.html must load ${versionedAssetUrl('app.public-pages.js')}`);
@@ -608,7 +621,9 @@ assert(index.includes(versionedAssetUrl('app.boot-flags.js')), `index.html does 
 assert(index.includes(versionedAssetUrl('app.boot-body.js')), `index.html does not load ${versionedAssetUrl('app.boot-body.js')}`);
 assert(index.includes(versionedAssetUrl('app.todayboard.js')), `index.html does not load ${versionedAssetUrl('app.todayboard.js')}`);
 assert(index.includes(versionedAssetUrl('app.reports.js')), `index.html does not load ${versionedAssetUrl('app.reports.js')}`);
-assert(index.includes(versionedAssetUrl('app.handcraft.js')), `index.html does not load ${versionedAssetUrl('app.handcraft.js')}`);
+assert(index.includes(versionedAssetUrl('app.landing.js')), `index.html does not load ${versionedAssetUrl('app.landing.js')}`);
+assert(index.includes(versionedAssetUrl('styles.landing.css')), `index.html does not load ${versionedAssetUrl('styles.landing.css')}`);
+assert(index.includes(versionedAssetUrl('sp-design-tokens.css')), `index.html does not load ${versionedAssetUrl('sp-design-tokens.css')}`);
 assert(index.includes(versionedAssetUrl('styles.css')), `index.html does not load ${versionedAssetUrl('styles.css')}`);
 assert(index.includes(versionedAssetUrl('supabase.js')), `index.html does not load ${versionedAssetUrl('supabase.js')}`);
 assert(index.includes(versionedAssetUrl('manifest.json')), `index.html does not load ${versionedAssetUrl('manifest.json')}`);
@@ -624,18 +639,29 @@ for (const [fileName, marker] of publicRootHtml) {
   assert(!/style-src[^;]*'unsafe-inline'/i.test(documentCsp(html)), `${fileName} CSP style-src directives must not allow unsafe-inline`);
   assert(html.includes(versionedAssetUrl('public-page-head.js')), `${fileName} does not load ${versionedAssetUrl('public-page-head.js')}`);
   assert(html.includes(versionedAssetUrl('public-page-theme.js')), `${fileName} does not load ${versionedAssetUrl('public-page-theme.js')}`);
-  assert(html.includes(versionedAssetUrl('app.handcraft.js')), `${fileName} does not load ${versionedAssetUrl('app.handcraft.js')}`);
+  assert(html.includes(versionedAssetUrl('app.landing.js')), `${fileName} does not load ${versionedAssetUrl('app.landing.js')}`);
+  assert(html.includes(versionedAssetUrl('styles.landing.css')), `${fileName} does not load ${versionedAssetUrl('styles.landing.css')}`);
+  assert(!html.includes('styles.css?v='), `${fileName} must not load the app-shell stylesheet`);
 }
 assert(publicPageHead.includes("window.history.scrollRestoration = 'manual'"), 'public-page-head.js must disable browser scroll restoration for public landing pages');
 assert(publicPageHead.includes('publicSectionHashPattern'), 'public-page-head.js must strip public landing section hashes');
 assert(publicPageHead.includes('function resetPublicScrollTop()'), 'public-page-head.js must own public landing top-scroll reset');
 assert(publicPageHead.includes("window.addEventListener('pageshow', resetPublicScrollTop)"), 'public-page-head.js must reset public landing scroll on bfcache/pageshow restores');
-assert(handcraft.includes('function resetLandingScrollTop(landing)'), 'app.handcraft.js must reset landing scroll on handcraft mount');
-assert(handcraft.includes("landing.classList.contains('landing-snap-page')"), 'app.handcraft.js scroll progress must use #landingScreen when snap-page is active');
-assert(handcraftCss.includes('#landingScreen.landing-snap-page'), 'styles.handcraft.css must define the landing snap-page container contract');
-assert(handcraftCss.includes('scroll-snap-type: y mandatory'), 'styles.handcraft.css must enforce mandatory vertical landing snap');
-assert(handcraftCss.includes('scroll-snap-stop: always'), 'styles.handcraft.css must force full landing section stops');
-assert(handcraftCss.includes('height: 100dvh !important;'), 'styles.handcraft.css must constrain snap sections to the viewport height');
+assert(landing.includes("root.classList.contains('lp')"), 'app.landing.js must only mount on the design-system page shell');
+assert(!/\.style\b/.test(landing), 'app.landing.js must not write inline styles');
+assert(!/scroll-snap-type:\s*y\s+mandatory/.test(landingCss), 'styles.landing.css must not trap readers with mandatory scroll-snap');
+assert(landingCss.includes('@view-transition'), 'styles.landing.css must opt public pages into cross-document view transitions');
+assert(landingCss.includes('prefers-reduced-motion: reduce'), 'styles.landing.css must honour reduced motion');
+for (const token of ['--sp-stage', '--sp-gold', '--sp-violet', '--sp-in', '--sp-out', '--sp-font-display', '--sp-font-ui', '--sp-font-money', '--sp-text-4xl', '--sp-space-4', '--sp-radius-md', '--sp-ease-out']) {
+  assert(designTokensCss.includes(`${token}:`), `sp-design-tokens.css must define ${token}`);
+}
+assert(designTokensCss.includes('body.light-theme {'), 'sp-design-tokens.css must define the light theme');
+assert(rootShell.includes('whenAppShellActive('), 'app.root-shell.js must defer the globe/Three.js loader until the app shell is active');
+for (const legacy of ['app.handcraft.js', 'styles.handcraft.css', 'notebook-board', 'sp-compass', 'landing-snap-page']) {
+  for (const [fileName, text] of [['index.html', index], ['app.js', app], ['app.browser-assets.js', read('app.browser-assets.js')], ['styles.css', styles]]) {
+    assert(!text.includes(legacy), `${fileName} must not reference retired landing code: ${legacy}`);
+  }
+}
 assert(sw.includes('const AUTH_CALLBACK_CACHE_BYPASS_PARAMS = new Set(['), 'sw.js must define auth callback cache-bypass parameters');
 for (const param of ['access_token', 'refresh_token', 'code', 'state', 'token_type', 'error_description']) {
   assert(sw.includes(`"${param}"`), `sw.js auth callback cache bypass must include ${param}`);
@@ -991,11 +1017,14 @@ assert(!/script-src[^;]*'unsafe-inline'/i.test(cspMeta), 'index.html CSP script-
 assert(!/script-src[^;]*'unsafe-inline'/i.test(cspHeader), '_headers CSP script-src must not allow unsafe-inline');
 assert(!/style-src\s+[^;]*'unsafe-inline'/i.test(cspMeta), 'index.html CSP style-src must not allow unsafe-inline');
 assert(!/style-src\s+[^;]*'unsafe-inline'/i.test(cspHeader), '_headers CSP style-src must not allow unsafe-inline');
-for (const variant of ['regular', 'fill', 'duotone']) {
-  assert(
-    index.includes(versionedAssetUrl(`assets/vendor/phosphor-icons/${variant}/style.css`)),
-    `index.html must load ${versionedAssetUrl(`assets/vendor/phosphor-icons/${variant}/style.css`)}`
-  );
+assert(
+  index.includes(versionedAssetUrl('assets/vendor/phosphor-icons/regular/style.css')),
+  `index.html must load ${versionedAssetUrl('assets/vendor/phosphor-icons/regular/style.css')}`
+);
+// Fill + duotone (~320 KB CSS) serve only the signed-in app; app.root-shell.js loads them with it.
+for (const variant of ['fill', 'duotone']) {
+  assert(!index.includes(`phosphor-icons/${variant}/style.css`), `index.html must not block first paint on the ${variant} Phosphor sheet`);
+  assert(rootShell.includes(`'assets/vendor/phosphor-icons/${variant}/style.css'`), `app.root-shell.js must lazy-load the ${variant} Phosphor sheet`);
 }
 assert(/style-src\s+'self'(?:\s*;|$)/i.test(cspMeta), 'index.html CSP style-src must stay self-only');
 assert(/style-src\s+'self'(?:\s*;|$)/i.test(cspHeader), '_headers CSP style-src must stay self-only');
@@ -1255,8 +1284,6 @@ assert(todayBoard.includes('function createAlertItem(alert)'), 'app.todayboard.j
 assert(todayBoard.includes('container.replaceChildren(fragment)'), 'app.todayboard.js alert lists must replace DOM children without innerHTML');
 assert(todayBoard.includes('function normalizeAlertAction(action)'), 'app.todayboard.js alert actions must use an allowlist before dispatch');
 assert(!/data-alert-action="\$\{/.test(todayBoard), 'app.todayboard.js must not interpolate alert actions into HTML attributes');
-assert(handcraft.includes("var icon = document.createElement('i');"), 'app.handcraft.js arrow icons must be created as DOM nodes');
-assert(!/btn\.innerHTML\s*=/.test(handcraft), 'app.handcraft.js arrow controls must not inject icon HTML strings');
 assert(!/teams\(id,\s*name,\s*invite_code/i.test(supabase), 'supabase.js fallback team query must not select teams.invite_code directly');
 assert(supabase.includes('const inviteCode = /^[0-9a-f]{32}$/.test(rawInviteCode) ? rawInviteCode : null;'), 'supabase.js must display only valid admin-returned invite codes');
 assert(!/legacyTeamPanelMarkupRemoved/.test(supabase), 'supabase.js must not keep unused legacy team panel HTML with unaudited sinks');
@@ -1317,7 +1344,7 @@ for (const [fileName, text, budget] of [
   ['app.offline-cache.js', read('app.offline-cache.js'), { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
   ['app.globe.js', globe, { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
   ['app.todayboard.js', todayBoard, { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
-  ['app.handcraft.js', handcraft, { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
+  ['app.landing.js', landing, { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
   ['app.tasks.js', tasks, { innerHTML: 2, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
 ]) {
   assertCountAtMost(text, /\.innerHTML\s*(?:=|\+=)/g, budget.innerHTML, `${fileName} audited innerHTML sink budget`);
@@ -1354,9 +1381,12 @@ for (const asset of [
   'how-it-works.html',
   'proof.html',
   'testimonials.html',
-  'assets/landing/notebook-board-desktop.webp',
-  'assets/landing/notebook-board-mobile.webp',
-  'assets/landing/star-mark-gold.webp',
+  'favicon.svg',
+  'star_paper_logo_pack/star-paper-mark.svg',
+  'star_paper_logo_pack/star-paper-mark-small.svg',
+  'star_paper_logo_pack/star-paper-mono.svg',
+  'star_paper_logo_pack/star_paper_maskable_512.png',
+  'star_paper_logo_pack/star_paper_apple_180.png',
   ...brandLogoPackAssets,
 ]) {
   requiredFile(asset);

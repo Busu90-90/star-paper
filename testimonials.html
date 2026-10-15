@@ -5,157 +5,143 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="star-paper:public-root" content="public-landing">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:;">
-    <title>Star Paper Testimonials</title>
-    <script src="public-page-head.js?v=2"></script>
+    <title>Testimonials · Star Paper</title>
+    <meta name="description" content="What artist managers and label teams say after moving their operation into Star Paper.">
+    <meta name="theme-color" content="#0A0A0C">
+    <script src="public-page-head.js?v=3"></script>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg?v=1">
     <link rel="icon" type="image/png" sizes="32x32" href="star_paper_logo_pack/star_paper_32.png?v=4">
-    <link rel="icon" type="image/png" sizes="256x256" href="star_paper_logo_pack/star_paper_256.png?v=4">
-    <link rel="shortcut icon" type="image/png" href="star_paper_logo_pack/star_paper_32.png?v=4">
-    <link rel="apple-touch-icon" sizes="256x256" href="star_paper_logo_pack/star_paper_256.png?v=4">
+    <link rel="apple-touch-icon" sizes="180x180" href="star_paper_logo_pack/star_paper_apple_180.png?v=1">
+    <link rel="preload" href="assets/vendor/fonts/font-29-fraunces-latin-opsz-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="assets/vendor/fonts/font-31-inter-tight-latin-wght-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="assets/vendor/fonts/star-paper-fonts.css?v=2">
-    <link rel="stylesheet" href="styles.css?v=58">
-    <link rel="stylesheet" href="star-paper-tokens.css?v=21">
-    <link rel="stylesheet" href="styles.premium.css?v=8">
-    <link rel="stylesheet" href="styles.handcraft.css?v=35">
+    <link rel="stylesheet" href="sp-design-tokens.css?v=1">
+    <link rel="stylesheet" href="styles.landing.css?v=1">
     <link rel="stylesheet" href="assets/vendor/phosphor-icons/regular/style.css?v=1">
 </head>
-<body>
+<body class="lp-body-page">
     <script src="public-page-theme.js?v=1"></script>
-    <div class="landing-container sp-prem-landing-refine landing-snap-page landing-public-page" id="landingScreen">
-        <div class="landing-mini-nav" id="landingMiniNav" aria-hidden="true">
-            <a class="landing-mini-nav-brand" href="./index.html" aria-label="Go to Star Paper home">
-                <img src="star_paper_logo_pack/star_paper_128.png?v=4" srcset="star_paper_logo_pack/star_paper_128.png?v=4 1x, star_paper_logo_pack/star_paper_256.png?v=4 2x" alt="Star Paper" class="mini-nav-logo">
-                <span class="mini-nav-brand">STAR PAPER</span>
-            </a>
-            <a class="mini-nav-cta" href="./index.html?auth=signup">Get Started</a>
-        </div>
-
-        <div class="landing-hero-stage" id="landingHeroStage">
-            <div class="sp-prem-landing-mesh sp-prem-widget" aria-hidden="true">
-                <div class="sp-prem-orb sp-prem-orb--1"></div>
-                <div class="sp-prem-orb sp-prem-orb--2"></div>
-                <div class="sp-prem-orb sp-prem-orb--3"></div>
-            </div>
-            <div class="landing-card landing-mainstage-card landing-hero-shell">
-                <div class="landing-hero-rail">
-                    <div class="landing-shell-nav">
-                        <a class="landing-shell-brand" href="./index.html" aria-label="Go to Star Paper home">
-                            <img src="star_paper_logo_pack/star_paper_128.png?v=4" srcset="star_paper_logo_pack/star_paper_128.png?v=4 1x, star_paper_logo_pack/star_paper_256.png?v=4 2x" alt="Star Paper" class="landing-shell-logo" />
-                            <span class="landing-shell-brand-text">STAR PAPER</span>
-                        </a>
-                        <div class="landing-shell-nav-actions">
-                            <a class="landing-shell-login" href="./index.html">Home</a>
-                            <div class="landing-top-controls" data-inline="1">
-                                <button class="theme-toggle icon-toggle landing-theme-toggle" id="landingThemeToggle" type="button" aria-label="Toggle theme">
-                                    <i class="ph ph-moon" aria-hidden="true"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="landing-shell-body">
-                        <div class="landing-shell-hero sp-prem-hero-layout">
-                            <div class="sp-prem-hero-copy">
-                                <div class="landing-hero-intro">
-                                    <div class="landing-hero-medallion">
-                                        <img src="star_paper_logo_pack/star_paper_256.png?v=4" srcset="star_paper_logo_pack/star_paper_256.png?v=4 1x, star_paper_logo_pack/star_paper_512.png?v=4 2x" alt="Star Paper" class="landing-hero-medallion-logo" />
-                                    </div>
-                                    <div class="landing-shell-kicker">The Manager&apos;s Mainstage!</div>
-                                </div>
-                                <div class="landing-hero-page-label">Testimonials</div>
-                                <h1 class="landing-hero-heading" data-tw-static="1">
-                                    Hear what teams say after moving
-                                    <span class="landing-hero-highlight">artist operations</span>
-                                    into Star Paper.
-                                </h1>
-                                <p class="landing-hero-subtitle" data-tw-static="1">
-                                    A focused look at the managers and operators using one system for bookings, balances, and day-to-day coordination.
-                                </p>
-                            </div>
-                            <aside class="sp-hero-preview sp-hero-preview--chorus" aria-label="Voices from operators using Star Paper">
-                                <div class="sp-chorus">
-                                    <article class="sp-chorus__card" data-sp-chorus-idx="0">
-                                        <div class="sp-chorus__stars" aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-                                        <blockquote class="sp-chorus__quote">&ldquo;Bookings stopped slipping.&rdquo;</blockquote>
-                                        <div class="sp-chorus__attr"><span class="sp-chorus__monogram" aria-hidden="true">AB</span><span>Aggie B. &middot; Artist manager</span></div>
-                                    </article>
-                                    <article class="sp-chorus__card" data-sp-chorus-idx="1">
-                                        <div class="sp-chorus__stars" aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-                                        <blockquote class="sp-chorus__quote">&ldquo;One ledger. Whole team. No drift.&rdquo;</blockquote>
-                                        <div class="sp-chorus__attr"><span class="sp-chorus__monogram" aria-hidden="true">LO</span><span>Label ops lead &middot; East Africa</span></div>
-                                    </article>
-                                    <article class="sp-chorus__card" data-sp-chorus-idx="2">
-                                        <div class="sp-chorus__stars" aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-                                        <blockquote class="sp-chorus__quote">&ldquo;Replaced six spreadsheets.&rdquo;</blockquote>
-                                        <div class="sp-chorus__attr"><span class="sp-chorus__monogram" aria-hidden="true">TM</span><span>Tour manager &middot; Kampala</span></div>
-                                    </article>
-                                </div>
-                            </aside>
-                        </div>
-                    </div>
+    <div class="lp lp--page" id="landingScreen" data-page="testimonials">
+        <a class="lp-skip" href="#lpMain">Skip to content</a>
+        <!-- lp:header -->
+        <header class="lp-header" data-lp-header>
+            <div class="lp-header__bar">
+                <a class="lp-brand" href="./index.html" aria-label="Star Paper home">
+                    <img class="lp-brand__mark" src="star_paper_logo_pack/star-paper-mark.svg?v=1" alt="" width="36" height="36">
+                    <span class="lp-brand__word">Star Paper</span>
+                </a>
+                <nav class="lp-nav" aria-label="Primary">
+                    <a class="lp-nav__link" href="./how-it-works.html">How it works</a>
+                    <a class="lp-nav__link" href="./proof.html">Proof</a>
+                    <a class="lp-nav__link" href="./testimonials.html">Testimonials</a>
+                </nav>
+                <div class="lp-header__actions">
+                    <button class="lp-icon-btn" id="landingThemeToggle" type="button" aria-label="Switch to light mode"><i class="ph ph-moon" aria-hidden="true"></i></button>
+                    <a class="lp-btn lp-btn--quiet lp-btn--sm lp-only-wide" href="./index.html?auth=login">Sign in</a>
+                    <a class="lp-btn lp-btn--gold lp-btn--sm lp-hide-tiny" href="./index.html?auth=signup">Start free</a>
+                    <button class="lp-icon-btn lp-menu-btn" type="button" aria-expanded="false" aria-controls="lpMenu" aria-label="Open menu" data-lp-menu-toggle><i class="ph ph-list" aria-hidden="true"></i></button>
                 </div>
             </div>
-        </div>
-
-        <section class="landing-testimonials-section" aria-label="Manager testimonials">
-            <div class="landing-testimonials-head">
-                <div class="landing-section-kicker">Testimonials</div>
-                <h2 class="landing-testimonials-title">Trusted by teams running artists, bookings, and money in one place.</h2>
+            <div class="lp-sheet" id="lpMenu" hidden>
+                <nav class="lp-sheet__nav" aria-label="Menu">
+                    <a class="lp-sheet__link" href="./how-it-works.html">How it works <i class="ph ph-arrow-up-right" aria-hidden="true"></i></a>
+                    <a class="lp-sheet__link" href="./proof.html">Proof <i class="ph ph-arrow-up-right" aria-hidden="true"></i></a>
+                    <a class="lp-sheet__link" href="./testimonials.html">Testimonials <i class="ph ph-arrow-up-right" aria-hidden="true"></i></a>
+                </nav>
+                <div class="lp-sheet__actions">
+                    <a class="lp-btn lp-btn--ghost" href="./index.html?auth=login">Sign in</a>
+                    <a class="lp-btn lp-btn--gold" href="./index.html?auth=signup">Start free</a>
+                </div>
             </div>
-            <div class="landing-mobile-slider landing-mobile-slider--testimonials">
-                <div class="landing-testimonials-grid testimonials-container">
-                    <article class="landing-testimonial-card">
-                        <div class="landing-testimonial-mark" aria-hidden="true"><i class="ph ph-quotes"></i></div>
-                        <p class="landing-testimonial-quote">"Finally a tool that keeps my artists, bookings, and money in one place. I stopped using spreadsheets on day one."</p>
-                        <div class="landing-testimonial-meta">
-                            <div class="landing-testimonial-name">Aggie Best</div>
-                            <div class="landing-testimonial-role">Artist Manager, Kampala</div>
-                        </div>
-                    </article>
-                    <article class="landing-testimonial-card">
-                        <div class="landing-testimonial-mark" aria-hidden="true"><i class="ph ph-star-four"></i></div>
-                        <p class="landing-testimonial-quote">"Star Paper gives our team one clean view for bookings, balances, and artist updates without the usual back-and-forth."</p>
-                        <div class="landing-testimonial-meta">
-                            <div class="landing-testimonial-name">Label Operations Lead</div>
-                            <div class="landing-testimonial-role">Independent Label Team, East Africa</div>
-                        </div>
-                    </article>
-                    <article class="landing-testimonial-card">
-                        <div class="landing-testimonial-mark" aria-hidden="true"><i class="ph ph-seal-check"></i></div>
-                        <p class="landing-testimonial-quote">"The dashboard makes revenue, schedules, and outstanding balances feel coordinated instead of scattered across separate tools."</p>
-                        <div class="landing-testimonial-meta">
-                            <div class="landing-testimonial-name">Talent Coordinator</div>
-                            <div class="landing-testimonial-role">Live Events Coordination, Kampala</div>
-                        </div>
-                    </article>
+        </header>
+        <!-- /lp:header -->
+
+        <main class="lp-main" id="lpMain">
+            <section class="lp-page-hero" aria-labelledby="lpPageTitle">
+                <div class="lp-page-hero__copy">
+                    <p class="lp-eyebrow"><span class="lp-eyebrow__dot" aria-hidden="true"></span>Testimonials</p>
+                    <h1 class="lp-display" id="lpPageTitle">Managers who <em>stopped chasing.</em></h1>
+                    <p class="lp-lede">The managers and operators running bookings, balances and day-to-day coordination from one system.</p>
+                </div>
+                <svg class="lp-spot" viewBox="0 0 380 320" role="img" aria-label="A five-star review bubble beside a stage microphone" focusable="false">
+                    <g class="lp-spot__float">
+                        <path class="lp-spot__card" d="M40 30 H330 a20 20 0 0 1 20 20 V170 a20 20 0 0 1 -20 20 H150 l-40 34 v-34 H40 a20 20 0 0 1 -20 -20 V50 a20 20 0 0 1 20 -20 Z" stroke-width="1"/>
+                        <g class="lp-spot__gold"><path d="M58 60 l5 10 11 1.6 -8 7.8 1.9 11 -9.9 -5.2 -9.9 5.2 1.9 -11 -8 -7.8 11 -1.6 Z"/><path d="M90 60 l5 10 11 1.6 -8 7.8 1.9 11 -9.9 -5.2 -9.9 5.2 1.9 -11 -8 -7.8 11 -1.6 Z"/><path d="M122 60 l5 10 11 1.6 -8 7.8 1.9 11 -9.9 -5.2 -9.9 5.2 1.9 -11 -8 -7.8 11 -1.6 Z"/><path d="M154 60 l5 10 11 1.6 -8 7.8 1.9 11 -9.9 -5.2 -9.9 5.2 1.9 -11 -8 -7.8 11 -1.6 Z"/><path d="M186 60 l5 10 11 1.6 -8 7.8 1.9 11 -9.9 -5.2 -9.9 5.2 1.9 -11 -8 -7.8 11 -1.6 Z"/></g>
+                        <text class="lp-spot__display lp-spot__ink" x="48" y="132" font-size="22">“Replaced six</text>
+                        <text class="lp-spot__display lp-spot__ink" x="48" y="160" font-size="22">spreadsheets.”</text>
+                    </g>
+                    <g class="lp-spot__float lp-spot__float--slow">
+                        <rect class="lp-spot__card lp-spot__card--alt" x="276" y="150" width="52" height="78" rx="26"/>
+                        <g class="lp-spot__ink-2"><rect x="286" y="168" width="32" height="3" rx="1.5"/><rect x="286" y="178" width="32" height="3" rx="1.5"/><rect x="286" y="188" width="32" height="3" rx="1.5"/><rect x="286" y="198" width="32" height="3" rx="1.5"/></g>
+                        <rect class="lp-spot__gold" x="296" y="228" width="12" height="62" rx="4"/>
+                        <rect class="lp-spot__violet" x="268" y="290" width="68" height="10" rx="5"/>
+                    </g>
+                </svg>
+            </section>
+            <section class="lp-section" aria-labelledby="lpQuotesTitle">
+                <header class="lp-section__head" data-lp-reveal>
+                    <p class="lp-eyebrow">From the managers</p>
+                    <h2 class="lp-h2" id="lpQuotesTitle">Trusted by teams running <em>artists and money.</em></h2>
+                </header>
+                <div class="lp-quotes">
+                    <figure class="lp-quote-card" data-lp-reveal>
+                        <p class="lp-stars" aria-label="5 out of 5 stars"><span aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span></p>
+                        <blockquote class="lp-quote__text">Finally a tool that keeps my artists, bookings, and money in one place. I stopped using spreadsheets on day one.</blockquote>
+                        <figcaption class="lp-quote__who"><span class="lp-avatar lp-avatar--lg" aria-hidden="true">AB</span><span><strong>Aggie Best</strong><span>Artist manager, Kampala</span></span></figcaption>
+                    </figure>
+                    <figure class="lp-quote-card" data-lp-reveal>
+                        <p class="lp-stars" aria-label="5 out of 5 stars"><span aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span></p>
+                        <blockquote class="lp-quote__text">Star Paper gives our team one clean view for bookings, balances, and artist updates without the usual back-and-forth.</blockquote>
+                        <figcaption class="lp-quote__who"><span class="lp-avatar lp-avatar--lg lp-avatar--violet" aria-hidden="true">LO</span><span><strong>Label operations lead</strong><span>Independent label, East Africa</span></span></figcaption>
+                    </figure>
+                    <figure class="lp-quote-card" data-lp-reveal>
+                        <p class="lp-stars" aria-label="5 out of 5 stars"><span aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span></p>
+                        <blockquote class="lp-quote__text">The dashboard makes revenue, schedules, and outstanding balances feel coordinated instead of scattered across separate tools.</blockquote>
+                        <figcaption class="lp-quote__who"><span class="lp-avatar lp-avatar--lg lp-avatar--green" aria-hidden="true">TC</span><span><strong>Talent coordinator</strong><span>Live events, Kampala</span></span></figcaption>
+                    </figure>
+                </div>
+            </section>
+
+            <section class="lp-trust" aria-label="In short">
+                <p class="lp-trust__label">In their words</p>
+                <ul class="lp-trust__list">
+                    <li><i class="ph ph-quotes" aria-hidden="true"></i>Bookings stopped slipping</li>
+                    <li><i class="ph ph-quotes" aria-hidden="true"></i>One ledger, whole team</li>
+                    <li><i class="ph ph-quotes" aria-hidden="true"></i>Replaced six spreadsheets</li>
+                </ul>
+            </section>
+        <section class="lp-cta" aria-labelledby="lpCtaTitle">
+            <div class="lp-cta__inner" data-lp-reveal>
+                <img class="lp-cta__mark" src="star_paper_logo_pack/star-paper-mark.svg?v=1" alt="" width="72" height="72">
+                <h2 class="lp-h2" id="lpCtaTitle">Your next show deserves <em>a cleaner ledger.</em></h2>
+                <p class="lp-lede">Free to start. Bring your first artist on board today.</p>
+                <div class="lp-cta-row lp-cta-row--center">
+                    <a class="lp-btn lp-btn--gold lp-btn--lg" href="./index.html?auth=signup">Start free <i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+                    <a class="lp-btn lp-btn--ghost lp-btn--lg" href="./how-it-works.html">How it works <i class="ph ph-arrow-right" aria-hidden="true"></i></a>
                 </div>
             </div>
         </section>
+        </main>
 
-        <section class="sp-prem-final-cta sp-prem-widget" id="landingFinalCta" aria-label="Get started with Star Paper">
-            <div class="sp-prem-final-cta__inner">
-                <div class="landing-section-kicker">Ready When You Are</div>
-                <h2 class="sp-prem-final-cta__title">Ready to run your artist operation from one place?</h2>
-                <div class="sp-prem-final-cta__actions">
-                    <a class="landing-btn" href="./index.html?auth=signup" data-sp-prem-pulse="gold">Get Started &rarr;</a>
-                    <a class="landing-btn landing-btn--ghost landing-btn--how" href="./how-it-works.html">
-                        <span>How It Works</span>
-                        <i class="ph ph-arrow-right" aria-hidden="true"></i>
-                    </a>
-                </div>
+        <!-- lp:footer -->
+        <footer class="lp-footer">
+            <div class="lp-footer__top">
+                <a class="lp-brand" href="./index.html" aria-label="Star Paper home">
+                    <img class="lp-brand__mark" src="star_paper_logo_pack/star-paper-mark.svg?v=1" alt="" width="36" height="36">
+                    <span class="lp-brand__word">Star Paper</span>
+                </a>
+                <p class="lp-footer__tag">The manager&rsquo;s mainstage for bookings, money and teams.</p>
+                <nav class="lp-footer__nav" aria-label="Footer">
+                    <a href="./how-it-works.html">How it works</a>
+                    <a href="./proof.html">Proof</a>
+                    <a href="./testimonials.html">Testimonials</a>
+                </nav>
             </div>
-        </section>
-
-        <footer class="sp-prem-landing-footer sp-prem-widget" aria-label="Star Paper landing footer">
-            <a class="sp-prem-landing-footer__brand" href="./index.html" aria-label="Go to Star Paper home">
-                <img src="star_paper_logo_pack/star_paper_128.png?v=4" srcset="star_paper_logo_pack/star_paper_128.png?v=4 1x, star_paper_logo_pack/star_paper_256.png?v=4 2x" alt="Star Paper" class="sp-prem-landing-footer__logo" />
-                <div>
-                    <div class="sp-prem-landing-footer__name">STAR PAPER</div>
-                    <div class="sp-prem-landing-footer__meta">&copy; 2026 Star Paper</div>
-                </div>
-            </a>
+            <p class="lp-footer__legal">&copy; 2026 Star Paper &middot; Made in Kampala</p>
         </footer>
+        <!-- /lp:footer -->
     </div>
 
-    <script src="app.handcraft.js?v=20" defer></script>
+    <script src="app.landing.js?v=1" defer></script>
 </body>
 </html>

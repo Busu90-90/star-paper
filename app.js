@@ -1254,7 +1254,8 @@ function getSectionIconMarkup(iconKey) {
                 'star_paper_1024.png',
                 'star_paper_transparent.png',
                 'star_paper_black.png',
-                'star_paper_white.png'
+                'star_paper_white.png',
+                'star-paper-mark'
             ].some((token) => value.includes(token));
         }
 
@@ -2417,23 +2418,6 @@ function getSectionIconMarkup(iconKey) {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             });
 
-            // ── Landing: sticky mini-nav on scroll ────────────────────
-            const landingEl = document.getElementById('landingScreen');
-            const miniNav   = document.getElementById('landingMiniNav');
-            if (landingEl && miniNav) {
-                const heroStage = document.getElementById('landingHeroStage');
-                const updateMiniNav = () => {
-                    const threshold = heroStage
-                        ? Math.max(220, Math.round(heroStage.offsetHeight * 0.45))
-                        : 260;
-                    const show = landingEl.scrollTop > threshold;
-                    miniNav.classList.toggle('visible', show);
-                    miniNav.setAttribute('aria-hidden', String(!show));
-                };
-                landingEl.addEventListener('scroll', updateMiniNav, { passive: true });
-                window.addEventListener('resize', updateMiniNav, { passive: true });
-                updateMiniNav();
-            }
             document.getElementById('landingThemeToggle')?.addEventListener('click', toggleTheme);
             document.getElementById('sidebarLightBtn')?.addEventListener('click', () => setTheme('light'));
             document.getElementById('sidebarDarkBtn')?.addEventListener('click', () => setTheme('dark'));
@@ -10554,156 +10538,6 @@ function showLoginForm(options = {}) {
 
         })();
 
-        (function initTypewriter() {
-            const heading = document.querySelector('#landingScreen .landing-hero-heading');
-            if (heading && !heading.dataset.twDone) {
-                heading.dataset.twDone = '1';
-                const textNodes = [];
-                const walker = document.createTreeWalker(
-                    heading,
-                    NodeFilter.SHOW_TEXT,
-                    {
-                        acceptNode(node) {
-                            return node.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
-                        }
-                    }
-                );
-                while (walker.nextNode()) textNodes.push(walker.currentNode);
-
-                let wordIndex = 0;
-                textNodes.forEach(node => {
-                    const parts = node.nodeValue.split(/(\s+)/);
-                    const fragment = document.createDocumentFragment();
-                    parts.forEach(part => {
-                        if (!part) return;
-                        if (/^\s+$/.test(part)) {
-                            fragment.appendChild(document.createTextNode(part));
-                            return;
-                        }
-                        const word = document.createElement('span');
-                        word.className = 'tw-word';
-                        word.style.setProperty('--tw-word-delay', `${(wordIndex * 0.08).toFixed(2)}s`);
-                        word.textContent = part;
-                        fragment.appendChild(word);
-                        wordIndex += 1;
-                    });
-                    node.parentNode.replaceChild(fragment, node);
-                });
-            }
-
-            const subtitle = document.querySelector('#landingScreen .landing-hero-subtitle');
-            if (!subtitle || subtitle.dataset.twRotatorDone) return;
-            // Pages can opt out of the rotating typewriter by marking the
-            // subtitle with data-tw-static="1". Used on the home page so the
-            // headline reads as a single confident anchor instead of cycling.
-            if (subtitle.dataset.twStatic === '1') return;
-            subtitle.dataset.twRotatorDone = '1';
-
-            const originalText = subtitle.textContent.trim();
-            const lines = [
-                originalText,
-                'Switch between artists, bookings, and payouts without losing context.',
-                'Track revenue, expenses, and balances from one live operational view.',
-                'Keep every artist profile, deadline, and decision in one manager mainstage.'
-            ].filter(Boolean);
-            const uniqueLines = Array.from(new Set(lines));
-            if (!uniqueLines.length) return;
-
-            const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            if (prefersReducedMotion) {
-                subtitle.textContent = originalText;
-                return;
-            }
-
-            // ── Cursor-safe structure: text lives in a <span>, cursor is a sibling <i>
-            // We NEVER overwrite subtitle.innerHTML so the cursor element persists.
-            subtitle.classList.add('landing-hero-subtitle--typing');
-            subtitle.innerHTML = '<span class="tw-text"></span><i class="ph ph-cursor-text tw-cursor" aria-hidden="true"></i>';
-            const textEl   = subtitle.querySelector('.tw-text');
-
-            function setStableSubtitleHeight() {
-                if (!textEl || !subtitle.isConnected) return;
-                const probe = document.createElement('span');
-                probe.className = 'tw-text';
-                probe.setAttribute('aria-hidden', 'true');
-                probe.style.position = 'absolute';
-                probe.style.visibility = 'hidden';
-                probe.style.pointerEvents = 'none';
-                probe.style.left = '0';
-                probe.style.right = '0';
-                probe.style.top = '0';
-                probe.style.display = 'block';
-                probe.style.width = '100%';
-                probe.style.whiteSpace = 'normal';
-                subtitle.appendChild(probe);
-
-                let maxHeight = 0;
-                uniqueLines.forEach(line => {
-                    probe.textContent = line;
-                    maxHeight = Math.max(maxHeight, Math.ceil(probe.getBoundingClientRect().height));
-                });
-                probe.remove();
-
-                const computed = window.getComputedStyle(subtitle);
-                const lineHeight = Number.parseFloat(computed.lineHeight) || 24;
-                subtitle.style.setProperty('--tw-subtitle-min-height', `${Math.max(maxHeight, Math.ceil(lineHeight * 2))}px`);
-            }
-
-            let lineIndex = 0;
-            let charIndex = 0;
-            let deleting  = false;
-
-            const TYPE_SPEED   = 34;
-            const DELETE_SPEED = 20;
-            const HOLD_DELAY   = 1500;
-            const SWITCH_DELAY = 320;
-
-            function schedule(delay) {
-                setTimeout(tick, delay);
-            }
-
-            setStableSubtitleHeight();
-            let resizeTimer = null;
-            window.addEventListener('resize', () => {
-                window.clearTimeout(resizeTimer);
-                resizeTimer = window.setTimeout(setStableSubtitleHeight, 120);
-            }, { passive: true });
-
-            function tick() {
-                const landing = document.getElementById('landingScreen');
-                if (!landing || landing.style.display === 'none') {
-                    schedule(260);
-                    return;
-                }
-
-                const fullText = uniqueLines[lineIndex];
-                if (!deleting) {
-                    charIndex = Math.min(fullText.length, charIndex + 1);
-                    textEl.textContent = fullText.slice(0, charIndex);
-                    if (charIndex >= fullText.length) {
-                        deleting = true;
-                        schedule(HOLD_DELAY);
-                        return;
-                    }
-                    schedule(TYPE_SPEED + Math.random() * 18);
-                    return;
-                }
-
-                charIndex = Math.max(0, charIndex - 1);
-                textEl.textContent = fullText.slice(0, charIndex);
-                if (charIndex === 0) {
-                    deleting = false;
-                    lineIndex = (lineIndex + 1) % uniqueLines.length;
-                    schedule(SWITCH_DELAY);
-                    return;
-                }
-                schedule(DELETE_SPEED);
-            }
-
-            // charIndex starts at 0 — tick() will type from empty naturally
-            tick();
-        })();
-
         // ── Collapsible sidebar (desktop ≥1025px) ────────────────────────────
         (function initSidebarCollapse() {
             const STORAGE_KEY = 'sp_sidebar_collapsed';
@@ -10795,49 +10629,3 @@ function showLoginForm(options = {}) {
             });
         }
 
-/* ------------------------------------------------------------
-   Landing notebook ink-reveal (B6c) — additive, no critical-path
-   dependency. Runs at DOMContentLoaded, honours reduced motion,
-   and is a no-op if the notebook isn't on the page.
-   ------------------------------------------------------------ */
-(function initNotebookMainstage() {
-    function flagHomePage() {
-        // B7b: tag #landingScreen as the home page so the no-scroll grid kicks in.
-        // Only the home (index.html) renders both the hero stage and #landingScreen.
-        var screen = document.getElementById('landingScreen');
-        var stage = document.querySelector('.landing-hero-stage');
-        if (screen && stage) {
-            screen.classList.add('landing-home-page');
-        }
-    }
-    function reveal() {
-        flagHomePage();
-        var notebook = document.querySelector('#landingScreen .landing-notebook');
-        if (!notebook) return;
-        var entries = notebook.querySelectorAll('.landing-notebook__entry');
-        if (!entries.length) return;
-        var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        if (prefersReducedMotion || typeof IntersectionObserver !== 'function') {
-            notebook.classList.add('is-revealed-all');
-            // Tag entries inked synchronously so per-entry rotation transform applies.
-            Array.prototype.forEach.call(entries, function (entry) { entry.classList.add('is-inked'); });
-            return;
-        }
-        var io = new IntersectionObserver(function (records) {
-            records.forEach(function (record) {
-                if (!record.isIntersecting) return;
-                io.unobserve(record.target);
-                // Stagger reveal: 90ms each (faster for 22 entries vs original 140ms x 5).
-                Array.prototype.forEach.call(entries, function (entry, index) {
-                    setTimeout(function () { entry.classList.add('is-inked'); }, 90 * index);
-                });
-            });
-        }, { threshold: 0.2 });
-        io.observe(notebook);
-    }
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', reveal, { once: true });
-    } else {
-        reveal();
-    }
-})();

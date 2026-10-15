@@ -56,9 +56,4 @@
     resetPublicScrollTop();
   }
 
-  try {
-    if (localStorage.getItem('sp_handcraft_off') === '1' || localStorage.getItem('sp_prem_off') === '1') {
-      document.documentElement.classList.add('sp-handcraft-off');
-    }
-  } catch (_err) {}
 })();

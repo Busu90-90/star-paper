@@ -91,7 +91,7 @@ test('frontend image and CTA sinks are constrained before rendering', () => {
   const todayBoard = read('./app.todayboard.js');
   const globe = read('./app.globe.js');
   const reports = read('./app.reports.js');
-  const handcraft = read('./app.handcraft.js');
+  const landing = read('./app.landing.js');
 
   assert.match(app, /const EMPTY_STATE_ACTIONS = \{/);
   assert.doesNotMatch(app, /onclick="\$\{ctaAction\}"/);
@@ -141,9 +141,8 @@ test('frontend image and CTA sinks are constrained before rendering', () => {
   assert.match(todayBoard, /container\.replaceChildren\(fragment\)/);
   assert.doesNotMatch(todayBoard, /\.innerHTML\s*(?:=|\+=)/);
   assert.doesNotMatch(todayBoard, /data-alert-action="\$\{/);
-  assert.match(handcraft, /var icon = document\.createElement\('i'\);/);
-  assert.doesNotMatch(handcraft, /btn\.innerHTML\s*=/);
-  assert.doesNotMatch(handcraft, /\.innerHTML\s*(?:=|\+=)/);
+  assert.doesNotMatch(landing, /\.innerHTML\s*(?:=|\+=)|insertAdjacentHTML/);
+  assert.doesNotMatch(landing, /\.style\b/);
   assert.match(globe, /addButton\.dataset\.globeAction = 'add-booking';/);
   assert.match(globe, /function textElement\(tagName, text\)/);
   assert.match(globe, /this\.pinCard\.replaceChildren\(/);
