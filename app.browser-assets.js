@@ -67,12 +67,12 @@
     ['1', ['app.offline-cache.js']],
     ['2', ['app.todayboard.js']],
     ['3', ['public-page-head.js']],
-    ['16', ['app.browser-assets.js']],
+    ['17', ['app.browser-assets.js']],
+    ['2', ['styles.landing.css']],
     ['4', ['app.root-shell.js']],
     ['2', ['assets/vendor/fonts/star-paper-fonts.css']],
     ['1', [
       'sp-design-tokens.css',
-      'styles.landing.css',
       'app.landing.js',
       'favicon.svg',
       'star_paper_logo_pack/star-paper-mark.svg',
@@ -105,7 +105,7 @@
     ['59', ['styles.css']],
     ['92', ['supabase.js']],
     ['146', ['app.js']],
-    ['192', ['sw.js']]
+    ['193', ['sw.js']]
   ];
 
   const assetVersions = {};

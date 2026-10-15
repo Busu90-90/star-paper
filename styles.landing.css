@@ -889,6 +889,30 @@ body.light-theme .lp-header.is-open {
   color: #C9C2B4;
 }
 
+/* Phones: the chips leave the rig and sit in a row under the card. */
+@media (max-width: 599px) {
+  .lp-stage {
+    display: grid;
+    gap: var(--sp-space-3);
+    padding-bottom: var(--sp-space-6);
+  }
+
+  .lp-ledger {
+    width: 100%;
+  }
+
+  .lp-chip {
+    position: static;
+    max-width: none;
+    justify-self: stretch;
+    animation: none;
+  }
+
+  .lp-chip--music {
+    order: 2;
+  }
+}
+
 /* On paper, the stage keeps its lights off-white so the art still reads as a show. */
 body.light-theme .lp-stage::before {
   content: '';
@@ -1740,26 +1764,22 @@ body.light-theme .lp-auth__loading { background: rgb(246 241 230 / 0.85); }
 
 .lp-footer {
   display: grid;
-  gap: var(--sp-space-8);
+  gap: var(--sp-space-6);
+  justify-items: center;
   padding-block: var(--sp-space-12) var(--sp-space-8);
   border-top: 1px solid var(--sp-line);
+  text-align: center;
 }
 
 .lp-footer__top {
   display: grid;
   gap: var(--sp-space-4);
-}
-
-@media (min-width: 760px) {
-  .lp-footer__top {
-    grid-template-columns: auto 1fr auto;
-    align-items: center;
-    gap: var(--sp-space-8);
-  }
+  justify-items: center;
 }
 
 .lp-footer__tag {
-  max-width: 40ch;
+  max-width: 52ch;
+  text-wrap: balance;
   font-size: var(--sp-text-sm);
   color: var(--sp-ink-3);
 }
@@ -1767,6 +1787,7 @@ body.light-theme .lp-auth__loading { background: rgb(246 241 230 / 0.85); }
 .lp-footer__nav {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: var(--sp-space-2) var(--sp-space-6);
   font-size: var(--sp-text-sm);
   color: var(--sp-ink-2);
