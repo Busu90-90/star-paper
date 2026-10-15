@@ -141,6 +141,7 @@
       ];
       qsa(scopes.join(',')).forEach(function (node) {
         if (!node.classList) return;
+        if (node.closest && node.closest('.lp')) return;
         var hasIcon = node.querySelector && node.querySelector('.ph, .ph-fill, .ph-duotone');
         if (hasIcon || (node.classList && node.classList.contains('ph'))) {
           node.classList.add('sp-prem-icon-hover');
@@ -583,6 +584,8 @@
       if (isLowEndDevice()) return;
       var landing = qs('#landingScreen');
       if (!landing) return;
+      // The redesigned signed-out pages (.lp) own their own stage lighting.
+      if (landing.classList.contains('lp')) return;
       if (qs('.landing-walkthrough-section', landing)) return;
       if (qs('.sp-prem-landing-mesh', landing)) return;
       var mesh = createEl('div', { class: 'sp-prem-landing-mesh sp-prem-widget', 'aria-hidden': 'true' });

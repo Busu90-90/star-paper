@@ -34,7 +34,7 @@ function initScrollAnimations() {
     document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
 }
 
-const STAR_PAPER_IMAGE_FALLBACK = './star_paper_logo_pack/star_paper_128.png?v=3';
+const STAR_PAPER_IMAGE_FALLBACK = './star_paper_logo_pack/star_paper_128.png?v=4';
 
 function applyBrandImageFallback(img) {
     if (!img || img.dataset.spBrandFallbackApplied === '1') return;
@@ -1236,7 +1236,7 @@ function getSectionIconMarkup(iconKey) {
 
         function resolveDisplayAvatar(user) {
             const raw = String(user?.avatar || '').trim();
-            if (!raw) return './star_paper_logo_pack/star_paper_128.png?v=3';
+            if (!raw) return './star_paper_logo_pack/star_paper_128.png?v=4';
             const safeImage = normalizeSafeImageSource(raw);
             if (safeImage) return safeImage;
             return avatarDataUriFromSymbol(raw);
@@ -3899,6 +3899,18 @@ function getSectionIconMarkup(iconKey) {
             }
         }
 
+// One auth panel is visible at a time; the screen's data-panel drives the art side.
+function showAuthPanel(panel) {
+            const panels = { login: 'loginForm', signup: 'signupForm', forgot: 'forgotPasswordForm' };
+            Object.entries(panels).forEach(([name, id]) => {
+                const form = document.getElementById(id);
+                if (form) form.hidden = name !== panel;
+            });
+            const screen = document.getElementById('loginScreen');
+            if (screen) screen.dataset.panel = panel;
+        }
+        window.showAuthPanel = showAuthPanel;
+
 function showLoginForm(options = {}) {
             resetCloudSaveInFlightFlags('show-login');
             const instantPublicReveal = !options.flowId && shouldUseInstantPublicReveal(options);
@@ -3907,9 +3919,7 @@ function showLoginForm(options = {}) {
                 : (options.flowId || beginBootTransition('show-login', 'auth-required'));
             // Lock body scroll while the auth screen is open.
             document.body.classList.add('sp-auth-open');
-            document.getElementById('loginForm').style.display = 'block';
-            document.getElementById('signupForm').style.display = 'none';
-            document.getElementById('forgotPasswordForm').style.display = 'none';
+            showAuthPanel('login');
             const h = document.getElementById('loginBoxHeading');
             const s = document.getElementById('loginBoxSubtext');
             if (h) h.textContent = 'Welcome back to Star Paper';
@@ -3935,9 +3945,7 @@ function showLoginForm(options = {}) {
                 : (options.flowId || beginBootTransition('show-signup', 'auth-required'));
             // Lock body scroll while the auth screen is open.
             document.body.classList.add('sp-auth-open');
-            document.getElementById('signupForm').style.display = 'block';
-            document.getElementById('loginForm').style.display = 'none';
-            document.getElementById('forgotPasswordForm').style.display = 'none';
+            showAuthPanel('signup');
             const h = document.getElementById('loginBoxHeading');
             const s = document.getElementById('loginBoxSubtext');
             if (h) h.textContent = 'Welcome to Star Paper';
@@ -8577,8 +8585,8 @@ function showLoginForm(options = {}) {
                     if (reg) {
                         reg.showNotification(title, {
                             body,
-                            icon: './star_paper_logo_pack/star_paper_transparent.png?v=3',
-                            badge: './star_paper_logo_pack/star_paper_transparent.png?v=3'
+                            icon: './star_paper_logo_pack/star_paper_transparent.png?v=4',
+                            badge: './star_paper_logo_pack/star_paper_transparent.png?v=4'
                         });
                     } else {
                         new Notification(title, { body });
@@ -8995,7 +9003,8 @@ function showLoginForm(options = {}) {
                 const screen = document.getElementById(screenId);
                 if (!screen) return;
                 const isActive = screenId === activeScreenId;
-                screen.style.display = isActive ? displayMode : 'none';
+                screen.hidden = !isActive;
+                screen.dataset.display = displayMode;
                 screen.classList.toggle('screen-active', isActive);
             });
             // Reset tab title when landing is shown
@@ -9017,7 +9026,7 @@ function showLoginForm(options = {}) {
             const controls = document.querySelector('.landing-top-controls');
             const landingScreen = document.getElementById('landingScreen');
             if (!controls || !landingScreen) return;
-            const landingVisible = landingScreen.style.display !== 'none';
+            const landingVisible = !landingScreen.hidden;
             if (controls.dataset.inline === '1') {
                 controls.classList.toggle('is-hidden', !landingVisible);
                 return;

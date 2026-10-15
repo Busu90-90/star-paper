@@ -1,0 +1,152 @@
+/* ==========================================================================
+   Star Paper design tokens: music × money × management
+   --------------------------------------------------------------------------
+   The single source of truth for colour, type, space, radius, depth and
+   motion. Signed-out pages read these directly (styles.landing.css); the app
+   shell migrates onto them in Phase 2.
+
+   Dark ("stage") is the default. body.light-theme switches to "paper".
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  /* ── Colour: stage ─────────────────────────────────────────────────────── */
+  --sp-stage: #0A0A0C;
+  --sp-surface-1: #121116;
+  --sp-surface-2: #1A1820;
+  --sp-surface-3: #24212C;
+  --sp-line: rgb(255 255 255 / 0.08);
+  --sp-line-strong: rgb(255 255 255 / 0.16);
+
+  --sp-ink: #F6F1E6;
+  --sp-ink-2: #C9C2B4;
+  --sp-ink-3: #8D877C;
+  --sp-ink-on-gold: #17120A;
+
+  /* ── Colour: gold (money, primary action) ──────────────────────────────── */
+  --sp-gold-hi: #FFE9A8;
+  --sp-gold: #E9B949;
+  --sp-gold-lo: #B8862B;
+  --sp-gold-deep: #8A5F17;
+  --sp-gold-text: #F2C75C;
+  --sp-gold-grad: linear-gradient(135deg, var(--sp-gold-hi) 0%, var(--sp-gold) 42%, var(--sp-gold-lo) 100%);
+  --sp-gold-soft: rgb(233 185 73 / 0.14);
+  --sp-gold-glow: rgb(233 185 73 / 0.32);
+
+  /* ── Colour: violet (music, energy; use sparingly) ─────────────────────── */
+  --sp-violet: #7C5CFF;
+  --sp-violet-text: #A994FF;
+  --sp-violet-soft: rgb(124 92 255 / 0.16);
+
+  /* ── Colour: money semantics ───────────────────────────────────────────── */
+  --sp-in: #2BC48A;
+  --sp-in-soft: rgb(43 196 138 / 0.14);
+  --sp-out: #FF6B5E;
+  --sp-out-soft: rgb(255 107 94 / 0.14);
+  --sp-focus: #FFE9A8;
+
+  /* ── Type ──────────────────────────────────────────────────────────────── */
+  --sp-font-display: 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  --sp-font-ui: 'Inter Tight', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --sp-font-money: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+
+  /* Fluid scale, 360px → 1440px */
+  --sp-text-xs: clamp(0.75rem, 0.73rem + 0.09vw, 0.8125rem);
+  --sp-text-sm: clamp(0.875rem, 0.85rem + 0.11vw, 0.9375rem);
+  --sp-text-md: clamp(1rem, 0.97rem + 0.14vw, 1.0625rem);
+  --sp-text-lg: clamp(1.125rem, 1.07rem + 0.28vw, 1.3125rem);
+  --sp-text-xl: clamp(1.375rem, 1.26rem + 0.56vw, 1.75rem);
+  --sp-text-2xl: clamp(1.75rem, 1.52rem + 1.11vw, 2.5rem);
+  --sp-text-3xl: clamp(2.25rem, 1.8rem + 2.22vw, 3.75rem);
+  --sp-text-4xl: clamp(2.625rem, 1.95rem + 3.33vw, 4.875rem);
+
+  --sp-leading-tight: 1.04;
+  --sp-leading-snug: 1.22;
+  --sp-leading-body: 1.6;
+  --sp-tracking-caps: 0.16em;
+
+  /* ── Space: 4pt grid ───────────────────────────────────────────────────── */
+  --sp-space-1: 0.25rem;
+  --sp-space-2: 0.5rem;
+  --sp-space-3: 0.75rem;
+  --sp-space-4: 1rem;
+  --sp-space-5: 1.25rem;
+  --sp-space-6: 1.5rem;
+  --sp-space-8: 2rem;
+  --sp-space-10: 2.5rem;
+  --sp-space-12: 3rem;
+  --sp-space-16: 4rem;
+  --sp-space-20: 5rem;
+  --sp-space-24: 6rem;
+  --sp-section: clamp(4rem, 2.6rem + 6.5vw, 8rem);
+  --sp-gutter: clamp(1rem, 0.5rem + 2.4vw, 2.5rem);
+  --sp-measure: 62ch;
+  --sp-page-max: 1200px;
+
+  /* ── Radius ────────────────────────────────────────────────────────────── */
+  --sp-radius-xs: 6px;
+  --sp-radius-sm: 10px;
+  --sp-radius-md: 14px;
+  --sp-radius-lg: 20px;
+  --sp-radius-xl: 28px;
+  --sp-radius-pill: 999px;
+
+  /* ── Depth ─────────────────────────────────────────────────────────────── */
+  --sp-shadow-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 1px rgb(0 0 0 / 0.2);
+  --sp-shadow-2: 0 10px 30px -12px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.3);
+  --sp-shadow-3: 0 30px 80px -24px rgb(0 0 0 / 0.75), 0 8px 24px -8px rgb(0 0 0 / 0.45);
+  --sp-shadow-gold: 0 10px 30px -10px var(--sp-gold-glow), inset 0 1px 0 rgb(255 255 255 / 0.35);
+  --sp-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.06), rgb(255 255 255 / 0) 40%);
+
+  /* ── Motion ────────────────────────────────────────────────────────────── */
+  --sp-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --sp-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --sp-dur-1: 120ms;
+  --sp-dur-2: 220ms;
+  --sp-dur-3: 420ms;
+  --sp-dur-4: 720ms;
+
+  /* ── Layers ────────────────────────────────────────────────────────────── */
+  --sp-z-header: 40;
+  --sp-z-sheet: 60;
+  --sp-z-toast: 80;
+}
+
+body.light-theme {
+  color-scheme: light;
+
+  --sp-stage: #F6F1E6;
+  --sp-surface-1: #FFFDF8;
+  --sp-surface-2: #FBF6EC;
+  --sp-surface-3: #F1E9D8;
+  --sp-line: rgb(30 22 8 / 0.1);
+  --sp-line-strong: rgb(30 22 8 / 0.2);
+
+  --sp-ink: #17130C;
+  --sp-ink-2: #4A4336;
+  --sp-ink-3: #6F6757;
+
+  --sp-gold-text: #8A5F17;
+  --sp-gold-soft: rgb(184 134 43 / 0.14);
+  --sp-gold-glow: rgb(184 134 43 / 0.3);
+  --sp-violet-text: #5B3DE0;
+  --sp-violet-soft: rgb(124 92 255 / 0.12);
+  --sp-in: #128A5E;
+  --sp-out: #D2483C;
+  --sp-focus: #8A5F17;
+
+  --sp-shadow-1: 0 1px 2px rgb(60 44 14 / 0.1);
+  --sp-shadow-2: 0 12px 30px -14px rgb(60 44 14 / 0.28), 0 2px 6px rgb(60 44 14 / 0.08);
+  --sp-shadow-3: 0 30px 70px -28px rgb(60 44 14 / 0.4), 0 8px 20px -10px rgb(60 44 14 / 0.16);
+  --sp-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.7), rgb(255 255 255 / 0) 40%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --sp-dur-1: 0ms;
+    --sp-dur-2: 0ms;
+    --sp-dur-3: 0ms;
+    --sp-dur-4: 0ms;
+  }
+}

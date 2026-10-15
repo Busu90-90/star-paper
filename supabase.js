@@ -105,9 +105,13 @@ function showSupabaseSdkUnavailable(error) {
     if (loaderText) loaderText.textContent = 'Cloud login unavailable';
     if (loaderSubtext) loaderSubtext.textContent = 'The Supabase auth runtime did not initialize. Reload after the deploy finishes.';
     if (loaderActions) loaderActions.hidden = true;
-    if (loginScreen) loginScreen.style.display = 'flex';
-    if (loginForm) loginForm.style.display = 'block';
-    if (signupForm) signupForm.style.display = 'none';
+    if (typeof window.setActiveScreen === 'function') window.setActiveScreen('loginScreen');
+    else if (loginScreen) loginScreen.hidden = false;
+    if (typeof window.showAuthPanel === 'function') window.showAuthPanel('login');
+    else {
+      if (loginForm) loginForm.hidden = false;
+      if (signupForm) signupForm.hidden = true;
+    }
     if (heading) heading.textContent = 'Cloud login unavailable';
     if (subtext) subtext.textContent = 'Star Paper could not initialize its Supabase auth runtime. Reload the page after the deploy is refreshed.';
     if (loginButton) loginButton.disabled = true;

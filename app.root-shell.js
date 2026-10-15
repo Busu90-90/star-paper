@@ -118,13 +118,31 @@
         console.warn('Sentry deferred load failed:', err);
       });
     }, 1000);
-    idle(function() { loadScript('globe').catch(function() {}); }, 1600);
-    idle(function() {
-      loadScript('premium')
-        .catch(function() {})
-        .then(function() { return loadScript('shell').catch(function() {}); });
-    }, 1800);
+    // The globe (Three.js + world atlas), premium and shell layers only serve the
+    // signed-in app, so signed-out visitors never download them.
+    whenAppShellActive(function() {
+      idle(function() { loadScript('globe').catch(function() {}); }, 1600);
+      idle(function() {
+        loadScript('premium')
+          .catch(function() {})
+          .then(function() { return loadScript('shell').catch(function() {}); });
+      }, 1800);
+    });
   };
+
+  function whenAppShellActive(work) {
+    var app = document.getElementById('appContainer');
+    if (!app || app.classList.contains('screen-active') || typeof MutationObserver !== 'function') {
+      work();
+      return;
+    }
+    var observer = new MutationObserver(function() {
+      if (!app.classList.contains('screen-active')) return;
+      observer.disconnect();
+      work();
+    });
+    observer.observe(app, { attributes: true, attributeFilter: ['class'] });
+  }
 
   window.addEventListener('load', function() {
     window.__spLoadDeferredThirdParty('window-load');
@@ -403,9 +421,13 @@
     var emailInput = document.getElementById('forgotEmail');
     var heading = document.getElementById('loginBoxHeading');
     var subtext = document.getElementById('loginBoxSubtext');
-    if (loginForm) loginForm.style.display = 'none';
-    if (signupForm) signupForm.style.display = 'none';
-    if (forgotForm) forgotForm.style.display = 'block';
+    if (typeof window.showAuthPanel === 'function') {
+      window.showAuthPanel('forgot');
+    } else {
+      if (loginForm) loginForm.hidden = true;
+      if (signupForm) signupForm.hidden = true;
+      if (forgotForm) forgotForm.hidden = false;
+    }
     if (result) {
       result.textContent = '';
       result.className = 'forgot-password-hint';
