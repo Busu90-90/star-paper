@@ -1,15 +1,15 @@
 /* ==========================================================================
-   Star Paper: signed-out pages (landing, How it works, Proof, Testimonials,
-   sign in / sign up / reset). Everything here is namespaced .lp-* and reads
+   Star Paper: the signed-out journey (one landing with its showcase slides,
+   then sign in / sign up / email code / reset). Everything here is namespaced .lp-* and reads
    its values from sp-design-tokens.css. No inline styles anywhere: state is
    expressed with [hidden], classes and data-* attributes.
 
    Sections
-     1. Screen + reset      6. Hero art ("Mainstage Ledger", swappable)
+     1. Screen + reset      6. Slide art (swappable blocks)
      2. Type                7. Home sections
-     3. Buttons + links     8. Public page parts
-     4. Header + menu       9. Auth
-     5. Hero               10. Footer, reveal, motion, theme
+     3. Buttons + links
+     4. Header + menu       8. Auth
+     5. Showcase slides     9. Footer, reveal, motion, theme
    ========================================================================== */
 
 /* ── 1. Screen + reset ─────────────────────────────────────────────────── */
@@ -154,12 +154,10 @@ body.light-theme .lp {
 /* Shared horizontal frame for every band of content. */
 .lp-header__bar,
 .lp-sheet,
-.lp-hero,
 .lp-trust,
 .lp-section,
 .lp-cta,
-.lp-footer,
-.lp-page-hero {
+.lp-footer {
   width: 100%;
   max-width: calc(var(--sp-page-max) + 2 * var(--sp-gutter));
   margin-inline: auto;
@@ -537,25 +535,15 @@ body.light-theme .lp-header.is-open {
 }
 
 @media (min-width: 900px) {
-  .lp-nav { display: flex; }
+  .lp-header__bar {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+  }
+  .lp-nav { display: flex; margin-inline: 0; }
+  .lp-header__actions { justify-self: end; }
   .lp-only-wide { display: inline-flex; }
   .lp-menu-btn,
   .lp-sheet { display: none !important; }
-}
-
-/* ── 5. Hero ───────────────────────────────────────────────────────────── */
-
-.lp-hero {
-  display: grid;
-  gap: var(--sp-space-10);
-  align-items: center;
-  padding-block: var(--sp-space-8) var(--sp-space-12);
-}
-
-.lp-hero__copy {
-  display: grid;
-  gap: var(--sp-space-6);
-  justify-items: start;
 }
 
 .lp-hero__meta {
@@ -576,73 +564,320 @@ body.light-theme .lp-header.is-open {
   color: var(--sp-in);
 }
 
+/* ── 5. Showcase (hero slides) ─────────────────────────────────────────────
+   One horizontal scroll-snap track: swipe on phones, tabs + arrows anywhere.
+   The active tab's progress bar is a CSS animation; app.landing.js advances
+   on its animationend, so hover/focus/hidden-tab pauses are just CSS. */
+
+.lp-show {
+  --lp-slide-ms: 7s;
+  position: relative;
+  width: 100%;
+  max-width: calc(var(--sp-page-max) + 2 * var(--sp-gutter));
+  margin-inline: auto;
+  padding: var(--sp-space-4) var(--sp-gutter) var(--sp-space-12);
+}
+
+.lp-show__track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+
+.lp-show__track::-webkit-scrollbar {
+  display: none;
+}
+
+.lp-slide {
+  display: grid;
+  gap: var(--sp-space-8);
+  align-content: center;
+  min-width: 0;
+  padding-block: var(--sp-space-4);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.lp-slide__copy {
+  display: grid;
+  gap: var(--sp-space-6);
+  justify-items: start;
+  align-content: center;
+  min-width: 0;
+}
+
+.lp-display--slide {
+  font-size: var(--sp-text-3xl);
+  line-height: 1.04;
+}
+
 @media (min-width: 960px) {
-  .lp-hero {
-    grid-template-columns: minmax(0, 1.02fr) minmax(0, 1fr);
+  .lp-slide {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: var(--sp-space-12);
-    min-height: calc(100vh - 68px);
-    min-height: calc(100svh - 68px);
-    padding-block: var(--sp-space-10) var(--sp-space-16);
+    min-height: calc(100vh - 68px - 120px);
+    min-height: calc(100svh - 68px - 120px);
   }
 }
 
-/* ── 6. Hero art: "Mainstage Ledger" ───────────────────────────────────────
-   Self-contained: replace the <figure class="lp-stage"> block in index.html
-   and this section to swap the art without touching layout. */
+.lp-moves {
+  display: grid;
+  gap: var(--sp-space-4);
+  max-width: 48ch;
+  counter-reset: none;
+}
 
-.lp-stage {
-  --lp-stage-top: clamp(84px, 18%, 132px);
+.lp-moves li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--sp-space-4);
+  align-items: baseline;
+  color: var(--sp-ink-2);
+  font-size: var(--sp-text-md);
+}
+
+.lp-moves strong {
+  color: var(--sp-ink);
+  font-weight: 650;
+}
+
+.lp-moves__num {
+  font-family: var(--sp-font-money);
+  font-size: var(--sp-text-sm);
+  font-weight: 700;
+  color: var(--sp-gold-text);
+}
+
+.lp-show__controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-space-3);
+  margin-top: var(--sp-space-6);
+}
+
+.lp-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  gap: var(--sp-space-1);
+  padding: var(--sp-space-1);
+  border: 1px solid var(--sp-line);
+  border-radius: var(--sp-radius-pill);
+  background: var(--sp-surface-1);
+}
+
+.lp-tab {
+  position: relative;
+  overflow: hidden;
+  padding: var(--sp-space-2) var(--sp-space-4) calc(var(--sp-space-2) + 3px);
+  border-radius: var(--sp-radius-pill);
+  font-size: var(--sp-text-sm);
+  font-weight: 600;
+  color: var(--sp-ink-3);
+  white-space: nowrap;
+  transition: color var(--sp-dur-2), background-color var(--sp-dur-2);
+}
+
+.lp .lp-tab:hover { color: var(--sp-ink); }
+
+.lp .lp-tab[aria-current='true'] {
+  background: var(--sp-surface-3);
+  color: var(--sp-ink);
+}
+
+.lp-tab__bar {
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: 5px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--sp-line);
+  opacity: 0;
+}
+
+.lp-tab[aria-current='true'] .lp-tab__bar { opacity: 1; }
+
+.lp-tab__bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--sp-gold);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+}
+
+.lp-show[data-autoplay='on'] .lp-tab[aria-current='true'] .lp-tab__bar::after {
+  animation: lp-progress var(--lp-slide-ms) linear forwards;
+}
+
+.lp-show[data-autoplay='on']:is(:hover, :focus-within) .lp-tab__bar::after,
+.lp-show[data-paused] .lp-tab__bar::after {
+  animation-play-state: paused;
+}
+
+@keyframes lp-progress {
+  to { transform: scaleX(1); }
+}
+
+@media (max-width: 599px) {
+  .lp-show__arrow { display: none; }
+  .lp-tabs { grid-template-columns: repeat(4, 1fr); width: 100%; }
+  .lp-tab { padding-inline: var(--sp-space-2); font-size: var(--sp-text-xs); }
+}
+
+/* Stage rig: truss, three moving beams and a light pool, pure CSS so every
+   slide can carry one. The art above it is always lit dark, in both themes. */
+
+.lp-art {
   position: relative;
   isolation: isolate;
   width: 100%;
   max-width: 600px;
-  margin-inline: auto;
-  padding: var(--lp-stage-top) clamp(4px, 5%, 40px) clamp(56px, 10%, 80px);
+  margin: 0 auto;
+  padding: clamp(84px, 16%, 120px) clamp(20px, 9%, 64px) clamp(48px, 9%, 72px);
+  color: #F6F1E6;
 }
 
-.lp-stage__rig {
+body.light-theme .lp-art::before {
+  content: '';
   position: absolute;
   inset: 0;
-  z-index: -2;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
+  z-index: -3;
+  border-radius: var(--sp-radius-xl);
+  background:
+    radial-gradient(70% 60% at 50% 30%, rgb(233 185 73 / 0.16), transparent 70%),
+    linear-gradient(180deg, #1A1820, #0A0A0C);
+  box-shadow: var(--sp-shadow-3);
+}
+
+.lp-rig {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  border-radius: var(--sp-radius-xl);
   pointer-events: none;
+  /* Beams fade out at the sides and the floor instead of ending on a box edge. */
+  -webkit-mask-image: radial-gradient(120% 100% at 50% 0%, #000 50%, transparent 92%);
+  mask-image: radial-gradient(120% 100% at 50% 0%, #000 50%, transparent 92%);
+}
+
+.lp-rig__truss {
+  position: absolute;
+  top: 12px;
+  left: 6%;
+  right: 6%;
+  height: 10px;
+  border-block: 2px solid #B8862B;
+  background: repeating-linear-gradient(60deg, transparent 0 8px, rgb(184 134 43 / 0.55) 8px 9.5px, transparent 9.5px 16px);
+  opacity: 0.85;
 }
 
 .lp-rig__beam {
-  transform-box: view-box;
+  position: absolute;
+  top: 20px;
+  height: calc(100% - 20px);
+  transform-origin: 50% 0;
   mix-blend-mode: screen;
+  clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%);
 }
 
-.lp-rig__beam--main {
-  transform-origin: 300px 34px;
-  animation: lp-beam-main 9s var(--sp-ease-in-out) infinite alternate;
+.lp-rig__beam::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 18px 6px currentColor;
 }
 
-.lp-rig__beam--left {
-  transform-origin: 128px 34px;
-  opacity: 0.7;
-  animation: lp-beam-side 7s var(--sp-ease-in-out) infinite alternate;
+.lp-rig__beam--c {
+  left: 50%;
+  width: min(92%, 540px);
+  translate: -50% 0;
+  color: #FFE9A8;
+  background: linear-gradient(180deg, rgb(255 233 168 / 0.5), rgb(233 185 73 / 0.14) 55%, rgb(233 185 73 / 0));
+  animation: lp-sway 9s var(--sp-ease-in-out) infinite alternate;
 }
 
-.lp-rig__beam--right {
-  transform-origin: 472px 34px;
-  opacity: 0.7;
-  animation: lp-beam-side 8s var(--sp-ease-in-out) -3s infinite alternate-reverse;
+.lp-rig__beam--l,
+.lp-rig__beam--r {
+  width: 46%;
+  color: #A994FF;
+  background: linear-gradient(180deg, rgb(169 148 255 / 0.36), rgb(124 92 255 / 0));
+  opacity: 0.8;
 }
 
-.lp-rig__lamp {
-  animation: lp-lamp 3.2s ease-in-out infinite;
+.lp-rig__beam--l {
+  left: 2%;
+  rotate: 12deg;
+  animation: lp-sway-side 7s var(--sp-ease-in-out) infinite alternate;
 }
 
-.lp-rig__haze circle {
-  transform-box: fill-box;
-  animation: lp-haze 11s linear infinite;
+.lp-rig__beam--r {
+  right: 2%;
+  rotate: -12deg;
+  animation: lp-sway-side 8s var(--sp-ease-in-out) -3s infinite alternate-reverse;
 }
 
-.lp-rig__haze circle:nth-child(2n) { animation-duration: 14s; animation-delay: -5s; }
-.lp-rig__haze circle:nth-child(3n) { animation-duration: 9s; animation-delay: -2s; }
+.lp-rig__pool {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  bottom: 4%;
+  height: 56px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(255 233 168 / 0.42), rgb(233 185 73 / 0.12) 55%, transparent);
+}
+
+@keyframes lp-sway {
+  from { rotate: -3deg; }
+  to { rotate: 3deg; }
+}
+
+@keyframes lp-sway-side {
+  from { rotate: 4deg; }
+  to { rotate: 18deg; }
+}
+
+.lp-rig__beam--r { animation-name: lp-sway-side-r; }
+
+@keyframes lp-sway-side-r {
+  from { rotate: -18deg; }
+  to { rotate: -4deg; }
+}
+
+/* Shared dark glass for every card that sits under the lights. */
+.lp-runsheet,
+.lp-stat,
+.lp-qcard {
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: var(--sp-radius-xl);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.07), rgb(255 255 255 / 0) 34%),
+    linear-gradient(160deg, rgb(36 33 44 / 0.92), rgb(18 17 22 / 0.94));
+  box-shadow: var(--sp-shadow-3), inset 0 1px 0 rgb(255 255 255 / 0.08);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: #F6F1E6;
+}
+
+/* ── 6. Slide art ──────────────────────────────────────────────────────────
+   Each slide's <figure class="lp-art lp-art--*"> block in index.html plus its
+   rules here is self-contained, so art can be swapped without touching layout.
+   6a. Mainstage: live revenue ledger */
 
 .lp-ledger {
   position: relative;
@@ -843,14 +1078,14 @@ body.light-theme .lp-header.is-open {
 }
 
 .lp-chip--in {
-  top: calc(var(--lp-stage-top) - 64px);
-  left: 0;
+  top: 47%;
+  left: clamp(-56px, -9%, -8px);
   animation-delay: -2s;
 }
 
 .lp-chip--music {
-  right: 0;
-  bottom: clamp(8px, 3%, 24px);
+  right: clamp(-48px, -8%, -8px);
+  bottom: -26px;
   animation-delay: -4s;
 }
 
@@ -889,67 +1124,6 @@ body.light-theme .lp-header.is-open {
   color: #C9C2B4;
 }
 
-/* Phones: the chips leave the rig and sit in a row under the card. */
-@media (max-width: 599px) {
-  .lp-stage {
-    display: grid;
-    gap: var(--sp-space-3);
-    padding-bottom: var(--sp-space-6);
-  }
-
-  .lp-ledger {
-    width: 100%;
-  }
-
-  .lp-chip {
-    position: static;
-    max-width: none;
-    justify-self: stretch;
-    animation: none;
-  }
-
-  .lp-chip--music {
-    order: 2;
-  }
-}
-
-/* On paper, the stage keeps its lights off-white so the art still reads as a show. */
-body.light-theme .lp-stage::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 6%;
-  z-index: -3;
-  border-radius: var(--sp-radius-xl);
-  background:
-    radial-gradient(70% 60% at 50% 30%, rgb(233 185 73 / 0.16), transparent 70%),
-    linear-gradient(180deg, #1A1820, #0A0A0C);
-  box-shadow: var(--sp-shadow-3);
-}
-
-body.light-theme .lp-stage__rig {
-  clip-path: inset(0 0 6% round var(--sp-radius-xl));
-}
-
-@keyframes lp-beam-main {
-  from { transform: rotate(-3deg); }
-  to { transform: rotate(3deg); }
-}
-
-@keyframes lp-beam-side {
-  from { transform: rotate(-8deg); }
-  to { transform: rotate(10deg); }
-}
-
-@keyframes lp-lamp {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.75; }
-}
-
-@keyframes lp-haze {
-  from { transform: translateY(0); opacity: 0; }
-  20% { opacity: 0.8; }
-  to { transform: translateY(-70px); opacity: 0; }
-}
 
 @keyframes lp-spin {
   to { transform: rotate(360deg); }
@@ -978,6 +1152,213 @@ body.light-theme .lp-stage__rig {
   0% { opacity: 0; transform: translateY(12px); }
   5%, 30% { opacity: 1; transform: none; }
   36%, 100% { opacity: 0; transform: translateY(-12px); }
+}
+
+/* 6b. How it works: run of show for one gig */
+
+.lp-runsheet {
+  max-width: 440px;
+  margin-inline: auto;
+  padding: var(--sp-space-6);
+  animation: lp-float 7s ease-in-out infinite;
+}
+
+.lp-runsheet__head {
+  display: grid;
+  gap: 2px;
+  margin-bottom: var(--sp-space-5);
+}
+
+.lp-runsheet__title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: var(--sp-tracking-caps);
+  text-transform: uppercase;
+  color: #E9B949;
+}
+
+.lp-runsheet__gig {
+  font-family: var(--sp-font-display);
+  font-size: var(--sp-text-xl);
+  font-weight: 600;
+}
+
+.lp-runsheet__steps {
+  position: relative;
+  display: grid;
+  gap: var(--sp-space-4);
+}
+
+.lp-runsheet__steps::before {
+  content: '';
+  position: absolute;
+  top: 18px;
+  bottom: 18px;
+  left: 17px;
+  width: 2px;
+  background: linear-gradient(180deg, #E9B949, rgb(233 185 73 / 0.15));
+}
+
+.lp-runsheet__step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: var(--sp-space-3);
+  align-items: center;
+  font-size: var(--sp-text-sm);
+}
+
+.lp-runsheet__dot {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #FFE9A8, #E9B949 45%, #B8862B);
+  color: #17120A;
+  font-size: 17px;
+  box-shadow: 0 0 0 5px rgb(233 185 73 / 0.14);
+}
+
+.lp-runsheet__what {
+  display: grid;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.lp-runsheet__what span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #8D877C;
+  font-size: var(--sp-text-xs);
+}
+
+.lp-art .lp-money--in { color: #2BC48A; }
+.lp-art .lp-money--gold { color: #F2C75C; }
+
+.lp-slide[data-active] .lp-runsheet__step {
+  animation: lp-step-in 600ms var(--sp-ease-out) both;
+}
+
+.lp-slide[data-active] .lp-runsheet__step:nth-child(2) { animation-delay: 250ms; }
+.lp-slide[data-active] .lp-runsheet__step:nth-child(3) { animation-delay: 500ms; }
+.lp-slide[data-active] .lp-runsheet__step:nth-child(4) { animation-delay: 750ms; }
+
+@keyframes lp-step-in {
+  from { opacity: 0.25; transform: translateX(-8px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* 6c. Proof: the numbers under the lights */
+
+.lp-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-space-3);
+  max-width: 460px;
+  margin-inline: auto;
+}
+
+.lp-stat {
+  display: grid;
+  gap: var(--sp-space-2);
+  padding: var(--sp-space-5);
+}
+
+.lp-stat--lead {
+  grid-column: 1 / -1;
+  padding: var(--sp-space-6);
+  border-color: rgb(233 185 73 / 0.35);
+  background:
+    radial-gradient(100% 90% at 100% 0%, rgb(233 185 73 / 0.22), transparent 60%),
+    linear-gradient(160deg, rgb(36 33 44 / 0.94), rgb(18 17 22 / 0.96));
+}
+
+.lp-stat__value {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--sp-font-money);
+  font-size: clamp(1.75rem, 1.4rem + 1.6vw, 2.5rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: #FFF7E2;
+}
+
+.lp-stat--lead .lp-stat__value {
+  font-size: clamp(2.5rem, 1.9rem + 3vw, 3.75rem);
+}
+
+.lp-stat__unit {
+  font-size: 0.45em;
+  letter-spacing: 0.02em;
+  color: #E9B949;
+}
+
+.lp-stat__label {
+  font-size: var(--sp-text-sm);
+  color: #C9C2B4;
+}
+
+/* 6d. Voices: a fanned stack of review cards */
+
+.lp-quotes-stack {
+  position: relative;
+  display: grid;
+  max-width: 440px;
+  margin-inline: auto;
+}
+
+.lp-qcard {
+  grid-area: 1 / 1;
+  display: grid;
+  align-content: start;
+  gap: var(--sp-space-4);
+  padding: var(--sp-space-6);
+  font-family: var(--sp-font-display);
+  font-size: var(--sp-text-lg);
+  line-height: 1.4;
+}
+
+.lp-qcard footer {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-space-3);
+  font-family: var(--sp-font-ui);
+  font-size: var(--sp-text-xs);
+  color: #C9C2B4;
+}
+
+.lp-qcard strong {
+  color: #F6F1E6;
+  font-weight: 650;
+}
+
+.lp-qcard--front {
+  position: relative;
+  z-index: 2;
+  animation: lp-float 7s ease-in-out infinite;
+}
+
+.lp-qcard--back1,
+.lp-qcard--back2 {
+  opacity: 0.55;
+  font-size: var(--sp-text-md);
+}
+
+.lp-qcard--back1 { rotate: 5deg; translate: 18px -18px; z-index: 1; }
+.lp-qcard--back2 { rotate: -6deg; translate: -16px -30px; }
+
+.lp-stars {
+  display: flex;
+  gap: 2px;
+  color: #E9B949;
+  font-family: var(--sp-font-ui);
+  font-size: 16px;
+  letter-spacing: 2px;
 }
 
 /* ── 7. Home sections ──────────────────────────────────────────────────── */
@@ -1185,105 +1566,6 @@ body.light-theme .lp-stage__rig {
 .lp-avatar--green { background: var(--sp-in-soft); color: var(--sp-in); }
 .lp-avatar--lg { width: 48px; height: 48px; font-size: 15px; }
 
-.lp-flow {
-  position: relative;
-  display: grid;
-  gap: var(--sp-space-4);
-  counter-reset: lp-flow;
-}
-
-.lp-flow__step {
-  position: relative;
-  display: grid;
-  align-content: start;
-  gap: var(--sp-space-2);
-  padding: var(--sp-space-6) var(--sp-space-5) var(--sp-space-5);
-  border: 1px solid var(--sp-line);
-  border-radius: var(--sp-radius-lg);
-  background: var(--sp-stage);
-}
-
-.lp-flow__step .lp-money {
-  margin-top: var(--sp-space-2);
-  font-size: var(--sp-text-lg);
-}
-
-.lp-flow__num {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  margin-bottom: var(--sp-space-2);
-  border-radius: 50%;
-  background: var(--sp-gold-grad);
-  color: var(--sp-ink-on-gold);
-  font-family: var(--sp-font-money);
-  font-size: 13px;
-  font-weight: 700;
-  box-shadow: 0 0 0 6px var(--sp-gold-soft);
-}
-
-@media (min-width: 760px) {
-  .lp-flow { grid-template-columns: repeat(4, 1fr); }
-  .lp-flow::before {
-    content: '';
-    position: absolute;
-    top: calc(var(--sp-space-6) + 18px);
-    left: 12%;
-    right: 12%;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--sp-gold) 12%, var(--sp-gold) 88%, transparent);
-    opacity: 0.5;
-  }
-  .lp-flow__step { background: transparent; border-color: transparent; text-align: center; justify-items: center; }
-  .lp-flow__num { position: relative; z-index: 1; }
-}
-
-.lp-quote {
-  position: relative;
-  display: grid;
-  gap: var(--sp-space-6);
-  max-width: 880px;
-  margin-inline: auto;
-  padding: clamp(28px, 6vw, 64px);
-  border: 1px solid var(--sp-line);
-  border-radius: var(--sp-radius-xl);
-  background:
-    radial-gradient(90% 90% at 0% 0%, var(--sp-violet-soft), transparent 60%),
-    var(--sp-surface-1);
-}
-
-.lp-quote__mark {
-  font-size: 44px;
-  color: var(--sp-gold-text);
-}
-
-.lp-quote__text {
-  font-family: var(--sp-font-display);
-  font-size: var(--sp-text-2xl);
-  font-weight: 500;
-  line-height: 1.25;
-  letter-spacing: -0.01em;
-  color: var(--sp-ink);
-}
-
-.lp-quote__who {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-space-3);
-  font-size: var(--sp-text-sm);
-  color: var(--sp-ink-3);
-}
-
-.lp-quote__who > span:last-child {
-  display: grid;
-}
-
-.lp-quote__who strong {
-  color: var(--sp-ink);
-  font-weight: 650;
-}
-
 .lp-cta {
   padding-block: var(--sp-section);
 }
@@ -1310,181 +1592,9 @@ body.light-theme .lp-stage__rig {
 .lp-cta__mark {
   width: 72px;
   height: 72px;
-  animation: lp-spin 14s linear infinite;
 }
 
-/* ── 8. Public page parts ──────────────────────────────────────────────── */
-
-.lp-page-hero {
-  display: grid;
-  gap: var(--sp-space-10);
-  align-items: center;
-  padding-block: var(--sp-space-12) var(--sp-space-16);
-}
-
-.lp-page-hero__copy {
-  display: grid;
-  gap: var(--sp-space-5);
-  justify-items: start;
-}
-
-@media (min-width: 900px) {
-  .lp-page-hero { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); }
-}
-
-.lp-spot {
-  width: 100%;
-  max-width: 380px;
-  margin-inline: auto;
-  overflow: visible;
-  filter: drop-shadow(0 30px 40px rgb(0 0 0 / 0.35));
-}
-
-.lp-spot__card { fill: var(--sp-surface-2); stroke: var(--sp-line-strong); }
-.lp-spot__card--alt { fill: var(--sp-surface-3); }
-.lp-spot__ink { fill: var(--sp-ink); }
-.lp-spot__ink-2 { fill: var(--sp-ink-3); }
-.lp-spot__rule { stroke: var(--sp-line-strong); }
-.lp-spot__gold { fill: var(--sp-gold); }
-.lp-spot__gold-line { stroke: var(--sp-gold); }
-.lp-spot__in { fill: var(--sp-in); }
-.lp-spot__out { fill: var(--sp-out); }
-.lp-spot__violet { fill: var(--sp-violet); }
-.lp-spot__text { font-family: var(--sp-font-ui); font-weight: 600; }
-.lp-spot__mono { font-family: var(--sp-font-money); font-weight: 700; }
-.lp-spot__display { font-family: var(--sp-font-display); font-weight: 600; }
-
-.lp-spot__float {
-  transform-box: fill-box;
-  animation: lp-float 6s ease-in-out infinite;
-}
-
-.lp-spot__float--slow { animation-duration: 8s; animation-delay: -3s; }
-
-.lp-steps {
-  display: grid;
-  gap: var(--sp-space-5);
-}
-
-@media (min-width: 900px) {
-  .lp-steps { grid-template-columns: repeat(3, 1fr); }
-}
-
-.lp-step {
-  display: grid;
-  align-content: start;
-  gap: var(--sp-space-3);
-  padding: var(--sp-space-8) var(--sp-space-6);
-  border: 1px solid var(--sp-line);
-  border-radius: var(--sp-radius-lg);
-  background: var(--sp-sheen), var(--sp-surface-1);
-}
-
-.lp-step__num {
-  font-family: var(--sp-font-display);
-  font-size: var(--sp-text-3xl);
-  font-weight: 600;
-  line-height: 1;
-  background: var(--sp-gold-grad);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.lp-step__list {
-  display: grid;
-  gap: var(--sp-space-2);
-  margin-top: var(--sp-space-2);
-  font-size: var(--sp-text-sm);
-  color: var(--sp-ink-2);
-}
-
-.lp-step__list li {
-  display: flex;
-  gap: var(--sp-space-2);
-}
-
-.lp-step__list .ph {
-  flex-shrink: 0;
-  margin-top: 0.25em;
-  color: var(--sp-in);
-}
-
-.lp-stats {
-  display: grid;
-  gap: var(--sp-space-4);
-}
-
-@media (min-width: 760px) {
-  .lp-stats { grid-template-columns: repeat(3, 1fr); }
-}
-
-.lp-stat {
-  display: grid;
-  gap: var(--sp-space-2);
-  padding: var(--sp-space-8) var(--sp-space-6);
-  border: 1px solid var(--sp-line);
-  border-radius: var(--sp-radius-lg);
-  background:
-    radial-gradient(100% 80% at 100% 0%, var(--sp-gold-soft), transparent 60%),
-    var(--sp-surface-1);
-}
-
-.lp-stat__value {
-  display: flex;
-  align-items: baseline;
-  gap: 2px;
-  font-family: var(--sp-font-money);
-  font-size: var(--sp-text-3xl);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.04em;
-  line-height: 1;
-  color: var(--sp-ink);
-}
-
-.lp-stat__unit {
-  font-size: 0.5em;
-  color: var(--sp-gold-text);
-}
-
-.lp-stat__label {
-  font-size: var(--sp-text-sm);
-  color: var(--sp-ink-2);
-}
-
-.lp-quotes {
-  display: grid;
-  gap: var(--sp-space-5);
-}
-
-@media (min-width: 900px) {
-  .lp-quotes { grid-template-columns: repeat(3, 1fr); }
-}
-
-.lp-quote-card {
-  display: grid;
-  align-content: space-between;
-  gap: var(--sp-space-6);
-  padding: var(--sp-space-8) var(--sp-space-6);
-  border: 1px solid var(--sp-line);
-  border-radius: var(--sp-radius-lg);
-  background: var(--sp-sheen), var(--sp-surface-1);
-}
-
-.lp-quote-card .lp-quote__text {
-  font-size: var(--sp-text-lg);
-  line-height: 1.45;
-}
-
-.lp-stars {
-  display: flex;
-  gap: 2px;
-  color: var(--sp-gold);
-  font-size: 16px;
-}
-
-/* ── 9. Auth ───────────────────────────────────────────────────────────── */
+/* ── 8. Auth ───────────────────────────────────────────────────────────── */
 
 .lp-auth {
   position: fixed;
@@ -1521,18 +1631,6 @@ body.light-theme .lp-stage__rig {
 }
 
 .lp-auth__art .lp-brand__word { color: #F6F1E6; }
-
-.lp-auth__record {
-  position: absolute;
-  top: 12%;
-  right: -22%;
-  width: min(78%, 560px);
-  height: auto;
-  aspect-ratio: 1;
-  opacity: 0.92;
-  filter: drop-shadow(0 40px 60px rgb(0 0 0 / 0.6));
-  animation: lp-spin 22s linear infinite;
-}
 
 .lp .lp-auth__line {
   position: relative;
@@ -1760,7 +1858,66 @@ body.light-theme .lp-auth__loading { background: rgb(246 241 230 / 0.85); }
   animation: lp-spin 0.8s linear infinite;
 }
 
-/* ── 10. Footer, reveal, motion, theme ─────────────────────────────────── */
+
+.lp-auth__toggle {
+  justify-self: start;
+  margin-bottom: var(--sp-space-3);
+}
+
+.lp-auth__mark {
+  margin-bottom: 0;
+}
+
+.lp-auth__rig {
+  border-radius: 0;
+}
+
+.lp-cta__toggle {
+  justify-self: center;
+}
+
+.lp-form__row--center {
+  justify-content: center;
+  gap: var(--sp-space-2);
+}
+
+.lp-verify__to,
+.lp-verify__hint {
+  font-size: var(--sp-text-sm);
+  color: var(--sp-ink-2);
+}
+
+.lp-verify__to strong {
+  color: var(--sp-ink);
+  word-break: break-all;
+}
+
+.lp-verify__hint {
+  text-align: center;
+  color: var(--sp-ink-3);
+}
+
+.lp-verify__sep {
+  color: var(--sp-ink-3);
+}
+
+.lp .lp-input.lp-code {
+  height: 64px;
+  font-family: var(--sp-font-money);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.5em;
+  text-align: center;
+  text-indent: 0.5em;
+}
+
+.lp .lp-text-btn:disabled {
+  color: var(--sp-ink-3);
+  cursor: default;
+  text-decoration: none;
+}
+
+/* ── 9. Footer, reveal, motion, theme ──────────────────────────────────── */
 
 .lp-footer {
   display: grid;
@@ -1837,8 +1994,3 @@ body.light-theme .lp-auth__loading { background: rgb(246 241 230 / 0.85); }
   }
 }
 
-/* Standalone public pages load only this stylesheet + tokens, so own the body. */
-body.lp-body-page {
-  margin: 0;
-  background: var(--sp-stage);
-}

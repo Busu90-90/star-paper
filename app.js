@@ -845,6 +845,14 @@ function getSectionIconMarkup(iconKey) {
                     event.preventDefault();
                 }
 
+                // Remember that the person chose the auth screen, so a late cold-boot
+                // "no session, show landing" step cannot yank them back (supabase.js).
+                if (action === 'showLoginForm' || action === 'showSignupForm' || action === 'showForgotPassword') {
+                    window.__spUserPublicScreen = 'loginScreen';
+                } else if (action === 'showLanding') {
+                    window.__spUserPublicScreen = null;
+                }
+
                 switch (action) {
                     case 'showSection': {
                         const section = target.dataset.section;
@@ -3885,7 +3893,7 @@ function getSectionIconMarkup(iconKey) {
 
 // One auth panel is visible at a time; the screen's data-panel drives the art side.
 function showAuthPanel(panel) {
-            const panels = { login: 'loginForm', signup: 'signupForm', forgot: 'forgotPasswordForm' };
+            const panels = { login: 'loginForm', signup: 'signupForm', forgot: 'forgotPasswordForm', verify: 'verifyCodeForm' };
             Object.entries(panels).forEach(([name, id]) => {
                 const form = document.getElementById(id);
                 if (form) form.hidden = name !== panel;
@@ -8996,6 +9004,7 @@ function showLoginForm(options = {}) {
                 document.title = 'Star Paper';
             }
             if (activeScreenId === 'appContainer') {
+                window.__spUserPublicScreen = null;
                 setAppShellBootContext();
                 window.__spBootContext = 'app-refresh';
             } else {

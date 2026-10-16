@@ -444,8 +444,7 @@ const app = read('app.js');
 const bootHead = read('app.boot-head.js');
 const bootFlags = read('app.boot-flags.js');
 const bootBody = read('app.boot-body.js');
-const publicPageHead = read('public-page-head.js');
-const publicPageTheme = read('public-page-theme.js');
+const brandCss = read('styles.brand.css');
 const publicPageManifest = read('app.public-pages.js');
 const rootShell = read('app.root-shell.js');
 const globe = read('app.globe.js');
@@ -486,9 +485,6 @@ const docs = read('STAR_PAPER_DOCUMENTATION.md');
 
 for (const [fileName, text] of [
   ['index.html', index],
-  ['how-it-works.html', read('how-it-works.html')],
-  ['proof.html', read('proof.html')],
-  ['testimonials.html', read('testimonials.html')],
   ['manifest.json', read('manifest.json')],
   ['app.js', app],
   ['app.browser-assets.js', read('app.browser-assets.js')],
@@ -628,27 +624,30 @@ assert(index.includes(versionedAssetUrl('styles.css')), `index.html does not loa
 assert(index.includes(versionedAssetUrl('supabase.js')), `index.html does not load ${versionedAssetUrl('supabase.js')}`);
 assert(index.includes(versionedAssetUrl('manifest.json')), `index.html does not load ${versionedAssetUrl('manifest.json')}`);
 assert(rootShell.includes("assetManifest().url(path)"), 'app.root-shell.js must lazy-load local optional scripts through app.browser-assets.js');
-for (const [fileName, marker] of publicRootHtml) {
-  if (marker !== 'public-landing') continue;
-  const html = read(fileName);
-  const inlineScripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/gi)];
-  assert(inlineScripts.length === 0, `${fileName} must not ship inline script blocks; found ${inlineScripts.length}`);
-  assert(!/<style\b/i.test(html), `${fileName} must not ship inline style blocks`);
-  assert(!/\sstyle\s*=/.test(html), `${fileName} must not ship inline style attributes`);
-  assert(!/script-src[^;]*'unsafe-inline'/i.test(documentCsp(html)), `${fileName} CSP script-src must not allow unsafe-inline`);
-  assert(!/style-src[^;]*'unsafe-inline'/i.test(documentCsp(html)), `${fileName} CSP style-src directives must not allow unsafe-inline`);
-  assert(html.includes(versionedAssetUrl('public-page-head.js')), `${fileName} does not load ${versionedAssetUrl('public-page-head.js')}`);
-  assert(html.includes(versionedAssetUrl('public-page-theme.js')), `${fileName} does not load ${versionedAssetUrl('public-page-theme.js')}`);
-  assert(html.includes(versionedAssetUrl('app.landing.js')), `${fileName} does not load ${versionedAssetUrl('app.landing.js')}`);
-  assert(html.includes(versionedAssetUrl('styles.landing.css')), `${fileName} does not load ${versionedAssetUrl('styles.landing.css')}`);
-  assert(!html.includes('styles.css?v='), `${fileName} must not load the app-shell stylesheet`);
+// One landing: How it works, Proof and Testimonials are showcase slides in index.html.
+for (const retired of ['how-it-works.html', 'proof.html', 'testimonials.html', 'public-page-head.js', 'public-page-theme.js']) {
+  assert(!existsSync(join(root, retired)), `${retired} is retired; its content lives on the single landing`);
 }
-assert(publicPageHead.includes("window.history.scrollRestoration = 'manual'"), 'public-page-head.js must disable browser scroll restoration for public landing pages');
-assert(publicPageHead.includes('publicSectionHashPattern'), 'public-page-head.js must strip public landing section hashes');
-assert(publicPageHead.includes('function resetPublicScrollTop()'), 'public-page-head.js must own public landing top-scroll reset');
-assert(publicPageHead.includes("window.addEventListener('pageshow', resetPublicScrollTop)"), 'public-page-head.js must reset public landing scroll on bfcache/pageshow restores');
+for (const [route, slide] of [['/how-it-works', 'how'], ['/proof', 'proof'], ['/testimonials', 'voices']]) {
+  for (const path of [route, `${route}.html`]) {
+    assert(redirects.includes(`${path} /?slide=${slide} 301`), `_redirects must send ${path} to the ${slide} slide`);
+  }
+  assert(index.includes(`id="${slide}"`), `index.html missing the #${slide} showcase slide`);
+}
+assert(index.includes('data-lp-show') && index.includes('data-lp-track'), 'index.html must render the hero showcase track');
+assert(landing.includes('function setupShow(root)'), 'app.landing.js must drive the hero showcase');
+assert(landing.includes("event.animationName === 'lp-progress'"), 'app.landing.js must auto-advance on the CSS progress animation, not timers');
+assert(landingCss.includes('scroll-snap-type: x mandatory'), 'styles.landing.css showcase must snap horizontally');
 assert(landing.includes("root.classList.contains('lp')"), 'app.landing.js must only mount on the design-system page shell');
 assert(!/\.style\b/.test(landing), 'app.landing.js must not write inline styles');
+assert(index.includes(versionedAssetUrl('styles.brand.css')), `index.html does not load ${versionedAssetUrl('styles.brand.css')}`);
+assert(brandCss.includes('.sp-spin-mark') && brandCss.includes("html[data-logo-spin='paused']"), 'styles.brand.css must define the spinning Gold Record and its paused state');
+assert(rootShell.includes('function brandMarkSpinToggle()'), 'app.root-shell.js must let a tap pause/resume the spinning logo');
+assert(bootFlags.includes("localStorage.getItem('sp_logo_spin')"), 'app.boot-flags.js must restore the logo spin choice before paint');
+assert(index.includes('id="verifyCodeForm"') && index.includes('autocomplete="one-time-code"'), 'index.html must ship the sign-up email code panel');
+assert(supabase.includes("db.auth.verifyOtp({ email, token, type: 'email' })"), 'supabase.js must confirm sign-up with the emailed 6-digit code');
+assert(supabase.includes("db.auth.resend({ type: 'signup', email })"), 'supabase.js must be able to resend the sign-up code');
+assert(supabase.includes("window.__spUserPublicScreen === 'loginScreen'"), 'supabase.js boot must not pull a person off the sign-in screen they opened');
 assert(!/scroll-snap-type:\s*y\s+mandatory/.test(landingCss), 'styles.landing.css must not trap readers with mandatory scroll-snap');
 assert(landingCss.includes('@view-transition'), 'styles.landing.css must opt public pages into cross-document view transitions');
 assert(landingCss.includes('prefers-reduced-motion: reduce'), 'styles.landing.css must honour reduced motion');
@@ -949,8 +948,6 @@ for (const [fileName, text] of [
   ['app.boot-flags.js', bootFlags],
   ['app.boot-body.js', bootBody],
   ['app.public-pages.js', publicPageManifest],
-  ['public-page-head.js', publicPageHead],
-  ['public-page-theme.js', publicPageTheme],
   ['app.root-shell.js', rootShell],
   ['app.globe.js', globe],
   ['assets/vendor/fonts/star-paper-fonts.css', fontCss],
@@ -959,9 +956,6 @@ for (const [fileName, text] of [
   ['assets/vendor/phosphor-icons/duotone/style.css', phosphorDuotoneCss],
   ['assets/vendor/three/OrbitControls.js', orbitControls],
   ['app.js', app],
-  ['how-it-works.html', read('how-it-works.html')],
-  ['proof.html', read('proof.html')],
-  ['testimonials.html', read('testimonials.html')],
   ['manifest.json', read('manifest.json')],
 ]) {
   assertVersionedReferencesMatchManifest(fileName, text);
@@ -992,14 +986,9 @@ for (const [label, icon] of manifestIcons) {
   }
 }
 
-assert(publicLandingRoutes.size > 0, 'app.public-pages.js must define public landing routes');
 for (const [route, target] of publicLandingRoutes) {
   assert(publicPages.targetForPublicRoute(route) === target, `app.public-pages.js targetForPublicRoute drift for ${route}`);
   requiredFile(target.replace(/^\//, ''));
-  if (!route.endsWith('.html')) {
-    const redirectRule = `${route} ${target} 200`;
-    assert(redirects.includes(redirectRule), `Missing Netlify redirect: ${redirectRule}`);
-  }
 }
 for (const fileName of publicRootHtml.keys()) {
   assert(appShellUrls.has(`/${fileName}`), `sw.js APP_SHELL must include public root HTML: ${fileName}`);
@@ -1338,8 +1327,6 @@ for (const [fileName, text, budget] of [
   ['app.public-pages.js', publicPageManifest, { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
   ['app.boot-flags.js', bootFlags, { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
   ['app.boot-body.js', bootBody, { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
-  ['public-page-head.js', publicPageHead, { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
-  ['public-page-theme.js', publicPageTheme, { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
   ['app.root-shell.js', rootShell, { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
   ['app.offline-cache.js', read('app.offline-cache.js'), { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
   ['app.globe.js', globe, { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
@@ -1378,9 +1365,7 @@ for (const file of walk(root)) {
 }
 
 for (const asset of [
-  'how-it-works.html',
-  'proof.html',
-  'testimonials.html',
+  'styles.brand.css',
   'favicon.svg',
   'star_paper_logo_pack/star-paper-mark.svg',
   'star_paper_logo_pack/star-paper-mark-small.svg',

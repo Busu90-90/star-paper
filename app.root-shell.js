@@ -412,7 +412,7 @@
       'signup', 'signInWithGoogle', 'submitForgotPassword',
       'saveBooking', 'saveExpense', 'saveOtherIncome', 'saveArtist',
       'saveProfileChanges', 'showDetailView',
-      'landingFeaturePrev', 'landingFeatureNext'
+      'verifySignupCode', 'resendSignupCode'
     ].includes(action)) {
       console.warn('[StarPaper] No handler for "' + action + '". window.' + action + '=', typeof window[action]);
     }
@@ -490,4 +490,44 @@
       window.submitForgotPassword();
     }
   });
+})();
+
+(function brandMarkSpinToggle() {
+  // Tapping any Gold Record mark pauses or resumes the spin on every mark.
+  var root = document.documentElement;
+  var MARKS = '.sp-spin-mark, .sp-spin-toggle, .app-brand img, .avatar-img--brand-mark';
+
+  function reducedMotion() {
+    return Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+
+  function isSpinning() {
+    var state = root.getAttribute('data-logo-spin');
+    if (state === 'paused') return false;
+    if (state === 'on') return true;
+    return !reducedMotion();
+  }
+
+  function syncToggles() {
+    var spinning = isSpinning();
+    document.querySelectorAll('.sp-spin-toggle').forEach(function(toggle) {
+      toggle.setAttribute('aria-pressed', spinning ? 'true' : 'false');
+      toggle.setAttribute('aria-label', spinning ? 'Pause the spinning logo' : 'Spin the logo');
+    });
+  }
+
+  document.addEventListener('click', function(event) {
+    var mark = event.target && event.target.closest ? event.target.closest(MARKS) : null;
+    if (!mark) return;
+    var next = isSpinning() ? 'paused' : 'on';
+    root.setAttribute('data-logo-spin', next);
+    try { localStorage.setItem('sp_logo_spin', next === 'paused' ? 'off' : 'on'); } catch (_err) {}
+    syncToggles();
+  });
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', syncToggles, { once: true });
+  } else {
+    syncToggles();
+  }
 })();

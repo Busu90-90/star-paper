@@ -3,11 +3,8 @@
 
   const versionGroups = [
     ['1', [
-      'app.public-pages.js',
       'app.boot-head.js',
-      'app.boot-flags.js',
       'app.boot-body.js',
-      'public-page-theme.js',
       'app.shell.js',
       'assets/world-atlas/land-50m.json',
       'assets/vendor/fonts/font-01-Wnz6HAc5bAfYB2Q7azYYmg8.woff2',
@@ -66,14 +63,14 @@
     ]],
     ['1', ['app.offline-cache.js']],
     ['2', ['app.todayboard.js']],
-    ['3', ['public-page-head.js']],
-    ['17', ['app.browser-assets.js']],
-    ['2', ['styles.landing.css']],
-    ['4', ['app.root-shell.js']],
+    ['18', ['app.browser-assets.js']],
+    ['3', ['styles.landing.css']],
+    ['1', ['styles.brand.css']],
+    ['5', ['app.root-shell.js']],
+    ['2', ['app.public-pages.js', 'app.boot-flags.js', 'app.landing.js']],
     ['2', ['assets/vendor/fonts/star-paper-fonts.css']],
     ['1', [
       'sp-design-tokens.css',
-      'app.landing.js',
       'favicon.svg',
       'star_paper_logo_pack/star-paper-mark.svg',
       'star_paper_logo_pack/star-paper-mark-small.svg',
@@ -103,9 +100,9 @@
     ['22', ['star-paper-tokens.css']],
     ['26', ['manifest.json']],
     ['59', ['styles.css']],
-    ['92', ['supabase.js']],
-    ['146', ['app.js']],
-    ['193', ['sw.js']]
+    ['93', ['supabase.js']],
+    ['147', ['app.js']],
+    ['194', ['sw.js']]
   ];
 
   const assetVersions = {};
@@ -243,15 +240,13 @@
 
   const appShell = Object.freeze([
     './index.html',
-    './how-it-works.html',
-    './proof.html',
-    './testimonials.html',
     url('./styles.css'),
     url('./styles.premium.css'),
     url('./styles.shell.css'),
     url('./star-paper-tokens.css'),
     url('./sp-design-tokens.css'),
     url('./styles.landing.css'),
+    url('./styles.brand.css'),
     url('./assets/vendor/fonts/star-paper-fonts.css'),
     url('./assets/vendor/fonts/font-01-Wnz6HAc5bAfYB2Q7azYYmg8.woff2'),
     url('./assets/vendor/fonts/font-02-Wnz6HAc5bAfYB2Q7YjYYmg8.woff2'),
@@ -302,8 +297,6 @@
     url('./app.boot-head.js'),
     url('./app.boot-flags.js'),
     url('./app.boot-body.js'),
-    url('./public-page-head.js'),
-    url('./public-page-theme.js'),
     url('./app.root-shell.js'),
     url('./app.offline-cache.js'),
     url('./supabase.js'),
