@@ -1147,12 +1147,12 @@
       endEl.value = '';
     }
 
-    modal.style.display = 'flex';
+    modal.hidden = false;
   }
 
   function closePdfExportModal() {
     const modal = document.getElementById('spPdfExportModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) modal.hidden = true;
   }
 
   // ── AVATAR LOADING ─────────────────────────────────────────────────────────

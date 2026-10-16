@@ -78,7 +78,7 @@ function isAppShellVisible() {
     if (!app) return false;
     const style = window.getComputedStyle ? window.getComputedStyle(app) : null;
     const isVisible = app.classList.contains('screen-active') &&
-        app.style.display !== 'none' &&
+        !app.hidden &&
         (!style || (style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0));
     if (!isVisible) return false;
     const rect = app.getBoundingClientRect();
@@ -1314,11 +1314,13 @@ function getSectionIconMarkup(iconKey) {
             const displayName = String(user?.username || currentUser || '').trim();
             if (!displayName) {
                 userNameEl.textContent = '';
-                userNameEl.style.display = 'none';
+                userNameEl.hidden = true;
                 return;
             }
-            userNameEl.textContent = `Hi, ${displayName}`;
-            userNameEl.style.display = 'inline';
+            const hour = new Date().getHours();
+            const part = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+            userNameEl.textContent = `${part}, ${displayName.split(/\s+/)[0]}`;
+            userNameEl.hidden = false;
         }
 
         function refreshProfileUI() {
@@ -1336,6 +1338,13 @@ function getSectionIconMarkup(iconKey) {
                 sidebarAvatar.src = avatarSrc;
                 syncBrandMarkPresentation(sidebarAvatar, avatarSrc);
             }
+            document.querySelectorAll('[data-sp-profile-avatar]').forEach((img) => {
+                img.src = avatarSrc;
+                syncBrandMarkPresentation(img, avatarSrc);
+            });
+            document.querySelectorAll('[data-sp-profile-name]').forEach((el) => {
+                el.textContent = displayName;
+            });
             const settingsName = document.getElementById('settingsProfileName');
             if (settingsName) {
                 settingsName.textContent = displayName;
@@ -1384,13 +1393,13 @@ function getSectionIconMarkup(iconKey) {
                 avatarPreview.src = previewSrc;
                 syncBrandMarkPresentation(avatarPreview, previewSrc);
             }
-            profileModal.style.display = 'flex';
+            profileModal.hidden = false;
         }
 
         function closeProfileModal() {
             const profileModal = document.getElementById('profileModal');
             if (profileModal) {
-                profileModal.style.display = 'none';
+                profileModal.hidden = true;
             }
             const uploadInput = document.getElementById('profileAvatarUpload');
             if (uploadInput) {
@@ -1839,7 +1848,7 @@ function getSectionIconMarkup(iconKey) {
             document.body.classList.toggle('sp-no-finance', Boolean(getActiveTeamId()) && !hasTeamPermission('finance'));
             document.body.classList.toggle('sp-no-reports', Boolean(getActiveTeamId()) && !hasTeamPermission('reports'));
             const banner = ensureReadOnlyBanner();
-            banner.style.display = isViewer ? 'block' : 'none';
+            banner.hidden = !isViewer;
             const appRoot = document.getElementById('appContainer') || document.body;
             const submitButtons = appRoot.querySelectorAll('button[type="submit"], input[type="submit"]');
             submitButtons.forEach((btn) => {
@@ -1938,9 +1947,8 @@ function getSectionIconMarkup(iconKey) {
             const editor = document.getElementById(editorId);
             const input = document.getElementById(inputId);
             if (!editor) return;
-            const isOpen = editor.style.display && editor.style.display !== 'none';
-            const openDisplay = window.innerWidth >= 1025 ? 'grid' : 'flex';
-            editor.style.display = isOpen ? 'none' : openDisplay;
+            const isOpen = !editor.hidden;
+            editor.hidden = isOpen;
             if (!isOpen && input) {
                 const currentGoal = getCurrentMonthlyRevenueGoal();
                 input.value = currentGoal > 0 ? formatMoneyInputDisplay(Math.round(currentGoal)) : '';
@@ -1959,7 +1967,7 @@ function getSectionIconMarkup(iconKey) {
             }
             setCurrentMonthlyRevenueGoal(value);
             const editor = document.getElementById(editorId);
-            if (editor) editor.style.display = 'none';
+            if (editor) editor.hidden = true;
             updateDashboard();
             syncCloudExtras();
             toastSuccess(`Monthly revenue goal saved: UGX ${Math.round(value || 0).toLocaleString()}.`);
@@ -2278,7 +2286,7 @@ function getSectionIconMarkup(iconKey) {
             populateBBFArtistOptions(activeContext.artist?.id || '');
             periodInput.value = activeContext.period;
             updateBBFModalPreview();
-            modal.style.display = 'flex';
+            modal.hidden = false;
 
             setTimeout(() => {
                 amountInput?.focus();
@@ -2288,7 +2296,7 @@ function getSectionIconMarkup(iconKey) {
 
         function closeBBFModal() {
             const modal = document.getElementById('spBbfModal');
-            if (modal) modal.style.display = 'none';
+            if (modal) modal.hidden = true;
         }
 
         function toggleBBFEditor() {
@@ -2440,7 +2448,6 @@ function getSectionIconMarkup(iconKey) {
             });
             bindMobileUtilityActions();
             bindInlineEditController();
-            document.getElementById('quickAddBtn')?.addEventListener('click', toggleQuickAdd);
             const quickAddPanel = document.getElementById('quickAddPanel');
             if (quickAddPanel && !window.__starPaperQuickAddPanelBound) {
                 window.__starPaperQuickAddPanelBound = true;
@@ -2508,11 +2515,9 @@ function getSectionIconMarkup(iconKey) {
             }
             document.getElementById('dashboardSearch')?.addEventListener('input', (event) => {
                 handleDashboardSearch();
-                triggerSearchCoinCascade(event, 10);
             });
             document.getElementById('dashboardSearch')?.addEventListener('focus', (event) => {
                 handleDashboardSearch();
-                triggerSearchCoinCascade(event, 16);
             });
             document.getElementById('dashboardSearch')?.addEventListener('keydown', handleDashboardSearchInputKeydown);
             bindDashboardSearchResultInteractions();
@@ -2654,11 +2659,11 @@ function getSectionIconMarkup(iconKey) {
             if (!locationTypeEl || !ugandaGroup || !abroadGroup) return;
             const locationType = locationTypeEl.value;
             if (locationType === 'uganda') {
-                ugandaGroup.style.display = 'flex';
-                abroadGroup.style.display = 'none';
+                ugandaGroup.hidden = false;
+                abroadGroup.hidden = true;
             } else {
-                ugandaGroup.style.display = 'none';
-                abroadGroup.style.display = 'flex';
+                ugandaGroup.hidden = true;
+                abroadGroup.hidden = false;
             }
         }
 
@@ -2805,7 +2810,7 @@ function getSectionIconMarkup(iconKey) {
 
             forms.forEach(form => {
                 const formEl = document.getElementById(form.id);
-                if (!formEl || formEl.style.display !== 'block') return;
+                if (!formEl || formEl.hidden) return;
                 if (formEl.contains(target)) return;
                 const clickedOpenButton = form.openSelectors.some(sel => target.closest(sel));
                 if (clickedOpenButton) return;
@@ -2823,7 +2828,7 @@ function getSectionIconMarkup(iconKey) {
                 console.warn('Quick Add panel not found: #quickAddPanel');
                 return;
             }
-            quickAddPanel.classList.add('active');
+            window.SPChrome?.closeSheets?.();
 
             const quickAddConfig = {
                 booking: { section: 'bookings', formId: 'quickAddBooking', fallbackFormId: 'addBookingForm', openForm: showAddBooking },
@@ -2845,7 +2850,7 @@ function getSectionIconMarkup(iconKey) {
             knownForms.forEach((formId) => {
                 const formEl = document.getElementById(formId);
                 if (formEl) {
-                    formEl.style.display = 'none';
+                    formEl.hidden = true;
                 }
             });
 
@@ -2861,7 +2866,7 @@ function getSectionIconMarkup(iconKey) {
             }
 
             config.openForm();
-            targetForm.style.display = 'block';
+            targetForm.hidden = false;
             (document.querySelector('.main-content') || document.documentElement).scrollTo({ top: 0, behavior: 'smooth' });
 
             const firstInput = targetForm.querySelector('input, select, textarea');
@@ -3483,44 +3488,6 @@ function getSectionIconMarkup(iconKey) {
             });
         }
 
-        let searchCoinLastBurstAt = 0;
-        function triggerSearchCoinCascade(event, count = 10) {
-            // FIXED: performant CSS particles, throttled for mobile typing and reduced-motion users.
-            if (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return;
-            const now = Date.now();
-            if (now - searchCoinLastBurstAt < 130) return;
-            searchCoinLastBurstAt = now;
-
-            const input = event?.target?.id === 'dashboardSearch'
-                ? event.target
-                : document.getElementById('dashboardSearch');
-            const searchBar = input?.closest?.('.search-bar');
-            if (!searchBar) return;
-
-            let layer = searchBar.querySelector('.search-coin-layer');
-            if (!layer) {
-                layer = document.createElement('div');
-                layer.className = 'search-coin-layer';
-                layer.setAttribute('aria-hidden', 'true');
-                searchBar.appendChild(layer);
-            }
-
-            const clampedCount = Math.max(4, Math.min(Number(count) || 8, 18));
-            for (let index = 0; index < clampedCount; index += 1) {
-                const coin = document.createElement('span');
-                coin.className = 'sp-search-coin';
-                const size = 10 + Math.random() * 8;
-                const duration = 680 + Math.random() * 520;
-                coin.style.setProperty('--coin-x', String(Math.round(8 + Math.random() * 84)));
-                coin.style.setProperty('--coin-size', `${size.toFixed(1)}px`);
-                coin.style.setProperty('--coin-drift', `${(-32 + Math.random() * 64).toFixed(1)}px`);
-                coin.style.setProperty('--coin-spin', `${Math.round(360 + Math.random() * 720)}deg`);
-                coin.style.setProperty('--coin-dur', `${Math.round(duration)}ms`);
-                coin.style.setProperty('--coin-delay', `${Math.round(index * 18 + Math.random() * 60)}ms`);
-                layer.appendChild(coin);
-                setTimeout(() => coin.remove(), duration + 260);
-            }
-        }
 
         function handleDashboardSearchInputKeydown(event) {
             const key = event.key;
@@ -3697,7 +3664,7 @@ function getSectionIconMarkup(iconKey) {
             const targetElement = getSearchTargetElement(type, id);
             if (targetElement) {
                 const sectionElement = document.getElementById(section);
-                if (sectionElement && sectionElement.style.display === 'none') {
+                if (sectionElement && sectionElement.hidden) {
                     // Section is hidden, might need to switch view
                     console.log('Switching to section:', section);
                 }
@@ -3794,13 +3761,10 @@ function getSectionIconMarkup(iconKey) {
             // Apply highlight class
             target.classList.add('search-highlight');
             
-            // Add pulsing animation
-            target.style.animation = 'searchPulse 0.6s ease-in-out 3';
-            
-            // Remove highlight after 3 seconds
+            // Pulse three times, then drop the highlight.
+            target.classList.add('sp-search-pulse');
             setTimeout(() => {
-                target.classList.remove('search-highlight');
-                target.style.animation = '';
+                target.classList.remove('search-highlight', 'sp-search-pulse');
             }, 3000);
         }
         
@@ -4233,7 +4197,7 @@ function showLoginForm(options = {}) {
                 welcomeName.textContent = 'STAR PAPER';
             }
             if (welcomeCard) {
-                welcomeCard.style.display = 'block';
+                welcomeCard.hidden = false;
             }
             refreshProfileUI();
         }
@@ -4433,7 +4397,7 @@ function showLoginForm(options = {}) {
                 document.getElementById('quickAddPanel')?.classList.remove('active');
                 clearDashboardSearchResults();
                 const welcomeCard = document.getElementById('welcomeMessage');
-                if (welcomeCard) welcomeCard.style.display = 'block'; // FIXED: top search bar is visible after refresh bootstrap.
+                if (welcomeCard) welcomeCard.hidden = false; // FIXED: top search bar is visible after refresh bootstrap.
                 refreshProfileUI();
                 populateLocationDropdowns();
                 updateMonthContextLabels();
@@ -4612,7 +4576,7 @@ function showLoginForm(options = {}) {
         function toggleAdminOnlyUI() {
             const isAdmin = currentUser === 'Admin';
             document.querySelectorAll('.admin-only').forEach(el => {
-                el.style.display = isAdmin ? 'block' : 'none';
+                el.hidden = !isAdmin;
             });
         }
 
@@ -5053,31 +5017,31 @@ function showLoginForm(options = {}) {
             // ── Sync sidebar nav active state ──────────────────────────
             // Always show lists when navigating to sections
             if (section === 'bookings') {
-                document.getElementById('addBookingForm')?.style.setProperty('display', 'none');
-                document.getElementById('bookingsListCard')?.style.setProperty('display', 'block');
+                document.getElementById('addBookingForm')?.toggleAttribute('hidden', true);
+                document.getElementById('bookingsListCard')?.toggleAttribute('hidden', false);
             } else if (section === 'expenses') {
-                document.getElementById('addExpenseForm')?.style.setProperty('display', 'none');
-                document.getElementById('expensesListCard')?.style.setProperty('display', 'block');
+                document.getElementById('addExpenseForm')?.toggleAttribute('hidden', true);
+                document.getElementById('expensesListCard')?.toggleAttribute('hidden', false);
             } else if (section === 'otherIncome') {
-                document.getElementById('addOtherIncomeForm')?.style.setProperty('display', 'none');
-                document.getElementById('otherIncomeListCard')?.style.setProperty('display', 'block');
+                document.getElementById('addOtherIncomeForm')?.toggleAttribute('hidden', true);
+                document.getElementById('otherIncomeListCard')?.toggleAttribute('hidden', false);
             } else if (section === 'artists') {
-                document.getElementById('addArtistForm')?.style.setProperty('display', 'none');
-                document.getElementById('artistsListCard')?.style.setProperty('display', 'block');
+                document.getElementById('addArtistForm')?.toggleAttribute('hidden', true);
+                document.getElementById('artistsListCard')?.toggleAttribute('hidden', false);
             }
 
             const titles = {
-                'dashboard':  'Dashboard',
+                'dashboard':  'Home',
                 'money':      'Money',
-                'financials': 'Money - Overview',
+                'financials': 'Money',
                 'artists':    'Artists',
                 'schedule':   'Schedule',
-                'global':     'Schedule - Global',
-                'bookings':   'Schedule - Bookings',
-                'expenses':   'Money - Expenses',
-                'otherIncome':'Money - Other Income',
-                'calendar':   'Schedule - Calendar',
-                'reports':    'Reports',
+                'global':     'Schedule',
+                'bookings':   'Schedule',
+                'expenses':   'Money',
+                'otherIncome':'Money',
+                'calendar':   'Schedule',
+                'reports':    'Money',
                 'tasks':      'Tasks',
                 'settings':   'Settings',
             };
@@ -5175,7 +5139,7 @@ function showLoginForm(options = {}) {
                     locationType: document.getElementById('bookingLocationType')?.value || 'uganda',
                     locationUg: document.getElementById('bookingUgandaLocation')?.value || '',
                     locationAbroad: document.getElementById('bookingAbroadLocation')?.value || '',
-                    formOpen: document.getElementById('addBookingForm')?.style.display === 'block'
+                    formOpen: document.getElementById('addBookingForm')?.hidden === false
                 },
                 expense: {
                     desc: document.getElementById('expenseDesc')?.value || '',
@@ -5185,7 +5149,7 @@ function showLoginForm(options = {}) {
                     category: document.getElementById('expenseCategory')?.value || 'transport',
                     paymentMethod: document.getElementById('expensePaymentMethod')?.value || 'cash',
                     paymentRef: document.getElementById('expensePaymentRef')?.value || '',
-                    formOpen: document.getElementById('addExpenseForm')?.style.display === 'block'
+                    formOpen: document.getElementById('addExpenseForm')?.hidden === false
                 },
                 otherIncome: {
                     source: document.getElementById('otherIncomeSource')?.value || '',
@@ -5197,7 +5161,7 @@ function showLoginForm(options = {}) {
                     method: document.getElementById('otherIncomeMethod')?.value || 'cash',
                     status: document.getElementById('otherIncomeStatus')?.value || 'received',
                     notes: document.getElementById('otherIncomeNotes')?.value || '',
-                    formOpen: document.getElementById('addOtherIncomeForm')?.style.display === 'block'
+                    formOpen: document.getElementById('addOtherIncomeForm')?.hidden === false
                 }
             };
             Storage.saveSync('starPaperDrafts', drafts);
@@ -6247,8 +6211,8 @@ function showLoginForm(options = {}) {
         function toggleClosingThoughts() {
             const panel = document.getElementById('closingThoughtsPanel');
             if (!panel) return;
-            const isHidden = panel.style.display === 'none' || !panel.style.display;
-            panel.style.display = isHidden ? 'block' : 'none';
+            const isHidden = panel.hidden;
+            panel.hidden = !isHidden;
             if (!isHidden) return;
 
             loadClosingThoughtsForPeriod();
@@ -6521,15 +6485,15 @@ function showLoginForm(options = {}) {
             if (typeof showSection === 'function') showSection('expenses');
             if (typeof switchMoneyTab === 'function') switchMoneyTab('expenses');
             populateFinanceArtistDropdown(document.getElementById('expenseArtist'));
-            document.getElementById('addExpenseForm').style.display = 'block';
+            document.getElementById('addExpenseForm').hidden = false;
             const listCard = document.getElementById('expensesListCard');
-            if (listCard) listCard.style.display = 'none';
+            if (listCard) listCard.hidden = true;
             (document.querySelector('.main-content') || document.documentElement).scrollTo({ top: 0, behavior: 'smooth' });
             setTimeout(() => { document.getElementById('expenseDesc')?.focus(); }, 50);
         }
 
         function cancelExpense() {
-            document.getElementById('addExpenseForm').style.display = 'none';
+            document.getElementById('addExpenseForm').hidden = true;
             clearExpenseForm();
             editingExpenseId = null;
             const saveBtn = document.getElementById('saveExpenseBtn');
@@ -6538,7 +6502,7 @@ function showLoginForm(options = {}) {
             }
             const listCard = document.getElementById('expensesListCard');
             if (listCard) {
-                listCard.style.display = 'block';
+                listCard.hidden = false;
             }
         }
 
@@ -6554,7 +6518,7 @@ function showLoginForm(options = {}) {
             const artistSelect = document.getElementById('expenseArtist');
             if (artistSelect) artistSelect.value = '';
             document.getElementById('expenseReceipt').value = '';
-            document.getElementById('receiptPreview').style.display = 'none';
+            document.getElementById('receiptPreview').hidden = true;
             document.getElementById('receiptPreview').src = '';
         }
 
@@ -6568,7 +6532,7 @@ function showLoginForm(options = {}) {
             if (!result) return;
             const preview = document.getElementById('receiptPreview');
             preview.src = result;
-            preview.style.display = 'block';
+            preview.hidden = false;
         }
 
         async function saveExpense() {
@@ -6753,7 +6717,7 @@ function showLoginForm(options = {}) {
             const safeReceipt = normalizeSafeImageSource(expense.receipt);
             if (safeReceipt) {
                 document.getElementById('receiptPreview').src = safeReceipt;
-                document.getElementById('receiptPreview').style.display = 'block';
+                document.getElementById('receiptPreview').hidden = false;
             }
 
             showAddExpense();
@@ -6768,7 +6732,7 @@ function showLoginForm(options = {}) {
             const modal = document.getElementById('receiptModal');
             const img = document.getElementById('receiptModalImage');
             img.src = safeReceipt;
-            modal.style.display = 'flex';
+            modal.hidden = false;
         }
 
         function viewReceiptById(id, type) {
@@ -6796,7 +6760,7 @@ function showLoginForm(options = {}) {
         }
 
         function closeReceiptModal() {
-            document.getElementById('receiptModal').style.display = 'none';
+            document.getElementById('receiptModal').hidden = true;
         }
 
         // Other Income Functions
@@ -6806,15 +6770,15 @@ function showLoginForm(options = {}) {
             if (typeof showSection === 'function') showSection('otherIncome');
             if (typeof switchMoneyTab === 'function') switchMoneyTab('otherIncome');
             populateFinanceArtistDropdown(document.getElementById('otherIncomeArtist'));
-            document.getElementById('addOtherIncomeForm').style.display = 'block';
+            document.getElementById('addOtherIncomeForm').hidden = false;
             const listCard = document.getElementById('otherIncomeListCard');
-            if (listCard) listCard.style.display = 'none';
+            if (listCard) listCard.hidden = true;
             (document.querySelector('.main-content') || document.documentElement).scrollTo({ top: 0, behavior: 'smooth' });
             setTimeout(() => { document.getElementById('otherIncomeSource')?.focus(); }, 50);
         }
 
         function cancelOtherIncome() {
-            document.getElementById('addOtherIncomeForm').style.display = 'none';
+            document.getElementById('addOtherIncomeForm').hidden = true;
             clearOtherIncomeForm();
             editingOtherIncomeId = null;
             const saveBtn = document.getElementById('saveOtherIncomeBtn');
@@ -6823,7 +6787,7 @@ function showLoginForm(options = {}) {
             }
             const listCard = document.getElementById('otherIncomeListCard');
             if (listCard) {
-                listCard.style.display = 'block';
+                listCard.hidden = false;
             }
         }
 
@@ -6839,7 +6803,7 @@ function showLoginForm(options = {}) {
             document.getElementById('otherIncomeStatus').value = 'received';
             document.getElementById('otherIncomeNotes').value = '';
             document.getElementById('otherIncomeProof').value = '';
-            document.getElementById('otherIncomeProofPreview').style.display = 'none';
+            document.getElementById('otherIncomeProofPreview').hidden = true;
             document.getElementById('otherIncomeProofPreview').src = '';
         }
 
@@ -6853,7 +6817,7 @@ function showLoginForm(options = {}) {
             if (!result) return;
             const preview = document.getElementById('otherIncomeProofPreview');
             preview.src = result;
-            preview.style.display = 'block';
+            preview.hidden = false;
         }
 
         async function saveOtherIncome() {
@@ -7053,7 +7017,7 @@ function showLoginForm(options = {}) {
             const safeProof = normalizeSafeImageSource(item.proof);
             if (safeProof) {
                 document.getElementById('otherIncomeProofPreview').src = safeProof;
-                document.getElementById('otherIncomeProofPreview').style.display = 'block';
+                document.getElementById('otherIncomeProofPreview').hidden = false;
             }
 
             showAddOtherIncome();
@@ -7067,9 +7031,9 @@ function showLoginForm(options = {}) {
             editingArtistId = null;
             clearArtistForm();
             setArtistFormMode(false);
-            document.getElementById('addArtistForm').style.display = 'block';
+            document.getElementById('addArtistForm').hidden = false;
             const listCard = document.getElementById('artistsListCard');
-            if (listCard) listCard.style.display = 'none';
+            if (listCard) listCard.hidden = true;
             (document.querySelector('.main-content') || document.documentElement).scrollTo({ top: 0, behavior: 'smooth' });
             setTimeout(() => { document.getElementById('artistName')?.focus(); }, 50);
         }
@@ -7105,10 +7069,10 @@ function showLoginForm(options = {}) {
             const avatarUpload = document.getElementById('artistAvatarUpload');
             if (avatarUpload) avatarUpload.value = '';
 
-            document.getElementById('addArtistForm').style.display = 'block';
+            document.getElementById('addArtistForm').hidden = false;
             const listCard = document.getElementById('artistsListCard');
             if (listCard) {
-                listCard.style.display = 'none';
+                listCard.hidden = true;
             }
             (document.querySelector('.main-content') || document.documentElement).scrollTo({ top: 0, behavior: 'smooth' });
             setTimeout(() => {
@@ -7117,13 +7081,13 @@ function showLoginForm(options = {}) {
         }
 
         function cancelAddArtist() {
-            document.getElementById('addArtistForm').style.display = 'none';
+            document.getElementById('addArtistForm').hidden = true;
             editingArtistId = null;
             setArtistFormMode(false);
             clearArtistForm();
             const listCard = document.getElementById('artistsListCard');
             if (listCard) {
-                listCard.style.display = 'block';
+                listCard.hidden = false;
             }
         }
 
@@ -7360,15 +7324,15 @@ function showLoginForm(options = {}) {
             // Ensure schedule section + bookings tab are active before showing form
             if (typeof showSection === 'function') showSection('bookings');
             if (typeof activateScheduleTab === 'function') activateScheduleTab('bookings');
-            document.getElementById('addBookingForm').style.display = 'block';
+            document.getElementById('addBookingForm').hidden = false;
             const listCard = document.getElementById('bookingsListCard');
-            if (listCard) listCard.style.display = 'none';
+            if (listCard) listCard.hidden = true;
             (document.querySelector('.main-content') || document.documentElement).scrollTo({ top: 0, behavior: 'smooth' });
             setTimeout(() => { document.getElementById('bookingEvent')?.focus(); }, 50);
         }
 
         function cancelBooking() {
-            document.getElementById('addBookingForm').style.display = 'none';
+            document.getElementById('addBookingForm').hidden = true;
             clearBookingForm();
             editingBookingId = null;
             const saveBtn = document.getElementById('saveBookingBtn');
@@ -7377,7 +7341,7 @@ function showLoginForm(options = {}) {
             }
             const listCard = document.getElementById('bookingsListCard');
             if (listCard) {
-                listCard.style.display = 'block';
+                listCard.hidden = false;
             }
         }
 
@@ -7879,7 +7843,7 @@ function showLoginForm(options = {}) {
             if (!artistName || !date) {
                 resultDiv.textContent = '';
                 const message = document.createElement('p');
-                message.style.color = '#ff9800';
+                message.className = 'sp-text-warn';
                 message.textContent = 'Please select both artist and date';
                 resultDiv.appendChild(message);
                 return;
@@ -7992,13 +7956,13 @@ function showLoginForm(options = {}) {
             body.textContent = booking
                 ? `Delete "${booking.event}"? This cannot be undone.`
                 : 'This action cannot be undone.';
-            modal.style.display = 'flex';
+            modal.hidden = false;
             document.getElementById('confirmDeleteYes').onclick = function() {
-                modal.style.display = 'none';
+                modal.hidden = true;
                 deleteBooking(id, true);
             };
             document.getElementById('confirmDeleteNo').onclick = function() {
-                modal.style.display = 'none';
+                modal.hidden = true;
             };
         }
 
@@ -8549,7 +8513,7 @@ function showLoginForm(options = {}) {
                 if (currentRevenueEl) countUp(currentRevenueEl, currentRevenue);
                 if (goalPercentEl) goalPercentEl.textContent = `${goalPercent}%`;
                 if (goalProgressBarEl) {
-                    goalProgressBarEl.style.width = `${progressWidth}%`;
+                    goalProgressBarEl.setAttribute('width', String(Math.max(0, Math.min(100, Number(progressWidth) || 0))));
                 }
             });
             updateMainstage(monthData);
@@ -9098,7 +9062,11 @@ function showLoginForm(options = {}) {
                 <button class="sp-toast__close" aria-label="Dismiss"><i class="ph ph-x" aria-hidden="true"></i></button>
                 <div class="sp-toast__bar"></div>
             `;
-            toast.querySelector('.sp-toast__bar')?.style.setProperty('--sp-toast-dur', durSec);
+            // Web Animations drive the countdown bar, so no inline style is written.
+            toast.querySelector('.sp-toast__bar')?.animate?.(
+                [{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }],
+                { duration: dur, easing: 'linear', fill: 'forwards' }
+            );
             const titleEl = toast.querySelector('.sp-toast__title');
             const messageEl = toast.querySelector('.sp-toast__msg');
             if (titleText) {
@@ -9267,11 +9235,11 @@ function showLoginForm(options = {}) {
         function showAboutModal() {
             const modal = document.getElementById('spAboutModal');
             if (!modal) return;
-            modal.style.display = 'flex';
-            document.body.style.overflow = 'hidden';
+            modal.hidden = false;
+            document.body.classList.add('sp-no-scroll');
             const close = () => {
-                modal.style.display = 'none';
-                document.body.style.overflow = '';
+                modal.hidden = true;
+                document.body.classList.remove('sp-no-scroll');
             };
             document.getElementById('spAboutClose')?.addEventListener('click', close, { once: true });
             document.getElementById('spAboutBackdrop')?.addEventListener('click', close, { once: true });
@@ -9281,8 +9249,8 @@ function showLoginForm(options = {}) {
         function showAdminSettings() {
             const modal = document.getElementById('spAdminModal');
             if (!modal) return;
-            modal.style.display = 'flex';
-            document.body.style.overflow = 'hidden';
+            modal.hidden = false;
+            document.body.classList.add('sp-no-scroll');
 
             // Render user list from localStorage
             const allManagers = Storage.loadSync('spManagers', []);
@@ -9322,8 +9290,8 @@ function showLoginForm(options = {}) {
             }
 
             const close = () => {
-                modal.style.display = 'none';
-                document.body.style.overflow = '';
+                modal.hidden = true;
+                document.body.classList.remove('sp-no-scroll');
             };
             document.getElementById('spAdminClose')?.addEventListener('click', close, { once: true });
             document.getElementById('spAdminBackdrop')?.addEventListener('click', close, { once: true });
@@ -9388,7 +9356,7 @@ function showLoginForm(options = {}) {
 
             // Needle: -90deg (left) to +90deg (right)
             const needleDeg = -90 + ratio * 180;
-            needleEl.style.transform = `rotate(${needleDeg}deg)`;
+            needleEl.setAttribute('transform', `rotate(${needleDeg.toFixed(1)} 100 100)`);
 
             // Text
             if (thisEl) thisEl.textContent = thisCount;
@@ -9479,6 +9447,9 @@ function showLoginForm(options = {}) {
                     text: `${recent.length}-booking streak in 3 months! Your busiest artist: ${top[0]}.`
                 });
             }
+
+            window.__spNudges = nudges;
+            document.dispatchEvent(new CustomEvent('sp:nudges', { detail: { nudges } }));
 
             // ── Render ────────────────────────────────────────────────────────
             if (!alertsEl) return;
@@ -9869,7 +9840,7 @@ function showLoginForm(options = {}) {
             }
 
             function isVisible() {
-                return !(host.style.display === 'none' || host.offsetParent === null);
+                return !(host.hidden || host.offsetParent === null);
             }
 
             let rafId = 0;
@@ -10186,14 +10157,14 @@ function showLoginForm(options = {}) {
             // ── Open / close ──────────────────────────────────────────────────
             function isAppActive() {
                 const app = document.getElementById('appContainer');
-                return app && app.style.display !== 'none' && currentUser;
+                return app && !app.hidden && currentUser;
             }
 
             function openPalette() {
                 if (!isAppActive()) return;
                 isOpen = true;
                 selectedIdx = -1;
-                palette.style.display = 'block';
+                palette.hidden = false;
                 backdrop.classList.add('sp-palette-backdrop--visible');
                 requestAnimationFrame(() => requestAnimationFrame(() => {
                     palette.classList.add('sp-palette--visible');
@@ -10208,7 +10179,7 @@ function showLoginForm(options = {}) {
                 palette.classList.remove('sp-palette--visible');
                 backdrop.classList.remove('sp-palette-backdrop--visible');
                 palette.addEventListener('transitionend', () => {
-                    if (!isOpen) palette.style.display = 'none';
+                    if (!isOpen) palette.hidden = true;
                 }, { once: true });
             }
 
@@ -10495,7 +10466,7 @@ function showLoginForm(options = {}) {
 
             function openSheet() {
                 isOpen = true;
-                sheet.style.display = 'block';
+                sheet.hidden = false;
                 backdrop.classList.add('sp-cheatsheet-backdrop--visible');
                 requestAnimationFrame(() => requestAnimationFrame(() => {
                     sheet.classList.add('sp-cheatsheet--visible');
@@ -10507,7 +10478,7 @@ function showLoginForm(options = {}) {
                 sheet.classList.remove('sp-cheatsheet--visible');
                 backdrop.classList.remove('sp-cheatsheet-backdrop--visible');
                 sheet.addEventListener('transitionend', () => {
-                    if (!isOpen) sheet.style.display = 'none';
+                    if (!isOpen) sheet.hidden = true;
                 }, { once: true });
             }
 
@@ -10535,73 +10506,26 @@ function showLoginForm(options = {}) {
         })();
 
         // ── Typewriter headline animation ─────────────────────────────────────
-        (function normalizeNavOrder() {
-            const sidebarNav = document.querySelector('.sidebar-nav');
-            if (sidebarNav) {
-                const tasksBtn = sidebarNav.querySelector('.nav-item[data-section="tasks"]');
-                const artistsBtn = sidebarNav.querySelector('.nav-item[data-section="artists"]');
-                if (tasksBtn && artistsBtn) {
-                    sidebarNav.insertBefore(tasksBtn, artistsBtn);
-                }
-            }
-
-        })();
-
         // ── Collapsible sidebar (desktop ≥1025px) ────────────────────────────
         (function initSidebarCollapse() {
             const STORAGE_KEY = 'sp_sidebar_collapsed';
             const btn = document.getElementById('sidebarCollapseBtn');
             if (!btn) return;
-
-            const EXPANDED_LEFT = 265; // 280px sidebar width - 15px (half button)
-            const COLLAPSED_LEFT = 49; // 64px icon rail - 15px (half button)
-
-            const logoutBtn = document.getElementById('sidebarLogoutBtn');
-            if (logoutBtn) logoutBtn.setAttribute('data-tooltip', 'Logout');
-
             const isDesktop = () => window.innerWidth >= 1025;
-
-            function updateBtnPosition(collapsed, animate) {
-                if (!isDesktop()) { btn.style.left = ''; return; }
-                if (!animate) btn.style.transition = 'background 0.18s, box-shadow 0.18s, transform 0.18s';
-                btn.style.left = (collapsed ? COLLAPSED_LEFT : EXPANDED_LEFT) + 'px';
-                if (!animate) {
-                    requestAnimationFrame(() => requestAnimationFrame(() => {
-                        btn.style.transition = '';
-                    }));
-                }
-            }
-
-            const setCollapsed = (val) => {
-                document.body.classList.toggle('sidebar--collapsed', val);
-                updateBtnPosition(val, true);
-                Storage.saveSync(STORAGE_KEY, val ? '1' : '0'); // FIXED: sidebar preference no longer writes app-owned localStorage.
+            const apply = (collapsed) => {
+                document.body.classList.toggle('sidebar--collapsed', collapsed);
+                btn.setAttribute('aria-expanded', String(!collapsed));
+                btn.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
             };
-
-            // Restore saved state — set position without transition
-            if (isDesktop()) {
-                let saved = Storage.loadSync(STORAGE_KEY, '0');
-                const isCollapsed = saved === '1';
-                if (isCollapsed) document.body.classList.add('sidebar--collapsed');
-                updateBtnPosition(isCollapsed, false);
-            }
-
+            const restore = () => apply(isDesktop() && Storage.loadSync(STORAGE_KEY, '0') === '1');
+            restore();
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                setCollapsed(!document.body.classList.contains('sidebar--collapsed'));
+                const next = !document.body.classList.contains('sidebar--collapsed');
+                apply(next);
+                Storage.saveSync(STORAGE_KEY, next ? '1' : '0');
             });
-
-            window.addEventListener('resize', () => {
-                if (!isDesktop()) {
-                    document.body.classList.remove('sidebar--collapsed');
-                    btn.style.left = '';
-                } else {
-                    let saved = Storage.loadSync(STORAGE_KEY, '0');
-                    const isCollapsed = saved === '1';
-                    if (isCollapsed) document.body.classList.add('sidebar--collapsed');
-                    updateBtnPosition(isCollapsed, false);
-                }
-            });
+            window.addEventListener('resize', restore);
         })();
 
         (function publishAppBootHelpersReady() {

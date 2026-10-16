@@ -666,6 +666,33 @@ assert(landingCss.includes('.lp-rig {') && /\.lp-rig \{[^}]*z-index: 3/.test(lan
 assert((index.match(/data-lp-quote /g) || []).length === 3 && landing.includes('function setupQuotes(root)'), 'Testimonials must rotate through all three quotes');
 assert(!/class="lp-trust"|lpJobsTitle/.test(index), 'The landing keeps one closing band; the trust strip and jobs section are merged into it');
 assert(read('DESIGN_SYSTEM.md').includes('## UX laws'), 'DESIGN_SYSTEM.md must map the UX laws');
+
+// ── App shell (Forest & Foil, stage B0) ─────────────────────────────────────
+const appCss = read('styles.app.css');
+const chrome = read('app.chrome.js');
+const todayboardJs = read('app.todayboard.js');
+assert(index.includes(versionedAssetUrl('styles.app.css')), `index.html does not load ${versionedAssetUrl('styles.app.css')}`);
+assert(index.includes(versionedAssetUrl('app.chrome.js')), `index.html does not load ${versionedAssetUrl('app.chrome.js')}`);
+assert(!/var\(--(onyx|gold-amber|gold-deep|text-primary)\b/.test(appCss), 'styles.app.css must read only the sp-design-tokens.css roles');
+assert(!/#[0-9a-fA-F]{3,8}\b/.test(appCss.replace(/\/\*[\s\S]*?\*\//g, '')), 'styles.app.css must not hard-code colours; use the tokens');
+assert(!/id="hamburgerBtn"|id="welcomeMessage"|mainstageCoinRainCanvas|id="navBackBtn"/.test(index), 'The app shell has no hamburger, welcome banner, coin rain or back/forward buttons');
+assert(index.includes('class="bottom-nav-add" id="quickAddBtn"'), 'The mobile tab bar must carry the centre (+) quick-add button');
+for (const id of ['quickAddPanel', 'spNotifySheet', 'spAccountSheet', 'spBellBtn', 'spTeamBtn', 'spTeamChatBadge']) {
+  assert(index.includes(`id="${id}"`), `index.html app shell must render #${id}`);
+}
+assert(!/\.style\b/.test(chrome), 'app.chrome.js must not write inline styles');
+assert((index.match(/<div\b/g) || []).length === (index.match(/<\/div>/g) || []).length, 'index.html <div> tags must balance (a stray close breaks the app shell layout)');
+assert(!/sp-csp-style-(2|9|57)\b/.test(index), 'Elements start closed with the hidden attribute, not display:none utility classes');
+const styleWrites = (src) => (src.match(/\.style\.[a-zA-Z]+\s*=[^=]|\.style\.(setProperty|removeProperty|cssText)/g) || []).length;
+for (const [name, src] of [['supabase.js', supabase], ['app.tasks.js', tasks], ['app.reports.js', reports], ['app.todayboard.js', todayboardJs]]) {
+  assert(styleWrites(src) === 0, `${name} must toggle hidden/classes instead of writing inline styles`);
+}
+// Documented exceptions (redesigned in stage B3): the fallback tour map pins and
+// the globe's per-frame pin card / drag positions.
+assert(styleWrites(app) <= 2, `app.js inline style writes grew (${styleWrites(app)}); only the fallback map pin position may remain`);
+assert(styleWrites(globe) <= 7, `app.globe.js inline style writes grew (${styleWrites(globe)}); only per-frame pin card / drag positions may remain`);
+assert(!rootShell.includes("loadScript('premium')") && !rootShell.includes("loadScript('shell')"), 'The legacy premium/shell polish layers are retired and must not load');
+assert(bootFlags.includes("'sp-prem-off', 'sp-handcraft-off', 'sp-shell-off'"), 'app.boot-flags.js must keep the legacy polish layers switched off');
 assert(rootShell.includes('whenAppShellActive('), 'app.root-shell.js must defer the globe/Three.js loader until the app shell is active');
 for (const legacy of ['app.handcraft.js', 'styles.handcraft.css', 'notebook-board', 'sp-compass', 'landing-snap-page']) {
   for (const [fileName, text] of [['index.html', index], ['app.js', app], ['app.browser-assets.js', read('app.browser-assets.js')], ['styles.css', styles]]) {
