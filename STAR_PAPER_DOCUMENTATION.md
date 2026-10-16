@@ -163,7 +163,7 @@ Own the intentionally public landing-page boot path:
 
 These files replace the old inline scripts in `how-it-works.html`, `proof.html`, and `testimonials.html`. Public landing pages must not contain inline script blocks, inline style blocks, or inline style attributes, and their document CSP must not allow `'unsafe-inline'`. Keep `frame-ancestors 'none'` in `_headers`; do not put it in meta CSP because browsers ignore it there.
 
-The landing roots use `landing-snap-page` as the CSS/JS contract for full-viewport vertical section snapping. `#landingScreen` is the scroll owner, not `window`, so the handcraft progress bar and route-load reset must read and reset that container. Standalone public pages additionally use `landing-public-page`; links from the home hero must target `how-it-works.html` without `#landing-features` so the browser cannot skip the hero on first paint.
+Signed-out pages use the `.lp` design-system shell (`lp lp--home` on `index.html`, `lp lp--page` on the public pages, `lp lp-auth` for sign-in). They scroll normally with the window (no mandatory scroll-snap), share one header (with a mobile menu sheet) and footer, and use cross-document view transitions between public pages. Screens and auth panels switch with the `hidden` attribute (`setActiveScreen`, `showAuthPanel`), never inline `style.display`. Public pages load only `sp-design-tokens.css`, `styles.landing.css` and the regular Phosphor sheet; the globe (Three.js), premium/shell layers and the fill/duotone icon sheets load only once the app shell is active. Links from the home hero must target `how-it-works.html` without `#landing-features` so the browser cannot skip the hero on first paint.
 
 ### `app.root-shell.js`
 
@@ -491,12 +491,13 @@ When shipping auth, sync, reports, or boot changes, deploy matching versions of:
 - `app.root-shell.js`
 - `styles.css`
 - `styles.shell.css`
-- `styles.handcraft.css`
+- `sp-design-tokens.css`
+- `styles.landing.css`
 - `index.html`
 - `public-page-head.js`
 - `app.public-pages.js`
 - `app.browser-assets.js`
-- `app.handcraft.js`
+- `app.landing.js`
 - `sw.js`
 - `assets/world-atlas/land-50m.json`
 - `assets/vendor/` runtime assets, including the same-origin Supabase auth SDK

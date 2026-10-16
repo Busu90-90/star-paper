@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
 
@@ -84,14 +84,12 @@ test('frontend image and CTA sinks are constrained before rendering', () => {
   const bootHead = read('./app.boot-head.js');
   const bootFlags = read('./app.boot-flags.js');
   const bootBody = read('./app.boot-body.js');
-  const publicPageHead = read('./public-page-head.js');
-  const publicPageTheme = read('./public-page-theme.js');
   const rootShell = read('./app.root-shell.js');
   const tasks = read('./app.tasks.js');
   const todayBoard = read('./app.todayboard.js');
   const globe = read('./app.globe.js');
   const reports = read('./app.reports.js');
-  const handcraft = read('./app.handcraft.js');
+  const landing = read('./app.landing.js');
 
   assert.match(app, /const EMPTY_STATE_ACTIONS = \{/);
   assert.doesNotMatch(app, /onclick="\$\{ctaAction\}"/);
@@ -141,9 +139,8 @@ test('frontend image and CTA sinks are constrained before rendering', () => {
   assert.match(todayBoard, /container\.replaceChildren\(fragment\)/);
   assert.doesNotMatch(todayBoard, /\.innerHTML\s*(?:=|\+=)/);
   assert.doesNotMatch(todayBoard, /data-alert-action="\$\{/);
-  assert.match(handcraft, /var icon = document\.createElement\('i'\);/);
-  assert.doesNotMatch(handcraft, /btn\.innerHTML\s*=/);
-  assert.doesNotMatch(handcraft, /\.innerHTML\s*(?:=|\+=)/);
+  assert.doesNotMatch(landing, /\.innerHTML\s*(?:=|\+=)|insertAdjacentHTML/);
+  assert.doesNotMatch(landing, /\.style\b/);
   assert.match(globe, /addButton\.dataset\.globeAction = 'add-booking';/);
   assert.match(globe, /function textElement\(tagName, text\)/);
   assert.match(globe, /this\.pinCard\.replaceChildren\(/);
@@ -181,21 +178,9 @@ test('frontend image and CTA sinks are constrained before rendering', () => {
   assert.doesNotMatch(publicPageManifest, /\sonclick=/);
   assert.doesNotMatch(publicPageManifest, /\sonkeydown=/);
   assert.doesNotMatch(publicPageManifest, /\.innerHTML\s*(?:=|\+=)/);
-  for (const publicBootFile of [publicPageHead, publicPageTheme]) {
-    assert.doesNotMatch(publicBootFile, /\sonclick=/);
-    assert.doesNotMatch(publicBootFile, /\sonkeydown=/);
-    assert.doesNotMatch(publicBootFile, /\.innerHTML\s*(?:=|\+=)/);
-    assert.doesNotMatch(publicBootFile, /\.insertAdjacentHTML\s*\(/);
-  }
-  for (const pagePath of ['./how-it-works.html', './proof.html', './testimonials.html']) {
-    const page = read(pagePath);
-    assert.ok(page.includes(assets.url('public-page-head.js')));
-    assert.ok(page.includes(assets.url('public-page-theme.js')));
-    assert.doesNotMatch(page, /<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/i);
-    assert.doesNotMatch(page, /<style\b/i);
-    assert.doesNotMatch(page, /\sstyle\s*=/);
-    assert.doesNotMatch(page, /script-src[^;]*'unsafe-inline'/i);
-    assert.doesNotMatch(page, /style-src[^;]*'unsafe-inline'/i);
+  // The landing (with its showcase slides) and sign-in live in index.html.
+  for (const retired of ['./how-it-works.html', './proof.html', './testimonials.html', './public-page-head.js', './public-page-theme.js']) {
+    assert.equal(existsSync(new URL(retired, import.meta.url)), false, `${retired} should be retired`);
   }
   assert.doesNotMatch(rootShell, /\sonclick=/);
   assert.doesNotMatch(rootShell, /\sonkeydown=/);

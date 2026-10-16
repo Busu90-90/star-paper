@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Star Paper">
+  <defs><mask id="spm-cut"><rect width="100" height="100" fill="#fff"/><path d="M50 41.2 L52.29 47.64 L59.13 47.83 L53.71 52.01 L55.64 58.57 L50 54.7 L44.36 58.57 L46.29 52.01 L40.87 47.83 L47.71 47.64 Z" fill="#000"/></mask></defs>
+  <circle cx="50" cy="50" r="45.6" fill="none" stroke="currentColor" stroke-width="2.8"/>
+  <circle cx="50" cy="50" r="37" fill="none" stroke="currentColor" stroke-width="1" opacity=".5"/>
+  <circle cx="50" cy="50" r="30" fill="none" stroke="currentColor" stroke-width="1" opacity=".5"/>
+  <path d="M8 72 L24 64 L34 68 L46 56 M64 52 L72 54 L93 26" fill="none" stroke="currentColor" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="50" cy="50" r="13" fill="currentColor" mask="url(#spm-cut)"/>
+  <circle cx="50" cy="50" r="3.4" fill="none" stroke="currentColor" stroke-width="1.4"/>
+</svg>

@@ -118,13 +118,44 @@
         console.warn('Sentry deferred load failed:', err);
       });
     }, 1000);
-    idle(function() { loadScript('globe').catch(function() {}); }, 1600);
-    idle(function() {
-      loadScript('premium')
-        .catch(function() {})
-        .then(function() { return loadScript('shell').catch(function() {}); });
-    }, 1800);
+    // The globe (Three.js + world atlas), premium and shell layers only serve the
+    // signed-in app, so signed-out visitors never download them.
+    whenAppShellActive(function() {
+      loadIconSheets();
+      idle(function() { loadScript('globe').catch(function() {}); }, 1600);
+      idle(function() {
+        loadScript('premium')
+          .catch(function() {})
+          .then(function() { return loadScript('shell').catch(function() {}); });
+      }, 1800);
+    });
   };
+
+  // Fill + duotone Phosphor sheets (~320 KB of CSS) only style the signed-in app.
+  function loadIconSheets() {
+    ['assets/vendor/phosphor-icons/fill/style.css', 'assets/vendor/phosphor-icons/duotone/style.css'].forEach(function(path) {
+      var href = assetManifest().url(path);
+      if (document.querySelector('link[href="' + href + '"]')) return;
+      var link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = href;
+      document.head.appendChild(link);
+    });
+  }
+
+  function whenAppShellActive(work) {
+    var app = document.getElementById('appContainer');
+    if (!app || app.classList.contains('screen-active') || typeof MutationObserver !== 'function') {
+      work();
+      return;
+    }
+    var observer = new MutationObserver(function() {
+      if (!app.classList.contains('screen-active')) return;
+      observer.disconnect();
+      work();
+    });
+    observer.observe(app, { attributes: true, attributeFilter: ['class'] });
+  }
 
   window.addEventListener('load', function() {
     window.__spLoadDeferredThirdParty('window-load');
@@ -381,7 +412,7 @@
       'signup', 'signInWithGoogle', 'submitForgotPassword',
       'saveBooking', 'saveExpense', 'saveOtherIncome', 'saveArtist',
       'saveProfileChanges', 'showDetailView',
-      'landingFeaturePrev', 'landingFeatureNext'
+      'verifySignupCode', 'resendSignupCode'
     ].includes(action)) {
       console.warn('[StarPaper] No handler for "' + action + '". window.' + action + '=', typeof window[action]);
     }
@@ -403,9 +434,13 @@
     var emailInput = document.getElementById('forgotEmail');
     var heading = document.getElementById('loginBoxHeading');
     var subtext = document.getElementById('loginBoxSubtext');
-    if (loginForm) loginForm.style.display = 'none';
-    if (signupForm) signupForm.style.display = 'none';
-    if (forgotForm) forgotForm.style.display = 'block';
+    if (typeof window.showAuthPanel === 'function') {
+      window.showAuthPanel('forgot');
+    } else {
+      if (loginForm) loginForm.hidden = true;
+      if (signupForm) signupForm.hidden = true;
+      if (forgotForm) forgotForm.hidden = false;
+    }
     if (result) {
       result.textContent = '';
       result.className = 'forgot-password-hint';
@@ -455,4 +490,44 @@
       window.submitForgotPassword();
     }
   });
+})();
+
+(function brandMarkSpinToggle() {
+  // Tapping any Gold Record mark pauses or resumes the spin on every mark.
+  var root = document.documentElement;
+  var MARKS = '.sp-spin-mark, .sp-spin-toggle, .app-brand img, .avatar-img--brand-mark';
+
+  function reducedMotion() {
+    return Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+
+  function isSpinning() {
+    var state = root.getAttribute('data-logo-spin');
+    if (state === 'paused') return false;
+    if (state === 'on') return true;
+    return !reducedMotion();
+  }
+
+  function syncToggles() {
+    var spinning = isSpinning();
+    document.querySelectorAll('.sp-spin-toggle').forEach(function(toggle) {
+      toggle.setAttribute('aria-pressed', spinning ? 'true' : 'false');
+      toggle.setAttribute('aria-label', spinning ? 'Pause the spinning logo' : 'Spin the logo');
+    });
+  }
+
+  document.addEventListener('click', function(event) {
+    var mark = event.target && event.target.closest ? event.target.closest(MARKS) : null;
+    if (!mark) return;
+    var next = isSpinning() ? 'paused' : 'on';
+    root.setAttribute('data-logo-spin', next);
+    try { localStorage.setItem('sp_logo_spin', next === 'paused' ? 'off' : 'on'); } catch (_err) {}
+    syncToggles();
+  });
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', syncToggles, { once: true });
+  } else {
+    syncToggles();
+  }
 })();

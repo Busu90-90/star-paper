@@ -39,7 +39,10 @@ Do not open `index.html` through `file://`; Google OAuth and email-confirm redir
 - `app.boot-head.js`, `app.boot-flags.js`, `app.boot-body.js` - externalized prepaint and route/auth boot guards required before the main app bundle.
 - `app.public-pages.js` - source of truth for public root HTML markers and clean/`.html` landing route pairs consumed by boot, service-worker, and preflight checks.
 - `app.browser-assets.js` - browser asset contract for local version query strings, service-worker precache URLs, same-origin runtime scripts, external CDN SRI pins, and vendored runtime file hashes.
-- `app.handcraft.js` - public landing interaction layer for handcraft effects, snap-scroll progress, and landing top-reset behavior.
+- `app.landing.js` - signed-out page behaviour (mobile menu sheet, sticky header state, section reveal, figure count-up, `?auth=signup|login` intent). Toggles attributes and classes only; never writes inline styles.
+- `sp-design-tokens.css` - design tokens (colour, type, space, radius, depth, motion) for the music x money x management system.
+- `styles.landing.css` - landing, public pages and sign-in/sign-up/reset, namespaced `.lp-*`. The hero art ("Mainstage Ledger") is one self-contained block in `index.html` plus its own section in this file, so it can be swapped without touching layout.
+- `scripts/build-logo-pack.mjs` - regenerates every logo PNG, the SVG masters and `favicon.svg` from one vector definition.
 - `app.root-shell.js` - externalized root-shell runtime guards, deferred library loader, critical action bridge, local-file warning, and forgot-password wiring.
 - `app.offline-cache.js` - read-only IndexedDB snapshot cache for offline boots: persists the last complete cloud snapshot per workspace scope and renders it provisionally behind an "Offline — last synced" banner when the cloud first paint fails. Writes stay guarded until real cloud data lands; explicit logout wipes the cache. Kill switch: `localStorage.sp_offline_cache_off = '1'`.
 - `schema.sql` - database schema, constraints, RLS policies, and RPCs for the live Supabase project.
@@ -132,7 +135,7 @@ Netlify publishes the repository root, so root HTML is deny-by-default. Only the
 - `proof.html` for `/proof` and `/proof.html`
 - `testimonials.html` for `/testimonials` and `/testimonials.html`
 
-Every public root HTML file must be listed in `app.public-pages.js`, unignored in `.netlifyignore`, and marked with `<meta name="star-paper:public-root" ...>`. `app.boot-head.js`, `sw.js`, and `scripts/preflight.mjs` consume that manifest; preflight fails if the manifest, `.netlifyignore`, `_redirects`, or service-worker app shell drift apart. Public landing pages must load `public-page-head.js`, `public-page-theme.js`, and `app.handcraft.js`; preflight rejects landing inline scripts, inline style blocks, inline style attributes, and landing CSP `unsafe-inline`. Landing roots use `landing-snap-page` so `#landingScreen` owns viewport scrolling, section snapping, and scroll progress; standalone public pages also use `landing-public-page`, and `public-page-head.js` strips known section hashes before forcing the initial top position. The service worker must fetch the requested public navigation URL first, normalize public landing fallback paths only when needed, and hand same-origin clean-URL redirects back to the navigation client; direct public `.html` navigations stay on the browser network path.
+Every public root HTML file must be listed in `app.public-pages.js`, unignored in `.netlifyignore`, and marked with `<meta name="star-paper:public-root" ...>`. `app.boot-head.js`, `sw.js`, and `scripts/preflight.mjs` consume that manifest; preflight fails if the manifest, `.netlifyignore`, `_redirects`, or service-worker app shell drift apart. Public landing pages must load `public-page-head.js`, `public-page-theme.js`, `styles.landing.css`, and `app.landing.js`; preflight rejects landing inline scripts, inline style blocks, inline style attributes, and landing CSP `unsafe-inline`. Signed-out roots use the `.lp` design-system shell and scroll with the window; `public-page-head.js` strips known section hashes before forcing the initial top position. The service worker must fetch the requested public navigation URL first, normalize public landing fallback paths only when needed, and hand same-origin clean-URL redirects back to the navigation client; direct public `.html` navigations stay on the browser network path.
 
 Always deploy the matching versions of:
 
@@ -148,12 +151,13 @@ Always deploy the matching versions of:
 - `app.root-shell.js`
 - `styles.css`
 - `styles.shell.css`
-- `styles.handcraft.css`
+- `sp-design-tokens.css`
+- `styles.landing.css`
 - `index.html`
 - `public-page-head.js`
 - `app.public-pages.js`
 - `app.browser-assets.js`
-- `app.handcraft.js`
+- `app.landing.js`
 - `sw.js`
 - `assets/world-atlas/land-50m.json`
 - `assets/vendor/` runtime assets, including the same-origin Supabase auth SDK

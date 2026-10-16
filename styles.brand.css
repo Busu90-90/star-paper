@@ -1,0 +1,50 @@
+/* ==========================================================================
+   Star Paper brand mark: the Gold Record spins slowly on every screen
+   (landing, sign in, app shell). Tapping a mark pauses or resumes all of
+   them (app.root-shell.js); the choice is remembered per browser.
+   ========================================================================== */
+
+.sp-spin-mark,
+.app-brand img,
+.avatar-img--brand-mark {
+  animation: sp-record-spin 24s linear infinite;
+  transform-origin: 50% 50%;
+}
+
+html[data-logo-spin='paused'] :is(.sp-spin-mark, .app-brand img, .avatar-img--brand-mark) {
+  animation-play-state: paused;
+}
+
+.avatar-img--brand-mark,
+.app-brand img {
+  cursor: pointer;
+}
+
+.sp-spin-toggle {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  box-shadow: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sp-spin-toggle:focus-visible {
+  outline: 2px solid var(--sp-focus, #FFE9A8);
+  outline-offset: 3px;
+}
+
+@keyframes sp-record-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-logo-spin='on']) :is(.sp-spin-mark, .app-brand img, .avatar-img--brand-mark) {
+    animation: none;
+  }
+}

@@ -5,35 +5,57 @@
   "start_url": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#0B0B0B",
-  "theme_color": "#0B0B0B",
+  "background_color": "#0A1210",
+  "theme_color": "#0A1210",
   "scope": "./",
   "lang": "en",
-  "categories": ["business", "finance", "productivity"],
+  "categories": [
+    "business",
+    "finance",
+    "productivity"
+  ],
   "icons": [
     {
-      "src": "star_paper_logo_pack/star_paper_32.png?v=3",
+      "src": "star_paper_logo_pack/star-paper-mark.svg?v=2",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "star_paper_logo_pack/star_paper_32.png?v=5",
       "sizes": "32x32",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "star_paper_logo_pack/star_paper_128.png?v=3",
+      "src": "star_paper_logo_pack/star_paper_128.png?v=5",
       "sizes": "128x128",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "star_paper_logo_pack/star_paper_256.png?v=3",
-      "sizes": "256x256",
+      "src": "star_paper_logo_pack/star_paper_apple_180.png?v=2",
+      "sizes": "180x180",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "star_paper_logo_pack/star_paper_512.png?v=3",
+      "src": "star_paper_logo_pack/star_paper_256.png?v=5",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "star_paper_logo_pack/star_paper_512.png?v=5",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "star_paper_logo_pack/star_paper_maskable_512.png?v=2",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "shortcuts": [
@@ -42,14 +64,24 @@
       "short_name": "Booking",
       "description": "Log a new artist booking",
       "url": "./#bookings",
-      "icons": [{ "src": "star_paper_logo_pack/star_paper_256.png?v=3", "sizes": "256x256" }]
+      "icons": [
+        {
+          "src": "star_paper_logo_pack/star_paper_256.png?v=5",
+          "sizes": "256x256"
+        }
+      ]
     },
     {
       "name": "Add Expense",
       "short_name": "Expense",
       "description": "Log a new expense",
       "url": "./#expenses",
-      "icons": [{ "src": "star_paper_logo_pack/star_paper_256.png?v=3", "sizes": "256x256" }]
+      "icons": [
+        {
+          "src": "star_paper_logo_pack/star_paper_256.png?v=5",
+          "sizes": "256x256"
+        }
+      ]
     }
   ],
   "screenshots": [],

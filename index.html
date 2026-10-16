@@ -6,47 +6,47 @@
     <meta name="star-paper:public-root" content="app-shell">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:;">
     <title>Star Paper</title>
-    <script src="app.browser-assets.js?v=15"></script>
-    <script src="app.public-pages.js?v=1"></script>
+    <script src="app.browser-assets.js?v=20"></script>
+    <script src="app.public-pages.js?v=2"></script>
     <script src="app.boot-head.js?v=1"></script>
-    <link rel="manifest" href="manifest.json?v=25">
-    <meta name="theme-color" content="#0B0B0B">
-    <link rel="icon" type="image/png" sizes="32x32" href="star_paper_logo_pack/star_paper_32.png?v=3">
-    <link rel="icon" type="image/png" sizes="256x256" href="star_paper_logo_pack/star_paper_256.png?v=3">
-    <link rel="shortcut icon" type="image/png" href="star_paper_logo_pack/star_paper_32.png?v=3">
-    <link rel="apple-touch-icon" sizes="256x256" href="star_paper_logo_pack/star_paper_256.png?v=3">
+    <link rel="manifest" href="manifest.json?v=27">
+    <meta name="theme-color" content="#0A1210">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2">
+    <link rel="icon" type="image/png" sizes="32x32" href="star_paper_logo_pack/star_paper_32.png?v=5">
+    <link rel="apple-touch-icon" sizes="180x180" href="star_paper_logo_pack/star_paper_apple_180.png?v=2">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://fxcyocdwvjiyatqnaahg.supabase.co" crossorigin>
     <link rel="dns-prefetch" href="//browser.sentry-cdn.com">
     <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
-    <!-- Handcraft variable + display fonts (loaded before styles.handcraft.css applies them) -->
-    <link rel="stylesheet" href="assets/vendor/fonts/star-paper-fonts.css?v=1">
+    <!-- Self-hosted fonts: brand (Fraunces, Inter Tight, JetBrains Mono) + legacy app-shell families -->
+    <link rel="stylesheet" href="assets/vendor/fonts/star-paper-fonts.css?v=2">
     <link rel="preload" href="assets/vendor/supabase/supabase.min.js?v=1" as="script" integrity="sha384-dzQgxMPp/h+N0t5qDf6Bp516wKZr3pXgGMpA7/ZM6tiWkqYo90N060L03dxnZ8Tf">
 
     <!-- Same-origin Supabase SDK keeps auth boot independent of mutable CDN/SRI state. -->
     <script src="assets/vendor/supabase/supabase.min.js?v=1" integrity="sha384-dzQgxMPp/h+N0t5qDf6Bp516wKZr3pXgGMpA7/ZM6tiWkqYo90N060L03dxnZ8Tf"></script>
-    <script src="app.boot-flags.js?v=1"></script>
+    <script src="app.boot-flags.js?v=2"></script>
 
-    <link rel="stylesheet" href="styles.css?v=58">
+    <link rel="stylesheet" href="styles.css?v=60">
     <!-- UPGRADE: Final premium relayering token layer (additive, kill-switchable via localStorage.sp_prem_off) -->
-    <link rel="stylesheet" href="star-paper-tokens.css?v=21">
+    <link rel="stylesheet" href="star-paper-tokens.css?v=24">
     <!-- UPGRADE: Premium polish layer (additive, kill-switchable via localStorage.sp_prem_off) -->
-    <link rel="stylesheet" href="styles.premium.css?v=8">
-    <link rel="stylesheet" href="styles.shell.css?v=12">
-    <link rel="preload" as="image" href="assets/landing/notebook-board-desktop.webp?v=3" imagesrcset="assets/landing/notebook-board-desktop.webp?v=3">
-    <link rel="preload" as="image" href="star_paper_logo_pack/star_paper_transparent.png?v=3">
-    <link rel="stylesheet" href="styles.handcraft.css?v=35">
+    <link rel="stylesheet" href="styles.premium.css?v=10">
+    <link rel="stylesheet" href="styles.shell.css?v=14">
+    <!-- Design system: tokens + signed-out pages (landing, auth). Loaded last so it owns those screens. -->
+    <link rel="stylesheet" href="sp-design-tokens.css?v=3">
+    <link rel="stylesheet" href="styles.landing.css?v=5">
+    <link rel="stylesheet" href="styles.brand.css?v=1">
+    <link rel="preload" href="assets/vendor/fonts/font-29-fraunces-latin-opsz-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="assets/vendor/fonts/font-31-inter-tight-latin-wght-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <!-- Vendored Phosphor Icons 2.1.1 - unified icon system -->
     <link rel="stylesheet" href="assets/vendor/phosphor-icons/regular/style.css?v=1">
-    <link rel="stylesheet" href="assets/vendor/phosphor-icons/fill/style.css?v=1">
-    <!-- UPGRADE: duotone variant for primary actions -->
-    <link rel="stylesheet" href="assets/vendor/phosphor-icons/duotone/style.css?v=1">
+    <!-- Fill + duotone icon sheets load with the app shell (app.root-shell.js). -->
 </head>
 <body>
     <script src="app.boot-body.js?v=1"></script>
     <div class="app-boot-loader hidden" id="appBootLoader" aria-live="polite" aria-hidden="true" data-state="loading-session">
         <div class="app-boot-loader__inner">
-            <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="Star Paper" class="app-boot-loader__logo" />
+            <img src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="Star Paper" class="app-boot-loader__logo sp-spin-mark" />
             <div class="app-boot-loader__spinner" aria-hidden="true"></div>
             <div class="app-boot-loader__text" id="appBootLoaderText">Loading session...</div>
             <div class="app-boot-loader__subtext" id="appBootLoaderSubtext">Checking your secure cloud session...</div>
@@ -57,205 +57,341 @@
         </div>
     </div>
 
-    <!-- Landing Page -->
-    <div class="landing-container sp-prem-landing-refine landing-home-page landing-snap-page" id="landingScreen">
-        <!-- Sticky mini-nav (appears after scrolling past hero CTA on mobile) -->
-        <div class="landing-mini-nav" id="landingMiniNav" aria-hidden="true">
-            <a class="landing-mini-nav-brand" href="./index.html" aria-label="Go to Star Paper home">
-                <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="Star Paper" class="mini-nav-logo">
-                <span class="mini-nav-brand">STAR PAPER</span>
-            </a>
-            <button class="mini-nav-cta" data-action="showSignupForm">Get Started</button>
-        </div>
-
-        <div class="landing-hero-stage" id="landingHeroStage">
-            <div class="sp-prem-landing-mesh sp-prem-widget" aria-hidden="true">
-                <div class="sp-prem-orb sp-prem-orb--1"></div>
-                <div class="sp-prem-orb sp-prem-orb--2"></div>
-                <div class="sp-prem-orb sp-prem-orb--3"></div>
+    <!-- ═══ Signed-out: landing (styles.landing.css, app.landing.js) ═══ -->
+    <div class="lp lp--home" id="landingScreen" data-page="home">
+        <a class="lp-skip" href="#lpMain">Skip to content</a>
+        <!-- Stage rig, drawn once: a steel box truss with three PAR-can lamps. Each slide reuses it. -->
+        <svg class="lp-sprite" aria-hidden="true" focusable="false">
+            <defs>
+                <linearGradient id="lpSteel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9BA79E"/><stop offset=".35" stop-color="#4C5A50"/><stop offset=".6" stop-color="#1E2822"/><stop offset="1" stop-color="#5E6C62"/></linearGradient>
+                <linearGradient id="lpCan" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#11170F"/><stop offset=".45" stop-color="#3A463C"/><stop offset=".6" stop-color="#58665A"/><stop offset="1" stop-color="#0D120F"/></linearGradient>
+                <radialGradient id="lpLens" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFFBE6"/><stop offset=".45" stop-color="#F6E68A"/><stop offset="1" stop-color="#B8862B"/></radialGradient>
+                <radialGradient id="lpBloom" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFF6CF" stop-opacity=".9"/><stop offset=".4" stop-color="#F6E68A" stop-opacity=".35"/><stop offset="1" stop-color="#F6E68A" stop-opacity="0"/></radialGradient>
+                <symbol id="lpRigLamp" viewBox="-30 -8 60 66">
+                    <path d="M-20 -6 V8 M20 -6 V8 M-20 -6 H20" fill="none" stroke="url(#lpSteel)" stroke-width="3.5" stroke-linecap="round"/>
+                    <circle cx="-20" cy="8" r="3" fill="#2A342D" stroke="#7D8A80" stroke-width="1"/><circle cx="20" cy="8" r="3" fill="#2A342D" stroke="#7D8A80" stroke-width="1"/>
+                    <rect x="-17" y="2" width="34" height="38" rx="7" fill="url(#lpCan)" stroke="#6E7C72" stroke-width=".8"/>
+                    <path d="M-15 10 H15 M-15 16 H15 M-15 22 H15" stroke="#0A0F0C" stroke-width="1.2" opacity=".7"/>
+                    <path d="M-19 38 H19 L23 44 H-23 Z" fill="#1A221C" stroke="#58665A" stroke-width=".8"/>
+                    <ellipse cx="0" cy="45" rx="17" ry="4.5" fill="url(#lpLens)"/>
+                    <ellipse cx="0" cy="47" rx="28" ry="12" fill="url(#lpBloom)"/>
+                </symbol>
+                <symbol id="lpRigTruss" viewBox="0 0 600 30" preserveAspectRatio="none">
+                    <rect x="0" y="2" width="600" height="5" rx="2.5" fill="url(#lpSteel)"/>
+                    <rect x="0" y="22" width="600" height="5" rx="2.5" fill="url(#lpSteel)"/>
+                    <path d="M0 7 L15 22 L30 7 L45 22 L60 7 L75 22 L90 7 L105 22 L120 7 L135 22 L150 7 L165 22 L180 7 L195 22 L210 7 L225 22 L240 7 L255 22 L270 7 L285 22 L300 7 L315 22 L330 7 L345 22 L360 7 L375 22 L390 7 L405 22 L420 7 L435 22 L450 7 L465 22 L480 7 L495 22 L510 7 L525 22 L540 7 L555 22 L570 7 L585 22 L600 7" fill="none" stroke="#6E7C72" stroke-width="1.6" stroke-linejoin="round"/>
+                    <path d="M0 3.2 H600 M0 23.2 H600" stroke="#D7E0D9" stroke-width=".8" opacity=".55"/>
+                </symbol>
+            </defs>
+        </svg>
+        <header class="lp-header" data-lp-header>
+            <div class="lp-header__bar">
+                <div class="lp-brand">
+                    <button class="sp-spin-toggle" type="button" aria-pressed="true" aria-label="Pause the spinning logo">
+                        <img class="lp-brand__mark sp-spin-mark" src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="" width="36" height="36">
+                    </button>
+                    <a class="lp-brand__word" href="./index.html">Star Paper</a>
+                </div>
+                <nav class="lp-nav" aria-label="Primary">
+                    <a class="lp-nav__link" href="#how" data-lp-slide-link="1">How it works</a>
+                    <a class="lp-nav__link" href="#proof" data-lp-slide-link="2">Proof</a>
+                    <a class="lp-nav__link" href="#voices" data-lp-slide-link="3">Testimonials</a>
+                </nav>
+                <div class="lp-header__actions">
+                    <button class="lp-icon-btn" id="landingThemeToggle" type="button" aria-label="Switch to light mode"><i class="ph ph-moon" aria-hidden="true"></i></button>
+                    <button class="lp-btn lp-btn--quiet lp-btn--sm" type="button" data-action="showLoginForm">Sign in</button>
+                    <button class="lp-btn lp-btn--gold lp-btn--sm lp-from-tablet" type="button" data-action="showSignupForm">Start free</button>
+                </div>
             </div>
-            <div class="landing-card landing-mainstage-card landing-hero-shell">
-                <div class="landing-hero-rail">
-                    <div class="landing-shell-nav">
-                        <a class="landing-shell-brand" href="./index.html" aria-label="Go to Star Paper home">
-                            <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="Star Paper" class="landing-shell-logo" />
-                            <span class="landing-shell-brand-text">STAR PAPER</span>
-                        </a>
-                        <nav class="landing-handcraft-desktop-nav" aria-label="Landing sections">
-                            <a href="./how-it-works.html">How it works</a>
-                            <a href="./proof.html">Proof</a>
-                            <a href="./testimonials.html">Testimonials</a>
-                            <span class="landing-handcraft-desktop-divider" aria-hidden="true"></span>
-                            <button type="button" data-action="showLoginForm">Sign in</button>
-                            <button class="theme-toggle icon-toggle landing-theme-toggle landing-handcraft-nav-theme" id="landingThemeToggle" type="button" aria-label="Toggle theme">
-                                <i class="ph ph-moon sp-csp-style-1" aria-hidden="true"></i>
-                            </button>
-                        </nav>
-                        <div class="landing-shell-nav-actions">
-                            <button class="landing-shell-login" type="button" data-action="showLoginForm">Sign in</button>
-                        </div>
-                    </div>
+        </header>
 
-                    <div class="landing-shell-body">
-                        <div class="landing-shell-hero sp-prem-hero-layout" data-handcraft="phase-one">
-                            <div class="sp-prem-hero-copy">
-                                <div class="landing-hero-intro">
-                                    <div class="landing-hero-medallion">
-                                        <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="Star Paper" class="landing-hero-medallion-logo" />
-                                    </div>
-                                    <div class="landing-shell-kicker">The Manager&apos;s Mainstage</div>
+        <main class="lp-main" id="lpMain">
+            <!-- lp:show: the hero is a four-slide showcase. Each slide is copy + art; the art blocks are swappable. -->
+            <section class="lp-show" id="lpShow" aria-roledescription="carousel" aria-label="Star Paper at a glance" data-lp-show>
+                <div class="lp-show__track" data-lp-track>
+
+                    <article class="lp-slide" id="mainstage" role="group" aria-roledescription="slide" aria-label="1 of 4: The mainstage" data-lp-slide>
+                        <div class="lp-slide__copy">
+                            <p class="lp-eyebrow"><span class="lp-eyebrow__dot" aria-hidden="true"></span>The manager&rsquo;s mainstage</p>
+                            <h1 class="lp-display">Run the show.<br><em>Own the money.</em></h1>
+                            <p class="lp-lede">Bookings, deposits, payouts and your whole crew on one live ledger. Built for artist managers who are done chasing spreadsheets.</p>
+                            <div class="lp-cta-row">
+                                <button class="lp-btn lp-btn--gold lp-btn--lg" id="createAccountBtn" type="button" data-action="showSignupForm">Start free <i class="ph ph-arrow-right" aria-hidden="true"></i></button>
+                                <a class="lp-btn lp-btn--ghost lp-btn--lg" href="#how" data-lp-slide-link="1"><i class="ph ph-play-circle" aria-hidden="true"></i> See how it works</a>
+                            </div>
+                            <ul class="lp-hero__meta">
+                                <li><i class="ph ph-check" aria-hidden="true"></i>Free to start</li>
+                                <li><i class="ph ph-check" aria-hidden="true"></i>Works on any phone</li>
+                                <li><i class="ph ph-check" aria-hidden="true"></i>Built in Kampala</li>
+                            </ul>
+                            <p class="lp-hero__for">For artist managers, labels, booking agents and tour crews.</p>
+                        </div>
+                        <!-- lp:art mainstage -->
+                        <figure class="lp-art lp-art--mainstage">
+                            <div class="lp-rig" aria-hidden="true"><svg class="lp-rig__truss" viewBox="0 0 600 30" preserveAspectRatio="none" focusable="false"><use href="#lpRigTruss"/></svg><span class="lp-rig__beam lp-rig__beam--l"><span class="lp-rig__cone"></span></span><span class="lp-rig__beam lp-rig__beam--c"><span class="lp-rig__cone"></span><span class="lp-rig__dust"></span></span><span class="lp-rig__beam lp-rig__beam--r"><span class="lp-rig__cone"></span></span><svg class="lp-rig__lamp lp-rig__lamp--l" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--c" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--r" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><span class="lp-rig__pool"></span></div>
+                            <div class="lp-ledger">
+                                <div class="lp-ledger__head">
+                                    <span class="lp-live"><span class="lp-live__dot" aria-hidden="true"></span>Live</span>
+                                    <span class="lp-ledger__period">Revenue &middot; Jan&ndash;Jun</span>
                                 </div>
-                                <h1 class="landing-hero-heading">
-                                    Run your entire
-                                    <span class="landing-hero-highlight">artist operation</span>
-                                    from one command center
-                                </h1>
-                                <p class="landing-hero-subtitle">
-                                    Bookings, finances, contracts, splits, and more. Everything in sync. Everyone in the loop.
-                                </p>
-                                <div class="landing-buttons">
-                                    <button class="landing-btn" id="createAccountBtn" data-action="showSignupForm" data-sp-prem-pulse="gold">
-                                        <span>Get started</span>
-                                        <i class="ph ph-arrow-right" aria-hidden="true"></i>
-                                    </button>
-                                    <a class="landing-btn landing-btn--ghost landing-btn--how" href="./how-it-works.html">
-                                        <i class="ph ph-play-circle" aria-hidden="true"></i>
-                                        <span>How it works</span>
-                                    </a>
+                                <p class="lp-ledger__amount"><span class="lp-ledger__cur">UGX</span> <span data-lp-count="38400000">38,400,000</span></p>
+                                <p class="lp-ledger__delta"><i class="ph ph-trend-up" aria-hidden="true"></i> 24% on last half</p>
+                                <div class="lp-eq" aria-hidden="true">
+                                    <svg class="lp-eq__line" viewBox="0 0 600 100" preserveAspectRatio="none" focusable="false"><polyline points="50,56 150,38 250,49 350,19 450,30 550,2" fill="none" stroke="#FFE9A8" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>
+                                    <span class="lp-eq__bar"></span><span class="lp-eq__bar"></span><span class="lp-eq__bar"></span>
+                                    <span class="lp-eq__bar"></span><span class="lp-eq__bar"></span><span class="lp-eq__bar"></span>
+                                </div>
+                                <div class="lp-eq__months" aria-hidden="true"><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span></div>
+                                <ul class="lp-feed" aria-label="Latest money movement">
+                                    <li class="lp-feed__item lp-feed__item--in"><span class="lp-feed__what">Deposit &middot; Kampala Serena</span><span class="lp-money">+ 4,500,000</span></li>
+                                    <li class="lp-feed__item lp-feed__item--out"><span class="lp-feed__what">Band split &middot; Friday set</span><span class="lp-money">&minus; 1,200,000</span></li>
+                                    <li class="lp-feed__item lp-feed__item--in"><span class="lp-feed__what">Balance &middot; Nyege Nyege</span><span class="lp-money">+ 6,000,000</span></li>
+                                </ul>
+                                <div class="lp-chip lp-chip--in" aria-hidden="true">
+                                    <span class="lp-chip__icon"><i class="ph ph-check-circle" aria-hidden="true"></i></span>
+                                    <span class="lp-chip__text"><strong>Kampala Serena</strong><span>Deposit paid &middot; UGX 4.5M</span></span>
+                                </div>
+                                <div class="lp-chip lp-chip--show" aria-hidden="true">
+                                    <span class="lp-chip__icon"><i class="ph ph-microphone-stage" aria-hidden="true"></i></span>
+                                    <span class="lp-chip__text"><strong>Nyege Nyege set</strong><span>Sat 14 Sep &middot; Confirmed</span></span>
                                 </div>
                             </div>
-                            <!-- Mainstage Compass — the four pillars of an artist operation orbit the brand mark. -->
-                            <aside class="sp-hero-preview sp-hero-preview--compass" aria-hidden="true">
-                                <div class="sp-compass">
-                                    <svg class="sp-compass__rings" viewBox="0 0 240 240" aria-hidden="true">
-                                        <circle cx="120" cy="120" r="110" stroke-width="1" opacity="0.22"></circle>
-                                        <circle cx="120" cy="120" r="84"  stroke-width="1" opacity="0.34"></circle>
-                                        <circle cx="120" cy="120" r="56"  stroke-width="1" opacity="0.5"></circle>
-                                        <line x1="120" y1="6"   x2="120" y2="32"  stroke-width="1"></line>
-                                        <line x1="120" y1="208" x2="120" y2="234" stroke-width="1"></line>
-                                        <line x1="6"   y1="120" x2="32"  y2="120" stroke-width="1"></line>
-                                        <line x1="208" y1="120" x2="234" y2="120" stroke-width="1"></line>
-                                    </svg>
-                                    <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="" class="sp-compass__mark" />
-                                    <span class="sp-compass__label sp-compass__label--n">Bookings</span>
-                                    <span class="sp-compass__label sp-compass__label--e">Money</span>
-                                    <span class="sp-compass__label sp-compass__label--s">Tasks</span>
-                                    <span class="sp-compass__label sp-compass__label--w">Artists</span>
-                                </div>
-                            </aside>
+                            <figcaption class="lp-sr">A revenue card under stage spotlights: UGX 38.4 million for January to June, up 24 percent, with live deposits and payouts.</figcaption>
+                        </figure>
+                    </article>
+
+                    <article class="lp-slide" id="how" role="group" aria-roledescription="slide" aria-label="2 of 4: How it works" data-lp-slide>
+                        <div class="lp-slide__copy">
+                            <p class="lp-eyebrow"><span class="lp-eyebrow__dot" aria-hidden="true"></span>How it works</p>
+                            <h2 class="lp-display lp-display--slide">Three moves keep<br><em>the show running.</em></h2>
+                            <ol class="lp-moves">
+                                <li><span class="lp-moves__num">01</span><span><strong>Lock the booking.</strong> Venue, date, fee and deposit in one entry the moment it&rsquo;s agreed.</span></li>
+                                <li><span class="lp-moves__num">02</span><span><strong>Track the money.</strong> Income, expenses and splits land in one live ledger per artist.</span></li>
+                                <li><span class="lp-moves__num">03</span><span><strong>Brief the team.</strong> One schedule and one task list the crew and the artist share.</span></li>
+                            </ol>
                         </div>
+                        <!-- lp:art how: a lit run-of-show for one gig -->
+                        <figure class="lp-art lp-art--how">
+                            <div class="lp-rig" aria-hidden="true"><svg class="lp-rig__truss" viewBox="0 0 600 30" preserveAspectRatio="none" focusable="false"><use href="#lpRigTruss"/></svg><span class="lp-rig__beam lp-rig__beam--l"><span class="lp-rig__cone"></span></span><span class="lp-rig__beam lp-rig__beam--c"><span class="lp-rig__cone"></span><span class="lp-rig__dust"></span></span><span class="lp-rig__beam lp-rig__beam--r"><span class="lp-rig__cone"></span></span><svg class="lp-rig__lamp lp-rig__lamp--l" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--c" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--r" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><span class="lp-rig__pool"></span></div>
+                            <div class="lp-runsheet">
+                                <div class="lp-runsheet__head">
+                                    <span class="lp-runsheet__title">Run of show</span>
+                                    <span class="lp-runsheet__gig">Kampala Serena &middot; Fri 20 Sep</span>
+                                </div>
+                                <ol class="lp-runsheet__steps">
+                                    <li class="lp-runsheet__step"><span class="lp-runsheet__dot" aria-hidden="true"><i class="ph ph-handshake"></i></span><span class="lp-runsheet__what"><strong>Booked</strong><span>Fee agreed</span></span><span class="lp-money">9,000,000</span></li>
+                                    <li class="lp-runsheet__step"><span class="lp-runsheet__dot" aria-hidden="true"><i class="ph ph-arrow-down-left"></i></span><span class="lp-runsheet__what"><strong>Deposit in</strong><span>50% before the show</span></span><span class="lp-money lp-money--in">+ 4,500,000</span></li>
+                                    <li class="lp-runsheet__step"><span class="lp-runsheet__dot" aria-hidden="true"><i class="ph ph-microphone-stage"></i></span><span class="lp-runsheet__what"><strong>Balance in</strong><span>Paid on the night</span></span><span class="lp-money lp-money--in">+ 4,500,000</span></li>
+                                    <li class="lp-runsheet__step"><span class="lp-runsheet__dot" aria-hidden="true"><i class="ph ph-file-text"></i></span><span class="lp-runsheet__what"><strong>Report</strong><span>Profit, splits, expenses</span></span><span class="lp-money lp-money--gold">PDF</span></li>
+                                </ol>
+                            </div>
+                            <figcaption class="lp-sr">A run-of-show card for one gig: booked, deposit received, balance received, report ready.</figcaption>
+                        </figure>
+                    </article>
+
+                    <article class="lp-slide" id="proof" role="group" aria-roledescription="slide" aria-label="3 of 4: Proof" data-lp-slide>
+                        <div class="lp-slide__copy">
+                            <p class="lp-eyebrow"><span class="lp-eyebrow__dot" aria-hidden="true"></span>Proof</p>
+                            <h2 class="lp-display lp-display--slide">Real shows.<br><em>Real money.</em></h2>
+                            <p class="lp-lede">What managers keep on the ledger: every show booked, every balance owed, every shilling earned, per artist and per month.</p>
+                        </div>
+                        <!-- lp:art proof: the numbers under the lights -->
+                        <figure class="lp-art lp-art--proof">
+                            <div class="lp-rig" aria-hidden="true"><svg class="lp-rig__truss" viewBox="0 0 600 30" preserveAspectRatio="none" focusable="false"><use href="#lpRigTruss"/></svg><span class="lp-rig__beam lp-rig__beam--l"><span class="lp-rig__cone"></span></span><span class="lp-rig__beam lp-rig__beam--c"><span class="lp-rig__cone"></span><span class="lp-rig__dust"></span></span><span class="lp-rig__beam lp-rig__beam--r"><span class="lp-rig__cone"></span></span><svg class="lp-rig__lamp lp-rig__lamp--l" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--c" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--r" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><span class="lp-rig__pool"></span></div>
+                            <div class="lp-stats">
+                                <div class="lp-stat lp-stat--lead"><p class="lp-stat__value"><span class="lp-stat__unit">UGX</span><span data-lp-count="500">500</span><span class="lp-stat__unit">M+</span></p><p class="lp-stat__label">Collected through Star Paper</p></div>
+                                <div class="lp-stat"><p class="lp-stat__value"><span data-lp-count="150">150</span><span class="lp-stat__unit">+</span></p><p class="lp-stat__label">Shows booked</p></div>
+                                <div class="lp-stat"><p class="lp-stat__value"><span data-lp-count="30">30</span><span class="lp-stat__unit">+</span></p><p class="lp-stat__label">Artists managed</p></div>
+                            </div>
+                        </figure>
+                    </article>
+
+                    <article class="lp-slide" id="voices" role="group" aria-roledescription="slide" aria-label="4 of 4: Testimonials" data-lp-slide>
+                        <div class="lp-slide__copy">
+                            <p class="lp-eyebrow"><span class="lp-eyebrow__dot" aria-hidden="true"></span>From the managers</p>
+                            <h2 class="lp-display lp-display--slide">Managers who<br><em>stopped chasing.</em></h2>
+                            <p class="lp-lede">The people running bookings, balances and crews across East Africa, in their own words.</p>
+                            <div class="lp-cta-row">
+                                <button class="lp-btn lp-btn--gold lp-btn--lg" type="button" data-action="showSignupForm">Join them <i class="ph ph-arrow-right" aria-hidden="true"></i></button>
+                            </div>
+                        </div>
+                        <!-- lp:art voices: a fanned stack of review cards -->
+                        <figure class="lp-art lp-art--voices">
+                            <div class="lp-rig" aria-hidden="true"><svg class="lp-rig__truss" viewBox="0 0 600 30" preserveAspectRatio="none" focusable="false"><use href="#lpRigTruss"/></svg><span class="lp-rig__beam lp-rig__beam--l"><span class="lp-rig__cone"></span></span><span class="lp-rig__beam lp-rig__beam--c"><span class="lp-rig__cone"></span><span class="lp-rig__dust"></span></span><span class="lp-rig__beam lp-rig__beam--r"><span class="lp-rig__cone"></span></span><svg class="lp-rig__lamp lp-rig__lamp--l" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--c" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--r" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><span class="lp-rig__pool"></span></div>
+                            <div class="lp-quotes-stack" data-lp-quotes aria-live="polite">
+                                <blockquote class="lp-qcard" data-lp-quote data-pos="front"><p class="lp-stars" aria-label="5 out of 5 stars"><span aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span></p><p class="lp-qcard__text">&ldquo;Finally a tool that keeps my artists, bookings, and money in one place. I stopped using spreadsheets on day one.&rdquo;</p><footer><span class="lp-avatar" aria-hidden="true">AB</span><span><strong>Aggie Best</strong> &middot; Artist manager, Kampala</span></footer></blockquote>
+                                <blockquote class="lp-qcard" data-lp-quote data-pos="back1"><p class="lp-stars" aria-label="5 out of 5 stars"><span aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span></p><p class="lp-qcard__text">&ldquo;Star Paper gives our team one clean view for bookings, balances, and artist updates without the usual back-and-forth.&rdquo;</p><footer><span class="lp-avatar lp-avatar--sage" aria-hidden="true">LO</span><span><strong>Label operations lead</strong> &middot; East Africa</span></footer></blockquote>
+                                <blockquote class="lp-qcard" data-lp-quote data-pos="back2"><p class="lp-stars" aria-label="5 out of 5 stars"><span aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span></p><p class="lp-qcard__text">&ldquo;The dashboard makes revenue, schedules, and outstanding balances feel coordinated instead of scattered.&rdquo;</p><footer><span class="lp-avatar lp-avatar--green" aria-hidden="true">TC</span><span><strong>Talent coordinator</strong> &middot; Live events, Kampala</span></footer></blockquote>
+                            </div>
+                        </figure>
+                    </article>
+                </div>
+
+                <div class="lp-show__controls">
+                    <button class="lp-icon-btn lp-show__arrow" type="button" data-lp-prev aria-label="Previous slide"><i class="ph ph-caret-left" aria-hidden="true"></i></button>
+                    <div class="lp-tabs" role="group" aria-label="Choose a slide">
+                        <span class="lp-tabs__count" aria-hidden="true"><span data-lp-count-current>1</span> / 4</span>
+                        <button class="lp-tab" type="button" data-lp-tab="0" aria-controls="mainstage" aria-current="true"><span class="lp-tab__dot" aria-hidden="true"></span><span class="lp-tab__label">Mainstage</span><span class="lp-tab__bar" aria-hidden="true"></span></button>
+                        <button class="lp-tab" type="button" data-lp-tab="1" aria-controls="how"><span class="lp-tab__dot" aria-hidden="true"></span><span class="lp-tab__label">How it works</span><span class="lp-tab__bar" aria-hidden="true"></span></button>
+                        <button class="lp-tab" type="button" data-lp-tab="2" aria-controls="proof"><span class="lp-tab__dot" aria-hidden="true"></span><span class="lp-tab__label">Proof</span><span class="lp-tab__bar" aria-hidden="true"></span></button>
+                        <button class="lp-tab" type="button" data-lp-tab="3" aria-controls="voices"><span class="lp-tab__dot" aria-hidden="true"></span><span class="lp-tab__label">Voices</span><span class="lp-tab__bar" aria-hidden="true"></span></button>
+                    </div>
+                    <button class="lp-icon-btn lp-show__arrow" type="button" data-lp-next aria-label="Next slide"><i class="ph ph-caret-right" aria-hidden="true"></i></button>
+                </div>
+            </section>
+            <!-- /lp:show -->
+
+            <section class="lp-cta" aria-labelledby="lpCtaTitle">
+                <div class="lp-cta__inner" data-lp-reveal>
+                    <button class="sp-spin-toggle lp-cta__toggle" type="button" aria-pressed="true" aria-label="Pause the spinning logo">
+                        <img class="lp-cta__mark sp-spin-mark" src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="" width="72" height="72">
+                    </button>
+                    <h2 class="lp-h2" id="lpCtaTitle">Your next show deserves <em>a cleaner ledger.</em></h2>
+                    <p class="lp-lede">Free to start. Bring your first artist on board today.</p>
+                    <ul class="lp-cta__jobs" aria-label="What Star Paper keeps in one ledger">
+                        <li><i class="ph ph-calendar-check" aria-hidden="true"></i><span><strong>Bookings</strong> Dates, fees and deposits</span></li>
+                        <li><i class="ph ph-currency-circle-dollar" aria-hidden="true"></i><span><strong>Money</strong> Every shilling in and out</span></li>
+                        <li><i class="ph ph-users-three" aria-hidden="true"></i><span><strong>Team</strong> One schedule, one task list</span></li>
+                    </ul>
+                    <div class="lp-cta-row lp-cta-row--center">
+                        <button class="lp-btn lp-btn--gold lp-btn--lg" type="button" data-action="showSignupForm">Start free <i class="ph ph-arrow-right" aria-hidden="true"></i></button>
+                        <button class="lp-btn lp-btn--ghost lp-btn--lg" type="button" data-action="showLoginForm">I have an account</button>
                     </div>
                 </div>
-            </div>
-        </div>
+            </section>
+        </main>
 
-        <!-- Handcraft Phase 2: Bento features grid (additive — kill-switchable via sp_handcraft_off) -->
-        <section class="sp-handcraft-bento" aria-label="What Star Paper does">
-            <div class="sp-handcraft-bento-head">
-                <div class="sp-handcraft-bento-kicker">
-                    <span class="sp-handcraft-bento-kicker-dot" aria-hidden="true"></span>
-                    Everything in one ledger
+        <footer class="lp-footer">
+            <div class="lp-footer__top">
+                <div class="lp-brand">
+                    <img class="lp-brand__mark sp-spin-mark" src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="" width="36" height="36">
+                    <span class="lp-brand__word">Star Paper</span>
                 </div>
-                <h2 class="sp-handcraft-bento-title">Bookings, money, and people. <em>One source of truth.</em></h2>
+                <p class="lp-footer__tag">The manager&rsquo;s mainstage for bookings, money and teams.</p>
+                <nav class="lp-footer__nav" aria-label="Footer">
+                    <a href="#how" data-lp-slide-link="1">How it works</a>
+                    <a href="#proof" data-lp-slide-link="2">Proof</a>
+                    <a href="#voices" data-lp-slide-link="3">Testimonials</a>
+                </nav>
             </div>
-            <div class="sp-handcraft-bento-grid">
-                <article class="sp-handcraft-bento-card sp-handcraft-bento-card--featured" data-handcraft-magnetic="card">
-                    <div class="sp-handcraft-bento-card-icon" aria-hidden="true"><i class="ph ph-currency-circle-dollar"></i></div>
-                    <h3>Control finances</h3>
-                    <p>Watch revenue, expenses, balances, and payouts from one live ledger — every artist, every show, every month.</p>
-                </article>
-                <article class="sp-handcraft-bento-card" data-handcraft-magnetic="card">
-                    <div class="sp-handcraft-bento-card-icon" aria-hidden="true"><i class="ph ph-calendar-check"></i></div>
-                    <h3>Track bookings</h3>
-                    <p>Follow show status, deposits, and due balances without spreadsheet drift.</p>
-                </article>
-                <article class="sp-handcraft-bento-card" data-handcraft-magnetic="card">
-                    <div class="sp-handcraft-bento-card-icon" aria-hidden="true"><i class="ph ph-users-three"></i></div>
-                    <h3>Manage artists</h3>
-                    <p>Keep artist profiles, priorities, and team context in one command center.</p>
-                </article>
-                <article class="sp-handcraft-bento-card sp-handcraft-bento-card--meta" data-handcraft-magnetic="card">
-                    <div class="sp-handcraft-bento-card-icon" aria-hidden="true"><i class="ph ph-globe-hemisphere-east"></i></div>
-                    <h3>Made for the road</h3>
-                    <p>Built first for managers in Uganda — works for any team running artists, bookings, and money.</p>
-                </article>
-            </div>
-        </section>
-
-        <footer class="sp-prem-landing-footer sp-prem-widget" aria-label="Star Paper landing footer">
-            <div class="sp-prem-landing-footer__trust sp-handcraft-proof" aria-live="polite">
-                <div class="sp-handcraft-stars" aria-hidden="true"><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span></div>
-                <p class="sp-handcraft-proof-copy" data-handcraft-tw-done="1">Built for artist managers, labels, and teams</p>
-            </div>
-            <a class="sp-prem-landing-footer__brand" href="./index.html" aria-label="Go to Star Paper home">
-                <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="Star Paper" class="sp-prem-landing-footer__logo" />
-                <div>
-                    <div class="sp-prem-landing-footer__name">STAR PAPER</div>
-                    <div class="sp-prem-landing-footer__meta">&copy; 2026 Star Paper</div>
-                </div>
-            </a>
+            <p class="lp-footer__trust"><i class="ph ph-shield-check" aria-hidden="true"></i> Your data is encrypted and private</p>
+            <p class="lp-footer__legal">&copy; 2026 Star Paper &middot; Made in Kampala</p>
         </footer>
     </div>
 
-    <!-- Login Container -->
-    <div class="login-container" id="loginScreen">
-        <div class="login-box">
-            <div class="loading-overlay" id="loginLoading" aria-hidden="true">
-                <div class="spinner"></div>
-                <div>Logging in...</div>
-            </div>
-            <a class="logo login-home-link" href="#landingScreen" data-action="showLanding" aria-label="Return to Star Paper landing">
-                <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="Star Paper" class="login-box-logo" />
-                <p id="loginBoxHeading">Welcome back to Star Paper</p>
-                <small class="login-subtext" id="loginBoxSubtext">Sign in to continue to your dashboard.</small>
+    <!-- ═══ Signed-out: sign in / sign up (2 steps: details → email code) / reset ═══ -->
+    <div class="lp lp-auth" id="loginScreen" data-panel="login" hidden>
+        <main class="lp-auth__panel">
+            <a class="lp-auth__home" href="#landingScreen" data-action="showLanding" aria-label="Back to the Star Paper home page">
+                <i class="ph ph-arrow-left" aria-hidden="true"></i> Home
             </a>
-            <div class="sp-csp-style-2" id="loginForm">
-                <label class="sr-only" for="loginName">Email</label>
-                <input type="email" id="loginName" placeholder="Email" autocomplete="email" inputmode="email" />
-                <div class="validation-message" id="loginNameError"></div>
-                <label class="sr-only" for="loginPassword">Password</label>
-                <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password" />
-                <div class="validation-message" id="loginPasswordError"></div>
-                <label class="remember-me">
-                    <input type="checkbox" id="rememberMe" />
-                    Remember me
-                </label>
-                <button id="loginButton" class="btn-primary" type="button">Login</button>
-                <div class="auth-oauth-divider"><span>or</span></div>
-                <button class="btn-google" type="button" data-action="signInWithGoogle">
-                    <span class="btn-google-icon" aria-hidden="true"><i class="ph ph-google-logo" aria-hidden="true"></i></span>
-                    Continue with Google
+            <header class="lp-auth__brand">
+                <button class="sp-spin-toggle" type="button" aria-pressed="true" aria-label="Pause the spinning logo">
+                    <img class="lp-auth__mark sp-spin-mark" src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="" width="76" height="76">
                 </button>
-                <button class="back-btn" data-action="showLanding">Back</button>
-                <button class="forgot-password-link" type="button" data-action="showForgotPassword">Forgot password?</button>
+                <p class="lp-wordmark">Star Paper</p>
+                <p class="lp-tagline">Bookings &middot; Money &middot; Teams</p>
+            </header>
+
+            <div class="lp-auth__card">
+                <span class="lp-auth__medallion" aria-hidden="true">
+                    <i class="ph ph-lock-key lp-medal lp-medal--login"></i>
+                    <i class="ph ph-user-plus lp-medal lp-medal--signup"></i>
+                    <i class="ph ph-envelope-simple-open lp-medal lp-medal--verify"></i>
+                    <i class="ph ph-key lp-medal lp-medal--forgot"></i>
+                    <i class="ph ph-check-fat lp-medal lp-medal--success"></i>
+                </span>
+                <div class="lp-auth__loading" id="loginLoading" aria-hidden="true">
+                    <span class="lp-spinner" aria-hidden="true"></span>
+                    <span>Signing you in&hellip;</span>
+                </div>
+
+                <div class="lp-auth__steps" aria-hidden="true">
+                    <span class="lp-auth__step lp-auth__step--1">Step 1 of 2 &middot; Your details</span>
+                    <span class="lp-auth__step lp-auth__step--2">Step 2 of 2 &middot; Confirm your email</span>
+                    <span class="lp-auth__progress"><span class="lp-auth__progress-fill"></span></span>
+                </div>
+                <h1 class="lp-auth__title" id="loginBoxHeading">Welcome back to Star Paper</h1>
+                <p class="lp-auth__sub" id="loginBoxSubtext">Sign in to continue to your dashboard.</p>
+
+                <div class="lp-form" id="loginForm">
+                    <label class="lp-field">
+                        <span class="lp-field__label">Email</span>
+                        <span class="lp-input-wrap"><i class="ph ph-envelope-simple lp-input-wrap__icon" aria-hidden="true"></i><input class="lp-input" type="email" id="loginName" placeholder="you@example.com" autocomplete="email" inputmode="email"></span>
+                    </label>
+                    <div class="lp-field__error validation-message" id="loginNameError" role="alert"></div>
+                    <label class="lp-field">
+                        <span class="lp-field__label">Password</span>
+                        <span class="lp-input-wrap"><i class="ph ph-lock-simple lp-input-wrap__icon" aria-hidden="true"></i><input class="lp-input" type="password" id="loginPassword" placeholder="Your password" autocomplete="current-password"><button class="lp-eye" type="button" data-lp-eye="loginPassword" aria-label="Show password" aria-pressed="false"><i class="ph ph-eye" aria-hidden="true"></i></button></span>
+                    </label>
+                    <div class="lp-field__error validation-message" id="loginPasswordError" role="alert"></div>
+                    <div class="lp-form__row">
+                        <label class="lp-check-field"><input type="checkbox" id="rememberMe"> Remember me</label>
+                        <button class="lp-text-btn" type="button" data-action="showForgotPassword">Forgot password?</button>
+                    </div>
+                    <button class="lp-btn lp-btn--foil lp-btn--block" id="loginButton" type="button">Sign in</button>
+                    <div class="lp-divider"><span>or continue with</span></div>
+                    <button class="lp-btn lp-btn--ghost lp-btn--block" type="button" data-action="signInWithGoogle"><i class="ph ph-google-logo" aria-hidden="true"></i> Google</button>
+                    <p class="lp-auth__switch">New to Star Paper? <button class="lp-text-btn" type="button" data-action="showSignupForm">Create an account</button></p>
+                </div>
+
+                <div class="lp-form" id="forgotPasswordForm" hidden>
+                    <label class="lp-field">
+                        <span class="lp-field__label">Account email</span>
+                        <span class="lp-input-wrap"><i class="ph ph-envelope-simple lp-input-wrap__icon" aria-hidden="true"></i><input class="lp-input" type="email" id="forgotEmail" placeholder="you@example.com" autocomplete="email" inputmode="email"></span>
+                    </label>
+                    <div class="forgot-password-hint" id="forgotPasswordResult" role="status"></div>
+                    <button class="lp-btn lp-btn--foil lp-btn--block" type="button" data-action="submitForgotPassword">Send reset email</button>
+                    <p class="lp-auth__switch"><button class="lp-text-btn" type="button" data-action="showLoginForm"><i class="ph ph-arrow-left" aria-hidden="true"></i> Back to sign in</button></p>
+                </div>
+
+                <div class="lp-form" id="signupForm" hidden>
+                    <label class="lp-field">
+                        <span class="lp-field__label">Name</span>
+                        <span class="lp-input-wrap"><i class="ph ph-user lp-input-wrap__icon" aria-hidden="true"></i><input class="lp-input" type="text" id="signupName" placeholder="Your name" autocomplete="name"></span>
+                    </label>
+                    <label class="lp-field">
+                        <span class="lp-field__label">Email</span>
+                        <span class="lp-input-wrap"><i class="ph ph-envelope-simple lp-input-wrap__icon" aria-hidden="true"></i><input class="lp-input" type="email" id="signupEmail" placeholder="you@example.com" autocomplete="email" inputmode="email"></span>
+                    </label>
+                    <label class="lp-field">
+                        <span class="lp-field__label">Password</span>
+                        <span class="lp-input-wrap"><i class="ph ph-lock-simple lp-input-wrap__icon" aria-hidden="true"></i><input class="lp-input" type="password" id="signupPassword" placeholder="Choose a password" autocomplete="new-password"><button class="lp-eye" type="button" data-lp-eye="signupPassword" aria-label="Show password" aria-pressed="false"><i class="ph ph-eye" aria-hidden="true"></i></button></span>
+                    </label>
+                    <label class="lp-field">
+                        <span class="lp-field__label">Phone <span class="lp-field__opt">optional</span></span>
+                        <span class="lp-input-wrap"><i class="ph ph-phone lp-input-wrap__icon" aria-hidden="true"></i><input class="lp-input" type="tel" id="signupPhone" placeholder="+256 700 000 000" autocomplete="tel" inputmode="tel"></span>
+                    </label>
+                    <button class="lp-btn lp-btn--foil lp-btn--block" id="signupButton" type="button" data-action="signup">Continue</button>
+                    <div class="lp-divider"><span>or continue with</span></div>
+                    <button class="lp-btn lp-btn--ghost lp-btn--block" type="button" data-action="signInWithGoogle"><i class="ph ph-google-logo" aria-hidden="true"></i> Google</button>
+                    <p class="lp-auth__switch">Already have an account? <button class="lp-text-btn" type="button" data-action="showLoginForm">Sign in</button></p>
+                </div>
+
+                <div class="lp-form" id="verifyCodeForm" hidden>
+                    <p class="lp-verify__to">We sent a 6-digit code to <strong id="verifyCodeEmail">your email</strong>.</p>
+                    <label class="lp-field">
+                        <span class="lp-field__label">Confirmation code</span>
+                        <input class="lp-input lp-code" type="text" id="verifyCodeInput" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="6" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;" aria-describedby="verifyCodeError">
+                    </label>
+                    <div class="lp-field__error" id="verifyCodeError" role="alert"></div>
+                    <button class="lp-btn lp-btn--foil lp-btn--block" id="verifyCodeButton" type="button" data-action="verifySignupCode">Confirm and continue</button>
+                    <div class="lp-form__row lp-form__row--center">
+                        <button class="lp-text-btn" id="resendCodeButton" type="button" data-action="resendSignupCode">Resend code</button>
+                        <span class="lp-verify__sep" aria-hidden="true">&middot;</span>
+                        <button class="lp-text-btn" type="button" data-action="showSignupForm">Use a different email</button>
+                    </div>
+                    <p class="lp-verify__hint">Can&rsquo;t find it? Check spam or promotions. The code expires in an hour.</p>
+                </div>
+
+                <div class="lp-form lp-auth__success" id="authSuccessPanel" hidden>
+                    <svg class="lp-success-check" viewBox="0 0 52 52" aria-hidden="true" focusable="false"><circle cx="26" cy="26" r="24" fill="none" stroke="#D9B45A" stroke-width="2.5"/><path d="M15 27 l7 7 l15 -16" fill="none" stroke="#F6E68A" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <p class="lp-auth__success-text" role="status">You&rsquo;re in<span id="authSuccessName"></span>. Opening your mainstage&hellip;</p>
+                </div>
             </div>
-            <div class="sp-csp-style-2" id="forgotPasswordForm">
-                <p class="forgot-password-intro">Enter your account email and we'll send secure reset instructions if the account exists.</p>
-                <label class="sr-only" for="forgotEmail">Account email</label>
-                <input type="email" id="forgotEmail" placeholder="Email" autocomplete="email" inputmode="email" />
-                <div class="forgot-password-hint" id="forgotPasswordResult"></div>
-                <button class="btn-primary" type="button" data-action="submitForgotPassword">Send Reset Email</button>
-                <button class="back-btn" type="button" data-action="showLoginForm">Back to Login</button>
-            </div>
-            <div class="sp-csp-style-2" id="signupForm">
-                <label class="sr-only" for="signupName">Name</label>
-                <input type="text" id="signupName" placeholder="Name" autocomplete="name" />
-                <label class="sr-only" for="signupPassword">Password</label>
-                <input type="password" id="signupPassword" placeholder="Password" autocomplete="new-password" />
-                <label class="sr-only" for="signupEmail">Email</label>
-                <input type="email" id="signupEmail" placeholder="Email (required for cloud signup)" autocomplete="email" />
-                <label class="sr-only" for="signupPhone">Phone</label>
-                <input type="tel" id="signupPhone" placeholder="Phone (optional)" autocomplete="tel" />
-                <button class="btn-primary" data-action="signup">Create Account</button>
-                <div class="auth-oauth-divider"><span>or</span></div>
-                <button class="btn-google" type="button" data-action="signInWithGoogle">
-                    <span class="btn-google-icon" aria-hidden="true"><i class="ph ph-google-logo" aria-hidden="true"></i></span>
-                    Continue with Google
-                </button>
-                <p class="auth-switch-text">Already have an account? <a href="#" class="auth-switch-link" data-action="showLoginForm">Login</a></p>
-                <button class="back-btn" data-action="showLanding">Back</button>
-            </div>
-        </div>
+
+            <p class="lp-auth__trust"><i class="ph ph-shield-check" aria-hidden="true"></i> Your money and data are private and encrypted</p>
+        </main>
     </div>
 
     <!-- Custom Delete Confirmation Modal -->
@@ -292,7 +428,7 @@
             <div class="sidebar-profile">
                 <div class="sidebar-profile-content">
                     <div class="sidebar-avatar sidebar-avatar--brand-mark">
-                        <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="User Avatar" class="avatar-img avatar-img--brand-mark" id="sidebarAvatarImg">
+                        <img src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="User Avatar" class="avatar-img avatar-img--brand-mark" id="sidebarAvatarImg">
                     </div>
                 <div class="sidebar-greeting">
                     <div class="greeting-name" id="sidebarUserName">Manager</div>
@@ -382,7 +518,7 @@
                 <div class="header-left">
                     <button class="hamburger" id="hamburgerBtn" aria-label="Toggle navigation" aria-expanded="false"><i class="ph ph-list" aria-hidden="true"></i></button>
                     <button class="app-brand" type="button" data-action="showSection" data-section="dashboard" aria-label="Go to dashboard">
-                        <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="Star Paper">
+                        <img src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="Star Paper">
                     </button>
                     <!-- In-app back / forward navigation -->
                     <div class="nav-hist-wrap" id="navHistWrap">
@@ -1300,7 +1436,7 @@
                             <div class="settings-panel-label">Profile</div>
                             <div class="settings-profile-summary">
                                 <div class="sidebar-avatar settings-profile-avatar sidebar-avatar--brand-mark">
-                                    <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="Settings profile avatar" class="avatar-img avatar-img--brand-mark" id="settingsAvatarImg">
+                                    <img src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="Settings profile avatar" class="avatar-img avatar-img--brand-mark" id="settingsAvatarImg">
                                 </div>
                                 <div class="settings-profile-copy">
                                     <div class="settings-profile-name" id="settingsProfileName">Manager</div>
@@ -1406,7 +1542,7 @@
             <h3 class="section-title" data-icon="dashboard">Edit Profile</h3>
             <div class="profile-avatar-row">
                 <div class="sidebar-avatar profile-avatar-preview sidebar-avatar--brand-mark">
-                    <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="Profile Avatar" class="avatar-img avatar-img--brand-mark" id="profileAvatarPreview">
+                    <img src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="Profile Avatar" class="avatar-img avatar-img--brand-mark" id="profileAvatarPreview">
                 </div>
                 <div class="profile-avatar-actions">
                     <label class="action-btn profile-upload-btn" for="profileAvatarUpload">Upload Photo</label>
@@ -1473,7 +1609,7 @@
                 <div class="footer-section footer-bottom">
                     <div class="footer-copyright-wrap">
                         <span class="logo-wrapper footer-logo-wrapper">
-                            <img src="star_paper_logo_pack/star_paper_transparent.png?v=3" alt="Star Paper Footer Logo" class="brand-logo logo-footer" loading="lazy">
+                            <img src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="Star Paper Footer Logo" class="brand-logo logo-footer" loading="lazy">
                         </span>
                         <p class="footer-copyright">&copy; 2026 Star Paper. All rights reserved.</p>
                     </div>
@@ -1549,16 +1685,16 @@
           loaded above, and these deferred scripts keep document order:
           Supabase boot wiring is installed before app.js initializes UI helpers.
         -->
-<script src="app.root-shell.js?v=3" defer></script>
+<script src="app.root-shell.js?v=5" defer></script>
 <script src="app.offline-cache.js?v=1"></script>
-<script src="supabase.js?v=91" defer></script>
+<script src="supabase.js?v=94" defer></script>
         <script src="app.migrations.js?v=10"></script>
         <script src="app.actions.js?v=8"></script>
         <script src="app.todayboard.js?v=2"></script>
         <script src="app.tasks.js?v=5"></script>
     <script src="app.reports.js?v=19"></script>
-<script src="app.js?v=145" defer></script>
-<script src="app.handcraft.js?v=20" defer></script>
+<script src="app.js?v=148" defer></script>
+<script src="app.landing.js?v=4" defer></script>
 
     <!-- Premium toast stack -->
     <div class="sp-toast-stack" id="spToastStack" aria-live="polite" aria-atomic="false"></div>

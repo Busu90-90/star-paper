@@ -2,10 +2,9 @@
   'use strict';
 
   const rootHtml = Object.freeze([
-    Object.freeze({ file: 'index.html', marker: 'app-shell', routes: Object.freeze([]) }),
-    Object.freeze({ file: 'how-it-works.html', marker: 'public-landing', routes: Object.freeze(['/how-it-works', '/how-it-works.html']) }),
-    Object.freeze({ file: 'proof.html', marker: 'public-landing', routes: Object.freeze(['/proof', '/proof.html']) }),
-    Object.freeze({ file: 'testimonials.html', marker: 'public-landing', routes: Object.freeze(['/testimonials', '/testimonials.html']) })
+    // The landing, its showcase slides and sign-in all live in index.html.
+    // The old /how-it-works, /proof and /testimonials URLs 301 to a slide (_redirects).
+    Object.freeze({ file: 'index.html', marker: 'app-shell', routes: Object.freeze([]) })
   ]);
 
   function landingTarget(file) {

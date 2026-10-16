@@ -105,9 +105,13 @@ function showSupabaseSdkUnavailable(error) {
     if (loaderText) loaderText.textContent = 'Cloud login unavailable';
     if (loaderSubtext) loaderSubtext.textContent = 'The Supabase auth runtime did not initialize. Reload after the deploy finishes.';
     if (loaderActions) loaderActions.hidden = true;
-    if (loginScreen) loginScreen.style.display = 'flex';
-    if (loginForm) loginForm.style.display = 'block';
-    if (signupForm) signupForm.style.display = 'none';
+    if (typeof window.setActiveScreen === 'function') window.setActiveScreen('loginScreen');
+    else if (loginScreen) loginScreen.hidden = false;
+    if (typeof window.showAuthPanel === 'function') window.showAuthPanel('login');
+    else {
+      if (loginForm) loginForm.hidden = false;
+      if (signupForm) signupForm.hidden = true;
+    }
     if (heading) heading.textContent = 'Cloud login unavailable';
     if (subtext) subtext.textContent = 'Star Paper could not initialize its Supabase auth runtime. Reload the page after the deploy is refreshed.';
     if (loginButton) loginButton.disabled = true;
@@ -1612,6 +1616,19 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   }
 
   function showLandingScreen(options = {}) {
+    // The person already opened sign in / sign up during boot: a late "no
+    // session" step must not throw them back to the landing. Logout still does.
+    const loginScreen = document.getElementById('loginScreen');
+    if (
+      window.__spUserPublicScreen === 'loginScreen' &&
+      options.reason !== 'logout-complete' &&
+      !_session?.user &&
+      loginScreen?.classList.contains('screen-active')
+    ) {
+      clearLocalBootFallback();
+      if (typeof window.hideBootLoaderElement === 'function') window.hideBootLoaderElement({ force: true });
+      return;
+    }
     const keepFallback = options.keepLoader === true;
     if (!keepFallback) {
       clearLocalBootFallback();
@@ -6959,8 +6976,13 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
           showLoginScreen({ flowId, reason: 'password-sign-in-cloud-unavailable' });
           return;
         }
+        if (errMsg.includes('email not confirmed')) {
+          // Unconfirmed account: send a fresh 6-digit code and ask for it here.
+          showLoginScreen({ flowId, reason: 'password-sign-in-unconfirmed' });
+          openSignupCodePanel(nameOrEmail, { name: '', phone: '', resend: true });
+          return;
+        }
         let msg = 'Invalid credentials. Please try again.';
-        if (errMsg.includes('email not confirmed')) msg = 'Please check your email to confirm your account first.';
         if (errMsg.includes('invalid login credentials')) msg = 'Incorrect email or password.';
         if (errMsg.includes('could not initialise session')) {
           msg = 'Sign-in succeeded, but your cloud data could not load. Use Retry or log out.';
@@ -7008,10 +7030,13 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
           }
           return;
         }
-        if (typeof window.toastSuccess === 'function') {
-          window.toastSuccess('Account created! Check your email to confirm, then log in.');
+        // An existing, confirmed email comes back as a user with no identities.
+        if (result?.user && Array.isArray(result.user.identities) && result.user.identities.length === 0) {
+          if (typeof window.toastError === 'function') window.toastError('That email is already registered. Sign in instead.');
+          if (typeof window.showLoginForm === 'function') window.showLoginForm();
+          return;
         }
-        if (typeof window.showLoginForm === 'function') window.showLoginForm();
+        openSignupCodePanel(email, { name, phone });
       } catch (err) {
         const errMsg = String(err?.message || '').toLowerCase();
         const isCloudUnavailable =
@@ -7040,6 +7065,174 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         window.__spUserInitiatedAuth = false;
       }
     };
+
+    // ── SIGN-UP CONFIRMATION CODE (email OTP) ──────────────────────────────────
+    // Supabase emails a 6-digit code ({{ .Token }} in the "Confirm signup"
+    // template). The person types it here and lands in the app signed in,
+    // without leaving Star Paper for an email link.
+    let pendingSignup = null;
+    let resendTimer = null;
+
+    function setVerifyError(message) {
+      const el = document.getElementById('verifyCodeError');
+      if (el) el.textContent = message || '';
+      document.getElementById('verifyCodeInput')?.classList.toggle('input-error', Boolean(message));
+    }
+
+    function startResendCooldown(seconds = 60) {
+      const button = document.getElementById('resendCodeButton');
+      if (!button) return;
+      clearInterval(resendTimer);
+      let left = seconds;
+      button.disabled = true;
+      button.textContent = `Resend code in ${left}s`;
+      resendTimer = setInterval(() => {
+        left -= 1;
+        if (left <= 0) {
+          clearInterval(resendTimer);
+          button.disabled = false;
+          button.textContent = 'Resend code';
+          return;
+        }
+        button.textContent = `Resend code in ${left}s`;
+      }, 1000);
+    }
+
+    async function sendSignupCode(email) {
+      const { error } = await db.auth.resend({ type: 'signup', email });
+      if (error) throw error;
+    }
+
+    async function openSignupCodePanel(email, details = {}) {
+      pendingSignup = { email, name: details.name || '', phone: details.phone || '' };
+      if (typeof window.showAuthPanel === 'function') window.showAuthPanel('verify');
+      const heading = document.getElementById('loginBoxHeading');
+      const subtext = document.getElementById('loginBoxSubtext');
+      if (heading) heading.textContent = 'Check your email';
+      if (subtext) subtext.textContent = 'Enter the code to confirm your account.';
+      const target = document.getElementById('verifyCodeEmail');
+      if (target) target.textContent = email;
+      const input = document.getElementById('verifyCodeInput');
+      if (input) {
+        input.value = '';
+        setTimeout(() => input.focus({ preventScroll: true }), 60);
+      }
+      setVerifyError('');
+      startResendCooldown();
+      if (details.resend) {
+        try {
+          await sendSignupCode(email);
+        } catch (err) {
+          warn('Could not send a fresh signup code:', err);
+        }
+      }
+    }
+    window.openSignupCodePanel = openSignupCodePanel;
+
+    window.verifySignupCode = async function verifySignupCode() {
+      const email = pendingSignup?.email || '';
+      const input = document.getElementById('verifyCodeInput');
+      const token = String(input?.value || '').replace(/\D/g, '');
+      if (!email) {
+        if (typeof window.showSignupForm === 'function') window.showSignupForm();
+        return;
+      }
+      if (token.length !== 6) {
+        setVerifyError('Enter the 6-digit code from your email.');
+        return;
+      }
+      const button = document.getElementById('verifyCodeButton');
+      const setLoading = window.setLoginLoading || (() => {});
+      if (button) button.disabled = true;
+      setVerifyError('');
+      setLoading(true);
+      try {
+        window.__spUserInitiatedAuth = true;
+        window.__spSuppressStoredSessionBootstrap = false;
+        const { data, error } = await db.auth.verifyOtp({ email, token, type: 'email' });
+        if (error) throw error;
+        if (!data?.session) throw new Error('Could not initialise session.');
+        _session = data.session;
+        if (pendingSignup.phone && data.user?.id) {
+          try {
+            await db.from('profiles').update({ phone: pendingSignup.phone }).eq('id', data.user.id);
+          } catch (_err) {}
+        }
+        // Peak-end: a short, clear success moment before the app opens.
+        const firstName = String(pendingSignup.name || '').trim().split(/\s+/)[0];
+        const successName = document.getElementById('authSuccessName');
+        if (successName) successName.textContent = firstName ? `, ${firstName}` : '';
+        const heading = document.getElementById('loginBoxHeading');
+        const subtext = document.getElementById('loginBoxSubtext');
+        if (heading) heading.textContent = 'Email confirmed';
+        if (subtext) subtext.textContent = 'Your account is ready.';
+        if (typeof window.showAuthPanel === 'function') window.showAuthPanel('success');
+        setLoading(false);
+        await new Promise((resolve) => setTimeout(resolve, 900));
+        const flowId = beginBootTransitionSafe('signup-code-verified', 'signing-in');
+        const booted = await runBootstrapTask(() => bootstrapFromSupabaseSession(data.session, {
+          usernameHint: pendingSignup.name || email,
+          remember: true,
+          showWelcome: true,
+          flowId,
+        }));
+        if (booted) {
+          pendingSignup = null;
+          clearInterval(resendTimer);
+        } else if (typeof window.showLoginForm === 'function') {
+          // Confirmed, but the workspace could not load: sign in normally.
+          window.showLoginForm();
+          if (typeof window.toastInfo === 'function') window.toastInfo('Email confirmed. Sign in to continue.');
+        }
+      } catch (err) {
+        const errMsg = String(err?.message || '').toLowerCase();
+        if (errMsg.includes('expired')) {
+          setVerifyError('That code has expired. Tap Resend code for a new one.');
+        } else if (errMsg.includes('failed to fetch') || errMsg.includes('network')) {
+          setVerifyError('No connection. Check your internet and try again.');
+        } else {
+          setVerifyError("That code doesn't match. Check the latest email and try again.");
+        }
+      } finally {
+        window.__spUserInitiatedAuth = false;
+        if (button) button.disabled = false;
+        setLoading(false);
+      }
+    };
+
+    window.resendSignupCode = async function resendSignupCode() {
+      const email = pendingSignup?.email || '';
+      if (!email) {
+        if (typeof window.showSignupForm === 'function') window.showSignupForm();
+        return;
+      }
+      setVerifyError('');
+      startResendCooldown();
+      try {
+        await sendSignupCode(email);
+        if (typeof window.toastSuccess === 'function') window.toastSuccess(`New code sent to ${email}.`);
+      } catch (err) {
+        const errMsg = String(err?.message || '').toLowerCase();
+        setVerifyError(errMsg.includes('rate') || errMsg.includes('seconds')
+          ? 'Please wait a minute before asking for another code.'
+          : 'Could not send a new code. Try again in a moment.');
+      }
+    };
+
+    // Typing or pasting the sixth digit submits; Enter submits too.
+    document.addEventListener('input', (event) => {
+      if (event.target?.id !== 'verifyCodeInput') return;
+      const digits = String(event.target.value || '').replace(/\D/g, '').slice(0, 6);
+      if (event.target.value !== digits) event.target.value = digits;
+      setVerifyError('');
+      if (digits.length === 6) window.verifySignupCode();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.target?.id === 'verifyCodeInput' && event.key === 'Enter') {
+        event.preventDefault();
+        window.verifySignupCode();
+      }
+    });
 
     // ── SUPABASE LOGOUT ─────────────────────────────────────────────────────────
     window.logout = async function supabaseLogout() {
