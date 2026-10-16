@@ -34,7 +34,7 @@ function initScrollAnimations() {
     document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
 }
 
-const STAR_PAPER_IMAGE_FALLBACK = './star_paper_logo_pack/star_paper_128.png?v=4';
+const STAR_PAPER_IMAGE_FALLBACK = './star_paper_logo_pack/star_paper_128.png?v=5';
 
 function applyBrandImageFallback(img) {
     if (!img || img.dataset.spBrandFallbackApplied === '1') return;
@@ -1244,7 +1244,7 @@ function getSectionIconMarkup(iconKey) {
 
         function resolveDisplayAvatar(user) {
             const raw = String(user?.avatar || '').trim();
-            if (!raw) return './star_paper_logo_pack/star_paper_128.png?v=4';
+            if (!raw) return './star_paper_logo_pack/star_paper_128.png?v=5';
             const safeImage = normalizeSafeImageSource(raw);
             if (safeImage) return safeImage;
             return avatarDataUriFromSymbol(raw);
@@ -3893,7 +3893,7 @@ function getSectionIconMarkup(iconKey) {
 
 // One auth panel is visible at a time; the screen's data-panel drives the art side.
 function showAuthPanel(panel) {
-            const panels = { login: 'loginForm', signup: 'signupForm', forgot: 'forgotPasswordForm', verify: 'verifyCodeForm' };
+            const panels = { login: 'loginForm', signup: 'signupForm', forgot: 'forgotPasswordForm', verify: 'verifyCodeForm', success: 'authSuccessPanel' };
             Object.entries(panels).forEach(([name, id]) => {
                 const form = document.getElementById(id);
                 if (form) form.hidden = name !== panel;
@@ -8577,8 +8577,8 @@ function showLoginForm(options = {}) {
                     if (reg) {
                         reg.showNotification(title, {
                             body,
-                            icon: './star_paper_logo_pack/star_paper_transparent.png?v=4',
-                            badge: './star_paper_logo_pack/star_paper_transparent.png?v=4'
+                            icon: './star_paper_logo_pack/star_paper_transparent.png?v=5',
+                            badge: './star_paper_logo_pack/star_paper_transparent.png?v=5'
                         });
                     } else {
                         new Notification(title, { body });

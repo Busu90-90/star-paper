@@ -7158,6 +7158,17 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
             await db.from('profiles').update({ phone: pendingSignup.phone }).eq('id', data.user.id);
           } catch (_err) {}
         }
+        // Peak-end: a short, clear success moment before the app opens.
+        const firstName = String(pendingSignup.name || '').trim().split(/\s+/)[0];
+        const successName = document.getElementById('authSuccessName');
+        if (successName) successName.textContent = firstName ? `, ${firstName}` : '';
+        const heading = document.getElementById('loginBoxHeading');
+        const subtext = document.getElementById('loginBoxSubtext');
+        if (heading) heading.textContent = 'Email confirmed';
+        if (subtext) subtext.textContent = 'Your account is ready.';
+        if (typeof window.showAuthPanel === 'function') window.showAuthPanel('success');
+        setLoading(false);
+        await new Promise((resolve) => setTimeout(resolve, 900));
         const flowId = beginBootTransitionSafe('signup-code-verified', 'signing-in');
         const booted = await runBootstrapTask(() => bootstrapFromSupabaseSession(data.session, {
           usernameHint: pendingSignup.name || email,
@@ -7168,7 +7179,10 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         if (booted) {
           pendingSignup = null;
           clearInterval(resendTimer);
-          if (typeof window.toastSuccess === 'function') window.toastSuccess('Email confirmed. Welcome to Star Paper.');
+        } else if (typeof window.showLoginForm === 'function') {
+          // Confirmed, but the workspace could not load: sign in normally.
+          window.showLoginForm();
+          if (typeof window.toastInfo === 'function') window.toastInfo('Email confirmed. Sign in to continue.');
         }
       } catch (err) {
         const errMsg = String(err?.message || '').toLowerCase();

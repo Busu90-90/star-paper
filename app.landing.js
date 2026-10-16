@@ -1,4 +1,5 @@
-// Signed-out landing behaviour: header, showcase slides, reveal, count-up.
+// Signed-out behaviour: landing header, showcase slides, reveal, count-up,
+// and the auth form helpers (password eye, phone tidy-up).
 // Only toggles attributes and classes; it never writes inline styles.
 (function initStarPaperLanding() {
   'use strict';
@@ -26,6 +27,7 @@
     var tabs = Array.prototype.slice.call(show.querySelectorAll('[data-lp-tab]'));
     if (!track || !slides.length) return null;
     var active = 0;
+    var counter = show.querySelector('[data-lp-count-current]');
 
     function setActive(index) {
       active = index;
@@ -37,6 +39,7 @@
       tabs.forEach(function (tab, i) {
         tab.setAttribute('aria-current', i === index ? 'true' : 'false');
       });
+      if (counter) counter.textContent = String(index + 1);
     }
 
     function go(index, options) {
@@ -131,36 +134,6 @@
   function setupHeader(root) {
     var header = root.querySelector('[data-lp-header]');
     if (!header) return;
-    var toggle = header.querySelector('[data-lp-menu-toggle]');
-    var sheet = toggle ? document.getElementById(toggle.getAttribute('aria-controls')) : null;
-
-    function setOpen(open) {
-      if (!toggle || !sheet) return;
-      sheet.hidden = !open;
-      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-      toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
-      var icon = toggle.querySelector('i');
-      if (icon) icon.className = open ? 'ph ph-x' : 'ph ph-list';
-      header.classList.toggle('is-open', open);
-    }
-
-    if (toggle && sheet) {
-      toggle.addEventListener('click', function () {
-        setOpen(sheet.hidden);
-      });
-      sheet.addEventListener('click', function (event) {
-        if (event.target.closest('a, button')) setOpen(false);
-      });
-      document.addEventListener('keydown', function (event) {
-        if (event.key === 'Escape' && !sheet.hidden) {
-          setOpen(false);
-          toggle.focus();
-        }
-      });
-      window.addEventListener('resize', function () {
-        if (window.innerWidth >= 900) setOpen(false);
-      }, { passive: true });
-    }
 
     var ticking = false;
     function syncScrolled() {
@@ -218,6 +191,39 @@
     }, { threshold: 0.6 });
     figures.forEach(function (el) { observer.observe(el); });
   }
+
+  // Auth form helpers. Delegated, so they work whenever #loginScreen shows.
+  function setupAuthHelpers() {
+    document.addEventListener('click', function (event) {
+      var eye = event.target.closest ? event.target.closest('[data-lp-eye]') : null;
+      if (!eye) return;
+      event.preventDefault();
+      var input = document.getElementById(eye.getAttribute('data-lp-eye'));
+      if (!input) return;
+      var show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      eye.setAttribute('aria-pressed', show ? 'true' : 'false');
+      eye.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+      var icon = eye.querySelector('i');
+      if (icon) icon.className = show ? 'ph ph-eye-slash' : 'ph ph-eye';
+    });
+    // Postel's law: accept "+256 700-000 000" or "(0700) 000 000", store it clean.
+    document.addEventListener('blur', function (event) {
+      var target = event.target;
+      if (!target || target.id !== 'signupPhone') return;
+      var raw = String(target.value || '').trim();
+      var cleaned = raw.replace(/(?!^\+)[^\d]/g, '');
+      if (cleaned !== raw) target.value = cleaned;
+    }, true);
+    document.addEventListener('blur', function (event) {
+      var target = event.target;
+      if (!target || target.type !== 'email' || !target.closest || !target.closest('#loginScreen')) return;
+      var trimmed = String(target.value || '').trim();
+      if (trimmed !== target.value) target.value = trimmed;
+    }, true);
+  }
+
+  setupAuthHelpers();
 
   onReady(function mountLanding() {
     var root = document.getElementById('landingScreen');

@@ -326,7 +326,7 @@ html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer .he
   min-width: 0;
 }
 
-html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer .header h1 {
+html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer .header h1:where(:not(.lp *)) {
   font-size: clamp(1.1rem, 1.8vw, 1.45rem);
   font-weight: 700;
   line-height: 1.1;
@@ -399,7 +399,7 @@ html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme 
     linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(247, 241, 231, 0.98) 100%);
 }
 
-html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer .welcome-message h3 {
+html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer .welcome-message h3:where(:not(.lp *)) {
   margin: 0 0 2px;
   font-size: clamp(1.35rem, 2.4vw, 1.85rem);
   font-weight: 700;
@@ -407,7 +407,7 @@ html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer .we
   color: var(--text-primary);
 }
 
-html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer .welcome-message p {
+html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer .welcome-message p:where(:not(.lp *)) {
   margin: 0;
   color: var(--text-muted);
 }
@@ -473,7 +473,7 @@ html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer .qu
   box-shadow: var(--sp-shell-shadow);
 }
 
-html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer .quick-add-panel button {
+html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer .quick-add-panel button:where(:not(.lp *)) {
   min-height: 42px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.03);
@@ -481,7 +481,7 @@ html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer .qu
   color: var(--text-secondary);
 }
 
-html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer .quick-add-panel button:hover {
+html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer .quick-add-panel button:hover:where(:not(.lp *)) {
   background: rgba(212, 168, 67, 0.14);
   border-color: var(--sp-shell-border-strong);
   color: var(--text-primary);
@@ -563,7 +563,7 @@ html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer .se
   color: var(--gold-amber);
 }
 
-html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer :is(label, .stat-label) {
+html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer :is(label, .stat-label):where(:not(.lp *)) {
   color: var(--text-muted);
 }
 
@@ -579,7 +579,7 @@ html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer :is
   select,
   .task-input,
   .task-date-input
-) {
+):where(:not(.lp *)) {
   background: rgba(13, 15, 21, 0.86);
   border: 1px solid var(--sp-shell-border);
   border-radius: 16px;
@@ -600,7 +600,7 @@ html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme 
   select,
   .task-input,
   .task-date-input
-) {
+):where(:not(.lp *)) {
   background: rgba(255, 255, 255, 0.96);
   border-color: rgba(120, 94, 33, 0.38);
   color: var(--text-primary);
@@ -618,7 +618,7 @@ html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer :is
   select,
   .task-input,
   .task-date-input
-)::placeholder {
+):where(:not(.lp *))::placeholder {
   color: var(--text-dim);
 }
 
@@ -634,14 +634,14 @@ html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer :is
   select,
   .task-input,
   .task-date-input
-):focus {
+):focus:where(:not(.lp *)) {
   border-color: var(--sp-shell-border-strong);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 0 0 3px rgba(212, 168, 67, 0.12);
 }
 
-html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer textarea {
+html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer textarea:where(:not(.lp *)) {
   min-height: 120px;
 }
 
@@ -676,7 +676,7 @@ html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme 
   color: #1f1708;
 }
 
-html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #appContainer :is(.action-btn, .back-btn, .back-to-list, .profile-upload-btn, .settings-currency-btn, .settings-inline-action) :is(.ph, svg) {
+html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #appContainer :is(.action-btn, .back-btn, .back-to-list, .profile-upload-btn, .settings-currency-btn, .settings-inline-action) :is(.ph, svg):where(:not(.lp *)) {
   color: currentColor;
   opacity: 1;
 }
@@ -1115,7 +1115,7 @@ html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) .sp-team-panel-he
   border-bottom-color: var(--sp-shell-border);
 }
 
-html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) .sp-team-panel-header h3 {
+html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) .sp-team-panel-header h3:where(:not(.lp *)) {
   color: var(--text-primary);
   font-size: 20px;
   letter-spacing: -0.03em;
@@ -1126,7 +1126,7 @@ html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) .sp-team-section 
   border-bottom-color: var(--sp-shell-border-soft);
 }
 
-html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) .sp-team-section h4 {
+html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) .sp-team-section h4:where(:not(.lp *)) {
   color: var(--text-muted);
 }
 
@@ -1174,7 +1174,7 @@ html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) .sp-team-member-a
 }
 
 html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) .sp-team-role-select,
-html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) .sp-chat-input-row input {
+html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) .sp-chat-input-row input:where(:not(.lp *)) {
   background: rgba(13, 15, 21, 0.86);
   border: 1px solid var(--sp-shell-border);
   border-radius: 14px;
@@ -1254,7 +1254,7 @@ html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) .sp-muted {
     margin-bottom: 14px;
   }
 
-  html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer .header h1 {
+  html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer .header h1:where(:not(.lp *)) {
     font-size: 1rem;
   }
 
@@ -1270,7 +1270,7 @@ html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) .sp-muted {
     padding: 16px;
   }
 
-  html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer .welcome-message h3 {
+  html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer .welcome-message h3:where(:not(.lp *)) {
     font-size: 1.15rem;
   }
 
@@ -1987,7 +1987,7 @@ html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer .se
   text-transform: uppercase;
 }
 
-html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer .settings-page-head h2 {
+html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer .settings-page-head h2:where(:not(.lp *)) {
   margin: 4px 0 0;
   color: var(--text-primary);
   font-size: clamp(2rem, 5vw, 3.4rem);
@@ -2151,7 +2151,7 @@ html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer #sp
 }
 
 html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) body:not(.light-theme) #appContainer .settings-currency-btn,
-html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) body:not(.light-theme) #appContainer .settings-currency-btn :is(.ph, svg) {
+html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) body:not(.light-theme) #appContainer .settings-currency-btn :is(.ph, svg):where(:not(.lp *)) {
   color: #f8edcf;
 }
 
@@ -2270,19 +2270,19 @@ html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme 
   text-shadow: none !important;
 }
 
-html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #appContainer :is(input, select, textarea, .sp-inline-edit-control) {
+html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #appContainer :is(input, select, textarea, .sp-inline-edit-control):where(:not(.lp *)) {
   background: #fffaf1 !important;
   color: #17130b !important;
   border-color: rgba(138, 109, 26, 0.38) !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
 }
 
-html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #appContainer :is(input, select, textarea, .sp-inline-edit-control)::placeholder {
+html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #appContainer :is(input, select, textarea, .sp-inline-edit-control):where(:not(.lp *))::placeholder {
   color: #75613d !important;
   opacity: 1;
 }
 
-html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #appContainer :is(input, select, textarea, .sp-inline-edit-control):focus {
+html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme #appContainer :is(input, select, textarea, .sp-inline-edit-control):focus:where(:not(.lp *)) {
   border-color: rgba(184, 137, 47, 0.78) !important;
   box-shadow:
     0 0 0 3px rgba(184, 137, 47, 0.2),
@@ -2364,7 +2364,7 @@ html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) body.light-theme 
   color: #991b1b;
 }
 
-html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #profileModal :is(input, textarea), html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #spAdminModal :is(input, select), html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #spCurrencyModal .sp-modal-content {
+html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #profileModal :is(input, textarea):where(:not(.lp *)), html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #spAdminModal :is(input, select):where(:not(.lp *)), html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #spCurrencyModal .sp-modal-content {
   border-color: var(--sp-shell-border);
 }
 
@@ -2433,7 +2433,7 @@ html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer :is
   .sp-global-sheet__title,
   .sp-modal-header h2,
   .sp-modal-title
-) {
+):where(:not(.lp *)) {
   font-family: var(--sp-shell-display);
   font-weight: 650;
   letter-spacing: -0.012em;
@@ -2455,7 +2455,7 @@ html.sp-shell-refined:not(.sp-prem-off):not(.sp-handcraft-off) #appContainer :is
   .sp-global-tool,
   .sp-global-key,
   .sp-global-stop
-) {
+):where(:not(.lp *)) {
   font-family: var(--sp-shell-ui);
 }
 

@@ -168,7 +168,7 @@ html:not(.sp-prem-off) body.light-theme {
   --sp-inner-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.78);
 }
 
-html:not(.sp-prem-off) :is(body, button, input, select, textarea, .theme-btn, .sp-tab, .nav-item, .sidebar-util-btn) {
+html:not(.sp-prem-off) :is(body, button, input, select, textarea, .theme-btn, .sp-tab, .nav-item, .sidebar-util-btn):where(:not(.lp *)) {
   font-family: var(--font-ui) !important;
 }
 
@@ -221,7 +221,7 @@ html:not(.sp-prem-off) body::after {
   background: rgba(160, 120, 40, 0.08);
 }
 
-html:not(.sp-prem-off) :is(h1, h2, h3, h4) {
+html:not(.sp-prem-off) :is(h1, h2, h3, h4):where(:not(.lp *)) {
   letter-spacing: -0.03em;
 }
 
@@ -273,7 +273,7 @@ html:not(.sp-prem-off) :is(
   select,
   .task-input,
   .task-date-input
-) {
+):where(:not(.lp *)) {
   background: var(--onyx-input);
   border: 1px solid var(--sp-border);
   border-radius: 14px;
@@ -290,7 +290,7 @@ html:not(.sp-prem-off) :is(
   input[type="month"],
   input[type="tel"],
   select
-) {
+):where(:not(.lp *)) {
   min-height: 48px;
 }
 
@@ -310,7 +310,7 @@ html:not(.sp-prem-off) :is(
   select:focus,
   .task-input:focus,
   .task-date-input:focus
-) {
+):where(:not(.lp *)) {
   border-color: var(--sp-border-strong);
   box-shadow: 0 0 0 3px rgba(212, 168, 67, 0.12), 0 14px 28px rgba(0, 0, 0, 0.16);
   outline: none;
@@ -427,7 +427,7 @@ html:not(.sp-prem-off) .header {
   -webkit-backdrop-filter: blur(20px) saturate(1.08);
 }
 
-html:not(.sp-prem-off) .header h1 {
+html:not(.sp-prem-off) .header h1:where(:not(.lp *)) {
   color: var(--text-primary);
   font-size: 28px;
   font-weight: 700;
@@ -459,17 +459,17 @@ html:not(.sp-prem-off) .welcome-message {
   padding: 22px 24px 20px;
 }
 
-html:not(.sp-prem-off) .welcome-message h3 {
+html:not(.sp-prem-off) .welcome-message h3:where(:not(.lp *)) {
   color: var(--text-primary);
   font-size: clamp(1.35rem, 2.2vw, 1.8rem);
   margin-bottom: 6px;
 }
 
-html:not(.sp-prem-off) .welcome-message p {
+html:not(.sp-prem-off) .welcome-message p:where(:not(.lp *)) {
   color: var(--text-muted);
 }
 
-html:not(.sp-prem-off) .search-bar input {
+html:not(.sp-prem-off) .search-bar input:where(:not(.lp *)) {
   min-height: 54px;
   background: rgba(26, 28, 38, 0.82);
   border: 1px solid var(--sp-border);
@@ -820,13 +820,13 @@ html:not(.sp-prem-off) .landing-feature-card {
   box-shadow: var(--sp-shadow-sm), var(--sp-inner-highlight);
 }
 
-html:not(.sp-prem-off) .landing-feature-card h3 {
+html:not(.sp-prem-off) .landing-feature-card h3:where(:not(.lp *)) {
   color: var(--text-primary);
   font-size: 1.05rem;
   margin-bottom: 8px;
 }
 
-html:not(.sp-prem-off) .landing-feature-card p {
+html:not(.sp-prem-off) .landing-feature-card p:where(:not(.lp *)) {
   color: rgba(244, 243, 240, 0.68);
 }
 
@@ -863,17 +863,22 @@ html:not(.sp-prem-off) .forgot-password-hint {
   border-radius: 14px;
 }
 
+/* Boot loader matches the Forest & Foil sign-in so the hand-off has no colour flash. */
 html:not(.sp-prem-off) .app-boot-loader {
-  background: radial-gradient(circle at top, rgba(212, 168, 67, 0.16) 0%, rgba(10, 10, 10, 0.95) 50%, rgba(10, 10, 10, 0.98) 100%);
+  background:
+    radial-gradient(60% 46% at 50% -6%, rgba(246, 230, 138, 0.16), transparent 70%),
+    repeating-radial-gradient(circle at 50% -20%, rgba(217, 180, 90, 0.035) 0 1px, transparent 1px 7px),
+    linear-gradient(180deg, #0F1A14, #0A1210 60%);
 }
 
 html:not(.sp-prem-off) .app-boot-loader__inner {
   min-width: min(430px, calc(100vw - 36px));
   padding: 28px 30px;
-  border-radius: 28px;
-  background: linear-gradient(180deg, rgba(30, 32, 48, 0.96) 0%, rgba(17, 18, 24, 0.99) 100%);
-  border: 1px solid var(--sp-border);
-  box-shadow: var(--sp-shadow-lg), var(--sp-inner-highlight);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0) 36%), linear-gradient(160deg, rgba(34, 48, 31, 0.9), rgba(10, 18, 16, 0.94));
+  border: 1px solid rgba(217, 180, 90, 0.3);
+  box-shadow: 0 34px 80px -28px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  color: #F7F3E8;
 }
 
 html:not(.sp-prem-off) .app-boot-loader__logo {
@@ -1084,7 +1089,7 @@ html:not(.sp-prem-off) body.light-theme :is(
   input[type="tel"],
   textarea,
   select
-) {
+):where(:not(.lp *)) {
   color: var(--text-primary);
 }
 

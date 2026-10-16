@@ -651,10 +651,17 @@ assert(supabase.includes("window.__spUserPublicScreen === 'loginScreen'"), 'supa
 assert(!/scroll-snap-type:\s*y\s+mandatory/.test(landingCss), 'styles.landing.css must not trap readers with mandatory scroll-snap');
 assert(landingCss.includes('@view-transition'), 'styles.landing.css must opt public pages into cross-document view transitions');
 assert(landingCss.includes('prefers-reduced-motion: reduce'), 'styles.landing.css must honour reduced motion');
-for (const token of ['--sp-stage', '--sp-gold', '--sp-violet', '--sp-in', '--sp-out', '--sp-font-display', '--sp-font-ui', '--sp-font-money', '--sp-text-4xl', '--sp-space-4', '--sp-radius-md', '--sp-ease-out']) {
+for (const token of ['--sp-night', '--sp-forest', '--sp-moss', '--sp-ivory', '--sp-foil', '--sp-gold', '--sp-in', '--sp-out', '--sp-glass', '--sp-grooves', '--sp-stage', '--sp-font-display', '--sp-font-ui', '--sp-font-money', '--sp-text-4xl', '--sp-space-4', '--sp-radius-md', '--sp-tap', '--sp-ease-out']) {
   assert(designTokensCss.includes(`${token}:`), `sp-design-tokens.css must define ${token}`);
 }
 assert(designTokensCss.includes('body.light-theme {'), 'sp-design-tokens.css must define the light theme');
+// Design system v2 "Forest & Foil": one accent (gold), no violet, documented laws.
+requiredFile('DESIGN_SYSTEM.md');
+assert(!/--sp-violet|124 92 255|#7C5CFF/i.test(designTokensCss + landingCss), 'Forest & Foil has one accent: no violet in tokens or landing CSS');
+assert(!/lp-menu-btn|id="lpMenu"|lp-sheet/.test(index), 'The landing has no hamburger menu; the story slides carry the sections');
+assert(index.includes('class="lp-auth__medallion"') && index.includes('class="lp-auth__steps"'), 'Sign-in card must carry the step medallion and the sign-up stepper');
+assert(index.includes('id="authSuccessPanel"'), 'Sign-up must end on a success moment (peak-end)');
+assert(read('DESIGN_SYSTEM.md').includes('## UX laws'), 'DESIGN_SYSTEM.md must map the UX laws');
 assert(rootShell.includes('whenAppShellActive('), 'app.root-shell.js must defer the globe/Three.js loader until the app shell is active');
 for (const legacy of ['app.handcraft.js', 'styles.handcraft.css', 'notebook-board', 'sp-compass', 'landing-snap-page']) {
   for (const [fileName, text] of [['index.html', index], ['app.js', app], ['app.browser-assets.js', read('app.browser-assets.js')], ['styles.css', styles]]) {

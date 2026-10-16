@@ -48,10 +48,10 @@ function recordMark({ detail = 'full' } = {}) {
   // so it is a pinprick of gold around a dark centre, not a bullseye.
   const hole = small
     ? `<circle cx="50" cy="50" r="1.5" fill="${GOLD.hi}"/><circle cx="50" cy="50" r="0.8" fill="#0A0A0C"/>`
-    : `<circle cx="50" cy="50" r="1.15" fill="url(#${id}-ring)"/><circle cx="50" cy="50" r="0.6" fill="#0A0A0C"/>`;
+    : `<circle cx="50" cy="50" r="1.15" fill="url(#${id}-ring)"/><circle cx="50" cy="50" r="0.6" fill="#0A1210"/>`;
 
   const defs = `<defs>
-    <radialGradient id="${id}-disc" cx=".4" cy=".35" r=".75"><stop offset="0" stop-color="#2A2733"/><stop offset=".7" stop-color="#121117"/><stop offset="1" stop-color="#08080B"/></radialGradient>
+    <radialGradient id="${id}-disc" cx=".4" cy=".35" r=".75"><stop offset="0" stop-color="#2B3B2C"/><stop offset=".7" stop-color="#14201A"/><stop offset="1" stop-color="#070D0B"/></radialGradient>
     <linearGradient id="${id}-rim" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${GOLD.hi}"/><stop offset=".45" stop-color="${GOLD.mid}"/><stop offset="1" stop-color="${GOLD.deep}"/></linearGradient>
     <linearGradient id="${id}-line" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="${GOLD.line0}"/><stop offset="1" stop-color="${GOLD.line1}"/></linearGradient>
     <radialGradient id="${id}-ring" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#FFF6D6"/><stop offset=".6" stop-color="${GOLD.mid}"/><stop offset="1" stop-color="${GOLD.deep}"/></radialGradient>
@@ -114,11 +114,11 @@ const pngs = [
   ['star_paper_512.png', 512, 'star-paper-mark.svg', null, 1],
   ['star_paper_1024.png', 1024, 'star-paper-mark.svg', null, 1],
   ['star_paper_transparent.png', 1024, 'star-paper-mark.svg', null, 1],
-  ['star_paper_black.png', 1024, 'star-paper-mark.svg', '#0A0A0C', 0.84],
+  ['star_paper_black.png', 1024, 'star-paper-mark.svg', '#0A1210', 0.84],
   ['star_paper_white.png', 1024, 'star-paper-mark.svg', '#FFFFFF', 0.84],
   // Maskable: launchers crop to a circle/squircle, so the mark sits inside the 80% safe zone.
-  ['star_paper_maskable_512.png', 512, 'star-paper-mark.svg', '#0A0A0C', 0.72],
-  ['star_paper_apple_180.png', 180, 'star-paper-mark.svg', '#0A0A0C', 0.82],
+  ['star_paper_maskable_512.png', 512, 'star-paper-mark.svg', '#0A1210', 0.72],
+  ['star_paper_apple_180.png', 180, 'star-paper-mark.svg', '#0A1210', 0.82],
 ];
 
 const playwrightEntry = process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright';

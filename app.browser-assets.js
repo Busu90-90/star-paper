@@ -63,14 +63,15 @@
     ]],
     ['1', ['app.offline-cache.js']],
     ['2', ['app.todayboard.js']],
-    ['18', ['app.browser-assets.js']],
-    ['3', ['styles.landing.css']],
+    ['19', ['app.browser-assets.js']],
+    ['4', ['styles.landing.css']],
     ['1', ['styles.brand.css']],
     ['5', ['app.root-shell.js']],
-    ['2', ['app.public-pages.js', 'app.boot-flags.js', 'app.landing.js']],
+    ['2', ['app.public-pages.js', 'app.boot-flags.js']],
+    ['3', ['app.landing.js']],
     ['2', ['assets/vendor/fonts/star-paper-fonts.css']],
-    ['1', [
-      'sp-design-tokens.css',
+    ['2', ['sp-design-tokens.css']],
+    ['2', [
       'favicon.svg',
       'star_paper_logo_pack/star-paper-mark.svg',
       'star_paper_logo_pack/star-paper-mark-small.svg',
@@ -79,7 +80,7 @@
       'star_paper_logo_pack/star_paper_maskable_512.png'
     ]],
     ['5', ['app.premium.js']],
-    ['4', [
+    ['5', [
       'star_paper_logo_pack/star_paper_32.png',
       'star_paper_logo_pack/star_paper_64.png',
       'star_paper_logo_pack/star_paper_128.png',
@@ -92,17 +93,17 @@
     ]],
     ['5', ['app.tasks.js']],
     ['8', ['app.actions.js']],
-    ['9', ['styles.premium.css']],
+    ['10', ['styles.premium.css']],
     ['10', ['app.migrations.js']],
-    ['13', ['styles.shell.css']],
+    ['14', ['styles.shell.css']],
     ['14', ['app.globe.js']],
     ['19', ['app.reports.js']],
-    ['22', ['star-paper-tokens.css']],
-    ['26', ['manifest.json']],
-    ['59', ['styles.css']],
-    ['93', ['supabase.js']],
-    ['147', ['app.js']],
-    ['194', ['sw.js']]
+    ['23', ['star-paper-tokens.css']],
+    ['27', ['manifest.json']],
+    ['60', ['styles.css']],
+    ['94', ['supabase.js']],
+    ['148', ['app.js']],
+    ['195', ['sw.js']]
   ];
 
   const assetVersions = {};

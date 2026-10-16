@@ -1,57 +1,74 @@
 /* ==========================================================================
-   Star Paper design tokens: music × money × management
+   Star Paper design tokens · v2 "Forest & Foil"
    --------------------------------------------------------------------------
-   The single source of truth for colour, type, space, radius, depth and
-   motion. Signed-out pages read these directly (styles.landing.css); the app
-   shell migrates onto them in Phase 2.
+   Night-forest greens + gold foil + ivory, sampled from the brand board.
+   One accent only: gold marks the primary action and the money that matters
+   (Von Restorff). Money in/out keep their own hues and always ship with a
+   sign (+/−, ▲/▼) so colour is never the only signal.
 
-   Dark ("stage") is the default. body.light-theme switches to "paper".
+   Dark ("night") is the default. body.light-theme switches to "paper".
+   The full rationale, contrast table and UX-law mapping: DESIGN_SYSTEM.md.
    ========================================================================== */
 
 :root {
   color-scheme: dark;
 
-  /* ── Colour: stage ─────────────────────────────────────────────────────── */
-  --sp-stage: #0A0A0C;
-  --sp-surface-1: #121116;
-  --sp-surface-2: #1A1820;
-  --sp-surface-3: #24212C;
-  --sp-line: rgb(255 255 255 / 0.08);
-  --sp-line-strong: rgb(255 255 255 / 0.16);
-
-  --sp-ink: #F6F1E6;
-  --sp-ink-2: #C9C2B4;
-  --sp-ink-3: #8D877C;
-  --sp-ink-on-gold: #17120A;
-
-  /* ── Colour: gold (money, primary action) ──────────────────────────────── */
-  --sp-gold-hi: #FFE9A8;
-  --sp-gold: #E9B949;
+  /* ── Brand palette (fixed, theme-independent) ──────────────────────────── */
+  --sp-night: #0A1210;
+  --sp-forest: #1B2516;
+  --sp-forest-2: #22301F;
+  --sp-moss: #35463A;
+  --sp-moss-2: #4A5E4F;
+  --sp-ivory: #F7F3E8;
+  --sp-sage: #A9C2A7;
+  --sp-gold-hi: #F6E68A;
+  --sp-gold: #D9B45A;
   --sp-gold-lo: #B8862B;
-  --sp-gold-deep: #8A5F17;
-  --sp-gold-text: #F2C75C;
-  --sp-gold-grad: linear-gradient(135deg, var(--sp-gold-hi) 0%, var(--sp-gold) 42%, var(--sp-gold-lo) 100%);
-  --sp-gold-soft: rgb(233 185 73 / 0.14);
-  --sp-gold-glow: rgb(233 185 73 / 0.32);
+  --sp-gold-deep: #A67C2A;
+  --sp-foil: linear-gradient(180deg, #F6E68A 0%, #E3C46B 38%, #B8862B 72%, #A67C2A 100%);
+  --sp-foil-x: linear-gradient(100deg, #A67C2A 0%, #E3C46B 30%, #F6E68A 50%, #D9B45A 70%, #A67C2A 100%);
 
-  /* ── Colour: violet (music, energy; use sparingly) ─────────────────────── */
-  --sp-violet: #7C5CFF;
-  --sp-violet-text: #A994FF;
-  --sp-violet-soft: rgb(124 92 255 / 0.16);
+  /* ── Theme roles (dark) ────────────────────────────────────────────────── */
+  --sp-stage: var(--sp-night);
+  --sp-surface-1: #121C17;
+  --sp-surface-2: var(--sp-forest);
+  --sp-surface-3: var(--sp-forest-2);
+  --sp-line: rgb(217 180 90 / 0.14);
+  --sp-line-strong: rgb(217 180 90 / 0.32);
 
-  /* ── Colour: money semantics ───────────────────────────────────────────── */
-  --sp-in: #2BC48A;
-  --sp-in-soft: rgb(43 196 138 / 0.14);
-  --sp-out: #FF6B5E;
-  --sp-out-soft: rgb(255 107 94 / 0.14);
-  --sp-focus: #FFE9A8;
+  --sp-ink: var(--sp-ivory);
+  --sp-ink-2: #C9CFC4;
+  --sp-ink-3: #8E9A8F;
+  --sp-ink-on-gold: #16130A;
+
+  --sp-gold-text: #E3C46B;
+  --sp-gold-grad: var(--sp-foil);
+  --sp-gold-soft: rgb(217 180 90 / 0.13);
+  --sp-gold-glow: rgb(217 180 90 / 0.30);
+  --sp-sage-text: var(--sp-sage);
+  --sp-sage-soft: rgb(169 194 167 / 0.13);
+
+  /* Money semantics */
+  --sp-in: #5FD3A0;
+  --sp-in-soft: rgb(95 211 160 / 0.14);
+  --sp-out: #F0846C;
+  --sp-out-soft: rgb(240 132 108 / 0.14);
+  --sp-focus: var(--sp-gold-hi);
+
+  /* Glass (frosted forest with a gold hairline) */
+  --sp-glass: linear-gradient(180deg, rgb(255 255 255 / 0.05), rgb(255 255 255 / 0) 36%), linear-gradient(160deg, rgb(34 48 31 / 0.88), rgb(10 18 16 / 0.92));
+  --sp-glass-line: rgb(217 180 90 / 0.30);
+  --sp-glass-blur: blur(16px) saturate(140%);
+
+  /* Texture: faint record grooves (music cue) */
+  --sp-grooves: repeating-radial-gradient(circle at 50% -20%, rgb(217 180 90 / 0.035) 0 1px, transparent 1px 7px);
 
   /* ── Type ──────────────────────────────────────────────────────────────── */
   --sp-font-display: 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
   --sp-font-ui: 'Inter Tight', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --sp-font-money: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
 
-  /* Fluid scale, 360px → 1440px */
+  /* Fluid scale, 360px → 1440px. Bold display at the top (2026: big type). */
   --sp-text-xs: clamp(0.75rem, 0.73rem + 0.09vw, 0.8125rem);
   --sp-text-sm: clamp(0.875rem, 0.85rem + 0.11vw, 0.9375rem);
   --sp-text-md: clamp(1rem, 0.97rem + 0.14vw, 1.0625rem);
@@ -59,14 +76,15 @@
   --sp-text-xl: clamp(1.375rem, 1.26rem + 0.56vw, 1.75rem);
   --sp-text-2xl: clamp(1.75rem, 1.52rem + 1.11vw, 2.5rem);
   --sp-text-3xl: clamp(2.25rem, 1.8rem + 2.22vw, 3.75rem);
-  --sp-text-4xl: clamp(2.625rem, 1.95rem + 3.33vw, 4.875rem);
+  --sp-text-4xl: clamp(2.75rem, 1.9rem + 4.2vw, 5.5rem);
 
-  --sp-leading-tight: 1.04;
+  --sp-leading-tight: 1.02;
   --sp-leading-snug: 1.22;
   --sp-leading-body: 1.6;
-  --sp-tracking-caps: 0.16em;
+  --sp-tracking-caps: 0.18em;
+  --sp-tracking-wordmark: 0.24em;
 
-  /* ── Space: 4pt grid ───────────────────────────────────────────────────── */
+  /* ── Space: 4pt grid, 8pt rhythm ───────────────────────────────────────── */
   --sp-space-1: 0.25rem;
   --sp-space-2: 0.5rem;
   --sp-space-3: 0.75rem;
@@ -84,28 +102,29 @@
   --sp-measure: 62ch;
   --sp-page-max: 1200px;
 
-  /* ── Radius ────────────────────────────────────────────────────────────── */
+  /* ── Shape ─────────────────────────────────────────────────────────────── */
   --sp-radius-xs: 6px;
   --sp-radius-sm: 10px;
   --sp-radius-md: 14px;
-  --sp-radius-lg: 20px;
-  --sp-radius-xl: 28px;
+  --sp-radius-lg: 22px;
+  --sp-radius-xl: 22px;
   --sp-radius-pill: 999px;
+  --sp-tap: 44px;
 
-  /* ── Depth ─────────────────────────────────────────────────────────────── */
-  --sp-shadow-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 1px rgb(0 0 0 / 0.2);
-  --sp-shadow-2: 0 10px 30px -12px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.3);
-  --sp-shadow-3: 0 30px 80px -24px rgb(0 0 0 / 0.75), 0 8px 24px -8px rgb(0 0 0 / 0.45);
-  --sp-shadow-gold: 0 10px 30px -10px var(--sp-gold-glow), inset 0 1px 0 rgb(255 255 255 / 0.35);
-  --sp-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.06), rgb(255 255 255 / 0) 40%);
+  /* ── Depth: three levels, one shadow each ──────────────────────────────── */
+  --sp-shadow-1: 0 1px 2px rgb(0 0 0 / 0.35);
+  --sp-shadow-2: 0 12px 32px -14px rgb(0 0 0 / 0.6);
+  --sp-shadow-3: 0 34px 80px -28px rgb(0 0 0 / 0.75);
+  --sp-shadow-gold: 0 10px 30px -12px var(--sp-gold-glow), inset 0 1px 0 rgb(255 255 255 / 0.35);
+  --sp-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.04), rgb(255 255 255 / 0) 40%);
 
-  /* ── Motion ────────────────────────────────────────────────────────────── */
+  /* ── Motion: feedback under 100ms (Doherty) ────────────────────────────── */
   --sp-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --sp-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-  --sp-dur-1: 120ms;
-  --sp-dur-2: 220ms;
-  --sp-dur-3: 420ms;
-  --sp-dur-4: 720ms;
+  --sp-dur-1: 90ms;
+  --sp-dur-2: 200ms;
+  --sp-dur-3: 400ms;
+  --sp-dur-4: 700ms;
 
   /* ── Layers ────────────────────────────────────────────────────────────── */
   --sp-z-header: 40;
@@ -116,30 +135,34 @@
 body.light-theme {
   color-scheme: light;
 
-  --sp-stage: #F6F1E6;
-  --sp-surface-1: #FFFDF8;
-  --sp-surface-2: #FBF6EC;
-  --sp-surface-3: #F1E9D8;
-  --sp-line: rgb(30 22 8 / 0.1);
-  --sp-line-strong: rgb(30 22 8 / 0.2);
+  /* Paper: ivory page, white cards, forest ink. Hero art stays a night stage. */
+  --sp-stage: var(--sp-ivory);
+  --sp-surface-1: #FFFFFF;
+  --sp-surface-2: #FBF8F0;
+  --sp-surface-3: #EEF1E8;
+  --sp-line: rgb(20 32 25 / 0.10);
+  --sp-line-strong: rgb(20 32 25 / 0.22);
 
-  --sp-ink: #17130C;
-  --sp-ink-2: #4A4336;
-  --sp-ink-3: #6F6757;
+  --sp-ink: #142019;
+  --sp-ink-2: #3D4A40;
+  --sp-ink-3: #5F6B61;
 
-  --sp-gold-text: #8A5F17;
-  --sp-gold-soft: rgb(184 134 43 / 0.14);
-  --sp-gold-glow: rgb(184 134 43 / 0.3);
-  --sp-violet-text: #5B3DE0;
-  --sp-violet-soft: rgb(124 92 255 / 0.12);
-  --sp-in: #128A5E;
-  --sp-out: #D2483C;
-  --sp-focus: #8A5F17;
+  --sp-gold-text: #8A6420;
+  --sp-gold-soft: rgb(166 124 42 / 0.12);
+  --sp-gold-glow: rgb(166 124 42 / 0.28);
+  --sp-sage-text: #3F5A44;
+  --sp-sage-soft: rgb(53 70 58 / 0.10);
+  --sp-in: #17845A;
+  --sp-in-soft: rgb(23 132 90 / 0.12);
+  --sp-out: #B94A33;
+  --sp-out-soft: rgb(185 74 51 / 0.12);
+  --sp-focus: #8A6420;
 
-  --sp-shadow-1: 0 1px 2px rgb(60 44 14 / 0.1);
-  --sp-shadow-2: 0 12px 30px -14px rgb(60 44 14 / 0.28), 0 2px 6px rgb(60 44 14 / 0.08);
-  --sp-shadow-3: 0 30px 70px -28px rgb(60 44 14 / 0.4), 0 8px 20px -10px rgb(60 44 14 / 0.16);
-  --sp-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.7), rgb(255 255 255 / 0) 40%);
+  --sp-shadow-1: 0 1px 2px rgb(20 32 25 / 0.08);
+  --sp-shadow-2: 0 12px 30px -14px rgb(20 32 25 / 0.22);
+  --sp-shadow-3: 0 30px 70px -28px rgb(20 32 25 / 0.35);
+  --sp-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.8), rgb(255 255 255 / 0) 40%);
+  --sp-grooves: repeating-radial-gradient(circle at 50% -20%, rgb(20 32 25 / 0.035) 0 1px, transparent 1px 7px);
 }
 
 @media (prefers-reduced-motion: reduce) {
