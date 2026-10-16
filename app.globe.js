@@ -1191,12 +1191,7 @@ class StarPaperGlobe {
     kicker.append(iconElement(booking.__past ? 'ph-sparkle' : 'ph-map-pin'), textNode(kickerLabel));
 
     const heading = textElement('h3', title);
-    if (options.compactHeading) {
-      heading.style.margin = '0 0 6px';
-      heading.style.color = '#fff';
-      heading.style.fontSize = '22px';
-      heading.style.lineHeight = '1.1';
-    }
+    if (options.compactHeading) heading.classList.add('sp-global-detail__title--compact');
 
     const sub = classElement('p', 'sp-global-detail__sub', locationLine);
     const children = [kicker, heading, sub];
@@ -1361,7 +1356,7 @@ class StarPaperGlobe {
       chip.dataset.globeFilter = item.key;
       chip.setAttribute('aria-selected', String(this.sheetFilter === item.key));
       const count = textElement('span', item.count);
-      count.style.opacity = '.6';
+      count.className = 'sp-global-sheet__count';
       chip.append(textNode(`${item.label} `), count);
       filter.appendChild(chip);
     });
@@ -1629,10 +1624,10 @@ class StarPaperGlobe {
     const hitIndex = this.getPinHitIndex(event);
     if (hitIndex >= 0) {
       this.showPinCard(hitIndex, event);
-      this.renderer.domElement.style.cursor = 'pointer';
+      this.renderer.domElement.classList.add('is-pin-hover');
     } else {
       this.hidePinCard();
-      this.renderer.domElement.style.cursor = 'grab';
+      this.renderer.domElement.classList.remove('is-pin-hover');
     }
   }
 

@@ -7,7 +7,7 @@ matters most, whether that's the primary action or the money you're looking at.
 - Tokens: `sp-design-tokens.css`. Every colour, size, radius, shadow and duration comes from here.
 - Signed-out screens: `styles.landing.css` (`.lp-*`).
 - Brand mark spin: `styles.brand.css`.
-- The app shell moves onto these tokens in Phase 2. Until then it keeps its legacy stylesheets.
+- Signed-in app shell: `styles.app.css` (scoped to `#appContainer` and the overlays it opens), driven by `app.chrome.js`. It is being rebuilt section by section (stages B0–B5). The legacy premium/shell polish layers are switched off and get deleted in B5.
 
 ## Palette
 
@@ -78,7 +78,9 @@ Every text pair passes AA (4.5:1).
 - **Story slides:** four slides in one horizontal scroll-snap track: Mainstage, How it works, Proof, Voices.
   - A connected stepper sits under the slides. Seen steps fill gold, and the active step shows a progress bar that drives auto-advance.
   - Phones show dots with a "2 / 4" counter.
-- **Stage rig:** a pure-CSS truss, three warm beams and a light pool. Every slide's art sits under it and is swappable (`<figure class="lp-art lp-art--*">`).
+- **Stage rig:** an SVG truss with three moving-head lamps and a light pool. Every slide's art sits under it and is swappable (`<figure class="lp-art lp-art--*">`).
+  - The beams are coloured like a real show: emerald stage-left, warm white key light in the centre, gold stage-right. These are the brand's three lights (money in, ivory, foil); the pool on the floor mixes all three.
+  - Each head and its beam pivot on the same yoke point and share one animation, so they sweep together: the side heads swing out wide, cross over the centre, hold, then return. Reduced motion leaves them still.
 - **Buttons:**
   - `lp-btn--gold` is solid foil, the single primary per view.
   - `lp-btn--foil` is a gold-outline pill that fills with foil, used on auth.
@@ -91,13 +93,41 @@ Every text pair passes AA (4.5:1).
   - An animated success check, then a trust line under the card.
 - **Fields:** a 52px input with a leading icon, a gold hairline plus glow on focus, and coral with a message on error.
 
+## Components (app shell)
+- **Sidebar (desktop, 1025px and up):** a floating forest-glass panel.
+  - From top to bottom: the spinning record and foil wordmark, then the five primary sections (Home, Money, Schedule, Artists, Team), then a "Workspace" group (Tasks, Settings), then the profile chip and sign out.
+  - The active item gets a foil edge light and a gold icon.
+  - It collapses to a 76px icon rail with tooltips, and the choice is remembered.
+- **Top bar:**
+  - On the left, a greeting ("Good evening, Ama") above the page title in Fraunces.
+  - In the middle, global search (press `/` to focus it).
+  - On the right, a gold **New** button, the sync state, the notification bell with an unread badge, and the avatar.
+  - It turns to frosted glass once the page scrolls under it.
+- **Floating tab bar (phones and tablets):** a pill with Home · Schedule · **(+)** · Money · Artists.
+  - The raised foil (+) opens the quick-add sheet.
+  - Tasks, Team and Settings sit in the avatar menu. There is no hamburger.
+- **Sheets:**
+  - On phones they are bottom sheets with a grab handle. On desktop they become panels anchored under the top bar.
+  - **Quick add** offers Booking, Income, Expense, Artist and Task as icon tiles. Money in is mint and money out is coral.
+  - **Notifications** collects today's nudges and team messages, with new ones marked by a gold dot.
+  - **Account** holds the profile, Team and messages, Tasks, Settings, the theme, About and Sign out.
+  - Escape, the scrim or the close button dismisses a sheet, and focus stays inside while it is open.
+- **Surfaces:**
+  - Cards are forest with a sheen, a 1px gold hairline and a 22px radius. Inner tiles sit one step lighter.
+  - Eyebrow labels are 11px uppercase. Values are JetBrains Mono.
+- **Controls:** one foil pill is the primary per view, with outline pills as secondaries. Segmented tabs are used for Money and Schedule. Inputs are 48px with a gold focus ring.
+- **State is never an inline style.**
+  - JavaScript toggles the `hidden` attribute, classes and `data-*` attributes.
+  - Progress bars are SVG `<rect width>`, the gauge needle is an SVG `transform` attribute, and the toast countdown runs on Web Animations.
+  - **The one documented exception:** the Schedule globe's pin card and drag sheet follow a moving 3D point or a finger every frame, as does the fallback tour map's pin position. These are redesigned in stage B3. Preflight caps them so they can't grow.
+
 ## UX laws → where Star Paper applies them
 
 | Law | Applied |
 |---|---|
-| Jakob's law | Logo top-left, Sign in top-right, a familiar email + password form |
-| Hick's law | One gold primary per screen; the hamburger was removed; sign-up asks only for what it needs |
-| Fitts's law | 44px+ targets, full-width primary buttons on auth, large tap areas on the stepper |
+| Jakob's law | Logo top-left, Sign in top-right, a familiar email + password form; in the app, search in the top bar, a bell and an avatar menu on the right, and a bottom tab bar on phones |
+| Hick's law | One gold primary per screen; no hamburger on the landing or in the app; five primary sections; sign-up asks only for what it needs |
+| Fitts's law | 44px+ targets, full-width primary buttons on auth, large tap areas on the stepper; the app's (+) sits in the thumb zone at the centre of the tab bar |
 | Miller's law | Sign-up split into 2 steps; 3 job cards; 4 slides |
 | Proximity | Label, field and error grouped tight; a section's actions sit together |
 | Similarity | The same anatomy for every job card and slide card; one button style per role |

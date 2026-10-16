@@ -369,18 +369,7 @@
 
         if (fillEl) {
             const percentage = goal > 0 ? Math.min((totalRevenue / goal) * 100, 100) : 0;
-            fillEl.style.width = `${percentage}%`;
-
-            // Update color based on progress
-            if (percentage >= 100) {
-                fillEl.style.background = "linear-gradient(90deg, #4caf50, #66bb6a)";
-            } else if (percentage >= 75) {
-                fillEl.style.background = "linear-gradient(90deg, #2196f3, #42a5f5)";
-            } else if (percentage >= 50) {
-                fillEl.style.background = "linear-gradient(90deg, #ff9800, #ffa726)";
-            } else {
-                fillEl.style.background = "linear-gradient(90deg, #f44336, #ef5350)";
-            }
+            fillEl.setAttribute('width', String(Math.round(percentage)));
         }
     }
 
