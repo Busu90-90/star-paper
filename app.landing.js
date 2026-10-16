@@ -93,6 +93,53 @@
     return { go: go, indexOf: function (id) { return slides.findIndex(function (s) { return s.id === id; }); } };
   }
 
+  // Voices slide: the three review cards take turns at the front, Aggie
+  // first. Runs only while that slide is showing; hover/focus pauses it, a tap
+  // on a back card brings it forward, reduced motion keeps Aggie in front.
+  function setupQuotes(root) {
+    var stack = root.querySelector('[data-lp-quotes]');
+    if (!stack) return;
+    var cards = Array.prototype.slice.call(stack.querySelectorAll('[data-lp-quote]'));
+    if (cards.length < 2) return;
+    var slide = stack.closest('[data-lp-slide]');
+    var front = 0;
+    var timer = null;
+
+    function layout() {
+      cards.forEach(function (card, i) {
+        var rel = (i - front + cards.length) % cards.length;
+        card.setAttribute('data-pos', rel === 0 ? 'front' : rel === 1 ? 'back1' : 'back2');
+        card.setAttribute('aria-hidden', rel === 0 ? 'false' : 'true');
+      });
+    }
+
+    function schedule() {
+      if (timer) { clearInterval(timer); timer = null; }
+      if (reduceMotion || !slide || !slide.hasAttribute('data-active')) return;
+      if (stack.matches(':hover') || stack.contains(document.activeElement)) return;
+      timer = setInterval(function () {
+        front = (front + 1) % cards.length;
+        layout();
+      }, 5000);
+    }
+
+    stack.addEventListener('click', function (event) {
+      var card = event.target.closest ? event.target.closest('[data-lp-quote]') : null;
+      if (!card || card.getAttribute('data-pos') === 'front') return;
+      front = cards.indexOf(card);
+      layout();
+      schedule();
+    });
+    ['mouseenter', 'mouseleave', 'focusin', 'focusout'].forEach(function (type) {
+      stack.addEventListener(type, function () { setTimeout(schedule, 0); });
+    });
+    if (slide && 'MutationObserver' in window) {
+      new MutationObserver(schedule).observe(slide, { attributes: true, attributeFilter: ['data-active'] });
+    }
+    layout();
+    schedule();
+  }
+
   // Header, footer and hero links to #how / #proof / #voices open that slide.
   function setupSlideLinks(root, show) {
     if (!show) return;
@@ -230,6 +277,7 @@
     if (!root || !root.classList.contains('lp')) return;
     setupHeader(root);
     setupSlideLinks(root, setupShow(root));
+    setupQuotes(root);
     setupReveal(root);
     setupCountUp(root);
   });

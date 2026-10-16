@@ -661,6 +661,10 @@ assert(!/--sp-violet|124 92 255|#7C5CFF/i.test(designTokensCss + landingCss), 'F
 assert(!/lp-menu-btn|id="lpMenu"|lp-sheet/.test(index), 'The landing has no hamburger menu; the story slides carry the sections');
 assert(index.includes('class="lp-auth__medallion"') && index.includes('class="lp-auth__steps"'), 'Sign-in card must carry the step medallion and the sign-up stepper');
 assert(index.includes('id="authSuccessPanel"'), 'Sign-up must end on a success moment (peak-end)');
+assert(index.includes('id="lpRigLamp"') && (index.match(/href="#lpRigLamp"/g) || []).length === 12, 'Every showcase slide must hang three lamps from the shared rig sprite');
+assert(landingCss.includes('.lp-rig {') && /\.lp-rig \{[^}]*z-index: 3/.test(landingCss), 'Stage beams must sit above the cards so the light falls through them');
+assert((index.match(/data-lp-quote /g) || []).length === 3 && landing.includes('function setupQuotes(root)'), 'Testimonials must rotate through all three quotes');
+assert(!/class="lp-trust"|lpJobsTitle/.test(index), 'The landing keeps one closing band; the trust strip and jobs section are merged into it');
 assert(read('DESIGN_SYSTEM.md').includes('## UX laws'), 'DESIGN_SYSTEM.md must map the UX laws');
 assert(rootShell.includes('whenAppShellActive('), 'app.root-shell.js must defer the globe/Three.js loader until the app shell is active');
 for (const legacy of ['app.handcraft.js', 'styles.handcraft.css', 'notebook-board', 'sp-compass', 'landing-snap-page']) {

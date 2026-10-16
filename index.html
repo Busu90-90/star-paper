@@ -6,7 +6,7 @@
     <meta name="star-paper:public-root" content="app-shell">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:;">
     <title>Star Paper</title>
-    <script src="app.browser-assets.js?v=19"></script>
+    <script src="app.browser-assets.js?v=20"></script>
     <script src="app.public-pages.js?v=2"></script>
     <script src="app.boot-head.js?v=1"></script>
     <link rel="manifest" href="manifest.json?v=27">
@@ -28,13 +28,13 @@
 
     <link rel="stylesheet" href="styles.css?v=60">
     <!-- UPGRADE: Final premium relayering token layer (additive, kill-switchable via localStorage.sp_prem_off) -->
-    <link rel="stylesheet" href="star-paper-tokens.css?v=23">
+    <link rel="stylesheet" href="star-paper-tokens.css?v=24">
     <!-- UPGRADE: Premium polish layer (additive, kill-switchable via localStorage.sp_prem_off) -->
     <link rel="stylesheet" href="styles.premium.css?v=10">
     <link rel="stylesheet" href="styles.shell.css?v=14">
     <!-- Design system: tokens + signed-out pages (landing, auth). Loaded last so it owns those screens. -->
-    <link rel="stylesheet" href="sp-design-tokens.css?v=2">
-    <link rel="stylesheet" href="styles.landing.css?v=4">
+    <link rel="stylesheet" href="sp-design-tokens.css?v=3">
+    <link rel="stylesheet" href="styles.landing.css?v=5">
     <link rel="stylesheet" href="styles.brand.css?v=1">
     <link rel="preload" href="assets/vendor/fonts/font-29-fraunces-latin-opsz-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="assets/vendor/fonts/font-31-inter-tight-latin-wght-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
@@ -60,6 +60,30 @@
     <!-- ═══ Signed-out: landing (styles.landing.css, app.landing.js) ═══ -->
     <div class="lp lp--home" id="landingScreen" data-page="home">
         <a class="lp-skip" href="#lpMain">Skip to content</a>
+        <!-- Stage rig, drawn once: a steel box truss with three PAR-can lamps. Each slide reuses it. -->
+        <svg class="lp-sprite" aria-hidden="true" focusable="false">
+            <defs>
+                <linearGradient id="lpSteel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9BA79E"/><stop offset=".35" stop-color="#4C5A50"/><stop offset=".6" stop-color="#1E2822"/><stop offset="1" stop-color="#5E6C62"/></linearGradient>
+                <linearGradient id="lpCan" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#11170F"/><stop offset=".45" stop-color="#3A463C"/><stop offset=".6" stop-color="#58665A"/><stop offset="1" stop-color="#0D120F"/></linearGradient>
+                <radialGradient id="lpLens" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFFBE6"/><stop offset=".45" stop-color="#F6E68A"/><stop offset="1" stop-color="#B8862B"/></radialGradient>
+                <radialGradient id="lpBloom" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFF6CF" stop-opacity=".9"/><stop offset=".4" stop-color="#F6E68A" stop-opacity=".35"/><stop offset="1" stop-color="#F6E68A" stop-opacity="0"/></radialGradient>
+                <symbol id="lpRigLamp" viewBox="-30 -8 60 66">
+                    <path d="M-20 -6 V8 M20 -6 V8 M-20 -6 H20" fill="none" stroke="url(#lpSteel)" stroke-width="3.5" stroke-linecap="round"/>
+                    <circle cx="-20" cy="8" r="3" fill="#2A342D" stroke="#7D8A80" stroke-width="1"/><circle cx="20" cy="8" r="3" fill="#2A342D" stroke="#7D8A80" stroke-width="1"/>
+                    <rect x="-17" y="2" width="34" height="38" rx="7" fill="url(#lpCan)" stroke="#6E7C72" stroke-width=".8"/>
+                    <path d="M-15 10 H15 M-15 16 H15 M-15 22 H15" stroke="#0A0F0C" stroke-width="1.2" opacity=".7"/>
+                    <path d="M-19 38 H19 L23 44 H-23 Z" fill="#1A221C" stroke="#58665A" stroke-width=".8"/>
+                    <ellipse cx="0" cy="45" rx="17" ry="4.5" fill="url(#lpLens)"/>
+                    <ellipse cx="0" cy="47" rx="28" ry="12" fill="url(#lpBloom)"/>
+                </symbol>
+                <symbol id="lpRigTruss" viewBox="0 0 600 30" preserveAspectRatio="none">
+                    <rect x="0" y="2" width="600" height="5" rx="2.5" fill="url(#lpSteel)"/>
+                    <rect x="0" y="22" width="600" height="5" rx="2.5" fill="url(#lpSteel)"/>
+                    <path d="M0 7 L15 22 L30 7 L45 22 L60 7 L75 22 L90 7 L105 22 L120 7 L135 22 L150 7 L165 22 L180 7 L195 22 L210 7 L225 22 L240 7 L255 22 L270 7 L285 22 L300 7 L315 22 L330 7 L345 22 L360 7 L375 22 L390 7 L405 22 L420 7 L435 22 L450 7 L465 22 L480 7 L495 22 L510 7 L525 22 L540 7 L555 22 L570 7 L585 22 L600 7" fill="none" stroke="#6E7C72" stroke-width="1.6" stroke-linejoin="round"/>
+                    <path d="M0 3.2 H600 M0 23.2 H600" stroke="#D7E0D9" stroke-width=".8" opacity=".55"/>
+                </symbol>
+            </defs>
+        </svg>
         <header class="lp-header" data-lp-header>
             <div class="lp-header__bar">
                 <div class="lp-brand">
@@ -100,10 +124,11 @@
                                 <li><i class="ph ph-check" aria-hidden="true"></i>Works on any phone</li>
                                 <li><i class="ph ph-check" aria-hidden="true"></i>Built in Kampala</li>
                             </ul>
+                            <p class="lp-hero__for">For artist managers, labels, booking agents and tour crews.</p>
                         </div>
                         <!-- lp:art mainstage -->
                         <figure class="lp-art lp-art--mainstage">
-                            <div class="lp-rig" aria-hidden="true"><span class="lp-rig__truss"></span><span class="lp-rig__beam lp-rig__beam--l"></span><span class="lp-rig__beam lp-rig__beam--c"></span><span class="lp-rig__beam lp-rig__beam--r"></span><span class="lp-rig__pool"></span></div>
+                            <div class="lp-rig" aria-hidden="true"><svg class="lp-rig__truss" viewBox="0 0 600 30" preserveAspectRatio="none" focusable="false"><use href="#lpRigTruss"/></svg><span class="lp-rig__beam lp-rig__beam--l"><span class="lp-rig__cone"></span></span><span class="lp-rig__beam lp-rig__beam--c"><span class="lp-rig__cone"></span><span class="lp-rig__dust"></span></span><span class="lp-rig__beam lp-rig__beam--r"><span class="lp-rig__cone"></span></span><svg class="lp-rig__lamp lp-rig__lamp--l" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--c" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--r" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><span class="lp-rig__pool"></span></div>
                             <div class="lp-ledger">
                                 <div class="lp-ledger__head">
                                     <span class="lp-live"><span class="lp-live__dot" aria-hidden="true"></span>Live</span>
@@ -147,7 +172,7 @@
                         </div>
                         <!-- lp:art how: a lit run-of-show for one gig -->
                         <figure class="lp-art lp-art--how">
-                            <div class="lp-rig" aria-hidden="true"><span class="lp-rig__truss"></span><span class="lp-rig__beam lp-rig__beam--l"></span><span class="lp-rig__beam lp-rig__beam--c"></span><span class="lp-rig__beam lp-rig__beam--r"></span><span class="lp-rig__pool"></span></div>
+                            <div class="lp-rig" aria-hidden="true"><svg class="lp-rig__truss" viewBox="0 0 600 30" preserveAspectRatio="none" focusable="false"><use href="#lpRigTruss"/></svg><span class="lp-rig__beam lp-rig__beam--l"><span class="lp-rig__cone"></span></span><span class="lp-rig__beam lp-rig__beam--c"><span class="lp-rig__cone"></span><span class="lp-rig__dust"></span></span><span class="lp-rig__beam lp-rig__beam--r"><span class="lp-rig__cone"></span></span><svg class="lp-rig__lamp lp-rig__lamp--l" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--c" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--r" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><span class="lp-rig__pool"></span></div>
                             <div class="lp-runsheet">
                                 <div class="lp-runsheet__head">
                                     <span class="lp-runsheet__title">Run of show</span>
@@ -172,7 +197,7 @@
                         </div>
                         <!-- lp:art proof: the numbers under the lights -->
                         <figure class="lp-art lp-art--proof">
-                            <div class="lp-rig" aria-hidden="true"><span class="lp-rig__truss"></span><span class="lp-rig__beam lp-rig__beam--l"></span><span class="lp-rig__beam lp-rig__beam--c"></span><span class="lp-rig__beam lp-rig__beam--r"></span><span class="lp-rig__pool"></span></div>
+                            <div class="lp-rig" aria-hidden="true"><svg class="lp-rig__truss" viewBox="0 0 600 30" preserveAspectRatio="none" focusable="false"><use href="#lpRigTruss"/></svg><span class="lp-rig__beam lp-rig__beam--l"><span class="lp-rig__cone"></span></span><span class="lp-rig__beam lp-rig__beam--c"><span class="lp-rig__cone"></span><span class="lp-rig__dust"></span></span><span class="lp-rig__beam lp-rig__beam--r"><span class="lp-rig__cone"></span></span><svg class="lp-rig__lamp lp-rig__lamp--l" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--c" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--r" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><span class="lp-rig__pool"></span></div>
                             <div class="lp-stats">
                                 <div class="lp-stat lp-stat--lead"><p class="lp-stat__value"><span class="lp-stat__unit">UGX</span><span data-lp-count="500">500</span><span class="lp-stat__unit">M+</span></p><p class="lp-stat__label">Collected through Star Paper</p></div>
                                 <div class="lp-stat"><p class="lp-stat__value"><span data-lp-count="150">150</span><span class="lp-stat__unit">+</span></p><p class="lp-stat__label">Shows booked</p></div>
@@ -192,11 +217,11 @@
                         </div>
                         <!-- lp:art voices: a fanned stack of review cards -->
                         <figure class="lp-art lp-art--voices">
-                            <div class="lp-rig" aria-hidden="true"><span class="lp-rig__truss"></span><span class="lp-rig__beam lp-rig__beam--l"></span><span class="lp-rig__beam lp-rig__beam--c"></span><span class="lp-rig__beam lp-rig__beam--r"></span><span class="lp-rig__pool"></span></div>
-                            <div class="lp-quotes-stack">
-                                <blockquote class="lp-qcard lp-qcard--back2"><p>&ldquo;The dashboard makes revenue, schedules and balances feel coordinated.&rdquo;</p><footer><span class="lp-avatar lp-avatar--green" aria-hidden="true">TC</span><span><strong>Talent coordinator</strong> &middot; Live events, Kampala</span></footer></blockquote>
-                                <blockquote class="lp-qcard lp-qcard--back1"><p>&ldquo;One clean view for bookings, balances and artist updates.&rdquo;</p><footer><span class="lp-avatar lp-avatar--sage" aria-hidden="true">LO</span><span><strong>Label operations lead</strong> &middot; East Africa</span></footer></blockquote>
-                                <blockquote class="lp-qcard lp-qcard--front"><p class="lp-stars" aria-label="5 out of 5 stars"><span aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span></p><p>&ldquo;Finally a tool that keeps my artists, bookings, and money in one place. I stopped using spreadsheets on day one.&rdquo;</p><footer><span class="lp-avatar" aria-hidden="true">AB</span><span><strong>Aggie Best</strong> &middot; Artist manager, Kampala</span></footer></blockquote>
+                            <div class="lp-rig" aria-hidden="true"><svg class="lp-rig__truss" viewBox="0 0 600 30" preserveAspectRatio="none" focusable="false"><use href="#lpRigTruss"/></svg><span class="lp-rig__beam lp-rig__beam--l"><span class="lp-rig__cone"></span></span><span class="lp-rig__beam lp-rig__beam--c"><span class="lp-rig__cone"></span><span class="lp-rig__dust"></span></span><span class="lp-rig__beam lp-rig__beam--r"><span class="lp-rig__cone"></span></span><svg class="lp-rig__lamp lp-rig__lamp--l" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--c" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--r" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><span class="lp-rig__pool"></span></div>
+                            <div class="lp-quotes-stack" data-lp-quotes aria-live="polite">
+                                <blockquote class="lp-qcard" data-lp-quote data-pos="front"><p class="lp-stars" aria-label="5 out of 5 stars"><span aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span></p><p class="lp-qcard__text">&ldquo;Finally a tool that keeps my artists, bookings, and money in one place. I stopped using spreadsheets on day one.&rdquo;</p><footer><span class="lp-avatar" aria-hidden="true">AB</span><span><strong>Aggie Best</strong> &middot; Artist manager, Kampala</span></footer></blockquote>
+                                <blockquote class="lp-qcard" data-lp-quote data-pos="back1"><p class="lp-stars" aria-label="5 out of 5 stars"><span aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span></p><p class="lp-qcard__text">&ldquo;Star Paper gives our team one clean view for bookings, balances, and artist updates without the usual back-and-forth.&rdquo;</p><footer><span class="lp-avatar lp-avatar--sage" aria-hidden="true">LO</span><span><strong>Label operations lead</strong> &middot; East Africa</span></footer></blockquote>
+                                <blockquote class="lp-qcard" data-lp-quote data-pos="back2"><p class="lp-stars" aria-label="5 out of 5 stars"><span aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span></p><p class="lp-qcard__text">&ldquo;The dashboard makes revenue, schedules, and outstanding balances feel coordinated instead of scattered.&rdquo;</p><footer><span class="lp-avatar lp-avatar--green" aria-hidden="true">TC</span><span><strong>Talent coordinator</strong> &middot; Live events, Kampala</span></footer></blockquote>
                             </div>
                         </figure>
                     </article>
@@ -216,55 +241,6 @@
             </section>
             <!-- /lp:show -->
 
-            <section class="lp-trust" aria-label="Who Star Paper is for">
-                <p class="lp-trust__label">Built for the people behind the stage</p>
-                <ul class="lp-trust__list">
-                    <li><i class="ph ph-microphone-stage" aria-hidden="true"></i>Artist managers</li>
-                    <li><i class="ph ph-vinyl-record" aria-hidden="true"></i>Labels</li>
-                    <li><i class="ph ph-ticket" aria-hidden="true"></i>Booking agents</li>
-                    <li><i class="ph ph-van" aria-hidden="true"></i>Tour crews</li>
-                </ul>
-            </section>
-
-            <section class="lp-section" aria-labelledby="lpJobsTitle">
-                <header class="lp-section__head" data-lp-reveal>
-                    <p class="lp-eyebrow">One ledger, three jobs</p>
-                    <h2 class="lp-h2" id="lpJobsTitle">Everything a manager juggles, <em>finally in one place.</em></h2>
-                </header>
-                <div class="lp-jobs">
-                    <article class="lp-job" data-lp-reveal>
-                        <div class="lp-job__icon lp-job__icon--sage" aria-hidden="true"><i class="ph ph-calendar-check"></i></div>
-                        <h3 class="lp-h3">Bookings</h3>
-                        <p class="lp-body">Lock the date, the fee and the deposit. See what&rsquo;s confirmed and what&rsquo;s still owed.</p>
-                        <ul class="lp-vignette" aria-label="Example bookings">
-                            <li class="lp-vrow"><span class="lp-vrow__date">Sat 14 Sep</span><span class="lp-vrow__name">Nyege Nyege</span><span class="lp-pill lp-pill--in">Confirmed</span></li>
-                            <li class="lp-vrow"><span class="lp-vrow__date">Fri 20 Sep</span><span class="lp-vrow__name">Kampala Serena</span><span class="lp-pill lp-pill--gold">Deposit due</span></li>
-                            <li class="lp-vrow"><span class="lp-vrow__date">Sun 6 Oct</span><span class="lp-vrow__name">Club Guvnor</span><span class="lp-pill">Hold</span></li>
-                        </ul>
-                    </article>
-                    <article class="lp-job lp-job--feature" data-lp-reveal>
-                        <div class="lp-job__icon" aria-hidden="true"><i class="ph ph-currency-circle-dollar"></i></div>
-                        <h3 class="lp-h3">Money</h3>
-                        <p class="lp-body">Every shilling in and out, per artist and per show, with the balance always one glance away.</p>
-                        <ul class="lp-vignette" aria-label="Example money entries">
-                            <li class="lp-vrow"><span class="lp-vrow__name">Show fee &middot; Serena</span><span class="lp-money lp-money--in">+ 9,000,000</span></li>
-                            <li class="lp-vrow"><span class="lp-vrow__name">Transport &amp; crew</span><span class="lp-money lp-money--out">&minus; 1,850,000</span></li>
-                            <li class="lp-vrow lp-vrow--total"><span class="lp-vrow__name">Balance</span><span class="lp-money">UGX 7,150,000</span></li>
-                        </ul>
-                    </article>
-                    <article class="lp-job" data-lp-reveal>
-                        <div class="lp-job__icon lp-job__icon--in" aria-hidden="true"><i class="ph ph-users-three"></i></div>
-                        <h3 class="lp-h3">Team</h3>
-                        <p class="lp-body">Brief the crew without the group chat. Everyone sees the same schedule and the same tasks.</p>
-                        <ul class="lp-vignette" aria-label="Example team tasks">
-                            <li class="lp-vrow"><span class="lp-check lp-check--done" aria-hidden="true"><i class="ph ph-check"></i></span><span class="lp-vrow__name">Send rider to Serena</span><span class="lp-avatar" aria-hidden="true">AB</span></li>
-                            <li class="lp-vrow"><span class="lp-check" aria-hidden="true"></span><span class="lp-vrow__name">Book sound check</span><span class="lp-avatar lp-avatar--sage" aria-hidden="true">TM</span></li>
-                            <li class="lp-vrow"><span class="lp-check" aria-hidden="true"></span><span class="lp-vrow__name">Collect balance</span><span class="lp-avatar lp-avatar--green" aria-hidden="true">LO</span></li>
-                        </ul>
-                    </article>
-                </div>
-            </section>
-
             <section class="lp-cta" aria-labelledby="lpCtaTitle">
                 <div class="lp-cta__inner" data-lp-reveal>
                     <button class="sp-spin-toggle lp-cta__toggle" type="button" aria-pressed="true" aria-label="Pause the spinning logo">
@@ -272,6 +248,11 @@
                     </button>
                     <h2 class="lp-h2" id="lpCtaTitle">Your next show deserves <em>a cleaner ledger.</em></h2>
                     <p class="lp-lede">Free to start. Bring your first artist on board today.</p>
+                    <ul class="lp-cta__jobs" aria-label="What Star Paper keeps in one ledger">
+                        <li><i class="ph ph-calendar-check" aria-hidden="true"></i><span><strong>Bookings</strong> Dates, fees and deposits</span></li>
+                        <li><i class="ph ph-currency-circle-dollar" aria-hidden="true"></i><span><strong>Money</strong> Every shilling in and out</span></li>
+                        <li><i class="ph ph-users-three" aria-hidden="true"></i><span><strong>Team</strong> One schedule, one task list</span></li>
+                    </ul>
                     <div class="lp-cta-row lp-cta-row--center">
                         <button class="lp-btn lp-btn--gold lp-btn--lg" type="button" data-action="showSignupForm">Start free <i class="ph ph-arrow-right" aria-hidden="true"></i></button>
                         <button class="lp-btn lp-btn--ghost lp-btn--lg" type="button" data-action="showLoginForm">I have an account</button>
@@ -1713,7 +1694,7 @@
         <script src="app.tasks.js?v=5"></script>
     <script src="app.reports.js?v=19"></script>
 <script src="app.js?v=148" defer></script>
-<script src="app.landing.js?v=3" defer></script>
+<script src="app.landing.js?v=4" defer></script>
 
     <!-- Premium toast stack -->
     <div class="sp-toast-stack" id="spToastStack" aria-live="polite" aria-atomic="false"></div>

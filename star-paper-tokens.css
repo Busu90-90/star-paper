@@ -172,7 +172,7 @@ html:not(.sp-prem-off) :is(body, button, input, select, textarea, .theme-btn, .s
   font-family: var(--font-ui) !important;
 }
 
-html:not(.sp-prem-off) body {
+html:not(.sp-prem-off) body:has(#appContainer.screen-active) {
   margin: 0 !important;
   padding: 0 !important;
   position: relative;

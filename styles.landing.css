@@ -153,8 +153,6 @@ body.light-theme .lp {
 
 /* Shared horizontal frame for every band of content. */
 .lp-header__bar,
-.lp-trust,
-.lp-section,
 .lp-cta,
 .lp-footer {
   width: 100%;
@@ -291,7 +289,7 @@ body.light-theme .lp :is(.lp-display, .lp-h2) em {
   background-size: 220% 100%;
   background-position: 100% 0;
   color: var(--sp-ink-on-gold);
-  box-shadow: var(--sp-shadow-gold);
+  box-shadow: var(--sp-glow-gold);
   transition: background-position var(--sp-dur-4) var(--sp-ease-out), transform var(--sp-dur-2) var(--sp-ease-out), box-shadow var(--sp-dur-2);
 }
 
@@ -327,7 +325,7 @@ body.light-theme .lp .lp-btn--foil { color: #6E4F15; }
 }
 
 .lp .lp-btn--foil:is(:hover, :focus-visible, :active)::before { opacity: 1; }
-.lp .lp-btn--foil:is(:hover, :focus-visible, :active) { color: var(--sp-ink-on-gold); box-shadow: var(--sp-shadow-gold); }
+.lp .lp-btn--foil:is(:hover, :focus-visible, :active) { color: var(--sp-ink-on-gold); box-shadow: var(--sp-glow-gold); }
 
 .lp .lp-btn--ghost {
   border: 1px solid var(--sp-line-strong);
@@ -548,6 +546,11 @@ body.light-theme .lp-header.is-scrolled {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-space-2);
+}
+
+.lp-hero__for {
+  font-size: var(--sp-text-sm);
+  color: var(--sp-ink-3);
 }
 
 .lp-hero__meta .ph {
@@ -772,8 +775,11 @@ body.light-theme .lp-header.is-scrolled {
   .lp-tab__bar { left: 4px; right: 4px; bottom: 6px; }
 }
 
-/* Stage rig: truss, three moving beams and a light pool, pure CSS so every
-   slide can carry one. The art above it is always lit dark, in both themes. */
+/* Stage rig: an SVG steel box truss with three PAR-can lamps (sprite in
+   index.html), and three soft volumetric beams. The beams sit ABOVE the
+   cards (screen blend), so the light reads as passing through the glass and
+   falls all the way to the floor of the slide. The art panel is always a
+   night stage, in both themes. */
 
 .lp-art {
   position: relative;
@@ -781,7 +787,7 @@ body.light-theme .lp-header.is-scrolled {
   width: 100%;
   max-width: 600px;
   margin: 0 auto;
-  padding: clamp(84px, 16%, 120px) clamp(20px, 9%, 64px) clamp(48px, 9%, 72px);
+  padding: clamp(96px, 18%, 132px) clamp(20px, 9%, 64px) clamp(56px, 10%, 84px);
   color: #F7F3E8;
 }
 
@@ -797,105 +803,167 @@ body.light-theme .lp-art::before {
   box-shadow: var(--sp-shadow-3);
 }
 
+.lp-sprite {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
 .lp-rig {
+  --lp-lamp-l: 19%;
+  --lp-lamp-c: 50%;
+  --lp-lamp-r: 81%;
+  --lp-lens: 62px;
   position: absolute;
   inset: 0;
-  z-index: -1;
-  overflow: hidden;
-  border-radius: var(--sp-radius-xl);
+  z-index: 3;
   pointer-events: none;
-  /* Beams fade out at the sides and the floor instead of ending on a box edge. */
-  -webkit-mask-image: radial-gradient(120% 100% at 50% 0%, #000 50%, transparent 92%);
-  mask-image: radial-gradient(120% 100% at 50% 0%, #000 50%, transparent 92%);
 }
 
 .lp-rig__truss {
   position: absolute;
-  top: 12px;
-  left: 6%;
-  right: 6%;
-  height: 10px;
-  border-block: 2px solid #B8862B;
-  background: repeating-linear-gradient(60deg, transparent 0 8px, rgb(184 134 43 / 0.55) 8px 9.5px, transparent 9.5px 16px);
-  opacity: 0.85;
+  top: 10px;
+  left: 4%;
+  width: 92%;
+  height: 18px;
+  filter: drop-shadow(0 6px 10px rgb(0 0 0 / 0.55));
 }
 
+.lp-rig__lamp {
+  position: absolute;
+  top: 16px;
+  width: 52px;
+  height: 58px;
+  margin-left: -26px;
+  overflow: visible;
+  filter: drop-shadow(0 8px 10px rgb(0 0 0 / 0.5));
+}
+
+.lp-rig__lamp--l { left: var(--lp-lamp-l); rotate: 16deg; transform-origin: 50% 0; }
+.lp-rig__lamp--c { left: var(--lp-lamp-c); }
+.lp-rig__lamp--r { left: var(--lp-lamp-r); rotate: -16deg; transform-origin: 50% 0; }
+
+/* A beam is a blurred wrapper around a clipped cone, so the cone's edges
+   come out soft instead of razor-cut. */
 .lp-rig__beam {
   position: absolute;
-  top: 20px;
-  height: calc(100% - 20px);
+  top: var(--lp-lens);
+  bottom: 0;
+  translate: -50% 0;
   transform-origin: 50% 0;
+  filter: blur(7px);
   mix-blend-mode: screen;
-  clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%);
 }
 
-.lp-rig__beam::before {
+body.light-theme .lp-rig__beam { mix-blend-mode: screen; }
+
+.lp-rig__cone {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(46.5% 0, 53.5% 0, 100% 100%, 0 100%);
+  background: linear-gradient(180deg,
+    rgb(255 246 207 / 0.62) 0%,
+    rgb(246 230 138 / 0.26) 22%,
+    rgb(217 180 90 / 0.13) 58%,
+    rgb(217 180 90 / 0.05) 88%,
+    rgb(217 180 90 / 0.02) 100%);
+}
+
+/* A brighter hot core down the middle of each cone. */
+.lp-rig__cone::after {
   content: '';
   position: absolute;
-  top: -6px;
-  left: 50%;
-  width: 14px;
-  height: 14px;
-  margin-left: -7px;
-  border-radius: 50%;
-  background: currentColor;
-  box-shadow: 0 0 18px 6px currentColor;
+  inset: 0;
+  clip-path: polygon(48.8% 0, 51.2% 0, 68% 100%, 32% 100%);
+  background: linear-gradient(180deg, rgb(255 251 230 / 0.6), rgb(255 246 207 / 0.12) 55%, rgb(255 246 207 / 0.02));
 }
 
 .lp-rig__beam--c {
-  left: 50%;
-  width: min(92%, 540px);
-  translate: -50% 0;
-  color: #F6E68A;
-  background: linear-gradient(180deg, rgb(246 230 138 / 0.5), rgb(217 180 90 / 0.14) 55%, rgb(217 180 90 / 0));
-  animation: lp-sway 9s var(--sp-ease-in-out) infinite alternate;
+  left: var(--lp-lamp-c);
+  width: 104%;
+  animation: lp-sway 10s var(--sp-ease-in-out) infinite alternate;
 }
 
 .lp-rig__beam--l,
 .lp-rig__beam--r {
-  width: 46%;
-  color: #E3C46B;
-  background: linear-gradient(180deg, rgb(246 230 138 / 0.22), rgb(217 180 90 / 0));
-  opacity: 0.8;
+  width: 78%;
+  opacity: 0.72;
 }
 
 .lp-rig__beam--l {
-  left: 2%;
-  rotate: 12deg;
-  animation: lp-sway-side 7s var(--sp-ease-in-out) infinite alternate;
+  left: var(--lp-lamp-l);
+  rotate: 16deg;
+  animation: lp-sway-side 8s var(--sp-ease-in-out) infinite alternate;
 }
 
 .lp-rig__beam--r {
-  right: 2%;
-  rotate: -12deg;
-  animation: lp-sway-side 8s var(--sp-ease-in-out) -3s infinite alternate-reverse;
+  left: var(--lp-lamp-r);
+  rotate: -16deg;
+  animation: lp-sway-side-r 9s var(--sp-ease-in-out) -3s infinite alternate;
 }
 
+/* Haze: dust motes drifting through the main beam. */
+.lp-rig__dust {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(46.5% 0, 53.5% 0, 100% 100%, 0 100%);
+  background-image:
+    radial-gradient(1.6px 1.6px at 46% 12%, rgb(255 246 207 / 0.9), transparent),
+    radial-gradient(1.2px 1.2px at 55% 26%, rgb(255 246 207 / 0.8), transparent),
+    radial-gradient(1.8px 1.8px at 38% 41%, rgb(255 246 207 / 0.7), transparent),
+    radial-gradient(1.2px 1.2px at 62% 55%, rgb(255 246 207 / 0.7), transparent),
+    radial-gradient(1.5px 1.5px at 30% 68%, rgb(255 246 207 / 0.6), transparent),
+    radial-gradient(1.2px 1.2px at 71% 80%, rgb(255 246 207 / 0.6), transparent),
+    radial-gradient(1.6px 1.6px at 50% 92%, rgb(255 246 207 / 0.5), transparent);
+  background-size: 100% 50%;
+  animation: lp-dust 16s linear infinite;
+}
+
+/* The light lands: a warm pool on the floor of the slide. */
 .lp-rig__pool {
   position: absolute;
-  left: 10%;
-  right: 10%;
-  bottom: 4%;
-  height: 56px;
+  left: 4%;
+  right: 4%;
+  bottom: -8px;
+  height: 64px;
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgb(246 230 138 / 0.42), rgb(217 180 90 / 0.12) 55%, transparent);
+  background: radial-gradient(closest-side, rgb(255 246 207 / 0.34), rgb(217 180 90 / 0.12) 55%, transparent);
+  filter: blur(4px);
+  mix-blend-mode: screen;
+}
+
+/* Lamps strike up when their slide comes on. */
+.lp-slide[data-active] .lp-rig__cone {
+  animation: lp-strike 900ms ease-out both;
+}
+
+@keyframes lp-strike {
+  0% { opacity: 0.15; }
+  14% { opacity: 0.95; }
+  24% { opacity: 0.45; }
+  40% { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+@keyframes lp-dust {
+  from { background-position: 0 0; }
+  to { background-position: 0 -100%; }
 }
 
 @keyframes lp-sway {
-  from { rotate: -3deg; }
-  to { rotate: 3deg; }
+  from { rotate: -2.5deg; }
+  to { rotate: 2.5deg; }
 }
 
 @keyframes lp-sway-side {
-  from { rotate: 4deg; }
-  to { rotate: 18deg; }
+  from { rotate: 12deg; }
+  to { rotate: 20deg; }
 }
 
-.lp-rig__beam--r { animation-name: lp-sway-side-r; }
-
 @keyframes lp-sway-side-r {
-  from { rotate: -18deg; }
-  to { rotate: -4deg; }
+  from { rotate: -20deg; }
+  to { rotate: -12deg; }
 }
 
 /* Shared dark glass for every card that sits under the lights. */
@@ -1366,20 +1434,35 @@ body.light-theme .lp-art::before {
   font-weight: 650;
 }
 
-.lp-qcard--front {
+.lp-qcard {
+  transform-origin: 50% 100%;
+  transition:
+    translate var(--sp-dur-4) var(--sp-ease-out),
+    rotate var(--sp-dur-4) var(--sp-ease-out),
+    scale var(--sp-dur-4) var(--sp-ease-out),
+    opacity var(--sp-dur-3) var(--sp-ease-out),
+    filter var(--sp-dur-3) var(--sp-ease-out);
+}
+
+.lp-qcard[data-pos='front'] {
   position: relative;
-  z-index: 2;
-  animation: lp-float 7s ease-in-out infinite;
+  z-index: 3;
 }
 
-.lp-qcard--back1,
-.lp-qcard--back2 {
-  opacity: 0.55;
+.lp-qcard[data-pos='back1'],
+.lp-qcard[data-pos='back2'] {
   font-size: var(--sp-text-md);
+  opacity: 0.5;
+  filter: blur(1.5px) saturate(0.8);
+  cursor: pointer;
 }
 
-.lp-qcard--back1 { rotate: 5deg; translate: 18px -18px; z-index: 1; }
-.lp-qcard--back2 { rotate: -6deg; translate: -16px -30px; }
+.lp-qcard[data-pos='back1'] { z-index: 2; rotate: 5deg; translate: 18px -20px; scale: 0.96; }
+.lp-qcard[data-pos='back2'] { z-index: 1; rotate: -6deg; translate: -16px -34px; scale: 0.92; }
+
+.lp-qcard__text {
+  min-height: 5.6em;
+}
 
 .lp-stars {
   display: flex;
@@ -1391,192 +1474,6 @@ body.light-theme .lp-art::before {
 }
 
 /* ── 7. Home sections ──────────────────────────────────────────────────── */
-
-.lp-trust {
-  display: grid;
-  gap: var(--sp-space-4);
-  justify-items: center;
-  padding-block: var(--sp-space-8);
-  border-block: 1px solid var(--sp-line);
-  text-align: center;
-}
-
-.lp-trust__label {
-  font-size: var(--sp-text-xs);
-  font-weight: 600;
-  letter-spacing: var(--sp-tracking-caps);
-  text-transform: uppercase;
-  color: var(--sp-ink-3);
-}
-
-.lp-trust__list {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--sp-space-3) var(--sp-space-8);
-  font-family: var(--sp-font-display);
-  font-size: var(--sp-text-lg);
-  color: var(--sp-ink-2);
-}
-
-.lp-trust__list li {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-space-2);
-}
-
-.lp-trust__list .ph {
-  font-size: 1.2em;
-  color: var(--sp-gold-text);
-}
-
-.lp-section {
-  padding-block: var(--sp-section);
-}
-
-.lp-section--band {
-  max-width: none;
-  padding-inline: 0;
-  background: linear-gradient(180deg, transparent, var(--sp-surface-1) 18%, var(--sp-surface-1) 82%, transparent);
-}
-
-.lp-section--band > * {
-  max-width: calc(var(--sp-page-max) + 2 * var(--sp-gutter));
-  margin-inline: auto;
-  padding-inline: var(--sp-gutter);
-}
-
-.lp-section__head {
-  display: grid;
-  gap: var(--sp-space-4);
-  margin-bottom: var(--sp-space-12);
-}
-
-.lp-jobs {
-  display: grid;
-  gap: var(--sp-space-5);
-}
-
-@media (min-width: 900px) {
-  .lp-jobs { grid-template-columns: repeat(3, 1fr); }
-}
-
-.lp-job {
-  display: grid;
-  align-content: start;
-  gap: var(--sp-space-3);
-  padding: var(--sp-space-6);
-  border: 1px solid var(--sp-line);
-  border-radius: var(--sp-radius-lg);
-  background: var(--sp-sheen), var(--sp-surface-1);
-  box-shadow: var(--sp-shadow-1);
-  transition: transform var(--sp-dur-3) var(--sp-ease-out), border-color var(--sp-dur-3), box-shadow var(--sp-dur-3);
-}
-
-.lp-job:hover {
-  transform: translateY(-3px);
-  border-color: var(--sp-line-strong);
-  box-shadow: var(--sp-shadow-2);
-}
-
-.lp-job--feature {
-  border-color: rgb(217 180 90 / 0.35);
-  background:
-    radial-gradient(120% 80% at 100% 0%, var(--sp-gold-soft), transparent 60%),
-    var(--sp-sheen),
-    var(--sp-surface-1);
-}
-
-.lp-job__icon {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  margin-bottom: var(--sp-space-2);
-  border-radius: var(--sp-radius-md);
-  background: var(--sp-gold-soft);
-  color: var(--sp-gold-text);
-  font-size: 22px;
-}
-
-.lp-job__icon--sage { background: var(--sp-sage-soft); color: var(--sp-sage-text); }
-.lp-job__icon--in { background: var(--sp-in-soft); color: var(--sp-in); }
-
-.lp-vignette {
-  display: grid;
-  gap: 1px;
-  margin-top: var(--sp-space-3);
-  overflow: hidden;
-  border: 1px solid var(--sp-line);
-  border-radius: var(--sp-radius-md);
-  background: var(--sp-line);
-}
-
-.lp-vrow {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-space-3);
-  min-height: 46px;
-  padding: var(--sp-space-2) var(--sp-space-3);
-  background: var(--sp-surface-2);
-  font-size: var(--sp-text-sm);
-}
-
-.lp-vrow__date {
-  flex-shrink: 0;
-  min-width: 70px;
-  font-family: var(--sp-font-money);
-  font-size: var(--sp-text-xs);
-  color: var(--sp-ink-3);
-}
-
-.lp-vrow__name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--sp-ink);
-}
-
-.lp-vrow--total {
-  background: var(--sp-surface-3);
-  font-weight: 600;
-}
-
-.lp-vrow--total .lp-money {
-  color: var(--sp-gold-text);
-}
-
-.lp-pill {
-  flex-shrink: 0;
-  padding: 3px 10px;
-  border-radius: var(--sp-radius-pill);
-  background: var(--sp-surface-3);
-  color: var(--sp-ink-2);
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.lp-pill--in { background: var(--sp-in-soft); color: var(--sp-in); }
-.lp-pill--gold { background: var(--sp-gold-soft); color: var(--sp-gold-text); }
-
-.lp-check {
-  display: grid;
-  flex-shrink: 0;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  border: 1.5px solid var(--sp-line-strong);
-  border-radius: 6px;
-  font-size: 12px;
-}
-
-.lp-check--done {
-  border-color: var(--sp-in);
-  background: var(--sp-in);
-  color: #06140E;
-}
 
 .lp-avatar {
   display: grid;
@@ -1617,6 +1514,45 @@ body.light-theme .lp-art::before {
 .lp-cta__inner .lp-h2 {
   max-width: 18ch;
 }
+
+.lp-cta__jobs {
+  display: grid;
+  gap: var(--sp-space-3);
+  width: 100%;
+  max-width: 820px;
+  text-align: left;
+}
+
+@media (min-width: 760px) {
+  .lp-cta__jobs { grid-template-columns: repeat(3, 1fr); }
+}
+
+.lp-cta__jobs li {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-space-3);
+  padding: var(--sp-space-4);
+  border: 1px solid var(--sp-line);
+  border-radius: var(--sp-radius-md);
+  background: var(--sp-surface-1);
+  font-size: var(--sp-text-sm);
+  color: var(--sp-ink-2);
+}
+
+.lp-cta__jobs .ph {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--sp-radius-sm);
+  background: var(--sp-gold-soft);
+  color: var(--sp-gold-text);
+  font-size: 20px;
+}
+
+.lp-cta__jobs span { display: grid; }
+.lp-cta__jobs strong { color: var(--sp-ink); font-weight: 650; }
 
 .lp-cta__mark {
   width: 72px;
