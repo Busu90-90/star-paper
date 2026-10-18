@@ -614,8 +614,8 @@ body.light-theme .lp-header.is-scrolled {
   .lp-slide {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: var(--sp-space-12);
-    min-height: calc(100vh - 68px - 120px);
-    min-height: calc(100svh - 68px - 120px);
+    min-height: calc(100vh - 68px - 192px);
+    min-height: calc(100svh - 68px - 192px);
   }
 }
 
@@ -787,7 +787,7 @@ body.light-theme .lp-header.is-scrolled {
   width: 100%;
   max-width: 600px;
   margin: 0 auto;
-  padding: clamp(96px, 18%, 132px) clamp(20px, 9%, 64px) clamp(56px, 10%, 84px);
+  padding: clamp(24px, 6%, 48px) clamp(20px, 9%, 64px) clamp(32px, 7%, 56px);
   color: #F7F3E8;
 }
 
@@ -816,9 +816,15 @@ body.light-theme .lp-art::before {
   --lp-lamp-r: 81%;
   --lp-lens: 62px;
   position: absolute;
-  inset: 0;
+  inset: 0 var(--sp-gutter);
   z-index: 3;
   pointer-events: none;
+}
+
+/* The rig hangs right under the header and its beams fall through the whole
+   showcase, so the slides start below the lamps. */
+.lp-show {
+  padding-top: 88px;
 }
 
 .lp-rig__truss {
@@ -845,9 +851,9 @@ body.light-theme .lp-art::before {
    always sweep together. Colours: emerald stage-left, warm white centre,
    gold stage-right — the brand's three lights. */
 .lp-rig__lamp { transform-origin: 50% 2px; }
-.lp-rig__lamp--l { left: var(--lp-lamp-l); rotate: 16deg; color: #5FD3A0; animation: lp-head-l 7s var(--sp-ease-in-out) infinite alternate; }
-.lp-rig__lamp--c { left: var(--lp-lamp-c); color: #FFFDF4; animation: lp-head-c 9s var(--sp-ease-in-out) -2s infinite alternate; }
-.lp-rig__lamp--r { left: var(--lp-lamp-r); rotate: -16deg; color: #F6E68A; animation: lp-head-r 8s var(--sp-ease-in-out) -4s infinite alternate; }
+.lp-rig__lamp--l { left: var(--lp-lamp-l); rotate: 16deg; color: #5FD3A0; animation: lp-head-l 4s var(--sp-ease-in-out) infinite alternate; }
+.lp-rig__lamp--c { left: var(--lp-lamp-c); color: #FFFDF4; animation: lp-head-c 5s var(--sp-ease-in-out) -2s infinite alternate; }
+.lp-rig__lamp--r { left: var(--lp-lamp-r); rotate: -16deg; color: #F6E68A; animation: lp-head-r 4.5s var(--sp-ease-in-out) -4s infinite alternate; }
 
 /* A beam is a blurred wrapper around a clipped cone, so the cone's edges
    come out soft instead of razor-cut. */
@@ -863,7 +869,12 @@ body.light-theme .lp-art::before {
   mix-blend-mode: screen;
 }
 
-body.light-theme .lp-rig__beam { mix-blend-mode: screen; }
+/* In light mode the beams would wash out dark text, so the rig hangs
+   behind the slides and its light reads as a soft tint. */
+body.light-theme .lp-rig { z-index: 0; }
+body.light-theme .lp-show__track { position: relative; z-index: 1; }
+body.light-theme .lp-rig__beam { mix-blend-mode: multiply; opacity: 0.55; }
+body.light-theme .lp-rig__pool { mix-blend-mode: multiply; }
 
 .lp-rig__cone {
   position: absolute;
@@ -892,7 +903,7 @@ body.light-theme .lp-rig__beam { mix-blend-mode: screen; }
   --lp-beam-tint: 247 243 232;
   left: var(--lp-lamp-c);
   width: 96%;
-  animation: lp-head-c 9s var(--sp-ease-in-out) -2s infinite alternate;
+  animation: lp-head-c 5s var(--sp-ease-in-out) -2s infinite alternate;
 }
 
 .lp-rig__beam--l,
@@ -907,7 +918,7 @@ body.light-theme .lp-rig__beam { mix-blend-mode: screen; }
   --lp-beam-tint: 95 211 160;
   left: var(--lp-lamp-l);
   rotate: 16deg;
-  animation: lp-head-l 7s var(--sp-ease-in-out) infinite alternate;
+  animation: lp-head-l 4s var(--sp-ease-in-out) infinite alternate;
 }
 
 /* Stage right: gold foil. */
@@ -916,7 +927,7 @@ body.light-theme .lp-rig__beam { mix-blend-mode: screen; }
   --lp-beam-tint: 227 196 107;
   left: var(--lp-lamp-r);
   rotate: -16deg;
-  animation: lp-head-r 8s var(--sp-ease-in-out) -4s infinite alternate;
+  animation: lp-head-r 4.5s var(--sp-ease-in-out) -4s infinite alternate;
 }
 
 /* Haze: dust motes drifting through the main beam. */
@@ -953,7 +964,7 @@ body.light-theme .lp-rig__beam { mix-blend-mode: screen; }
 }
 
 /* Lamps strike up when their slide comes on. */
-.lp-slide[data-active] .lp-rig__cone {
+.lp-rig__cone {
   animation: lp-strike 900ms ease-out both;
 }
 
