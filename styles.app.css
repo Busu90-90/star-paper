@@ -1252,3 +1252,160 @@ body.sp-no-scroll { overflow: hidden; }
 .sp-global-sheet__count { opacity: 0.6; }
 #globalScheduleStage canvas { cursor: grab; }
 canvas.is-pin-hover { cursor: pointer; }
+
+/* ── 15. Home (B1) ──────────────────────────────────────────────────────────
+   Two independent columns on desktop (main: Today, This month, Activity;
+   side: Upcoming, Pulse, Global) so a tall card never leaves a hole beside
+   it. On phones the columns dissolve and `order` puts what's next first:
+   Today, Upcoming, This month, Pulse, Activity, Global. Every id the
+   renderers write to is unchanged.                                        */
+#appContainer #dashboard .home-b1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-gap);
+}
+#appContainer #dashboard .home-col { display: contents; }
+#appContainer #dashboard .home-b1 .dashboard-section-card { grid-column: auto; grid-row: auto; margin: 0; min-width: 0; }
+#appContainer #dashboard .home-b1 .today-board-card { order: 1; }
+#appContainer #dashboard .home-b1 .home-upcoming-card { order: 2; }
+#appContainer #dashboard .home-b1 .dashboard-at-glance-card { order: 3; }
+#appContainer #dashboard .home-b1 .home-pulse-card { order: 4; }
+#appContainer #dashboard .home-b1 .home-activity-card { order: 5; }
+#appContainer #dashboard .home-b1 .dashboard-global-card { order: 6; }
+
+@media (min-width: 1280px) {
+  #appContainer #dashboard .home-b1 {
+    display: grid;
+    grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+    align-items: start;
+  }
+  #appContainer #dashboard .home-col {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-gap);
+    min-width: 0;
+  }
+  #appContainer #dashboard .home-b1 .dashboard-section-card { order: 0; }
+}
+
+/* Card heads with a quiet link to the full section */
+#appContainer #dashboard .home-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-space-3);
+  margin-bottom: var(--sp-space-3);
+}
+#appContainer #dashboard .home-card__head .section-title { margin: 0; }
+#appContainer #dashboard .home-card__link {
+  flex: none;
+  min-height: 32px;
+  padding: 0 var(--sp-space-3);
+  border: 1px solid var(--sp-line);
+  border-radius: var(--sp-radius-pill);
+  background: transparent;
+  color: var(--sp-gold-text);
+  font-size: var(--sp-text-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+#appContainer #dashboard .home-card__link:hover { border-color: var(--sp-line-strong); background: var(--sp-gold-soft); }
+
+/* Today */
+#appContainer #dashboard .today-board__header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-space-3); }
+#appContainer #dashboard .today-board__date-full { font-size: var(--sp-text-xl); line-height: var(--sp-leading-tight); }
+
+/* Upcoming + activity rows: title, then meta, then status and amount */
+#appContainer #dashboard :is(#dashboardUpcomingList, #dashboardActivityFeed) { display: grid; gap: var(--sp-space-2); }
+#appContainer #dashboard :is(#dashboardUpcomingList, #dashboardActivityFeed) .timeline-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-space-2) var(--sp-space-3);
+  margin: 0;
+  padding: var(--sp-space-3) var(--sp-space-4);
+  border: 1px solid var(--sp-line);
+  border-radius: var(--sp-radius-md);
+  background: var(--sp-surface-2);
+}
+#appContainer #dashboard :is(#dashboardUpcomingList, #dashboardActivityFeed) .timeline-title {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-space-2);
+  color: var(--sp-ink);
+  font-weight: 600;
+  line-height: var(--sp-leading-snug);
+}
+#appContainer #dashboard :is(#dashboardUpcomingList, #dashboardActivityFeed) .timeline-sub { margin-top: 2px; color: var(--sp-ink-3); font-size: var(--sp-text-xs); }
+#appContainer #dashboard :is(#dashboardUpcomingList, #dashboardActivityFeed) .timeline-amount {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--sp-space-1);
+  text-align: right;
+  white-space: nowrap;
+}
+#appContainer #dashboard .show-weather-slot:empty { display: none; }
+
+/* This month: goal, then the four key numbers (more on request) */
+#appContainer #dashboard .monthly-goal-track__hint { display: none; margin: var(--sp-space-2) 0 0; color: var(--sp-ink-2); }
+#appContainer #dashboard .monthly-goal-track--unset .monthly-goal-track__hint { display: block; }
+#appContainer #dashboard .monthly-goal-track--unset :is(.monthly-goal-track__metrics, .monthly-goal-progress) { display: none; }
+#appContainer #dashboard .monthly-goal-track__metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-space-3); }
+#appContainer #dashboard .dashboard-glance-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-space-3);
+  margin-top: var(--sp-space-3);
+}
+#appContainer #dashboard .dashboard-glance-grid .mainstage-kpi { min-width: 0; margin: 0; padding: var(--sp-space-3) var(--sp-space-4); border-radius: var(--sp-radius-md); }
+#appContainer #dashboard .dashboard-glance-grid .mainstage-kpi:hover { transform: none; box-shadow: none; }
+/* Tiles are half their card wide, so size money to the card (container
+   units) and "UGX 12,000,000" stays on one line at every width. */
+#appContainer #dashboard :is(.dashboard-at-glance-card, .home-pulse-card) { container-type: inline-size; }
+#appContainer #dashboard .dashboard-glance-grid .mainstage-kpi__value { font-size: clamp(0.8125rem, 5.4cqi - 6px, var(--sp-text-lg)); white-space: nowrap; }
+#appContainer #dashboard .glance-more-toggle { display: block; margin: var(--sp-space-3) auto 0; }
+
+/* Pulse: the gauge beside its numbers when there is room */
+#appContainer #dashboard .home-pulse-card .velocity-gauge-wrap { margin: 0 0 var(--sp-space-3); }
+#appContainer #dashboard .velocity-gauge__label { color: var(--sp-gold-text); }
+#appContainer #dashboard .vg-track { stroke: var(--sp-surface-3); }
+/* The arc carries the reading; the needle crossed the count, so it goes. */
+#appContainer #dashboard :is(.vg-needle, .vg-hub) { display: none; }
+#appContainer #dashboard .vg-stop-lo { stop-color: var(--sp-gold-deep); }
+#appContainer #dashboard .vg-stop-hi { stop-color: var(--sp-gold-hi); }
+#appContainer #dashboard .velocity-gauge__this { color: var(--sp-ink); font-family: var(--sp-font-money); }
+#appContainer #dashboard .velocity-gauge__unit { color: var(--sp-ink-3); }
+#appContainer #dashboard .mainstage-live-pulse { margin: 0; padding: 0; border: 0; background: none; }
+#appContainer #dashboard .mainstage-live-pulse__head { display: block; margin-bottom: var(--sp-space-3); }
+#appContainer #dashboard .mainstage-live-pulse__title { display: none; }
+#appContainer #dashboard .mainstage-live-pulse__chips {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-space-2);
+  width: auto;
+}
+#appContainer #dashboard .mainstage-live-chip { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-space-2); min-height: 32px; padding: 0 var(--sp-space-3); font-size: var(--sp-text-xs); }
+#appContainer #dashboard .mainstage-pulse-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-space-2); }
+#appContainer #dashboard .pulse-item { min-width: 0; padding: var(--sp-space-3); border-radius: var(--sp-radius-md); }
+#appContainer #dashboard .pulse-item__value { font-size: clamp(0.8125rem, 5.4cqi - 6px, var(--sp-text-md)); white-space: nowrap; }
+#appContainer #dashboard .pulse-item__hint { color: var(--sp-ink-3); font-size: var(--sp-text-xs); }
+
+/* Global schedule: a slim banner, button beside the copy */
+#appContainer #dashboard .dashboard-global-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-space-3) var(--sp-space-4);
+  min-height: 0;
+}
+#appContainer #dashboard .dashboard-global-card__text { flex: 1 1 220px; min-width: 0; }
+#appContainer #dashboard .dashboard-global-card .section-title { margin-bottom: var(--sp-space-1); }
+#appContainer #dashboard .dashboard-global-card__copy { margin: 0; color: var(--sp-ink-2); }
+#appContainer #dashboard .dashboard-global-card__button { flex: none; margin: 0; }
+/* A narrow side column (small laptops) stacks the pulse numbers. */
+@container (max-width: 360px) {
+  #appContainer #dashboard .mainstage-pulse-grid { grid-template-columns: minmax(0, 1fr); }
+  #appContainer #dashboard .pulse-item__value { font-size: var(--sp-text-md); }
+}
