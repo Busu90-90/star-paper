@@ -1013,6 +1013,20 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     return;
   }
 
+  // Boot budgets are sized for slow mobile links (3G/4G far from eu-west-1),
+  // where each request can take 1.5-3s round trip even though the server
+  // answers in a few hundred ms. Tighter budgets made healthy responses time
+  // out in the browser, which retried and stacked loaders until boot hung.
+  const BOOT_RPC_TIMEOUT_MS = 12000;
+  const BOOT_FALLBACK_TIMEOUT_MS = 45000;
+  const BOOT_SAFETY_TIMEOUT_MS = BOOT_RPC_TIMEOUT_MS + BOOT_FALLBACK_TIMEOUT_MS + 3000;
+  const LOAD_QUERY_TIMEOUT_MS = 10000;
+  const LOAD_CORE_TIMEOUT_MS = 25000;
+
+  // Bumped whenever boot work is abandoned, so a stalled bootstrap that is
+  // still awaiting the network stops instead of racing the next attempt.
+  let _bootstrapGeneration = 0;
+
   function withTimeout(task, ms, label) {
     const promise = typeof task === 'function' ? task() : task;
     let timer = null;
@@ -1352,6 +1366,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     window.__spCloudBootstrapPending = false;
     window.__spSupabaseBootPromise = null;
     window.__spAuthRedirectInProgress = false;
+    _bootstrapGeneration += 1;
     recordBootstrapTiming('bootstrap.abandoned', { reason });
   }
 
@@ -1514,7 +1529,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       : (isAuthCallback ? 14000 : 9000);
     const hardTimeoutMs = Number.isFinite(options.hardTimeoutMs)
       ? Math.max(timeoutMs, Number(options.hardTimeoutMs))
-      : Math.max(timeoutMs + 6000, isAuthCallback ? 18000 : 15000);
+      : Math.max(timeoutMs + 6000, BOOT_SAFETY_TIMEOUT_MS);
     const startedAt = nowMs();
     const tick = () => {
       _localBootFallbackTimer = null;
@@ -2987,22 +3002,22 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       const bookingsRows = await timedQuery(
         'loadData.bookings',
         () => filter(db.from('bookings').select('*')).order('created_at', { ascending: false }),
-        5000
+        LOAD_QUERY_TIMEOUT_MS
       );
       const expensesRows = await timedQuery(
         'loadData.expenses',
         () => filter(db.from('expenses').select('*')).order('date', { ascending: false }),
-        5000
+        LOAD_QUERY_TIMEOUT_MS
       );
       const incomeRows = await timedQuery(
         'loadData.other_income',
         () => filter(db.from('other_income').select('*')).order('date', { ascending: false }),
-        5000
+        LOAD_QUERY_TIMEOUT_MS
       );
       const artistsRows = await timedQuery(
         'loadData.artists',
         () => filter(db.from('artists').select('*')).order('name'),
-        5000
+        LOAD_QUERY_TIMEOUT_MS
       );
 
       const payload = {};
@@ -3653,12 +3668,12 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
       // Sequential loads — Supabase SDK Web Locks deadlock on concurrent
       // auth-bearing requests (see CLAUDE.md §12).
-      const core             = await timedLoad('loadData',            () => loadData({ workspaceMeta }), 7000);
-      const audienceMetrics  = await timedLoad('loadAudienceMetrics', () => loadAudienceMetrics({ workspaceMeta }), 5000);
-      const tasks            = await timedLoad('loadTasks',           () => loadTasks({ workspaceMeta }),           5000);
-      const revenueGoal      = await timedLoad('loadRevenueGoal',     () => loadRevenueGoal({ workspaceMeta }),     4000);
-      const bbfEntries       = await timedLoad('loadBBFEntries',      () => loadBBFEntries({ workspaceMeta }),      5000);
-      const closingThoughts  = await timedLoad('loadClosingThoughts', () => loadClosingThoughts({ workspaceMeta }), 5000);
+      const core             = await timedLoad('loadData',            () => loadData({ workspaceMeta }), LOAD_CORE_TIMEOUT_MS);
+      const audienceMetrics  = await timedLoad('loadAudienceMetrics', () => loadAudienceMetrics({ workspaceMeta }), LOAD_QUERY_TIMEOUT_MS);
+      const tasks            = await timedLoad('loadTasks',           () => loadTasks({ workspaceMeta }),           LOAD_QUERY_TIMEOUT_MS);
+      const revenueGoal      = await timedLoad('loadRevenueGoal',     () => loadRevenueGoal({ workspaceMeta }),     LOAD_QUERY_TIMEOUT_MS);
+      const bbfEntries       = await timedLoad('loadBBFEntries',      () => loadBBFEntries({ workspaceMeta }),      LOAD_QUERY_TIMEOUT_MS);
+      const closingThoughts  = await timedLoad('loadClosingThoughts', () => loadClosingThoughts({ workspaceMeta }), LOAD_QUERY_TIMEOUT_MS);
 
       const payload = {};
       const coreMeta = core.value?.__meta || null;
@@ -3897,7 +3912,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   async function loadBootstrapPayloadFromRpc(activeSession, options = {}) {
     const userId = activeSession?.user?.id;
     if (!userId || typeof db.rpc !== 'function') return null;
-    const timeoutMs = typeof options.timeoutMs === 'number' ? options.timeoutMs : 4500;
+    const timeoutMs = typeof options.timeoutMs === 'number' ? options.timeoutMs : BOOT_RPC_TIMEOUT_MS;
     const started = nowMs();
     recordBootstrapTiming('bootstrap.rpc.start', { timeoutMs });
     let result = null;
@@ -5010,6 +5025,12 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     const activeSession = session || _session || await getSession();
     if (!activeSession?.user) return false;
     const bootstrapStartedAt = nowMs();
+    const bootstrapGeneration = _bootstrapGeneration;
+    const isStaleBootstrap = () => {
+      if (bootstrapGeneration === _bootstrapGeneration) return false;
+      log('bootstrap.stale.stop', { flowId });
+      return true;
+    };
     let bootstrapSucceeded = false;
     if (
       _lastBootstrapOutcome &&
@@ -5110,7 +5131,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       } catch (recoveryErr) {
         warn('Safety-timeout recovery UI failed:', recoveryErr);
       }
-    }, 15000);
+    }, BOOT_SAFETY_TIMEOUT_MS);
 
     let profile = null;
     let fresh = null;
@@ -5118,8 +5139,9 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     let workspaceMeta = null;
     try {
       const rpcBootstrap = await loadBootstrapPayloadFromRpc(activeSession, {
-        timeoutMs: options.bootstrapRpcTimeoutMs || 4500,
+        timeoutMs: options.bootstrapRpcTimeoutMs || BOOT_RPC_TIMEOUT_MS,
       });
+      if (isStaleBootstrap()) return false;
 
       if (rpcBootstrap?.fresh) {
         profile = rpcBootstrap.profile;
@@ -5151,7 +5173,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
           fresh = await loadAllDataWithRetry({
             label: 'loadAllData[bootstrap-fallback]',
             retries: 0,
-            timeoutMs: options.bootstrapFallbackTimeoutMs || 18000,
+            timeoutMs: options.bootstrapFallbackTimeoutMs || BOOT_FALLBACK_TIMEOUT_MS,
             workspaceMeta,
           });
           if (fresh) {
@@ -5165,6 +5187,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         } catch (err) {
           warn('Bootstrap fallback cloud data load failed:', err);
         }
+        if (isStaleBootstrap()) return false;
       }
 
       if (fresh) {
@@ -5329,7 +5352,9 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       } else {
         log('bootstrap.finally.stale', { flowId });
       }
-      _lastBootstrapOutcome = {
+      // An abandoned attempt must not mark the user as "just failed", or the
+      // duplicate guard above would skip the attempt that replaced it.
+      if (bootstrapGeneration === _bootstrapGeneration) _lastBootstrapOutcome = {
         flowId,
         userId: activeSession.user.id,
         ok: bootstrapSucceeded,

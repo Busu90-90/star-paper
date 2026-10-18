@@ -101,10 +101,10 @@
     ['20', ['app.reports.js']],
     ['24', ['star-paper-tokens.css']],
     ['27', ['manifest.json']],
-    ['60', ['styles.css']],
-    ['95', ['supabase.js']],
-    ['149', ['app.js']],
-    ['197', ['sw.js']]
+    ['62', ['styles.css']],
+    ['97', ['supabase.js']],
+    ['150', ['app.js']],
+    ['200', ['sw.js']]
   ];
 
   const assetVersions = {};
