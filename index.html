@@ -36,7 +36,7 @@
     <link rel="stylesheet" href="sp-design-tokens.css?v=3">
     <link rel="stylesheet" href="styles.landing.css?v=7">
     <link rel="stylesheet" href="styles.brand.css?v=1">
-    <link rel="stylesheet" href="styles.app.css?v=4">
+    <link rel="stylesheet" href="styles.app.css?v=5">
     <link rel="preload" href="assets/vendor/fonts/font-29-fraunces-latin-opsz-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="assets/vendor/fonts/font-31-inter-tight-latin-wght-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <!-- Vendored Phosphor Icons 2.1.1 - unified icon system -->
@@ -1413,12 +1413,12 @@
                 </div>
                 <div class="sp-tab-panel" id="schedulePanel-calendar">
                 <div class="card">
-                    <div class="sp-csp-style-24">
+                    <div class="calendar-head sp-csp-style-24">
                         <h3 id="calendarMonth">January 2026</h3>
                         <div class="calendar-nav sp-csp-style-25">
-                            <button class="sp-csp-style-26" data-action="previousMonth">Previous</button>
-                            <button class="sp-csp-style-26" data-action="goToToday">Today</button>
-                            <button class="sp-csp-style-26" data-action="nextMonth">Next</button>
+                            <button class="calendar-nav__btn calendar-nav__btn--icon" type="button" data-action="previousMonth" aria-label="Previous month"><i class="ph ph-caret-left" aria-hidden="true"></i></button>
+                            <button class="calendar-nav__btn" type="button" data-action="goToToday">Today</button>
+                            <button class="calendar-nav__btn calendar-nav__btn--icon" type="button" data-action="nextMonth" aria-label="Next month"><i class="ph ph-caret-right" aria-hidden="true"></i></button>
                         </div>
                     </div>
                     

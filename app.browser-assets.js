@@ -66,7 +66,7 @@
     ['21', ['app.browser-assets.js']],
     ['7', ['styles.landing.css']],
     ['1', ['styles.brand.css', 'app.chrome.js']],
-    ['4', ['styles.app.css']],
+    ['5', ['styles.app.css']],
     ['6', ['app.root-shell.js']],
     ['2', ['app.public-pages.js']],
     ['3', ['app.boot-flags.js']],
