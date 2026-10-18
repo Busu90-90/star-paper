@@ -1528,7 +1528,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       : (isAuthCallback ? 14000 : 9000);
     const hardTimeoutMs = Number.isFinite(options.hardTimeoutMs)
       ? Math.max(timeoutMs, Number(options.hardTimeoutMs))
-      : Math.max(timeoutMs + 6000, isAuthCallback ? 18000 : 15000);
+      : Math.max(timeoutMs + 6000, BOOT_SAFETY_TIMEOUT_MS);
     const startedAt = nowMs();
     const tick = () => {
       _localBootFallbackTimer = null;
