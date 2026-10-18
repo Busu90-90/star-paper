@@ -101,9 +101,9 @@
     ['24', ['star-paper-tokens.css']],
     ['27', ['manifest.json']],
     ['60', ['styles.css']],
-    ['94', ['supabase.js']],
+    ['95', ['supabase.js']],
     ['148', ['app.js']],
-    ['196', ['sw.js']]
+    ['197', ['sw.js']]
   ];
 
   const assetVersions = {};
