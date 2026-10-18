@@ -455,8 +455,8 @@ body.sp-scrolled #appContainer .topbar {
   box-shadow: 0 0 0 2px var(--sp-stage);
 }
 #appContainer .tb-avatar {
-  display: grid;
-  place-items: center;
+  display: block;
+  overflow: hidden;
   width: var(--sp-tap);
   height: var(--sp-tap);
   padding: 2px;
@@ -467,7 +467,7 @@ body.sp-scrolled #appContainer .topbar {
   transition: box-shadow var(--sp-dur-2);
 }
 #appContainer .tb-avatar:hover { box-shadow: 0 0 0 4px var(--sp-gold-soft); }
-#appContainer .tb-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+#appContainer .tb-avatar img { display: block; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 #appContainer .tb-new {
   display: inline-flex;
   align-items: center;
@@ -797,6 +797,9 @@ body.light-theme #appContainer :is(.card, .booking-card, .stat-card, .dashboard-
   -webkit-text-fill-color: var(--sp-ink);
   background: none;
 }
+/* Title text plus its live period label stay one flex item, in the title face. */
+#appContainer .section-title__text,
+#appContainer .section-title__text * { font-family: inherit; }
 #appContainer .section-title-icon {
   display: grid;
   place-items: center;
