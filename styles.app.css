@@ -1481,3 +1481,124 @@ canvas.is-pin-hover { cursor: pointer; }
 #appContainer #money .expense-actions { display: flex; justify-content: flex-end; gap: var(--sp-space-2); margin-top: var(--sp-space-3); }
 
 /* Reports: one gold action (the PDF); CSV and notes are secondary. */
+
+/* ── 17. Schedule (B3) ──────────────────────────────────────────────────────
+   Globe, Bookings and Calendar. The globe's per-frame pin card and drag
+   sheet stay as they are (the documented inline-style exception).        */
+
+@media (max-width: 699px) {
+  #appContainer #schedule .sp-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+  #appContainer #schedule .sp-tab { justify-content: center; padding: 0 var(--sp-space-2); }
+}
+
+/* Globe on phones: the whole stage, itinerary peek included, fits above
+   the floating tab bar instead of tucking the itinerary under it. */
+@media (max-width: 560px) {
+  #appContainer #schedule .sp-global-schedule {
+    height: clamp(440px, calc(100dvh - var(--app-tabbar) - 236px - env(safe-area-inset-bottom)), 760px);
+  }
+}
+
+/* Booking cards (phones): the four things you scan for stay big (date,
+   artist, location, balance); the rest are compact label/value pairs. */
+#appContainer #schedule .booking-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-space-3) var(--sp-space-4);
+  margin-top: var(--sp-space-3);
+}
+#appContainer #schedule .booking-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--sp-ink);
+  overflow-wrap: anywhere;
+}
+#appContainer #schedule .booking-field > span:first-child {
+  color: var(--sp-ink-3);
+  font-size: var(--sp-text-xs);
+  letter-spacing: var(--sp-tracking-caps);
+  text-transform: uppercase;
+}
+#appContainer #schedule .booking-field.income-green { color: var(--sp-in); }
+#appContainer #schedule .booking-field.expense-red { color: var(--sp-out); }
+#appContainer #schedule .booking-field.deposit-blue { color: var(--sp-ink); }
+#appContainer #schedule .booking-field .show-weather-slot { display: inline-flex; vertical-align: middle; }
+#appContainer #schedule .booking-field .show-weather-slot:empty { display: none; }
+#appContainer #schedule .booking-field .show-weather-slot:has(.is-fallback) { display: none; }
+#appContainer #schedule .booking-field .show-weather-indicator {
+  width: auto;
+  height: auto;
+  border: 0;
+  background: none;
+  color: var(--sp-ink-2);
+  font-size: var(--sp-text-sm);
+}
+#appContainer #schedule .booking-actions { display: flex; justify-content: flex-end; gap: var(--sp-space-2); margin-top: var(--sp-space-3); }
+
+/* Calendar: month name with a compact nav, and a grid that uses the card. */
+#appContainer #schedule .calendar-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-space-3);
+  margin-bottom: var(--sp-space-4);
+}
+#appContainer #schedule .calendar-head h3 { margin: 0; }
+#appContainer #schedule .calendar-nav {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--sp-line);
+  border-radius: var(--sp-radius-pill);
+  background: var(--sp-surface-1);
+}
+#appContainer #schedule .calendar-nav__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0 var(--sp-space-3);
+  border: 0;
+  border-radius: var(--sp-radius-pill);
+  background: transparent;
+  color: var(--sp-ink-2);
+  font-size: var(--sp-text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+#appContainer #schedule .calendar-nav__btn--icon { padding: 0; }
+#appContainer #schedule .calendar-nav__btn:hover { background: var(--sp-surface-3); color: var(--sp-ink); }
+#appContainer #schedule .calendar-grid.calendar-compact {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--sp-space-1);
+  max-width: none;
+  margin: 0;
+}
+#appContainer #schedule .calendar-day-label {
+  padding: var(--sp-space-1) 0;
+  border: 0;
+  background: none;
+  color: var(--sp-ink-3);
+  font-size: var(--sp-text-xs);
+  font-weight: 600;
+  letter-spacing: var(--sp-tracking-caps);
+  text-align: center;
+  text-transform: uppercase;
+}
+#appContainer #schedule .calendar-compact .calendar-day {
+  min-height: 44px;
+  aspect-ratio: 1.25;
+  font-size: var(--sp-text-sm);
+}
+@media (max-width: 560px) {
+  #appContainer #schedule .calendar-compact .calendar-day { aspect-ratio: 1; min-height: 0; }
+}
