@@ -739,7 +739,8 @@ body.light-theme td.expense-red { font-weight: 700; }
     min-height: 100dvh;
 }
 
-.app-container.layout-ready {
+.app-container.layout-ready,
+.app-container.screen-active:not([hidden]) {
     display: block;
 }
 
