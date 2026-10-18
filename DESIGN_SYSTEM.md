@@ -78,7 +78,7 @@ Every text pair passes AA (4.5:1).
 - **Story slides:** four slides in one horizontal scroll-snap track: Mainstage, How it works, Proof, Voices.
   - A connected stepper sits under the slides. Seen steps fill gold, and the active step shows a progress bar that drives auto-advance.
   - Phones show dots with a "2 / 4" counter.
-- **Stage rig:** an SVG truss with three moving-head lamps and a light pool. Every slide's art sits under it and is swappable (`<figure class="lp-art lp-art--*">`).
+- **Stage rig:** one SVG truss hangs under the header with three moving-head lamps (emerald, warm white, gold) whose beams fall through the whole showcase; in light mode it sits behind the slides so text stays readable. Each slide's art is swappable (`<figure class="lp-art lp-art--*">`).
   - The beams are coloured like a real show: emerald stage-left, warm white key light in the centre, gold stage-right. These are the brand's three lights (money in, ivory, foil); the pool on the floor mixes all three.
   - Each head and its beam pivot on the same yoke point and share one animation, so they sweep together: the side heads swing out wide, cross over the centre, hold, then return. Reduced motion leaves them still.
 - **Buttons:**

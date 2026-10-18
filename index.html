@@ -34,7 +34,7 @@
     <link rel="stylesheet" href="styles.shell.css?v=14">
     <!-- Design system: tokens + signed-out pages (landing, auth). Loaded last so it owns those screens. -->
     <link rel="stylesheet" href="sp-design-tokens.css?v=3">
-    <link rel="stylesheet" href="styles.landing.css?v=6">
+    <link rel="stylesheet" href="styles.landing.css?v=7">
     <link rel="stylesheet" href="styles.brand.css?v=1">
     <link rel="stylesheet" href="styles.app.css?v=4">
     <link rel="preload" href="assets/vendor/fonts/font-29-fraunces-latin-opsz-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
@@ -111,6 +111,8 @@
         <main class="lp-main" id="lpMain">
             <!-- lp:show: the hero is a four-slide showcase. Each slide is copy + art; the art blocks are swappable. -->
             <section class="lp-show" id="lpShow" aria-roledescription="carousel" aria-label="Star Paper at a glance" data-lp-show>
+                <!-- One stage rig hangs under the header and lights the whole showcase. -->
+                <div class="lp-rig" aria-hidden="true"><svg class="lp-rig__truss" viewBox="0 0 600 30" preserveAspectRatio="none" focusable="false"><use href="#lpRigTruss"/></svg><span class="lp-rig__beam lp-rig__beam--l"><span class="lp-rig__cone"></span></span><span class="lp-rig__beam lp-rig__beam--c"><span class="lp-rig__cone"></span><span class="lp-rig__dust"></span></span><span class="lp-rig__beam lp-rig__beam--r"><span class="lp-rig__cone"></span></span><svg class="lp-rig__lamp lp-rig__lamp--l" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--c" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--r" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><span class="lp-rig__pool"></span></div>
                 <div class="lp-show__track" data-lp-track>
 
                     <article class="lp-slide" id="mainstage" role="group" aria-roledescription="slide" aria-label="1 of 4: The mainstage" data-lp-slide>
@@ -131,7 +133,6 @@
                         </div>
                         <!-- lp:art mainstage -->
                         <figure class="lp-art lp-art--mainstage">
-                            <div class="lp-rig" aria-hidden="true"><svg class="lp-rig__truss" viewBox="0 0 600 30" preserveAspectRatio="none" focusable="false"><use href="#lpRigTruss"/></svg><span class="lp-rig__beam lp-rig__beam--l"><span class="lp-rig__cone"></span></span><span class="lp-rig__beam lp-rig__beam--c"><span class="lp-rig__cone"></span><span class="lp-rig__dust"></span></span><span class="lp-rig__beam lp-rig__beam--r"><span class="lp-rig__cone"></span></span><svg class="lp-rig__lamp lp-rig__lamp--l" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--c" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--r" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><span class="lp-rig__pool"></span></div>
                             <div class="lp-ledger">
                                 <div class="lp-ledger__head">
                                     <span class="lp-live"><span class="lp-live__dot" aria-hidden="true"></span>Live</span>
@@ -175,7 +176,6 @@
                         </div>
                         <!-- lp:art how: a lit run-of-show for one gig -->
                         <figure class="lp-art lp-art--how">
-                            <div class="lp-rig" aria-hidden="true"><svg class="lp-rig__truss" viewBox="0 0 600 30" preserveAspectRatio="none" focusable="false"><use href="#lpRigTruss"/></svg><span class="lp-rig__beam lp-rig__beam--l"><span class="lp-rig__cone"></span></span><span class="lp-rig__beam lp-rig__beam--c"><span class="lp-rig__cone"></span><span class="lp-rig__dust"></span></span><span class="lp-rig__beam lp-rig__beam--r"><span class="lp-rig__cone"></span></span><svg class="lp-rig__lamp lp-rig__lamp--l" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--c" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--r" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><span class="lp-rig__pool"></span></div>
                             <div class="lp-runsheet">
                                 <div class="lp-runsheet__head">
                                     <span class="lp-runsheet__title">Run of show</span>
@@ -200,7 +200,6 @@
                         </div>
                         <!-- lp:art proof: the numbers under the lights -->
                         <figure class="lp-art lp-art--proof">
-                            <div class="lp-rig" aria-hidden="true"><svg class="lp-rig__truss" viewBox="0 0 600 30" preserveAspectRatio="none" focusable="false"><use href="#lpRigTruss"/></svg><span class="lp-rig__beam lp-rig__beam--l"><span class="lp-rig__cone"></span></span><span class="lp-rig__beam lp-rig__beam--c"><span class="lp-rig__cone"></span><span class="lp-rig__dust"></span></span><span class="lp-rig__beam lp-rig__beam--r"><span class="lp-rig__cone"></span></span><svg class="lp-rig__lamp lp-rig__lamp--l" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--c" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--r" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><span class="lp-rig__pool"></span></div>
                             <div class="lp-stats">
                                 <div class="lp-stat lp-stat--lead"><p class="lp-stat__value"><span class="lp-stat__unit">UGX</span><span data-lp-count="500">500</span><span class="lp-stat__unit">M+</span></p><p class="lp-stat__label">Collected through Star Paper</p></div>
                                 <div class="lp-stat"><p class="lp-stat__value"><span data-lp-count="150">150</span><span class="lp-stat__unit">+</span></p><p class="lp-stat__label">Shows booked</p></div>
@@ -220,7 +219,6 @@
                         </div>
                         <!-- lp:art voices: a fanned stack of review cards -->
                         <figure class="lp-art lp-art--voices">
-                            <div class="lp-rig" aria-hidden="true"><svg class="lp-rig__truss" viewBox="0 0 600 30" preserveAspectRatio="none" focusable="false"><use href="#lpRigTruss"/></svg><span class="lp-rig__beam lp-rig__beam--l"><span class="lp-rig__cone"></span></span><span class="lp-rig__beam lp-rig__beam--c"><span class="lp-rig__cone"></span><span class="lp-rig__dust"></span></span><span class="lp-rig__beam lp-rig__beam--r"><span class="lp-rig__cone"></span></span><svg class="lp-rig__lamp lp-rig__lamp--l" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--c" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--r" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><span class="lp-rig__pool"></span></div>
                             <div class="lp-quotes-stack" data-lp-quotes aria-live="polite">
                                 <blockquote class="lp-qcard" data-lp-quote data-pos="front"><p class="lp-stars" aria-label="5 out of 5 stars"><span aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span></p><p class="lp-qcard__text">&ldquo;Finally a tool that keeps my artists, bookings, and money in one place. I stopped using spreadsheets on day one.&rdquo;</p><footer><span class="lp-avatar" aria-hidden="true">AB</span><span><strong>Aggie Best</strong> &middot; Artist manager, Kampala</span></footer></blockquote>
                                 <blockquote class="lp-qcard" data-lp-quote data-pos="back1"><p class="lp-stars" aria-label="5 out of 5 stars"><span aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span></p><p class="lp-qcard__text">&ldquo;Star Paper gives our team one clean view for bookings, balances, and artist updates without the usual back-and-forth.&rdquo;</p><footer><span class="lp-avatar lp-avatar--sage" aria-hidden="true">LO</span><span><strong>Label operations lead</strong> &middot; East Africa</span></footer></blockquote>
