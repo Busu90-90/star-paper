@@ -8512,6 +8512,7 @@ function showLoginForm(options = {}) {
                 }
                 if (currentRevenueEl) countUp(currentRevenueEl, currentRevenue);
                 if (goalPercentEl) goalPercentEl.textContent = `${goalPercent}%`;
+                goalAmountEl?.closest('.monthly-goal-track')?.classList.toggle('monthly-goal-track--unset', !(monthlyGoal > 0));
                 if (goalProgressBarEl) {
                     goalProgressBarEl.setAttribute('width', String(Math.max(0, Math.min(100, Number(progressWidth) || 0))));
                 }
@@ -8520,8 +8521,8 @@ function showLoginForm(options = {}) {
 
             renderCashFlowTimeline();
             renderDashboardCashflow();
-            renderDashboardUpcomingShows();
-            renderDashboardActivityFeed();
+            renderDashboardUpcomingShows(5);
+            renderDashboardActivityFeed(5);
             // Refresh nudge banners whenever data changes
             if (typeof window.updateTodayBoard === 'function') window.updateTodayBoard();
             // Update velocity gauge
@@ -9387,10 +9388,7 @@ function showLoginForm(options = {}) {
 
             if (dayEl) dayEl.textContent = now.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
             if (dateEl) {
-                const mm = String(now.getMonth()+1).padStart(2,'0');
-                const dd = String(now.getDate()).padStart(2,'0');
-                const yy = now.getFullYear();
-                dateEl.textContent = `${mm}-${dd}-${yy}`;
+                dateEl.textContent = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
             }
 
             const allBookings = typeof bookings !== 'undefined' ? bookings : [];

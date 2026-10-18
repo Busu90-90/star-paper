@@ -66,7 +66,7 @@
     ['21', ['app.browser-assets.js']],
     ['6', ['styles.landing.css']],
     ['1', ['styles.brand.css', 'app.chrome.js']],
-    ['2', ['styles.app.css']],
+    ['3', ['styles.app.css']],
     ['6', ['app.root-shell.js']],
     ['2', ['app.public-pages.js']],
     ['3', ['app.boot-flags.js']],
@@ -104,7 +104,7 @@
     ['27', ['manifest.json']],
     ['63', ['styles.css']],
     ['97', ['supabase.js']],
-    ['150', ['app.js']],
+    ['151', ['app.js']],
     ['200', ['sw.js']]
   ];
 
