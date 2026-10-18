@@ -36,7 +36,7 @@
     <link rel="stylesheet" href="sp-design-tokens.css?v=3">
     <link rel="stylesheet" href="styles.landing.css?v=6">
     <link rel="stylesheet" href="styles.brand.css?v=1">
-    <link rel="stylesheet" href="styles.app.css?v=3">
+    <link rel="stylesheet" href="styles.app.css?v=4">
     <link rel="preload" href="assets/vendor/fonts/font-29-fraunces-latin-opsz-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="assets/vendor/fonts/font-31-inter-tight-latin-wght-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <!-- Vendored Phosphor Icons 2.1.1 - unified icon system -->
@@ -871,6 +871,7 @@
                             <div class="monthly-goal-track__title">Monthly Revenue Goal</div>
                                 <button class="action-btn" type="button" data-action="toggleFinancialsMonthlyGoalEditor">Set Goal</button>
                         </div>
+                        <p class="monthly-goal-track__hint">No goal set for this month yet. Set one to see how close you are.</p>
                         <div class="monthly-goal-track__metrics">
                             <div class="monthly-goal-metric">
                                 <div class="monthly-goal-metric__label">Goal Amount</div>
@@ -1114,7 +1115,7 @@
                             <option value="all">All Time</option>
                         </select>
                         <button class="add-btn sp-csp-style-20" data-action="openPdfExportModal"><i class="ph ph-download-simple" aria-hidden="true"></i> Generate &amp; Download PDF</button>
-                        <button class="add-btn sp-csp-style-21" data-action="exportCSV"><i class="ph ph-file-csv" aria-hidden="true"></i> Export CSV</button>
+                        <button class="action-btn sp-csp-style-21" data-action="exportCSV"><i class="ph ph-file-csv" aria-hidden="true"></i> Export CSV</button>
                         <button class="action-btn sp-csp-style-19" data-action="toggleClosingThoughts">Closing Thoughts</button>
                     </div>
                     <div class="closing-thoughts-panel" id="closingThoughtsPanel" hidden>

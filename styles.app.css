@@ -1348,9 +1348,9 @@ canvas.is-pin-hover { cursor: pointer; }
 #appContainer #dashboard .show-weather-slot:empty { display: none; }
 
 /* This month: goal, then the four key numbers (more on request) */
-#appContainer #dashboard .monthly-goal-track__hint { display: none; margin: var(--sp-space-2) 0 0; color: var(--sp-ink-2); }
-#appContainer #dashboard .monthly-goal-track--unset .monthly-goal-track__hint { display: block; }
-#appContainer #dashboard .monthly-goal-track--unset :is(.monthly-goal-track__metrics, .monthly-goal-progress) { display: none; }
+#appContainer .monthly-goal-track__hint { display: none; margin: var(--sp-space-2) 0 0; color: var(--sp-ink-2); }
+#appContainer .monthly-goal-track--unset .monthly-goal-track__hint { display: block; }
+#appContainer .monthly-goal-track--unset :is(.monthly-goal-track__metrics, .monthly-goal-progress) { display: none; }
 #appContainer #dashboard .monthly-goal-track__metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-space-3); }
 #appContainer #dashboard .dashboard-glance-grid {
   display: grid;
@@ -1409,3 +1409,75 @@ canvas.is-pin-hover { cursor: pointer; }
   #appContainer #dashboard .mainstage-pulse-grid { grid-template-columns: minmax(0, 1fr); }
   #appContainer #dashboard .pulse-item__value { font-size: var(--sp-text-md); }
 }
+
+/* ── 16. Money (B2) ─────────────────────────────────────────────────────────
+   Overview, Expenses, Other income and Reports. Markup and ids are the
+   renderers'; this section only restyles them.                            */
+
+/* Tabs fill the row on phones instead of scrolling the last one off-screen. */
+@media (max-width: 699px) {
+  #appContainer #money .sp-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; }
+  #appContainer #money .sp-tab { justify-content: center; padding: 0 var(--sp-space-2); font-size: var(--sp-text-xs); }
+  #appContainer #money .sp-tab .ph { display: none; }
+}
+
+/* Stat tiles (Overview + Reports): money sized to the tile, one line. */
+#appContainer #money .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--sp-space-3);
+}
+#appContainer #money .stat-card { container-type: inline-size; min-width: 0; min-height: 0; margin: 0; padding: var(--sp-space-3) var(--sp-space-4); }
+#appContainer #money .stat-value { font-size: clamp(0.875rem, 10.5cqi, var(--sp-text-xl)); white-space: nowrap; line-height: var(--sp-leading-snug); }
+#appContainer #money .stat-click-hint { margin-top: var(--sp-space-1); color: var(--sp-ink-3); font-size: var(--sp-text-xs); opacity: 1; visibility: visible; transform: none; }
+#appContainer #money .stat-card-clickable .stat-click-hint { color: var(--sp-gold-text); }
+
+/* Cashflow: title and meta left, signed amount right on one line. */
+#appContainer #cashFlowTimeline { display: grid; gap: var(--sp-space-2); }
+#appContainer #cashFlowTimeline .timeline-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-space-3);
+  margin: 0;
+  padding: var(--sp-space-3) var(--sp-space-4);
+  border: 1px solid var(--sp-line);
+  border-radius: var(--sp-radius-md);
+  background: var(--sp-surface-2);
+}
+#appContainer #cashFlowTimeline .timeline-title { color: var(--sp-ink); font-weight: 600; }
+#appContainer #cashFlowTimeline .timeline-sub { margin-top: 2px; color: var(--sp-ink-3); font-size: var(--sp-text-xs); }
+#appContainer #cashFlowTimeline .timeline-amount { white-space: nowrap; text-align: right; }
+
+/* Expense and other-income cards (phones): label/value pairs, not tiles. */
+#appContainer #money .expense-card { padding: var(--sp-space-4); }
+#appContainer #money .expense-card:hover { transform: none; }
+#appContainer #money .expense-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-space-3) var(--sp-space-4);
+  margin-top: var(--sp-space-3);
+}
+#appContainer #money .expense-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--sp-ink);
+  overflow-wrap: anywhere;
+}
+#appContainer #money .expense-field > span {
+  color: var(--sp-ink-3);
+  font-size: var(--sp-text-xs);
+  letter-spacing: var(--sp-tracking-caps);
+  text-transform: uppercase;
+}
+#appContainer #money .expense-field.expense-red { color: var(--sp-out); }
+#appContainer #money .expense-field.expense-red > span { color: var(--sp-ink-3); }
+#appContainer #money .expense-actions { display: flex; justify-content: flex-end; gap: var(--sp-space-2); margin-top: var(--sp-space-3); }
+
+/* Reports: one gold action (the PDF); CSV and notes are secondary. */
