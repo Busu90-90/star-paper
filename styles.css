@@ -1656,8 +1656,12 @@ th {
 .bookings-table td.td-actions { white-space: nowrap; }
 
 /* Cells that can wrap */
+/* overflow-wrap (not word-break: break-word) so the auto layout can't squeeze
+   these columns down to one letter per line; words wrap whole. */
 .bookings-table td.td-event,
-.bookings-table td.td-contact { max-width: 180px; white-space: normal; word-break: break-word; }
+.bookings-table td.td-contact { max-width: 220px; white-space: normal; overflow-wrap: break-word; }
+.bookings-table td.td-event { min-width: 160px; }
+.bookings-table td.td-contact { min-width: 120px; }
 
 .notes-cell  { max-width: 280px; white-space: normal; word-break: break-word; font-size: 11px; line-height: 1.35; color: #d1d1d1; }
 .actions-cell { white-space: nowrap; display: inline-flex; gap: 4px; align-items: center; justify-content: center; }

@@ -101,7 +101,7 @@
     ['20', ['app.reports.js']],
     ['24', ['star-paper-tokens.css']],
     ['27', ['manifest.json']],
-    ['62', ['styles.css']],
+    ['63', ['styles.css']],
     ['97', ['supabase.js']],
     ['150', ['app.js']],
     ['200', ['sw.js']]
