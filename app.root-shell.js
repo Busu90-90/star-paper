@@ -34,9 +34,7 @@
         sentry: externalLibrary('sentry', 'Sentry'),
         chart: externalLibrary('chart', 'Chart'),
         jspdf: externalLibrary('jspdf', 'jspdf'),
-        globe: localLibrary('app.globe.js', { module: true, optional: true }),
-        premium: localLibrary('app.premium.js', { optional: true }),
-        shell: localLibrary('app.shell.js', { optional: true })
+        globe: localLibrary('app.globe.js', { module: true, optional: true })
       };
     } catch (error) {
       console.error('Star Paper deferred library metadata failed:', error);
@@ -118,16 +116,11 @@
         console.warn('Sentry deferred load failed:', err);
       });
     }, 1000);
-    // The globe (Three.js + world atlas), premium and shell layers only serve the
+    // The globe (Three.js + world atlas) only serves the
     // signed-in app, so signed-out visitors never download them.
     whenAppShellActive(function() {
       loadIconSheets();
       idle(function() { loadScript('globe').catch(function() {}); }, 1600);
-      idle(function() {
-        loadScript('premium')
-          .catch(function() {})
-          .then(function() { return loadScript('shell').catch(function() {}); });
-      }, 1800);
     });
   };
 

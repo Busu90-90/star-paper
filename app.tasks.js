@@ -149,23 +149,11 @@
         const badge = document.getElementById("taskBadge");
         const badgeNav = document.getElementById("taskBadgeNav");
 
-        if (badge) {
-            if (overdueCount > 0) {
-                badge.textContent = String(overdueCount);
-                badge.style.display = "inline-flex";
-            } else {
-                badge.style.display = "none";
-            }
-        }
-
-        if (badgeNav) {
-            if (overdueCount > 0) {
-                badgeNav.textContent = String(overdueCount);
-                badgeNav.style.display = "flex";
-            } else {
-                badgeNav.style.display = "none";
-            }
-        }
+        [badge, badgeNav].forEach((el) => {
+            if (!el) return;
+            el.textContent = String(overdueCount);
+            el.hidden = overdueCount === 0;
+        });
     }
 
     function renderTasks() {

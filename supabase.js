@@ -563,7 +563,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     };
     const cfg = map[_syncState] || map.idle;
     el.className = 'ph ' + cfg.icon + ' sp-sync-icon';
-    el.style.color = cfg.color;
+    el.parentElement.dataset.syncState = map[_syncState] ? _syncState : 'idle';
     el.parentElement.title = cfg.title;
     el.parentElement.setAttribute('aria-label', cfg.title);
     if (_syncState === 'syncing') {
@@ -700,7 +700,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     };
     const cfg = map[_syncState] || map.idle;
     el.className = 'ph ' + cfg.icon + ' sp-sync-icon';
-    el.style.color = cfg.color;
+    el.parentElement.dataset.syncState = map[_syncState] ? _syncState : 'idle';
     el.parentElement.title = cfg.title;
     el.parentElement.setAttribute('aria-label', cfg.title);
     if (_syncState === 'syncing') {
@@ -916,8 +916,9 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         const badge = document.getElementById('spTeamChatBadge');
         if (badge) {
           const count = (parseInt(badge.textContent, 10) || 0) + 1;
-          badge.textContent = count;
-          badge.style.display = 'inline-flex';
+          badge.textContent = String(count);
+          badge.hidden = false;
+          document.dispatchEvent(new CustomEvent('sp:notify', { detail: { kind: 'message', text: `New message from ${sender}` } }));
         }
         // If chat panel is open, append message through DOM text nodes.
         const container = document.getElementById('spTeamChatMessages');
@@ -970,7 +971,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
     setTimeout(() => {
       const modal = document.getElementById('spTeamModal');
-      if (modal && modal.style.display !== 'none') return;
+      if (modal && !modal.hidden) return;
       showTeamModal().catch((err) => warn('Team chooser open failed:', err));
     }, 0);
   }
@@ -1297,7 +1298,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     if (!app) return false;
     const style = window.getComputedStyle ? window.getComputedStyle(app) : null;
     const visible = app.classList.contains('screen-active') &&
-      app.style.display !== 'none' &&
+      !app.hidden &&
       (!style || (style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0));
     if (!visible) return false;
     const rect = app.getBoundingClientRect();
@@ -2021,8 +2022,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     unsubscribeFromTeamNotifications();
     const modal = document.getElementById('spTeamModal');
     if (modal) {
-      modal.style.display = 'none';
-      document.body.style.overflow = '';
+      modal.hidden = true;
+      document.body.classList.remove('sp-no-scroll');
     }
   }
 
@@ -5906,8 +5907,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
     const modal = document.getElementById('spTeamModal');
     if (modal) {
-      modal.style.display = 'none';
-      document.body.style.overflow = '';
+      modal.hidden = true;
+      document.body.classList.remove('sp-no-scroll');
     }
 
     await reloadForResolvedWorkspace({
@@ -6530,8 +6531,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
   function closeTeamModal() {
     const modal = document.getElementById('spTeamModal');
-    if (modal) modal.style.display = 'none';
-    document.body.style.overflow = '';
+    if (modal) modal.hidden = true;
+    document.body.classList.remove('sp-no-scroll');
     unsubscribeFromChat();
   }
 
@@ -6546,7 +6547,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       modal = document.createElement('div');
       modal.id = 'spTeamModal';
       modal.className = 'sp-admin-modal';
-      modal.style.display = 'none';
+      modal.hidden = true;
       modal.append(
         domEl('div', { className: 'sp-modal-backdrop', data: { spTeamAction: 'close' } }),
         domEl('div', { className: 'sp-modal-box sp-team-modal-box' }, [
@@ -6562,8 +6563,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   showTeamModal = async function showTeamModal() {
     const modal = ensureTeamModalElement();
 
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
+    modal.hidden = false;
+    document.body.classList.add('sp-no-scroll');
     const content = document.getElementById('spTeamPanelContent');
     replaceTeamPanelContent(
       content,
@@ -6813,12 +6814,12 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       event.preventDefault();
       const action = actionEl.dataset.spCurrencyAction;
       if (action === 'close') {
-        modal.style.display = 'none';
+        modal.hidden = true;
       } else if (action === 'set') {
         const code = actionEl.dataset.spCurrencyCode;
         if (Object.prototype.hasOwnProperty.call(SP_CURRENCIES, code)) {
           setCurrency(code);
-          modal.style.display = 'none';
+          modal.hidden = true;
         }
       }
     });
@@ -6868,7 +6869,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       list.replaceChildren(...options);
     }
 
-    modal.style.display = 'flex';
+    modal.hidden = false;
   }
 
   // ── INJECT CURRENCY BUTTON INTO SIDEBAR ──────────────────────────────────────

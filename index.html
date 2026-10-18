@@ -6,7 +6,7 @@
     <meta name="star-paper:public-root" content="app-shell">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:;">
     <title>Star Paper</title>
-    <script src="app.browser-assets.js?v=20"></script>
+    <script src="app.browser-assets.js?v=21"></script>
     <script src="app.public-pages.js?v=2"></script>
     <script src="app.boot-head.js?v=1"></script>
     <link rel="manifest" href="manifest.json?v=27">
@@ -24,9 +24,9 @@
 
     <!-- Same-origin Supabase SDK keeps auth boot independent of mutable CDN/SRI state. -->
     <script src="assets/vendor/supabase/supabase.min.js?v=1" integrity="sha384-dzQgxMPp/h+N0t5qDf6Bp516wKZr3pXgGMpA7/ZM6tiWkqYo90N060L03dxnZ8Tf"></script>
-    <script src="app.boot-flags.js?v=2"></script>
+    <script src="app.boot-flags.js?v=3"></script>
 
-    <link rel="stylesheet" href="styles.css?v=61">
+    <link rel="stylesheet" href="styles.css?v=63">
     <!-- UPGRADE: Final premium relayering token layer (additive, kill-switchable via localStorage.sp_prem_off) -->
     <link rel="stylesheet" href="star-paper-tokens.css?v=24">
     <!-- UPGRADE: Premium polish layer (additive, kill-switchable via localStorage.sp_prem_off) -->
@@ -34,8 +34,9 @@
     <link rel="stylesheet" href="styles.shell.css?v=14">
     <!-- Design system: tokens + signed-out pages (landing, auth). Loaded last so it owns those screens. -->
     <link rel="stylesheet" href="sp-design-tokens.css?v=3">
-    <link rel="stylesheet" href="styles.landing.css?v=5">
+    <link rel="stylesheet" href="styles.landing.css?v=6">
     <link rel="stylesheet" href="styles.brand.css?v=1">
+    <link rel="stylesheet" href="styles.app.css?v=2">
     <link rel="preload" href="assets/vendor/fonts/font-29-fraunces-latin-opsz-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="assets/vendor/fonts/font-31-inter-tight-latin-wght-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <!-- Vendored Phosphor Icons 2.1.1 - unified icon system -->
@@ -74,7 +75,9 @@
                     <path d="M-15 10 H15 M-15 16 H15 M-15 22 H15" stroke="#0A0F0C" stroke-width="1.2" opacity=".7"/>
                     <path d="M-19 38 H19 L23 44 H-23 Z" fill="#1A221C" stroke="#58665A" stroke-width=".8"/>
                     <ellipse cx="0" cy="45" rx="17" ry="4.5" fill="url(#lpLens)"/>
+                    <ellipse cx="0" cy="45" rx="17" ry="4.5" fill="currentColor" fill-opacity=".55"/>
                     <ellipse cx="0" cy="47" rx="28" ry="12" fill="url(#lpBloom)"/>
+                    <ellipse cx="0" cy="47" rx="24" ry="10" fill="currentColor" fill-opacity=".22"/>
                 </symbol>
                 <symbol id="lpRigTruss" viewBox="0 0 600 30" preserveAspectRatio="none">
                     <rect x="0" y="2" width="600" height="5" rx="2.5" fill="url(#lpSteel)"/>
@@ -395,7 +398,7 @@
     </div>
 
     <!-- Custom Delete Confirmation Modal -->
-    <div class="receipt-modal" id="confirmDeleteModal" role="alertdialog" aria-modal="true" aria-labelledby="confirmDeleteTitle">
+    <div class="receipt-modal" id="confirmDeleteModal" hidden role="alertdialog" aria-modal="true" aria-labelledby="confirmDeleteTitle">
         <div class="receipt-modal-content confirm-delete-modal-content">
             <div class="confirm-delete-icon" aria-hidden="true">
                 <i class="ph ph-trash sp-csp-style-3" aria-hidden="true"></i>
@@ -410,7 +413,7 @@
     </div>
 
     <!-- Receipt Modal -->
-    <div class="receipt-modal" id="receiptModal">
+    <div class="receipt-modal" id="receiptModal" hidden>
         <div class="receipt-modal-content">
             <button class="close-receipt" data-action="closeReceiptModal" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
             <img id="receiptModalImage" src="" alt="Receipt">
@@ -418,163 +421,202 @@
     </div>
 
     <div class="app-container" id="appContainer">
-        <!-- Collapse toggle — lives outside sidebar to escape overflow clipping -->
-        <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" aria-label="Toggle sidebar" type="button">
-            <i class="scb-icon scb-icon--close ph ph-caret-left sp-csp-style-4" aria-hidden="true"></i>
-            <i class="scb-icon scb-icon--open ph ph-caret-right sp-csp-style-4" aria-hidden="true"></i>
-        </button>
-                <div class="sidebar" id="sidebar">
-            <!-- Profile Header Section -->
-            <div class="sidebar-profile">
-                <div class="sidebar-profile-content">
-                    <div class="sidebar-avatar sidebar-avatar--brand-mark">
-                        <img src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="User Avatar" class="avatar-img avatar-img--brand-mark" id="sidebarAvatarImg">
-                    </div>
-                <div class="sidebar-greeting">
-                    <div class="greeting-name" id="sidebarUserName">Manager</div>
-                </div>
-            </div>
+        <!-- ═══ Sidebar (desktop ≥1025px): brand · primary nav · more · profile ═══ -->
+        <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+            <div class="sb-brand">
+                <button class="sp-spin-toggle sb-brand__mark" type="button" aria-pressed="true" aria-label="Pause the spinning logo">
+                    <img class="sp-spin-mark" src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="" width="36" height="36">
+                </button>
+                <span class="sb-brand__word">Star Paper</span>
+                <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" type="button" aria-label="Collapse sidebar" aria-expanded="true">
+                    <i class="ph ph-sidebar-simple" aria-hidden="true"></i>
+                </button>
             </div>
 
-            <!-- Navigation List — Phosphor Icons -->
-            <nav class="sidebar-nav">
-                <button type="button" class="nav-item active" data-action="showSection" data-section="dashboard" data-tooltip="Dashboard">
-                    <i class="ph ph-house nav-icon-svg sp-csp-style-5" aria-hidden="true"></i>
-                    <span class="nav-label">Dashboard</span>
+            <nav class="sidebar-nav" aria-label="Sections">
+                <button type="button" class="nav-item active" data-action="showSection" data-section="dashboard" data-tooltip="Home" aria-current="page">
+                    <i class="ph ph-house nav-icon" aria-hidden="true"></i>
+                    <span class="nav-label">Home</span>
                 </button>
                 <button type="button" class="nav-item" data-action="showSection" data-section="money" data-tooltip="Money">
-                    <i class="ph ph-currency-circle-dollar nav-icon-svg sp-csp-style-5" aria-hidden="true"></i>
+                    <i class="ph ph-wallet nav-icon" aria-hidden="true"></i>
                     <span class="nav-label">Money</span>
                 </button>
                 <button type="button" class="nav-item" data-action="showSection" data-section="schedule" data-tooltip="Schedule">
-                    <i class="ph ph-calendar-blank nav-icon-svg sp-csp-style-5" aria-hidden="true"></i>
+                    <i class="ph ph-calendar-blank nav-icon" aria-hidden="true"></i>
                     <span class="nav-label">Schedule</span>
                 </button>
-                <button type="button" class="nav-item" data-action="showSection" data-section="tasks" data-tooltip="Tasks">
-                    <i class="ph ph-clipboard-text nav-icon-svg sp-csp-style-5" aria-hidden="true"></i>
-                    <span class="nav-label">Tasks</span>
-                    <span class="task-badge-nav sp-csp-style-6" id="taskBadgeNav">0</span>
-                </button>
                 <button type="button" class="nav-item" data-action="showSection" data-section="artists" data-tooltip="Artists">
-                    <i class="ph ph-microphone-stage nav-icon-svg sp-csp-style-5" aria-hidden="true"></i>
+                    <i class="ph ph-microphone-stage nav-icon" aria-hidden="true"></i>
                     <span class="nav-label">Artists</span>
                 </button>
+                <button type="button" class="nav-item" id="spTeamBtn" data-sp-team data-tooltip="Team">
+                    <i class="ph ph-users-three nav-icon" aria-hidden="true"></i>
+                    <span class="nav-label">Team</span>
+                    <span class="nav-badge" id="spTeamChatBadge" hidden>0</span>
+                </button>
+            </nav>
+
+            <p class="sb-group-label">Workspace</p>
+            <nav class="sidebar-nav sidebar-nav--more" aria-label="Workspace">
+                <button type="button" class="nav-item" data-action="showSection" data-section="tasks" data-tooltip="Tasks">
+                    <i class="ph ph-check-square nav-icon" aria-hidden="true"></i>
+                    <span class="nav-label">Tasks</span>
+                    <span class="nav-badge" id="taskBadgeNav" hidden>0</span>
+                </button>
                 <button type="button" class="nav-item" data-action="showSection" data-section="settings" data-tooltip="Settings">
-                    <i class="ph ph-gear-six nav-icon-svg sp-csp-style-5" aria-hidden="true"></i>
+                    <i class="ph ph-gear-six nav-icon" aria-hidden="true"></i>
                     <span class="nav-label">Settings</span>
                 </button>
             </nav>
 
-            <!-- Spacer -->
-            <div class="sidebar-spacer"></div>
-
-            <!-- Bottom utility bar: About · Settings · Logout -->
-            <div class="sidebar-logout-section">
-                <div class="sidebar-util-row">
-                    <button type="button" class="sidebar-util-btn" id="sidebarAboutBtn" data-action="showAboutModal" title="About Star Paper">
-                        <i class="ph ph-info sp-csp-style-7" aria-hidden="true"></i>
-                        <span class="nav-label">About</span>
-                    </button>
-                    <button type="button" class="nav-item sidebar-util-btn sidebar-util-btn--logout" id="sidebarLogoutBtn" title="Logout">
-                        <i class="ph ph-sign-out sp-csp-style-7" aria-hidden="true"></i>
-                        <span class="nav-label">Logout</span>
-                    </button>
-                </div>
+            <div class="sb-foot">
+                <button type="button" class="sb-profile" data-sp-sheet-open="spAccountSheet" aria-haspopup="dialog" data-tooltip="Account">
+                    <img src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="" class="sb-profile__avatar avatar-img--brand-mark" id="sidebarAvatarImg" width="36" height="36">
+                    <span class="sb-profile__text">
+                        <span class="sb-profile__name" id="sidebarUserName">Manager</span>
+                        <span class="sb-profile__role">Account &amp; settings</span>
+                    </span>
+                    <i class="ph ph-caret-up-down sb-profile__caret" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="sb-icon-btn" id="sidebarLogoutBtn" aria-label="Sign out" data-tooltip="Sign out">
+                    <i class="ph ph-sign-out" aria-hidden="true"></i>
+                </button>
             </div>
-        </div>
-        <div class="sidebar-overlay" id="sidebarOverlay" aria-hidden="true"></div>
+        </aside>
 
-        <!-- Mobile bottom navigation bar -->
-        <nav class="bottom-nav" id="bottomNav" aria-label="Quick navigation">
-            <button class="bottom-nav-item" data-action="showSection" data-section="dashboard" data-tooltip="Dashboard" aria-label="Dashboard">
-                <i class="ph ph-house sp-csp-style-8" aria-hidden="true"></i>
-                <span>Home</span>
+        <!-- ═══ Mobile floating tab bar: Home · Schedule · (+) · Money · Artists ═══ -->
+        <nav class="bottom-nav" id="bottomNav" aria-label="Sections">
+            <button class="bottom-nav-item active" type="button" data-action="showSection" data-section="dashboard" aria-label="Home">
+                <i class="ph ph-house" aria-hidden="true"></i><span>Home</span>
             </button>
-            <button class="bottom-nav-item" data-action="showSection" data-section="schedule" data-tooltip="Schedule" aria-label="Schedule">
-                <i class="ph ph-calendar-blank sp-csp-style-8" aria-hidden="true"></i>
-                <span>Schedule</span>
+            <button class="bottom-nav-item" type="button" data-action="showSection" data-section="schedule" aria-label="Schedule">
+                <i class="ph ph-calendar-blank" aria-hidden="true"></i><span>Schedule</span>
             </button>
-            <button class="bottom-nav-item" data-action="showSection" data-section="money" data-tooltip="Money" aria-label="Money">
-                <i class="ph ph-currency-circle-dollar sp-csp-style-8" aria-hidden="true"></i>
-                <span>Money</span>
+            <button class="bottom-nav-add" id="quickAddBtn" type="button" data-sp-sheet-open="quickAddPanel" aria-haspopup="dialog" aria-label="Add new">
+                <i class="ph ph-plus" aria-hidden="true"></i>
             </button>
-            <button class="bottom-nav-item" data-action="showSection" data-section="tasks" data-tooltip="Tasks" aria-label="Tasks">
-                <i class="ph ph-clipboard-text sp-csp-style-8" aria-hidden="true"></i>
-                <span>Tasks</span>
+            <button class="bottom-nav-item" type="button" data-action="showSection" data-section="money" aria-label="Money">
+                <i class="ph ph-wallet" aria-hidden="true"></i><span>Money</span>
             </button>
-            <button class="bottom-nav-item" data-action="showSection" data-section="settings" data-tooltip="Settings" aria-label="Settings">
-                <i class="ph ph-gear-six sp-csp-style-8" aria-hidden="true"></i>
-                <span>Settings</span>
+            <button class="bottom-nav-item" type="button" data-action="showSection" data-section="artists" aria-label="Artists">
+                <i class="ph ph-microphone-stage" aria-hidden="true"></i><span>Artists</span>
             </button>
         </nav>
 
-        <!-- Scroll-to-top FAB (appears after scrolling down) -->
-        <button class="scroll-top-fab" id="scrollTopFab" aria-label="Scroll to top" title="Scroll to top">
-            <i class="ph ph-caret-up sp-csp-style-7" aria-hidden="true"></i>
+        <!-- Scroll-to-top (appears after scrolling down) -->
+        <button class="scroll-top-fab" id="scrollTopFab" type="button" aria-label="Scroll to top">
+            <i class="ph ph-arrow-up" aria-hidden="true"></i>
         </button>
 
+        <!-- ═══ Sheets: bottom sheet on phones, anchored panel on desktop ═══ -->
+        <div class="sp-scrim" id="spSheetScrim" data-sp-sheet-dismiss hidden></div>
+
+        <section class="sp-sheet sp-sheet--quick quick-add-panel" id="quickAddPanel" role="dialog" aria-modal="true" aria-labelledby="quickAddTitle" hidden>
+            <span class="sp-sheet__grab" aria-hidden="true"></span>
+            <header class="sp-sheet__head">
+                <h2 class="sp-sheet__title" id="quickAddTitle">Add new</h2>
+                <button class="sp-sheet__close" type="button" data-sp-sheet-dismiss aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
+            </header>
+            <div class="qa-grid">
+                <button type="button" class="qa-tile" data-action="openQuickAdd" data-type="booking">
+                    <span class="qa-tile__icon qa-tile__icon--gold"><i class="ph ph-ticket" aria-hidden="true"></i></span>
+                    <span class="qa-tile__label">Booking</span><span class="qa-tile__hint">A new show</span>
+                </button>
+                <button type="button" class="qa-tile" data-action="openQuickAdd" data-type="income">
+                    <span class="qa-tile__icon qa-tile__icon--in"><i class="ph ph-arrow-down-left" aria-hidden="true"></i></span>
+                    <span class="qa-tile__label">Income</span><span class="qa-tile__hint">Money in</span>
+                </button>
+                <button type="button" class="qa-tile" data-action="openQuickAdd" data-type="expense">
+                    <span class="qa-tile__icon qa-tile__icon--out"><i class="ph ph-arrow-up-right" aria-hidden="true"></i></span>
+                    <span class="qa-tile__label">Expense</span><span class="qa-tile__hint">Money out</span>
+                </button>
+                <button type="button" class="qa-tile" data-action="openQuickAdd" data-type="artists">
+                    <span class="qa-tile__icon qa-tile__icon--sage"><i class="ph ph-microphone-stage" aria-hidden="true"></i></span>
+                    <span class="qa-tile__label">Artist</span><span class="qa-tile__hint">Add to roster</span>
+                </button>
+                <button type="button" class="qa-tile" data-sp-quick="task">
+                    <span class="qa-tile__icon"><i class="ph ph-check-square" aria-hidden="true"></i></span>
+                    <span class="qa-tile__label">Task</span><span class="qa-tile__hint">A to-do</span>
+                </button>
+            </div>
+        </section>
+
+        <section class="sp-sheet sp-sheet--panel" id="spNotifySheet" role="dialog" aria-modal="true" aria-labelledby="spNotifyTitle" hidden>
+            <span class="sp-sheet__grab" aria-hidden="true"></span>
+            <header class="sp-sheet__head">
+                <h2 class="sp-sheet__title" id="spNotifyTitle">Notifications</h2>
+                <button class="sp-sheet__close" type="button" data-sp-sheet-dismiss aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
+            </header>
+            <ul class="nt-list" id="spNotifyList" aria-live="polite"></ul>
+            <p class="nt-empty" id="spNotifyEmpty"><i class="ph ph-bell-simple-slash" aria-hidden="true"></i> You&rsquo;re all caught up.</p>
+        </section>
+
+        <section class="sp-sheet sp-sheet--panel sp-sheet--account" id="spAccountSheet" role="dialog" aria-modal="true" aria-labelledby="spAccountTitle" hidden>
+            <span class="sp-sheet__grab" aria-hidden="true"></span>
+            <header class="acct-head">
+                <img src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="" class="acct-head__avatar" data-sp-profile-avatar width="52" height="52">
+                <div class="acct-head__text">
+                    <h2 class="acct-head__name" id="spAccountTitle" data-sp-profile-name>Manager</h2>
+                    <p class="acct-head__sub">Star Paper workspace</p>
+                </div>
+                <button class="sp-sheet__close" type="button" data-sp-sheet-dismiss aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
+            </header>
+            <div class="acct-list">
+                <button type="button" class="acct-row" data-action="openProfileModal"><i class="ph ph-user-circle" aria-hidden="true"></i><span>Edit profile</span><i class="ph ph-caret-right acct-row__go" aria-hidden="true"></i></button>
+                <button type="button" class="acct-row" data-sp-team><i class="ph ph-users-three" aria-hidden="true"></i><span>Team &amp; messages</span><i class="ph ph-caret-right acct-row__go" aria-hidden="true"></i></button>
+                <button type="button" class="acct-row" data-action="showSection" data-section="tasks"><i class="ph ph-check-square" aria-hidden="true"></i><span>Tasks</span><i class="ph ph-caret-right acct-row__go" aria-hidden="true"></i></button>
+                <button type="button" class="acct-row" data-action="showSection" data-section="settings"><i class="ph ph-gear-six" aria-hidden="true"></i><span>Settings</span><i class="ph ph-caret-right acct-row__go" aria-hidden="true"></i></button>
+                <button type="button" class="acct-row" data-sp-theme-toggle><i class="ph ph-moon-stars" aria-hidden="true"></i><span>Light / dark theme</span><i class="ph ph-swap acct-row__go" aria-hidden="true"></i></button>
+                <button type="button" class="acct-row" data-action="showAboutModal"><i class="ph ph-info" aria-hidden="true"></i><span>About Star Paper</span><i class="ph ph-caret-right acct-row__go" aria-hidden="true"></i></button>
+                <button type="button" class="acct-row acct-row--out" data-action="logout"><i class="ph ph-sign-out" aria-hidden="true"></i><span>Sign out</span></button>
+            </div>
+        </section>
+
         <div class="main-content">
-            <div class="header">
-                <div class="header-left">
-                    <button class="hamburger" id="hamburgerBtn" aria-label="Toggle navigation" aria-expanded="false"><i class="ph ph-list" aria-hidden="true"></i></button>
-                    <button class="app-brand" type="button" data-action="showSection" data-section="dashboard" aria-label="Go to dashboard">
-                        <img src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="Star Paper">
+            <!-- ═══ Top bar: title · search · New · sync · bell · avatar ═══ -->
+            <header class="header topbar">
+                <div class="topbar__title">
+                    <button class="app-brand topbar__mark" type="button" data-action="showSection" data-section="dashboard" aria-label="Go home">
+                        <img class="sp-spin-mark" src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="" width="34" height="34">
                     </button>
-                    <!-- In-app back / forward navigation -->
-                    <div class="nav-hist-wrap" id="navHistWrap">
-                        <button class="nav-hist-btn" id="navBackBtn" aria-label="Go back" title="Go back" disabled>
-                            <i class="ph ph-caret-left sp-csp-style-1" aria-hidden="true"></i>
-                        </button>
-                        <button class="nav-hist-btn" id="navFwdBtn" aria-label="Go forward" title="Go forward" disabled>
-                            <i class="ph ph-caret-right sp-csp-style-1" aria-hidden="true"></i>
-                        </button>
+                    <div class="topbar__heading">
+                        <p class="topbar__greet" id="userName" hidden></p>
+                        <h1 id="pageTitle">Home</h1>
                     </div>
-                    <div class="app-title-icon" id="appTitleIcon" aria-hidden="true"></div>
-                    <h1 id="pageTitle">Overview</h1>
+                    <span class="app-title-icon" id="appTitleIcon" aria-hidden="true" hidden></span>
                 </div>
-                <div class="user-info">
-                    <span class="sp-csp-style-9" id="userName"></span>
-                </div>
-                <div class="sp-sync-indicator" id="spSyncIndicator" title="Cloud sync status" aria-live="polite" aria-label="Cloud idle">
-                    <i class="ph ph-cloud sp-sync-icon" id="spSyncIcon" aria-hidden="true"></i>
-                </div>
-            </div>
-            <!-- Welcome Message -->
-            <div id="welcomeMessage" class="welcome-message sp-csp-style-2">
-                <canvas id="mainstageCoinRainCanvas" aria-hidden="true"></canvas>
-                <div class="sp-csp-style-10">
-                    <div class="sp-csp-style-11">
-                        <h3><span id="welcomeUserName">STAR PAPER</span></h3>
-                        <p>The Manager's Mainstage!</p>
-                        <div class="welcome-search">
-                            <div class="welcome-search-row">
-                                <div class="search-bar">
-                                    <input type="text" id="dashboardSearch" placeholder=" " aria-label="Search anything" autocomplete="off" spellcheck="false">
-                                    <span class="search-center-label" aria-hidden="true">
-                                        <i class="ph ph-magnifying-glass sp-csp-style-12" aria-hidden="true"></i>
-                                        <span>Search anything</span>
-                                    </span>
-                                </div>
-                                <div class="quick-add" id="quickAdd">
-                                    <div class="quick-add-panel" id="quickAddPanel">
-                                        <button type="button" data-action="openQuickAdd" data-type="booking" data-target-section="bookings">+ New Booking</button>
-                                        <button type="button" data-action="openQuickAdd" data-type="expense" data-target-section="expenses">+ New Expense</button>
-                                        <button type="button" data-action="openQuickAdd" data-type="income" data-target-section="otherIncome">+ Other Income</button>
-                                        <button type="button" data-action="openQuickAdd" data-type="artists" data-target-section="artists">+ New Artist</button>
-                                    </div>
-                                    <button class="quick-add-btn" id="quickAddBtn" type="button" aria-label="Quick add">+</button>
-                                </div>
-                            </div>
-                            <div class="search-results" id="dashboardSearchResults" role="listbox" aria-live="polite" aria-label="Search results"></div>
-                        </div>
+
+                <div class="topbar__search welcome-search" role="search">
+                    <div class="search-bar">
+                        <i class="ph ph-magnifying-glass search-bar__icon" aria-hidden="true"></i>
+                        <input type="search" id="dashboardSearch" placeholder="Search bookings, artists, money…" aria-label="Search anything" autocomplete="off" spellcheck="false">
+                        <kbd class="search-bar__kbd" aria-hidden="true">/</kbd>
                     </div>
+                    <div class="search-results" id="dashboardSearchResults" role="listbox" aria-live="polite" aria-label="Search results"></div>
                 </div>
-            </div>
+
+                <div class="topbar__actions">
+                    <button class="tb-new" type="button" data-sp-sheet-open="quickAddPanel" aria-haspopup="dialog">
+                        <i class="ph ph-plus" aria-hidden="true"></i><span>New</span>
+                    </button>
+                    <div class="sp-sync-indicator tb-icon" id="spSyncIndicator" title="Cloud sync status" aria-live="polite" aria-label="Cloud idle">
+                        <i class="ph ph-cloud-check sp-sync-icon" id="spSyncIcon" aria-hidden="true"></i>
+                    </div>
+                    <button class="tb-icon tb-bell" id="spBellBtn" type="button" data-sp-sheet-open="spNotifySheet" aria-haspopup="dialog" aria-label="Notifications">
+                        <i class="ph ph-bell" aria-hidden="true"></i>
+                        <span class="tb-bell__badge" id="spBellBadge" hidden>0</span>
+                    </button>
+                    <button class="tb-avatar" type="button" data-sp-sheet-open="spAccountSheet" aria-haspopup="dialog" aria-label="Account menu">
+                        <img src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="" data-sp-profile-avatar width="36" height="36">
+                    </button>
+                </div>
+            </header>
 
             <!-- Dashboard Section -->
             <div class="section active" id="dashboard">
                 <!-- Smart Nudge Banner -->
-                <div class="nudge-banner sp-csp-style-2" id="nudgeBanner">
+                <div class="nudge-banner" id="nudgeBanner" hidden>
                     <div class="nudge-banner__content">
                         <div class="nudge-banner__icon"><i class="ph ph-warning" aria-hidden="true"></i></div>
                         <div class="nudge-banner__text" id="nudgeBannerText"></div>
@@ -602,7 +644,7 @@
                     <!-- At a Glance - Secondary Supporting Data -->
                     <div class="card dashboard-section-card dashboard-at-glance-card">
                         <div class="mainstage-strip__head">
-                            <h3 class="section-title" data-icon="dashboard">At a Glance (<span id="glancePeriodLabel">Month Year</span>)</h3>
+                            <h3 class="section-title" data-icon="dashboard"><span class="section-title__text">At a Glance (<span id="glancePeriodLabel">Month Year</span>)</span></h3>
                             <div class="mainstage-strip__updated" id="mainstageLiveDate">Updated now</div>
                         </div>
                         <div class="monthly-goal-track">
@@ -624,10 +666,8 @@
                                     <div class="monthly-goal-metric__value" id="monthlyGoalPercent">0%</div>
                                 </div>
                             </div>
-                            <div class="monthly-goal-progress" aria-hidden="true">
-                                <div class="monthly-goal-progress__bar sp-csp-style-13" id="monthlyGoalProgressBar"></div>
-                            </div>
-                            <div class="monthly-goal-editor sp-csp-style-2" id="monthlyGoalEditor">
+                            <svg class="monthly-goal-progress" viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true" focusable="false"><rect class="monthly-goal-progress__bar" id="monthlyGoalProgressBar" x="0" y="0" width="0" height="8"/></svg>
+                            <div class="monthly-goal-editor" id="monthlyGoalEditor" hidden>
                                 <input type="number" id="monthlyGoalInput" min="0" step="1000" placeholder="Enter monthly goal (UGX)" />
                                 <button class="action-btn" type="button" data-action="saveMonthlyRevenueGoal">Save Goal</button>
                                 <button class="back-btn" type="button" data-action="toggleMonthlyGoalEditor">Cancel</button>
@@ -688,7 +728,7 @@
                                         </linearGradient>
                                     </defs>
                                     <!-- Needle (JS-driven transform) -->
-                                    <line class="vg-needle sp-csp-style-15" id="velocityGaugeNeedle"
+                                    <line class="vg-needle" id="velocityGaugeNeedle" transform="rotate(-90 100 100)"
                                         x1="100" y1="100" x2="100" y2="28"
                                         stroke="#FFB300" stroke-width="2.5" stroke-linecap="round"
                                        />
@@ -823,10 +863,8 @@
                                 <div class="monthly-goal-metric__value" id="financialsMonthlyGoalPercent">0%</div>
                             </div>
                         </div>
-                        <div class="monthly-goal-progress" aria-hidden="true">
-                            <div class="monthly-goal-progress__bar sp-csp-style-13" id="financialsMonthlyGoalProgressBar"></div>
-                        </div>
-                        <div class="monthly-goal-editor sp-csp-style-2" id="financialsMonthlyGoalEditor">
+                        <svg class="monthly-goal-progress" viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true" focusable="false"><rect class="monthly-goal-progress__bar" id="financialsMonthlyGoalProgressBar" x="0" y="0" width="0" height="8"/></svg>
+                        <div class="monthly-goal-editor" id="financialsMonthlyGoalEditor" hidden>
                             <input type="number" id="financialsMonthlyGoalInput" min="0" step="1000" placeholder="Enter monthly goal (UGX)" />
                                 <button class="action-btn" type="button" data-action="saveFinancialsMonthlyRevenueGoal">Save Goal</button>
                                 <button class="back-btn" type="button" data-action="toggleFinancialsMonthlyGoalEditor">Cancel</button>
@@ -835,7 +873,7 @@
                 </div>
 
                 <div class="card">
-                    <h3 class="section-title" data-icon="reports">Cashflow (<span id="cashflowPeriodLabel">Month Year</span>)</h3>
+                    <h3 class="section-title" data-icon="reports"><span class="section-title__text">Cashflow (<span id="cashflowPeriodLabel">Month Year</span>)</span></h3>
                     <div class="timeline-list" id="cashFlowTimeline"></div>
                 </div>
 
@@ -850,7 +888,7 @@
                 <div class="sp-tab-panel" id="moneyPanel-expenses">
                 <!-- Removed: FAB button handles this -->
 
-                <div class="card sp-csp-style-2" id="addExpenseForm">
+                <div class="card" id="addExpenseForm" hidden>
                     <h3 class="section-title" data-icon="expenses">New Expense</h3>
                     <div class="form-grid">
                         <div class="form-group">
@@ -906,7 +944,7 @@
                         <div class="receipt-upload">
                             <input type="file" id="expenseReceipt" accept="image/png,image/jpeg,image/webp,image/gif" data-change-action="previewReceipt" />
                         </div>
-                        <img id="receiptPreview" class="receipt-preview sp-csp-style-2" />
+                        <img id="receiptPreview" class="receipt-preview" hidden />
                     </div>
                     <button id="saveExpenseBtn" class="btn-primary" data-action="saveExpense">Save Expense</button>
                     <button class="back-btn" data-action="cancelExpense">Cancel</button>
@@ -939,7 +977,7 @@
                 <div class="sp-tab-panel" id="moneyPanel-otherIncome">
                 <!-- Removed: FAB button handles this -->
 
-                <div class="card sp-csp-style-2" id="addOtherIncomeForm">
+                <div class="card" id="addOtherIncomeForm" hidden>
                     <div class="sp-csp-style-18">
                         <button class="back-btn sp-csp-style-19" data-action="cancelOtherIncome">Back to All Other Income</button>
                         <h3 class="section-title sp-csp-style-19" data-icon="otherIncome">New Other Income</h3>
@@ -1007,7 +1045,7 @@
                         <div class="receipt-upload">
                             <input type="file" id="otherIncomeProof" accept="image/png,image/jpeg,image/webp,image/gif" data-change-action="previewOtherIncomeProof" />
                         </div>
-                        <img id="otherIncomeProofPreview" class="receipt-preview sp-csp-style-2" />
+                        <img id="otherIncomeProofPreview" class="receipt-preview" hidden />
                     </div>
                     <button id="saveOtherIncomeBtn" class="btn-primary" data-action="saveOtherIncome">Save Other Income</button>
                     <button class="back-btn" data-action="cancelOtherIncome">Cancel</button>
@@ -1057,7 +1095,7 @@
                         <button class="add-btn sp-csp-style-21" data-action="exportCSV"><i class="ph ph-file-csv" aria-hidden="true"></i> Export CSV</button>
                         <button class="action-btn sp-csp-style-19" data-action="toggleClosingThoughts">Closing Thoughts</button>
                     </div>
-                    <div class="closing-thoughts-panel sp-csp-style-2" id="closingThoughtsPanel">
+                    <div class="closing-thoughts-panel" id="closingThoughtsPanel" hidden>
                         <label for="closingThoughtsInput">Manager Closing Thoughts (Optional)</label>
                         <textarea id="closingThoughtsInput" rows="4" maxlength="600" data-input-action="updateClosingThoughtsMeta" placeholder="Add final notes for this period. Example: top wins, key risks, and priorities for next month."></textarea>
                         <div class="closing-thoughts-meta">
@@ -1127,7 +1165,7 @@
             <div class="section" id="artists">
                 <!-- Removed: FAB button handles this -->
 
-                <div class="card sp-csp-style-2" id="addArtistForm">
+                <div class="card" id="addArtistForm" hidden>
                     <h3 class="section-title" data-icon="artists">Add New Artist</h3>
                     <div class="form-grid">
                         <div class="form-group">
@@ -1237,7 +1275,7 @@
                 <div class="sp-tab-panel" id="schedulePanel-bookings">
                 <button class="add-btn bookings-list-btn" data-action="showAddBooking">+ Add New Booking</button>
 
-                <div class="card sp-csp-style-2" id="addBookingForm">
+                <div class="card" id="addBookingForm" hidden>
                     <div class="form-header-row">
                         <h3 class="section-title" data-icon="bookings">New Booking</h3>
                         <button class="back-to-list" type="button" data-action="cancelBooking">Back to Bookings</button>
@@ -1310,7 +1348,7 @@
                             <label>District</label>
                             <select id="bookingUgandaLocation"></select>
                         </div>
-                        <div class="form-group sp-csp-style-2" id="abroadLocationGroup">
+                        <div class="form-group" id="abroadLocationGroup" hidden>
                             <label>Country</label>
                             <select id="bookingAbroadLocation"></select>
                         </div>
@@ -1382,7 +1420,7 @@
                     <div class="sp-csp-style-16" id="availabilityResult"></div>
                 </div>
 
-                <div class="card sp-csp-style-2">
+                <div class="card" hidden>
                     <h3 class="section-title" data-icon="calendar">Event Details</h3>
                     <div id="calendarEventDetails">
                         <p class="sp-csp-style-30">Hover a date to see details</p>
@@ -1398,7 +1436,7 @@
                     <div class="task-widget-header sp-csp-style-31">
                         <div class="task-widget-title">
                             <span>Task Board</span>
-                            <span class="task-badge sp-csp-style-9" id="taskBadge">0</span>
+                            <span class="task-badge" id="taskBadge" hidden>0</span>
                         </div>
                         <button class="action-btn" type="button" data-action="clearCompletedTasks">Clear Completed</button>
                     </div>
@@ -1536,7 +1574,7 @@
         </div>
     </div>
 
-    <div class="receipt-modal" id="profileModal">
+    <div class="receipt-modal" id="profileModal" hidden>
         <div class="receipt-modal-content profile-modal-content">
             <button class="close-receipt" data-action="closeProfileModal" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
             <h3 class="section-title" data-icon="dashboard">Edit Profile</h3>
@@ -1546,7 +1584,7 @@
                 </div>
                 <div class="profile-avatar-actions">
                     <label class="action-btn profile-upload-btn" for="profileAvatarUpload">Upload Photo</label>
-                    <input class="sp-csp-style-9" type="file" id="profileAvatarUpload" accept="image/png,image/jpeg,image/webp,image/gif">
+                    <input type="file" id="profileAvatarUpload" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
                 </div>
             </div>
             <div class="profile-avatar-presets" id="profileAvatarPresets">
@@ -1619,7 +1657,7 @@
         </footer>
 
         <!-- BBF Modal -->
-        <div id="spBbfModal" class="sp-modal-overlay sp-csp-style-9" role="dialog" aria-modal="true" aria-labelledby="spBbfModalTitle">
+        <div id="spBbfModal" class="sp-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="spBbfModalTitle" hidden>
           <div class="sp-modal-card sp-csp-style-43">
             <div class="sp-modal-header">
               <h3 id="spBbfModalTitle"><i class="ph ph-wallet" aria-hidden="true"></i> Set Balance Brought Forward</h3>
@@ -1650,7 +1688,7 @@
         </div>
 
         <!-- PDF Export Modal -->
-        <div id="spPdfExportModal" class="sp-modal-overlay sp-csp-style-9">
+        <div id="spPdfExportModal" class="sp-modal-overlay" hidden>
           <div class="sp-modal-card sp-csp-style-44">
             <div class="sp-modal-header">
               <h3><i class="ph ph-file-pdf" aria-hidden="true"></i> Export PDF Report</h3>
@@ -1685,22 +1723,23 @@
           loaded above, and these deferred scripts keep document order:
           Supabase boot wiring is installed before app.js initializes UI helpers.
         -->
-<script src="app.root-shell.js?v=5" defer></script>
+<script src="app.root-shell.js?v=6" defer></script>
 <script src="app.offline-cache.js?v=1"></script>
-<script src="supabase.js?v=96" defer></script>
+<script src="supabase.js?v=97" defer></script>
         <script src="app.migrations.js?v=10"></script>
         <script src="app.actions.js?v=8"></script>
-        <script src="app.todayboard.js?v=2"></script>
-        <script src="app.tasks.js?v=5"></script>
-    <script src="app.reports.js?v=19"></script>
-<script src="app.js?v=148" defer></script>
+        <script src="app.todayboard.js?v=3"></script>
+        <script src="app.tasks.js?v=6"></script>
+    <script src="app.reports.js?v=20"></script>
+<script src="app.js?v=150" defer></script>
 <script src="app.landing.js?v=4" defer></script>
+<script src="app.chrome.js?v=1" defer></script>
 
     <!-- Premium toast stack -->
     <div class="sp-toast-stack" id="spToastStack" aria-live="polite" aria-atomic="false"></div>
 
     <!-- About Modal -->
-    <div class="sp-about-modal sp-csp-style-9" id="spAboutModal" role="dialog" aria-modal="true" aria-label="About Star Paper">
+    <div class="sp-about-modal" id="spAboutModal" role="dialog" aria-modal="true" aria-label="About Star Paper" hidden>
         <div class="sp-modal-backdrop" id="spAboutBackdrop"></div>
         <div class="sp-modal-box">
             <button class="sp-modal-close" id="spAboutClose" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
@@ -1722,7 +1761,7 @@
     </div>
 
     <!-- Admin Settings Modal -->
-    <div class="sp-admin-modal sp-csp-style-9" id="spAdminModal" role="dialog" aria-modal="true" aria-label="Admin Settings">
+    <div class="sp-admin-modal" id="spAdminModal" role="dialog" aria-modal="true" aria-label="Admin Settings" hidden>
         <div class="sp-modal-backdrop" id="spAdminBackdrop"></div>
         <div class="sp-modal-box sp-csp-style-50">
             <button class="sp-modal-close" id="spAdminClose" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
@@ -1750,7 +1789,7 @@
 
     <!-- Command Palette -->
     <div class="sp-palette-backdrop" id="spPaletteBackdrop" aria-hidden="true"></div>
-    <div class="sp-palette sp-csp-style-57" id="spPalette" role="dialog" aria-modal="true" aria-label="Command palette">
+    <div class="sp-palette" id="spPalette" role="dialog" aria-modal="true" aria-label="Command palette" hidden>
         <div class="sp-palette__header">
             <span class="sp-palette__icon"><i class="ph ph-command" aria-hidden="true"></i></span>
             <input class="sp-palette__input" id="spPaletteInput" type="text"
@@ -1772,7 +1811,7 @@
 
     <!-- Keyboard Shortcut Cheat Sheet -->
     <div class="sp-cheatsheet-backdrop" id="spCheatsheetBackdrop" aria-hidden="true"></div>
-    <div class="sp-cheatsheet sp-csp-style-57" id="spCheatsheet" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
+    <div class="sp-cheatsheet" id="spCheatsheet" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" hidden>
         <div class="sp-cheatsheet__header">
             <span class="sp-cheatsheet__title"><i class="ph ph-keyboard" aria-hidden="true"></i> Keyboard Shortcuts</span>
             <button class="sp-cheatsheet__close" id="spCheatsheetClose" aria-label="Close"><i class="ph ph-x" aria-hidden="true"></i></button>
