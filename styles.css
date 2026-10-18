@@ -5185,7 +5185,8 @@ button:hover .icon, .nav-item:hover .nav-icon { color: var(--gold-deep); }
 }
 
 .task-badge {
-  display: none;
+  /* Shown and hidden with the hidden attribute (app.tasks.js updateBadges). */
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   min-width: 20px;
