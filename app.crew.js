@@ -446,7 +446,7 @@
 
     function updateBadges(sum) {
         const n = totalUnread(sum);
-        ['crewBadgeNav', 'crewBadgeSheet'].forEach((id) => {
+        ['crewBadgeNav', 'crewBadgeSheet', 'crewBadgeBottom'].forEach((id) => {
             const b = $(id);
             if (!b) return;
             b.textContent = n > 99 ? '99+' : String(n);
