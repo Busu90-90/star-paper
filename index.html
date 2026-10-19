@@ -6,7 +6,7 @@
     <meta name="star-paper:public-root" content="app-shell">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:;">
     <title>Star Paper</title>
-    <script src="app.browser-assets.js?v=30"></script>
+    <script src="app.browser-assets.js?v=36"></script>
     <script src="app.public-pages.js?v=2"></script>
     <script src="app.boot-head.js?v=2"></script>
     <link rel="manifest" href="manifest.json?v=27">
@@ -30,7 +30,7 @@
     <link rel="stylesheet" href="styles.utilities.css?v=1">
     <!-- Design system: tokens + signed-out pages (landing, auth). Loaded last so it owns those screens. -->
     <link rel="stylesheet" href="sp-design-tokens.css?v=5">
-    <link rel="stylesheet" href="styles.landing.css?v=14">
+    <link rel="stylesheet" href="styles.landing.css?v=20">
     <link rel="stylesheet" href="styles.brand.css?v=1">
     <link rel="stylesheet" href="styles.app.css?v=15">
     <link rel="preload" href="assets/vendor/fonts/font-29-fraunces-latin-opsz-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
@@ -57,6 +57,8 @@
     <!-- ═══ Signed-out: landing (styles.landing.css, app.landing.js) ═══ -->
     <div class="lp lp--home" id="landingScreen" data-page="home">
         <a class="lp-skip" href="#lpMain">Skip to content</a>
+        <!-- House lights: a full-screen wash that plays when the theme switches. -->
+        <div class="lp-house" aria-hidden="true" data-lp-house></div>
         <!-- Stage rig, drawn once: a steel box truss, two LED PARs and a Fresnel key light with barn doors. -->
         <svg class="lp-sprite" aria-hidden="true" focusable="false">
             <defs>
@@ -139,12 +141,12 @@
         </header>
 
         <main class="lp-main" id="lpMain">
+            <!-- One stage rig hangs under the header and lights the whole page, down to the closing panel.
+                 The back wall is brick that only shows where its beams land. -->
+            <div class="lp-wall" aria-hidden="true"><span class="lp-wall__wash lp-wall__wash--l"></span><span class="lp-wall__wash lp-wall__wash--c"></span><span class="lp-wall__wash lp-wall__wash--r"></span><span class="lp-wall__spot"></span></div>
+            <div class="lp-rig" aria-hidden="true"><svg class="lp-rig__truss" focusable="false"><rect x="0" y="0" width="100%" height="28.6" fill="url(#lpTrussBay)"/><use href="#lpRigClamp" x="19%" y="8"/><use href="#lpRigClamp" x="50%" y="8"/><use href="#lpRigClamp" x="81%" y="8"/></svg><span class="lp-rig__spill"></span><span class="lp-rig__glints"></span><span class="lp-rig__beam lp-rig__beam--l"><span class="lp-rig__cone"></span></span><span class="lp-rig__beam lp-rig__beam--c"><span class="lp-rig__cone"></span><span class="lp-rig__dust"></span></span><span class="lp-rig__beam lp-rig__beam--r"><span class="lp-rig__cone"></span></span><svg class="lp-rig__lamp lp-rig__lamp--l" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp" x="-30" y="-8" width="60" height="66"/></svg><svg class="lp-rig__lamp lp-rig__lamp--c" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigFresnel" x="-30" y="-8" width="60" height="66"/></svg><svg class="lp-rig__lamp lp-rig__lamp--r" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp" x="-30" y="-8" width="60" height="66"/></svg><span class="lp-rig__pool"></span></div>
             <!-- lp:show: the hero is a four-slide showcase. Each slide is copy + art; the art blocks are swappable. -->
             <section class="lp-show" id="lpShow" aria-roledescription="carousel" aria-label="Star Paper at a glance" data-lp-show>
-                <!-- One stage rig hangs under the header and lights the whole showcase. -->
-                <!-- The back wall: brick that only shows where the rig's beams land. -->
-                <div class="lp-wall" aria-hidden="true"><span class="lp-wall__wash lp-wall__wash--l"></span><span class="lp-wall__wash lp-wall__wash--c"></span><span class="lp-wall__wash lp-wall__wash--r"></span></div>
-                <div class="lp-rig" aria-hidden="true"><svg class="lp-rig__truss" focusable="false"><rect x="0" y="0" width="100%" height="28.6" fill="url(#lpTrussBay)"/><use href="#lpRigClamp" x="19%" y="8"/><use href="#lpRigClamp" x="50%" y="8"/><use href="#lpRigClamp" x="81%" y="8"/></svg><span class="lp-rig__beam lp-rig__beam--l"><span class="lp-rig__cone"></span></span><span class="lp-rig__beam lp-rig__beam--c"><span class="lp-rig__cone"></span><span class="lp-rig__dust"></span></span><span class="lp-rig__beam lp-rig__beam--r"><span class="lp-rig__cone"></span></span><svg class="lp-rig__lamp lp-rig__lamp--l" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp" x="-30" y="-8" width="60" height="66"/></svg><svg class="lp-rig__lamp lp-rig__lamp--c" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigFresnel" x="-30" y="-8" width="60" height="66"/></svg><svg class="lp-rig__lamp lp-rig__lamp--r" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp" x="-30" y="-8" width="60" height="66"/></svg><span class="lp-rig__pool"></span></div>
                 <div class="lp-show__track" data-lp-track>
 
                     <article class="lp-slide" id="mainstage" role="group" aria-roledescription="slide" aria-label="1 of 4: The mainstage" data-lp-slide>
@@ -275,19 +277,34 @@
             <!-- /lp:show -->
 
             <section class="lp-cta" aria-labelledby="lpCtaTitle">
-                <div class="lp-cta__inner" data-lp-reveal>
+                <div class="lp-cta__inner" data-lp-reveal data-lp-finale>
+                    <!-- The finale: the rig closes in on Start free and the rest of the panel falls into the dark. -->
+                    <div class="lp-finale" aria-hidden="true"><span class="lp-finale__dim"></span></div>
                     <button class="sp-spin-toggle lp-cta__toggle" type="button" aria-pressed="true" aria-label="Pause the spinning logo">
                         <img class="lp-cta__mark sp-spin-mark" src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="" width="72" height="72">
                     </button>
                     <h2 class="lp-h2" id="lpCtaTitle">Your next show deserves <em>a cleaner ledger.</em></h2>
                     <p class="lp-lede">Free to start. Bring your first artist on board today.</p>
+                    <!-- Name in lights: a marquee sign that shows whatever artist the visitor types, saved as a shareable image. -->
+                    <div class="lp-marquee" data-lp-marquee>
+                        <div class="lp-marquee__sign" aria-hidden="true">
+                            <span class="lp-marquee__kicker">Now showing</span>
+                            <span class="lp-marquee__name" data-lp-marquee-name>Your artist</span>
+                            <span class="lp-marquee__kicker">Managed on Star Paper</span>
+                        </div>
+                        <form class="lp-marquee__form" data-lp-marquee-form>
+                            <label class="lp-sr" for="lpMarqueeInput">Whose show is it? Type an artist&rsquo;s name to put it in lights</label>
+                            <input class="lp-input lp-marquee__input" id="lpMarqueeInput" type="text" maxlength="28" autocomplete="off" spellcheck="false" placeholder="Whose show is it?" data-lp-marquee-input>
+                            <button class="lp-btn lp-btn--ghost lp-marquee__save" type="submit"><i class="ph ph-download-simple" aria-hidden="true"></i> Save image</button>
+                        </form>
+                    </div>
                     <ul class="lp-cta__jobs" aria-label="What Star Paper keeps in one ledger">
                         <li><i class="ph ph-calendar-check" aria-hidden="true"></i><span><strong>Bookings</strong> Dates, fees and deposits</span></li>
                         <li><i class="ph ph-currency-circle-dollar" aria-hidden="true"></i><span><strong>Money</strong> Every shilling in and out</span></li>
                         <li><i class="ph ph-users-three" aria-hidden="true"></i><span><strong>Team</strong> One schedule, one task list</span></li>
                     </ul>
                     <div class="lp-cta-row lp-cta-row--center">
-                        <button class="lp-btn lp-btn--gold lp-btn--lg" type="button" data-action="showSignupForm">Start free <i class="ph ph-arrow-right" aria-hidden="true"></i></button>
+                        <button class="lp-btn lp-btn--gold lp-btn--lg" type="button" data-action="showSignupForm" data-lp-finale-target>Start free <i class="ph ph-arrow-right" aria-hidden="true"></i></button>
                         <button class="lp-btn lp-btn--ghost lp-btn--lg" type="button" data-action="showLoginForm">I have an account</button>
                     </div>
                 </div>
@@ -2051,6 +2068,7 @@
 <script src="app.schedule.js?v=1" defer></script>
 <script src="app.crew.js?v=1" defer></script>
 <script src="app.landing.js?v=4" defer></script>
+<script src="app.landing-lights.js?v=4" defer></script>
 <script src="app.chrome.js?v=1" defer></script>
 
     <!-- Premium toast stack -->
