@@ -23,7 +23,7 @@
     var routePath = (url.pathname || '/').replace(/\/+$/, '') || '/';
     var hashToken = decodeURIComponent((url.hash || '').replace(/^#/, '')).trim().split(/[?&/]/)[0].toLowerCase();
     var isAppShellPath = routePath === '/' || routePath === '/index.html';
-    var hasAppHash = isAppShellPath && /^(artists|bookings|calendar|dashboard|expenses|financials|global|money|otherincome|reports|schedule|settings|tasks)$/.test(hashToken);
+    var hasAppHash = isAppShellPath && /^(artists|bookings|calendar|cashflow|dashboard|expenses|financials|global|money|otherincome|receivables|reports|schedule|settings|tasks)$/.test(hashToken);
     if (hasAuthCallback || hasAppHash || marker === 'auth-return') {
       document.documentElement.classList.add('sp-force-boot');
     }
