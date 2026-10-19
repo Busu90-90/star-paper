@@ -67,6 +67,14 @@
         return b;
     }
 
+    // Opens the shared emoji picker (app.pickers.js) for the field with this id.
+    function emojiButton(fieldId) {
+        const b = button('cr-tool cr-emoji-btn', '', { icon: 'ph ph-smiley', title: 'Add emoji', data: { 'sp-emoji-for': fieldId } });
+        b.setAttribute('aria-haspopup', 'dialog');
+        b.setAttribute('aria-expanded', 'false');
+        return b;
+    }
+
     function hue(seed) {
         let h = 0;
         String(seed || '').split('').forEach((c) => { h = (h * 31 + c.charCodeAt(0)) % 6; });
@@ -420,7 +428,7 @@
         const mentioned = Array.isArray(m.mentions) && m.mentions.includes(state.me);
         const text = mentioned ? `${who} mentioned you ${key.startsWith('dm:') ? '' : `in ${conversationTitle(key)}`}`.trim() : `${who} ${where}`;
         toast('Info', `${text}: ${String(m.content || '').slice(0, 80)}`);
-        document.dispatchEvent(new CustomEvent('sp:notify', { detail: { kind: 'message', text } }));
+        document.dispatchEvent(new CustomEvent('sp:notify', { detail: { kind: 'message', text, action: 'openChat', actionId: key } }));
     }
 
     function toast(type, msg) {
@@ -637,7 +645,7 @@
             ta.setAttribute('aria-label', 'Edit message');
             ta.id = 'crEditInput';
             const actions = el('div', 'cr-edit__actions');
-            actions.append(el('span', 'cr-hint', 'Enter to save, Esc to cancel'), button('cr-btn cr-btn--ghost', 'Cancel', { data: { 'cr-cancel-edit': '1' } }));
+            actions.append(emojiButton('crEditInput'), el('span', 'cr-hint', 'Enter to save, Esc to cancel'), button('cr-btn cr-btn--ghost', 'Cancel', { data: { 'cr-cancel-edit': '1' } }));
             const save = el('button', 'cr-btn cr-btn--primary', 'Save');
             save.type = 'submit';
             actions.appendChild(save);
@@ -773,7 +781,7 @@
         sendBtn.type = 'submit';
         sendBtn.setAttribute('aria-label', 'Send');
         sendBtn.appendChild(icon('ph ph-paper-plane-right'));
-        row.append(ta, sendBtn);
+        row.append(emojiButton('crInput'), ta, sendBtn);
         form.appendChild(row);
         const pop = el('div', 'cr-mentions');
         pop.id = 'crMentions';
