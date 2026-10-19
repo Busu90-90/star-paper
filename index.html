@@ -6,7 +6,7 @@
     <meta name="star-paper:public-root" content="app-shell">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:;">
     <title>Star Paper</title>
-    <script src="app.browser-assets.js?v=21"></script>
+    <script src="app.browser-assets.js?v=23"></script>
     <script src="app.public-pages.js?v=2"></script>
     <script src="app.boot-head.js?v=1"></script>
     <link rel="manifest" href="manifest.json?v=27">
@@ -30,7 +30,7 @@
     <link rel="stylesheet" href="styles.utilities.css?v=1">
     <!-- Design system: tokens + signed-out pages (landing, auth). Loaded last so it owns those screens. -->
     <link rel="stylesheet" href="sp-design-tokens.css?v=4">
-    <link rel="stylesheet" href="styles.landing.css?v=12">
+    <link rel="stylesheet" href="styles.landing.css?v=13">
     <link rel="stylesheet" href="styles.brand.css?v=1">
     <link rel="stylesheet" href="styles.app.css?v=9">
     <link rel="preload" href="assets/vendor/fonts/font-29-fraunces-latin-opsz-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
@@ -142,6 +142,8 @@
             <!-- lp:show: the hero is a four-slide showcase. Each slide is copy + art; the art blocks are swappable. -->
             <section class="lp-show" id="lpShow" aria-roledescription="carousel" aria-label="Star Paper at a glance" data-lp-show>
                 <!-- One stage rig hangs under the header and lights the whole showcase. -->
+                <!-- The back wall: brick that only shows where the rig's beams land. -->
+                <div class="lp-wall" aria-hidden="true"><span class="lp-wall__wash lp-wall__wash--l"></span><span class="lp-wall__wash lp-wall__wash--c"></span><span class="lp-wall__wash lp-wall__wash--r"></span></div>
                 <div class="lp-rig" aria-hidden="true"><svg class="lp-rig__truss" focusable="false"><rect x="0" y="0" width="100%" height="28.6" fill="url(#lpTrussBay)"/><use href="#lpRigClamp" x="19%" y="8"/><use href="#lpRigClamp" x="50%" y="8"/><use href="#lpRigClamp" x="81%" y="8"/></svg><span class="lp-rig__beam lp-rig__beam--l"><span class="lp-rig__cone"></span></span><span class="lp-rig__beam lp-rig__beam--c"><span class="lp-rig__cone"></span><span class="lp-rig__dust"></span></span><span class="lp-rig__beam lp-rig__beam--r"><span class="lp-rig__cone"></span></span><svg class="lp-rig__lamp lp-rig__lamp--l" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp" x="-30" y="-8" width="60" height="66"/></svg><svg class="lp-rig__lamp lp-rig__lamp--c" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigFresnel" x="-30" y="-8" width="60" height="66"/></svg><svg class="lp-rig__lamp lp-rig__lamp--r" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp" x="-30" y="-8" width="60" height="66"/></svg><span class="lp-rig__pool"></span></div>
                 <div class="lp-show__track" data-lp-track>
 
