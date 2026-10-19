@@ -1602,3 +1602,187 @@ canvas.is-pin-hover { cursor: pointer; }
 @media (max-width: 560px) {
   #appContainer #schedule .calendar-compact .calendar-day { aspect-ratio: 1; min-height: 0; }
 }
+
+/* ── 18. Artists, Tasks, Settings (B4) ──────────────────────────────────────
+   Artists become compact roster cards (photo beside the name, details
+   below), Tasks get quiet row actions and an inline add form, and Settings
+   drops its duplicate page heading so each preference reads as one row:
+   what it is on the left, the control on the right.                       */
+
+/* Artists: a roster, not a gallery. */
+#appContainer #artists .artist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: var(--sp-space-3);
+}
+#appContainer #artists .artist-card {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  grid-template-areas:
+    "avatar name"
+    "avatar genre"
+    "bio bio"
+    "goal goal"
+    "contact contact"
+    "remove remove";
+  column-gap: var(--sp-space-3);
+  row-gap: 2px;
+  align-items: center;
+  padding: var(--sp-space-4);
+  text-align: left;
+  border: 1px solid var(--sp-line);
+  border-radius: var(--sp-radius-lg);
+  background: var(--sp-surface-2);
+  transition: border-color var(--sp-dur-2) var(--sp-ease-out);
+}
+#appContainer #artists .artist-card:hover,
+#appContainer #artists .artist-card:focus-visible { border-color: var(--sp-line-strong); }
+#appContainer #artists .artist-avatar {
+  grid-area: avatar;
+  width: 56px;
+  height: 56px;
+  margin: 0;
+  font-family: var(--sp-font-display);
+  font-size: var(--sp-text-xl);
+  color: var(--sp-ink-on-gold);
+  background: var(--sp-foil);
+}
+#appContainer #artists .artist-card h4 {
+  grid-area: name;
+  align-self: end;
+  margin: 0;
+  font-family: var(--sp-font-display);
+  font-size: var(--sp-text-lg);
+  color: var(--sp-ink);
+  overflow-wrap: anywhere;
+}
+#appContainer #artists .artist-specialty {
+  grid-area: genre;
+  align-self: start;
+  margin: 0;
+  color: var(--sp-gold-text);
+  font-size: var(--sp-text-sm);
+}
+#appContainer #artists .artist-bio {
+  grid-area: bio;
+  margin: var(--sp-space-3) 0 0;
+  color: var(--sp-ink-2);
+  font-size: var(--sp-text-sm);
+}
+#appContainer #artists .artist-bio--goal {
+  grid-area: goal;
+  margin-top: var(--sp-space-1);
+  color: var(--sp-ink-3);
+}
+#appContainer #artists .artist-contact {
+  grid-area: contact;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-space-1) var(--sp-space-4);
+  margin-top: var(--sp-space-3);
+  padding-top: var(--sp-space-3);
+  border-top: 1px solid var(--sp-line);
+  color: var(--sp-ink-2);
+  font-size: var(--sp-text-sm);
+}
+#appContainer #artists .artist-contact > div { display: inline-flex; align-items: center; gap: var(--sp-space-1); }
+#appContainer #artists .artist-remove-btn {
+  grid-area: remove;
+  justify-self: start;
+  width: auto;
+  min-height: 0;
+  margin-top: var(--sp-space-2);
+  padding: var(--sp-space-1) 0;
+  border: 0;
+  background: none;
+  color: var(--sp-ink-3);
+  font-size: var(--sp-text-xs);
+  box-shadow: none;
+}
+#appContainer #artists .artist-remove-btn:hover { color: var(--sp-out); }
+
+/* Tasks: the board title matches the other card titles, row actions are
+   quiet until you need them, and adding a task is one line on wide screens. */
+#appContainer #tasks .task-widget-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-space-2);
+  font-family: var(--sp-font-display);
+  font-size: var(--sp-text-lg);
+  color: var(--sp-ink);
+}
+#appContainer #tasks .task-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--sp-space-3);
+  padding: var(--sp-space-3) var(--sp-space-1);
+  border-bottom: 1px solid var(--sp-line);
+}
+#appContainer #tasks .task-item:last-child { border-bottom: 0; }
+#appContainer #tasks .task-text { color: var(--sp-ink); font-size: var(--sp-text-md); }
+#appContainer #tasks .task-due { color: var(--sp-ink-3); font-size: var(--sp-text-xs); }
+#appContainer #tasks .task-overdue .task-due { color: var(--sp-out); }
+#appContainer #tasks .task-completed .task-text { color: var(--sp-ink-3); }
+#appContainer #tasks :is(.task-edit, .task-delete) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--sp-tap);
+  min-height: var(--sp-tap);
+  padding: 0 var(--sp-space-2);
+  border: 0;
+  border-radius: var(--sp-radius-pill);
+  background: none;
+  color: var(--sp-ink-3);
+  font-size: var(--sp-text-sm);
+  transition: color var(--sp-dur-1) var(--sp-ease-out), background-color var(--sp-dur-1) var(--sp-ease-out);
+}
+#appContainer #tasks .task-edit:hover { color: var(--sp-gold-text); background: var(--sp-gold-soft); }
+#appContainer #tasks .task-delete:hover { color: var(--sp-out); background: var(--sp-out-soft); }
+#appContainer #tasks .task-delete { font-size: var(--sp-text-lg); }
+@media (min-width: 700px) {
+  #appContainer #tasks .task-input-group {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 190px auto;
+    align-items: center;
+    gap: var(--sp-space-3);
+  }
+  #appContainer #tasks .task-input-group > * { margin: 0; }
+}
+
+/* Settings: the top bar already says "Settings", so the page heading goes
+   and the quick launcher sits on its own; each preference is one row. */
+#appContainer #settings .settings-page-head { display: flex; justify-content: flex-end; margin-bottom: var(--sp-space-3); }
+#appContainer #settings .settings-page-head > div:first-child { display: none; }
+#appContainer #settings .settings-grid { display: grid; gap: var(--sp-space-4); }
+#appContainer #settings .settings-panel { display: grid; gap: var(--sp-space-4); }
+#appContainer #settings .settings-panel-label { margin: 0; }
+#appContainer #settings .settings-profile-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-space-4);
+}
+#appContainer #settings .settings-profile-avatar { width: 56px; height: 56px; margin: 0; }
+#appContainer #settings .settings-profile-name { font-family: var(--sp-font-display); font-size: var(--sp-text-lg); color: var(--sp-ink); }
+#appContainer #settings :is(.settings-profile-email, .settings-profile-bio, .settings-row-sub) { color: var(--sp-ink-3); font-size: var(--sp-text-sm); }
+#appContainer #settings .settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-space-3) var(--sp-space-6);
+  padding-top: var(--sp-space-4);
+  border-top: 1px solid var(--sp-line);
+}
+#appContainer #settings .settings-panel-label + .settings-row { padding-top: 0; border-top: 0; }
+#appContainer #settings .settings-row > div:first-child { flex: 1 1 240px; min-width: 0; }
+#appContainer #settings .settings-row-title { color: var(--sp-ink); font-weight: 600; }
+#appContainer #settings .settings-toggle-group { flex: 0 0 auto; width: auto; min-width: 240px; }
+#appContainer #settings :is(.settings-admin-actions, .settings-account-actions) { display: flex; flex-wrap: wrap; gap: var(--sp-space-3); }
+@media (max-width: 560px) {
+  #appContainer #settings .settings-profile-summary { grid-template-columns: auto minmax(0, 1fr); }
+  #appContainer #settings .settings-inline-action { grid-column: 1 / -1; justify-self: start; }
+  #appContainer #settings .settings-toggle-group { width: 100%; min-width: 0; }
+}
