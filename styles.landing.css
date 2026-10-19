@@ -852,6 +852,50 @@ body.light-theme .lp-art::before {
 
 .lp-show__track { position: relative; z-index: 1; }
 
+/* The follow spot's pool: a warm circle of lit brick where the centre lamp
+   points. app.landing-lights.js moves it (--lp-sx/--lp-sy, wall coordinates)
+   and its bricks are offset by the same amount, so they stay in place. */
+.lp-wall__spot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 360px;
+  height: 360px;
+  translate: var(--lp-sx, 0px) var(--lp-sy, 0px);
+  background:
+    linear-gradient(rgb(255 240 205), rgb(255 240 205)),
+    var(--lp-brick) calc(-1 * var(--lp-sx, 0px)) calc(-1 * var(--lp-sy, 0px)) / var(--lp-brick-size) repeat;
+  background-blend-mode: multiply, normal;
+  mix-blend-mode: screen;
+  -webkit-mask-image: radial-gradient(closest-side, #000 40%, rgb(0 0 0 / 0.6) 68%, transparent);
+  mask-image: radial-gradient(closest-side, #000 40%, rgb(0 0 0 / 0.6) 68%, transparent);
+  opacity: 0;
+  transition: opacity 500ms var(--sp-ease-out);
+  will-change: translate;
+}
+
+.lp-wall__spot.is-on { opacity: 1; }
+
+/* A warm haze over the pool, so the spot reads even on lit brick. */
+.lp-wall__spot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(closest-side, rgb(255 240 205 / 0.4), rgb(255 230 180 / 0.12) 55%, transparent);
+}
+
+body.light-theme .lp-wall__spot {
+  background:
+    linear-gradient(rgb(236 206 140), rgb(236 206 140)),
+    linear-gradient(rgb(255 255 255 / 0.12), rgb(255 255 255 / 0.12)),
+    var(--lp-brick) calc(-1 * var(--lp-sx, 0px)) calc(-1 * var(--lp-sy, 0px)) / var(--lp-brick-size) repeat;
+  background-blend-mode: multiply, normal, normal;
+  mix-blend-mode: multiply;
+}
+
+body.light-theme .lp-wall__spot.is-on { opacity: 0.6; }
+body.light-theme .lp-wall__spot::after { display: none; }
+
 /* Ambient: the wall is only just there in the dark, fading out downwards. */
 .lp-wall::before {
   content: '';
@@ -994,6 +1038,75 @@ body.light-theme .lp-cta__inner {
   overflow: visible;
   filter: drop-shadow(0 6px 10px rgb(0 0 0 / 0.55));
 }
+
+/* On the black stage the truss is dark metal that only shows where the
+   lamps catch it: dimmed, fading into the dark at the edges, with each
+   lamp's colour spilling onto the steel and a few glints twinkling on the
+   chords near the heads. All of it is static apart from the glints' fade. */
+body:not(.light-theme) .lp-rig__truss {
+  filter: brightness(0.42) contrast(1.15) drop-shadow(0 8px 12px rgb(0 0 0 / 0.85));
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
+}
+
+.lp-rig__spill,
+.lp-rig__glints {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  pointer-events: none;
+}
+
+.lp-rig__spill {
+  top: -10px;
+  height: 80px;
+  background:
+    radial-gradient(9% 60% at var(--lp-lamp-l) 55%, rgb(95 211 160 / 0.22), transparent),
+    radial-gradient(11% 70% at var(--lp-lamp-c) 55%, rgb(255 236 190 / 0.26), transparent),
+    radial-gradient(9% 60% at var(--lp-lamp-r) 55%, rgb(110 150 230 / 0.24), transparent);
+  mix-blend-mode: screen;
+}
+
+.lp-rig__glints {
+  top: 2px;
+  height: 34px;
+}
+
+.lp-rig__glints::before,
+.lp-rig__glints::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  mix-blend-mode: screen;
+  animation: lp-glint 2.6s ease-in-out infinite alternate;
+}
+
+.lp-rig__glints::before {
+  background:
+    radial-gradient(2.5px 2.5px at 16.5% 8px, rgb(214 255 234 / 0.95), transparent),
+    radial-gradient(2px 2px at 22% 26px, rgb(214 255 234 / 0.8), transparent),
+    radial-gradient(3px 3px at 47% 8px, rgb(255 246 214 / 0.95), transparent),
+    radial-gradient(2px 2px at 54.5% 26px, rgb(255 246 214 / 0.8), transparent),
+    radial-gradient(2.5px 2.5px at 84% 8px, rgb(214 228 255 / 0.95), transparent);
+}
+
+.lp-rig__glints::after {
+  background:
+    radial-gradient(2px 2px at 20.5% 8px, rgb(214 255 234 / 0.9), transparent),
+    radial-gradient(2.5px 2.5px at 52.5% 8px, rgb(255 246 214 / 0.95), transparent),
+    radial-gradient(2px 2px at 45.5% 26px, rgb(255 246 214 / 0.8), transparent),
+    radial-gradient(2px 2px at 78.5% 26px, rgb(214 228 255 / 0.85), transparent),
+    radial-gradient(2.5px 2.5px at 82% 26px, rgb(214 228 255 / 0.9), transparent);
+  animation-duration: 3.4s;
+  animation-delay: -1.7s;
+}
+
+@keyframes lp-glint {
+  from { opacity: 0.15; }
+  to { opacity: 1; }
+}
+
+body.light-theme :is(.lp-rig__spill, .lp-rig__glints) { display: none; }
 
 .lp-rig__lamp {
   position: absolute;

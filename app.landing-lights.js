@@ -1,6 +1,7 @@
 // Landing stage lights: the visitor runs the rig.
-// - Follow spot: the centre lamp tracks the cursor (or a tap) with an
-//   operator's lag, then drifts back to its sweep.
+// - Follow spot: the centre lamp holds still until the visitor moves, then
+//   stays locked on their cursor or thumb anywhere on the page, throwing a
+//   pool of light on the wall where it points.
 // - Cues: every hero slide has its own lighting state, with a short blackout
 //   between them.
 // - Shadows: the active headline casts a soft shadow away from the lamps.
@@ -42,10 +43,10 @@
     });
   }
 
-  // The idle sweep, matching lp-head-* keyframes (alternate, eased per stop).
+  // The idle sweep of the side lamps, matching lp-head-* keyframes
+  // (alternate, eased per stop).
   var SWEEPS = {
     l: { ms: 4000, delay: 0, stops: [[0, 30], [0.45, -16], [0.6, -16], [1, 8]] },
-    c: { ms: 5000, delay: -2000, stops: [[0, -12], [0.5, 6], [1, 12]] },
     r: { ms: 4500, delay: -4000, stops: [[0, -30], [0.45, 16], [0.6, 16], [1, -8]] }
   };
 
@@ -173,6 +174,9 @@
     var cuesBySlide = ['mainstage', 'how', 'proof', 'voices'];
 
     var inFinale = false;
+    var finaleSince = 0;
+    var spot = wall.querySelector('.lp-wall__spot');
+    var SPOT = 360;
 
     stage.setAttribute('data-lp-lights', '');
     show.setAttribute('data-lp-lights', '');
@@ -188,7 +192,7 @@
     }
 
     function aimAt(pivot, point) {
-      return clamp(-deg(Math.atan2(point.x - pivot.x, Math.max(24, point.y - pivot.y))), -58, 58);
+      return clamp(-deg(Math.atan2(point.x - pivot.x, Math.max(24, point.y - pivot.y))), -70, 70);
     }
 
     function activeSlide() {
@@ -228,13 +232,17 @@
         rig.classList.toggle('is-finale', closing);
         wall.classList.toggle('is-finale', closing);
       }
-      var following = !closing && now - pointer.at < 3500;
+      if (closing && !finaleSince) finaleSince = now;
+      if (!closing) finaleSince = 0;
+      // Once the visitor has moved, the centre lamp is theirs for good. In the
+      // finale it joins the others on Start free until they move again.
+      var following = pointer.at > 0 && !(closing && pointer.at < finaleSince);
       var slide = slides[activeSlide()];
       lamps.l.rate = lamps.c.rate = lamps.r.rate = 3;
       lamps.l.want = lamps.c.want = lamps.r.want = 1;
       lamps.l.target = sweepAt('l', now);
-      lamps.c.target = sweepAt('c', now);
-      lamps.r.target = sweepAt('r', now);
+      // The centre lamp never sways on its own: it rests straight down.
+      lamps.c.target = 0;
 
       if (name === 'how') {
         var moves = slide ? slide.querySelectorAll('.lp-moves li') : [];
@@ -277,10 +285,32 @@
       if (following) {
         lamps.c.target = aimAt(piv.c, pointer);
         lamps.c.want = 1;
-        lamps.c.rate = 7;
-        lamps.l.target += (aimAt(piv.l, pointer) - lamps.l.target) * 0.35;
-        lamps.r.target += (aimAt(piv.r, pointer) - lamps.r.target) * 0.35;
+        lamps.c.rate = 12;
+        lamps.l.target += (aimAt(piv.l, pointer) - lamps.l.target) * 0.2;
+        lamps.r.target += (aimAt(piv.r, pointer) - lamps.r.target) * 0.2;
       }
+      return following;
+    }
+
+    // The pool of light where the follow spot lands: placed along the centre
+    // beam's current angle at the pointer's distance, so it trails the lamp
+    // exactly. Only this one small element moves; its bricks stay put.
+    var spotShown = false;
+    function placeSpot(piv, following, level) {
+      if (!spot) return;
+      if (!following || level < 0.05) {
+        if (spotShown) { spot.classList.remove('is-on'); spotShown = false; }
+        return;
+      }
+      var dx = pointer.x - piv.c.x;
+      var dy = pointer.y - piv.c.y;
+      var dist = Math.max(60, Math.hypot(dx, dy));
+      var rad = lamps.c.aim * Math.PI / 180;
+      var box = wall.getBoundingClientRect();
+      var x = piv.c.x - dist * Math.sin(rad) - box.left - SPOT / 2;
+      var y = piv.c.y + dist * Math.cos(rad) - box.top - SPOT / 2;
+      setVars(spot, { '--lp-sx': Math.round(x) + 'px', '--lp-sy': Math.round(y) + 'px' });
+      if (!spotShown) { spot.classList.add('is-on'); spotShown = true; }
     }
 
     function castShadow(piv, dt) {
@@ -322,7 +352,7 @@
       last = now;
       var piv = pivots();
       setCue(cuesBySlide[activeSlide()] || 'mainstage', now);
-      plan(now, piv);
+      var following = plan(now, piv);
       var m = master(now) * dip(now - dipAt);
       ['l', 'c', 'r'].forEach(function (key, i) {
         var lamp = lamps[key];
@@ -335,6 +365,7 @@
       });
       castShadow(piv, dt);
       slideWashes();
+      placeSpot(piv, following, lamps.c.level);
       ['l', 'c', 'r'].forEach(function (key) {
         dials[key].aim(lamps[key].aim);
         dials[key].level(lamps[key].level);
@@ -376,17 +407,15 @@
       pointer.at = performance.now();
     }
 
-    if (finePointer) {
-      stage.addEventListener('pointermove', function (event) {
-        if (event.pointerType === 'mouse' || event.pointerType === 'pen') steer(event);
-      }, { passive: true });
-    }
-    // On touch, a tap on the stage (not on a control) calls the spot there.
-    stage.addEventListener('pointerdown', function (event) {
-      if (event.pointerType !== 'touch') return;
-      if (event.target.closest && event.target.closest('a, button, input, [data-lp-quote]')) return;
-      steer(event);
+    // Anywhere on the page: the cursor, or a thumb touching or dragging.
+    document.addEventListener('pointermove', function (event) {
+      if (event.pointerType === 'mouse' || event.pointerType === 'pen') steer(event);
     }, { passive: true });
+    function steerTouch(event) {
+      if (event.touches && event.touches[0]) steer(event.touches[0]);
+    }
+    document.addEventListener('touchstart', steerTouch, { passive: true });
+    document.addEventListener('touchmove', steerTouch, { passive: true });
 
     if ('IntersectionObserver' in window) {
       new IntersectionObserver(function (entries) {
