@@ -4,7 +4,8 @@
 // - Cues: every hero slide has its own lighting state, with a short blackout
 //   between them.
 // - Shadows: the active headline casts a soft shadow away from the lamps.
-// - Finale: the three beams close in on Start free in the closing panel.
+// - Finale: the rig shines down the whole page and closes in on Start free
+//   when the closing panel comes into view.
 // - House lights: switching theme plays a lamps-on or house-lights-up cue.
 // - Name in lights: a marquee sign with the visitor's artist, saved as a PNG.
 // Each lamp, beam and wall wash is steered through a paused Web Animation
@@ -113,10 +114,13 @@
 
   // ── Hero rig ────────────────────────────────────────────────────────────
   function setupRig(root) {
+    var stage = root.querySelector('.lp-main');
     var show = root.querySelector('[data-lp-show]');
-    var rig = show && show.querySelector('.lp-rig');
-    var wall = show && show.querySelector('.lp-wall');
-    if (!show || !rig || !wall) return null;
+    var rig = stage && stage.querySelector('.lp-rig');
+    var wall = stage && stage.querySelector('.lp-wall');
+    var finale = root.querySelector('[data-lp-finale]');
+    var finaleTarget = finale && finale.querySelector('[data-lp-finale-target]');
+    if (!stage || !show || !rig || !wall) return null;
     if (typeof rig.animate !== 'function') return null;
     var LAMP_SHADOW = 'drop-shadow(0 8px 10px rgb(0 0 0 / 0.5)) ';
     var SWING = [{ rotate: '-70deg' }, { rotate: '70deg' }];
@@ -136,8 +140,7 @@
           makeDial(lamp, [{ filter: LAMP_SHADOW + 'brightness(0.4)' }, { filter: LAMP_SHADOW + 'brightness(1)' }], 100),
           makeDial(wash, [{ '--lp-lv': '0' }, { '--lp-lv': '1' }], 100),
           makeDial(cone, [{ opacity: 0 }, { opacity: 1 }], 100),
-          makeDial(beam, [{ opacity: 0 }, { opacity: 1 }], 100, '::before'),
-          makeDial(beam, [{ opacity: 0 }, { opacity: 1 }], 100, '::after')
+          makeDial(beam, [{ opacity: 0 }, { opacity: 1 }], 100, '::before')
         ];
         dials[key] = {
           aim: function (deg) { aims.forEach(function (dial) { dial((deg + 70) * 10); }); },
@@ -169,6 +172,9 @@
     var last = 0;
     var cuesBySlide = ['mainstage', 'how', 'proof', 'voices'];
 
+    var inFinale = false;
+
+    stage.setAttribute('data-lp-lights', '');
     show.setAttribute('data-lp-lights', '');
 
     function pivots() {
@@ -216,7 +222,13 @@
 
     function plan(now, piv) {
       var name = cue.name;
-      var following = now - pointer.at < 3500;
+      var closing = Boolean(finaleTarget && finale.classList.contains('is-lit'));
+      if (closing !== inFinale) {
+        inFinale = closing;
+        rig.classList.toggle('is-finale', closing);
+        wall.classList.toggle('is-finale', closing);
+      }
+      var following = !closing && now - pointer.at < 3500;
       var slide = slides[activeSlide()];
       lamps.l.rate = lamps.c.rate = lamps.r.rate = 3;
       lamps.l.want = lamps.c.want = lamps.r.want = 1;
@@ -248,6 +260,16 @@
         lamps.l.target = 36; lamps.r.target = -36;
         lamps.l.want = lamps.r.want = 0.14;
         lamps.c.want = 0.9;
+      }
+
+      // Finale: every lamp swings onto Start free.
+      if (closing) {
+        var button = centreOf(finaleTarget);
+        ['l', 'c', 'r'].forEach(function (key) {
+          lamps[key].target = aimAt(piv[key], button);
+          lamps[key].want = 1;
+          lamps[key].rate = 2.4;
+        });
       }
 
       // The follow spot wins over any cue while the visitor is steering it.
@@ -312,6 +334,7 @@
         lamp.level += (level - lamp.level) * (1 - Math.exp(-dt * 14));
       });
       castShadow(piv, dt);
+      slideWashes();
       ['l', 'c', 'r'].forEach(function (key) {
         dials[key].aim(lamps[key].aim);
         dials[key].level(lamps[key].level);
@@ -325,6 +348,16 @@
       }
       requestAnimationFrame(frame);
     }
+
+    // Keeps the screen-tall washes over the part of the wall on screen.
+    var washHeight = 0;
+    function slideWashes() {
+      var box = wall.getBoundingClientRect();
+      if (!washHeight) washHeight = wall.querySelector('.lp-wall__wash').offsetHeight || window.innerHeight;
+      var off = clamp(-box.top, 0, Math.max(0, box.height - washHeight));
+      setVars(wall, { '--lp-off': Math.round(off) + 'px' });
+    }
+    window.addEventListener('resize', function () { washHeight = 0; }, { passive: true });
 
     function sync() {
       var should = visible && !document.hidden;
@@ -344,12 +377,12 @@
     }
 
     if (finePointer) {
-      show.addEventListener('pointermove', function (event) {
+      stage.addEventListener('pointermove', function (event) {
         if (event.pointerType === 'mouse' || event.pointerType === 'pen') steer(event);
       }, { passive: true });
     }
     // On touch, a tap on the stage (not on a control) calls the spot there.
-    show.addEventListener('pointerdown', function (event) {
+    stage.addEventListener('pointerdown', function (event) {
       if (event.pointerType !== 'touch') return;
       if (event.target.closest && event.target.closest('a, button, input, [data-lp-quote]')) return;
       steer(event);
@@ -359,7 +392,7 @@
       new IntersectionObserver(function (entries) {
         visible = entries[entries.length - 1].isIntersecting;
         sync();
-      }).observe(show);
+      }).observe(stage);
     }
     document.addEventListener('visibilitychange', sync);
     show.setAttribute('data-lp-cue', cue.name);
@@ -376,27 +409,22 @@
     };
   }
 
-  // ── Finale: three beams close in on Start free ──────────────────────────
+  // ── Finale: the rig closes in on Start free ─────────────────────────────
+  // This marks the panel lit while Start free is well into view; setupRig
+  // swings the lamps onto it, and the panel dims around the button.
   function setupFinale(root) {
     var panel = root.querySelector('[data-lp-finale]');
     var target = panel && panel.querySelector('[data-lp-finale-target]');
     if (!panel || !target) return;
-    var PCT = { l: 0.12, c: 0.5, r: 0.88 };
 
     function measure() {
       var box = panel.getBoundingClientRect();
       if (!box.width) return;
       var t = centreOf(target);
-      var x = t.x - box.left;
-      var y = t.y - box.top;
-      var out = { '--lp-fin-x': x.toFixed(0) + 'px', '--lp-fin-y': y.toFixed(0) + 'px' };
-      ['l', 'c', 'r'].forEach(function (key) {
-        var px = box.width * PCT[key];
-        var aim = -deg(Math.atan2(x - px, Math.max(24, y)));
-        out['--lp-fin-' + key] = aim.toFixed(2) + 'deg';
-        out['--lp-fin-len-' + key] = Math.hypot(x - px, y).toFixed(0) + 'px';
+      setVars(panel, {
+        '--lp-fin-x': (t.x - box.left).toFixed(0) + 'px',
+        '--lp-fin-y': (t.y - box.top).toFixed(0) + 'px'
       });
-      setVars(panel, out);
     }
 
     panel.setAttribute('data-lp-lights', '');

@@ -148,6 +148,7 @@ body.light-theme .lp {
 }
 
 .lp-main {
+  position: relative;
   display: block;
 }
 
@@ -869,29 +870,34 @@ body.light-theme .lp-art::before {
   --lp-tint: 247 243 232;
   /* Half the beam's spread, from its width over the drop below the lens
      (never under 12deg, so tall phone stages still show some brick). */
-  --lp-half: max(12deg, atan2(calc(var(--lp-spread) * 100cqw), calc(100cqh - var(--lp-lens))));
+  --lp-half: max(var(--lp-half-min), atan2(calc(var(--lp-spread) * 100cqw), calc(100cqh - var(--lp-lens))));
+  --lp-half-min: 12deg;
   --lp-spread: 0.39;
-  --lp-wedge: conic-gradient(from calc(180deg + var(--lp-aim) - var(--lp-half)) at var(--lp-x) var(--lp-pivot),
+  /* --lp-off: how far down the wall this wash starts (see "Light controller"). */
+  --lp-py: calc(var(--lp-pivot) - var(--lp-off, 0px));
+  --lp-wedge: conic-gradient(from calc(180deg + var(--lp-aim) - var(--lp-half)) at var(--lp-x) var(--lp-py),
     transparent 0deg,
     rgb(0 0 0 / 0.75) calc(var(--lp-half) * 0.55),
     #000 var(--lp-half),
     rgb(0 0 0 / 0.75) calc(var(--lp-half) * 1.45),
     transparent calc(var(--lp-half) * 2),
     transparent 360deg);
+  /* The wall runs the length of the page and fades out above the footer. */
+  --lp-end: linear-gradient(180deg, #000 calc(100cqh - 260px - var(--lp-off, 0px)), transparent calc(100cqh - var(--lp-off, 0px)));
   /* Brightest just under the lamp, easing off down the wall. */
-  --lp-throw: radial-gradient(120% 100% at var(--lp-x) var(--lp-pivot), #000 0%, rgb(0 0 0 / 0.78) 45%, rgb(0 0 0 / 0.4) 100%);
+  --lp-throw: radial-gradient(120cqw 100cqh at var(--lp-x) var(--lp-py), #000 0%, rgb(0 0 0 / 0.78) 45%, rgb(0 0 0 / 0.4) 100%);
   position: absolute;
   inset: 0;
   background:
     linear-gradient(rgb(var(--lp-tint)), rgb(var(--lp-tint))),
-    var(--lp-brick) 0 0 / var(--lp-brick-size) repeat;
+    var(--lp-brick) 0 calc(-1 * var(--lp-off, 0px)) / var(--lp-brick-size) repeat;
   background-blend-mode: multiply, normal;
   mix-blend-mode: screen;
   --lp-wash-o: 0.48;
   opacity: calc(var(--lp-wash-o) * var(--lp-lv, 1));
-  -webkit-mask-image: var(--lp-wedge), var(--lp-throw);
+  -webkit-mask-image: var(--lp-wedge), var(--lp-throw), var(--lp-end);
   -webkit-mask-composite: source-in;
-  mask-image: var(--lp-wedge), var(--lp-throw);
+  mask-image: var(--lp-wedge), var(--lp-throw), var(--lp-end);
   mask-composite: intersect;
 }
 
@@ -932,7 +938,7 @@ body.light-theme .lp-wall__wash {
   background:
     linear-gradient(rgb(var(--lp-tint)), rgb(var(--lp-tint))),
     linear-gradient(rgb(255 255 255 / 0.12), rgb(255 255 255 / 0.12)),
-    var(--lp-brick) 0 0 / var(--lp-brick-size) repeat;
+    var(--lp-brick) 0 calc(-1 * var(--lp-off, 0px)) / var(--lp-brick-size) repeat;
   background-blend-mode: multiply, normal, normal;
   mix-blend-mode: multiply;
   --lp-wash-o: 0.6;
@@ -958,10 +964,14 @@ body:not(.light-theme) .lp-header.is-scrolled {
   background: rgb(2 3 3 / 0.82);
 }
 
+/* The closing panel is see-through, so the rig's beams and the lit brick
+   carry on behind it. */
 body:not(.light-theme) .lp-cta__inner {
-  background:
-    radial-gradient(60% 80% at 50% 0%, rgb(217 180 90 / 0.16), transparent 70%),
-    #050706;
+  background: rgb(2 3 3 / 0.4);
+}
+
+body.light-theme .lp-cta__inner {
+  background: rgb(245 248 245 / 0.55);
 }
 
 /* Phones stack the copy over the beams, so keep the small print readable. */
@@ -1010,8 +1020,9 @@ body:not(.light-theme) .lp-cta__inner {
 .lp-rig__lamp--c { left: var(--lp-lamp-c); color: #FFFDF4; animation: lp-head-c 5s var(--sp-ease-in-out) -2s infinite alternate; }
 .lp-rig__lamp--r { left: var(--lp-lamp-r); rotate: -16deg; color: #A9C2F5; animation: lp-head-r 4.5s var(--sp-ease-in-out) -4s infinite alternate; }
 
-/* A beam is a blurred wrapper around a clipped cone, so the cone's edges
-   come out soft instead of razor-cut. */
+/* A beam is a wrapper around a cone whose soft edges come from a fixed
+   conic mask (no blur filter: blurring a page-tall beam every frame is
+   heavy). The mask is drawn once; swinging the beam just rotates it. */
 .lp-rig__beam {
   --lp-beam-core: 255 246 207;
   --lp-beam-tint: 217 180 90;
@@ -1020,8 +1031,8 @@ body:not(.light-theme) .lp-cta__inner {
   bottom: 0;
   translate: -50% 0;
   transform-origin: 50% calc(var(--lp-pivot) - var(--lp-lens));
-  filter: blur(7px);
   mix-blend-mode: screen;
+  container-type: size;
 }
 
 /* In light mode pale light can't show on a light page, so the rig hangs
@@ -1037,7 +1048,11 @@ body.light-theme .lp-rig__pool { mix-blend-mode: multiply; opacity: 0.9; }
 .lp-rig__cone {
   position: absolute;
   inset: 0;
-  clip-path: polygon(46.5% 0, 53.5% 0, 100% 100%, 0 100%);
+  --lp-cone-h: atan2(50cqw, 108cqh);
+  -webkit-mask-image: conic-gradient(from calc(180deg - var(--lp-cone-h)) at 50% -8cqh,
+    transparent 0deg, #000 calc(var(--lp-cone-h) * 0.3), #000 calc(var(--lp-cone-h) * 1.7), transparent calc(var(--lp-cone-h) * 2), transparent 360deg);
+  mask-image: conic-gradient(from calc(180deg - var(--lp-cone-h)) at 50% -8cqh,
+    transparent 0deg, #000 calc(var(--lp-cone-h) * 0.3), #000 calc(var(--lp-cone-h) * 1.7), transparent calc(var(--lp-cone-h) * 2), transparent 360deg);
   background: linear-gradient(180deg,
     rgb(var(--lp-beam-core) / 0.66) 0%,
     rgb(var(--lp-beam-tint) / 0.30) 22%,
@@ -1046,10 +1061,8 @@ body.light-theme .lp-rig__pool { mix-blend-mode: multiply; opacity: 0.9; }
     rgb(var(--lp-beam-tint) / 0.02) 100%);
 }
 
-/* Like a real rig: light spills on the backdrop right under each head, and
-   every beam lands as its own soft pool that travels with the sweep. */
-.lp-rig__beam::before,
-.lp-rig__beam::after {
+/* Like a real rig: light spills on the backdrop right under each head. */
+.lp-rig__beam::before {
   content: '';
   position: absolute;
   left: 50%;
@@ -1064,20 +1077,16 @@ body.light-theme .lp-rig__pool { mix-blend-mode: multiply; opacity: 0.9; }
   background: radial-gradient(50% 50% at 50% 30%, rgb(var(--lp-beam-tint) / 0.34), rgb(var(--lp-beam-tint) / 0.1) 55%, transparent 75%);
 }
 
-.lp-rig__beam::after {
-  bottom: -26px;
-  width: 62%;
-  height: 72px;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgb(var(--lp-beam-core) / 0.4), rgb(var(--lp-beam-tint) / 0.18) 60%, transparent);
-}
-
 /* A brighter hot core down the middle of each cone. */
 .lp-rig__cone::after {
   content: '';
   position: absolute;
   inset: 0;
-  clip-path: polygon(48.8% 0, 51.2% 0, 68% 100%, 32% 100%);
+  --lp-core-h: atan2(18cqw, 108cqh);
+  -webkit-mask-image: conic-gradient(from calc(180deg - var(--lp-core-h)) at 50% -8cqh,
+    transparent 0deg, #000 calc(var(--lp-core-h) * 0.6), #000 calc(var(--lp-core-h) * 1.4), transparent calc(var(--lp-core-h) * 2), transparent 360deg);
+  mask-image: conic-gradient(from calc(180deg - var(--lp-core-h)) at 50% -8cqh,
+    transparent 0deg, #000 calc(var(--lp-core-h) * 0.6), #000 calc(var(--lp-core-h) * 1.4), transparent calc(var(--lp-core-h) * 2), transparent 360deg);
   background: linear-gradient(180deg, rgb(var(--lp-beam-core) / 0.62), rgb(var(--lp-beam-core) / 0.12) 55%, rgb(var(--lp-beam-core) / 0.02));
 }
 
@@ -1114,11 +1123,23 @@ body.light-theme .lp-rig__pool { mix-blend-mode: multiply; opacity: 0.9; }
   animation: lp-head-r 4.5s var(--sp-ease-in-out) -4s infinite alternate;
 }
 
-/* Haze: dust motes drifting through the main beam. */
+/* Haze: dust motes drifting through the main beam. The motes sit on a layer
+   one tile taller than the beam that slides up by a tile, so the drift is a
+   plain move and never repaints the beam. */
 .lp-rig__dust {
   position: absolute;
   inset: 0;
+  overflow: hidden;
   clip-path: polygon(46.5% 0, 53.5% 0, 100% 100%, 0 100%);
+}
+
+.lp-rig__dust::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: calc(100% + 460px);
   background-image:
     radial-gradient(1.6px 1.6px at 46% 12%, rgb(255 246 207 / 0.9), transparent),
     radial-gradient(1.2px 1.2px at 55% 26%, rgb(255 246 207 / 0.8), transparent),
@@ -1127,8 +1148,9 @@ body.light-theme .lp-rig__pool { mix-blend-mode: multiply; opacity: 0.9; }
     radial-gradient(1.5px 1.5px at 30% 68%, rgb(255 246 207 / 0.6), transparent),
     radial-gradient(1.2px 1.2px at 71% 80%, rgb(255 246 207 / 0.6), transparent),
     radial-gradient(1.6px 1.6px at 50% 92%, rgb(255 246 207 / 0.5), transparent);
-  background-size: 100% 50%;
+  background-size: 100% 460px;
   animation: lp-dust 16s linear infinite;
+  will-change: translate;
 }
 
 /* The light lands: a pool on the floor that mixes all three colours. */
@@ -1161,8 +1183,8 @@ body.light-theme .lp-rig__pool { mix-blend-mode: multiply; opacity: 0.9; }
 }
 
 @keyframes lp-dust {
-  from { background-position: 0 0; }
-  to { background-position: 0 -100%; }
+  from { translate: 0 0; }
+  to { translate: 0 -460px; }
 }
 
 /* The side heads sweep out wide, cross over the centre, hold, then return;
@@ -1220,12 +1242,22 @@ body.light-theme .lp-rig__pool { mix-blend-mode: multiply; opacity: 0.9; }
   initial-value: 1;
 }
 
-.lp-show[data-lp-lights] :is(.lp-rig__lamp, .lp-rig__beam, .lp-rig__cone, .lp-wall__wash) {
+.lp-main[data-lp-lights] :is(.lp-rig__lamp, .lp-rig__beam, .lp-rig__cone, .lp-wall__wash) {
   animation: none;
 }
 
 /* Turning heads stay on their own layers, so a new angle never repaints them. */
-.lp-show[data-lp-lights] :is(.lp-rig__lamp, .lp-rig__beam) { will-change: rotate; }
+.lp-main[data-lp-lights] :is(.lp-rig__lamp, .lp-rig__beam) { will-change: rotate; }
+
+/* The wall runs the length of the page, but repainting its masked washes
+   that tall every frame is heavy. So each wash is one screen tall and rides
+   down the wall with the scroll (--lp-off), its wedge and bricks offset to
+   match, and only the part of the wall on screen is ever painted. */
+.lp-main[data-lp-lights] .lp-wall__wash {
+  bottom: auto;
+  height: 100lvh;
+  translate: 0 var(--lp-off, 0px);
+}
 
 /* Real shadows: the headline throws one onto the wall, away from the light. */
 .lp-show[data-lp-lights] .lp-slide[data-active] .lp-display {
@@ -1300,10 +1332,11 @@ body.light-theme .lp-show[data-lp-lights] .lp-slide[data-active] .lp-display {
 }
 
 /* ── Finale ────────────────────────────────────────────────────────────────
-   The closing panel has its own three lamps. They hang wide and low until
-   the panel comes into view, then close in to one tight spot on Start free
-   while the rest of the panel falls back into the dark. Angles and the
-   button's position (--lp-fin-*) come from app.landing-lights.js. */
+   The same rig that lights the hero shines on down the page. When the
+   closing panel comes into view, app.landing-lights.js swings all three
+   lamps onto Start free and narrows their cones to one tight spot, while
+   the rest of the panel falls back into the dark. The button's position
+   (--lp-fin-x/y) comes from app.landing-lights.js too. */
 .lp-cta__inner > :not(.lp-finale) {
   position: relative;
   z-index: 1;
@@ -1327,33 +1360,31 @@ body.light-theme .lp-show[data-lp-lights] .lp-slide[data-active] .lp-display {
   transition: opacity 1200ms var(--sp-ease-in-out);
 }
 
-.lp-finale__beam {
-  --lp-tint: 255 246 207;
-  --lp-wide: 0deg;
-  position: absolute;
-  top: -12px;
-  width: 64%;
-  height: calc(var(--lp-len, 480px) + 90px);
-  translate: -50% 0;
-  transform-origin: 50% 0;
-  rotate: var(--lp-wide);
-  clip-path: polygon(48.5% 0, 51.5% 0, 100% 100%, 0 100%);
-  background: linear-gradient(180deg, rgb(var(--lp-tint) / 0.55), rgb(var(--lp-tint) / 0.22) 70%, rgb(var(--lp-tint) / 0.08));
-  filter: blur(8px);
-  mix-blend-mode: screen;
-  opacity: 0.3;
-  transition: rotate 1400ms var(--sp-ease-in-out), width 1400ms var(--sp-ease-in-out), opacity 900ms var(--sp-ease-out);
+@property --lp-spread {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0.39;
 }
 
-.lp-finale__beam--l { left: 12%; --lp-wide: 34deg; --lp-tint: 95 211 160; --lp-len: var(--lp-fin-len-l); }
-.lp-finale__beam--c { left: 50%; --lp-len: var(--lp-fin-len-c); }
-.lp-finale__beam--r { left: 88%; --lp-wide: -34deg; --lp-tint: 110 150 230; --lp-len: var(--lp-fin-len-r); }
+@property --lp-wash-o {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0.48;
+}
+
+@property --lp-half-min {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 12deg;
+}
+
+.lp-rig__cone { transition: scale 1400ms var(--sp-ease-in-out); }
+.lp-wall__wash { transition: --lp-spread 1400ms var(--sp-ease-in-out), --lp-half-min 1400ms var(--sp-ease-in-out), --lp-wash-o 1400ms var(--sp-ease-in-out); }
+.lp-wall.is-finale .lp-wall__wash { --lp-spread: 0.06; --lp-half-min: 3deg; --lp-wash-o: 0.95; }
+.lp-rig.is-finale .lp-rig__cone { scale: 0.4 1; }
+.lp-rig.is-finale .lp-rig__beam--c .lp-rig__cone { scale: 0.3 1; }
 
 [data-lp-finale].is-lit .lp-finale__dim { opacity: 1; }
-[data-lp-finale].is-lit .lp-finale__beam { width: 20%; opacity: 0.85; }
-[data-lp-finale].is-lit .lp-finale__beam--l { rotate: var(--lp-fin-l, 0deg); transition-delay: 0ms, 0ms, 0ms; }
-[data-lp-finale].is-lit .lp-finale__beam--c { rotate: var(--lp-fin-c, 0deg); width: 14%; opacity: 1; transition-delay: 200ms; }
-[data-lp-finale].is-lit .lp-finale__beam--r { rotate: var(--lp-fin-r, 0deg); transition-delay: 100ms; }
 
 .lp .lp-btn--gold[data-lp-finale-target] {
   transition: background-position var(--sp-dur-4) var(--sp-ease-out), transform var(--sp-dur-2) var(--sp-ease-out), box-shadow 1200ms var(--sp-ease-in-out);
@@ -1363,11 +1394,6 @@ body.light-theme .lp-show[data-lp-lights] .lp-slide[data-active] .lp-display {
   box-shadow: 0 0 0 1px rgb(255 240 200 / 0.55), 0 0 46px 8px rgb(255 214 120 / 0.42), inset 0 1px 0 rgb(255 255 255 / 0.45);
 }
 
-body.light-theme .lp-finale__beam { mix-blend-mode: multiply; }
-body.light-theme .lp-finale__beam--c { --lp-tint: 200 160 70; }
-body.light-theme .lp-finale__beam--l { --lp-tint: 40 160 110; }
-body.light-theme .lp-finale__beam--r { --lp-tint: 40 64 140; }
-body.light-theme [data-lp-finale].is-lit .lp-finale__beam { opacity: 0.5; }
 body.light-theme .lp-finale__dim {
   background: radial-gradient(circle at var(--lp-fin-x, 50%) var(--lp-fin-y, 85%), rgb(255 246 214 / 0.5) 0 70px, transparent 170px, rgb(24 52 36 / 0.16) 560px);
 }
