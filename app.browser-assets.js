@@ -60,13 +60,13 @@
     ]],
     ['1', ['app.offline-cache.js']],
     ['3', ['app.todayboard.js']],
-    ['32', ['app.browser-assets.js']],
+    ['33', ['app.browser-assets.js']],
     ['2', ['app.boot-head.js']],
     ['3', ['app.money.js']],
     ['3', ['app.home.js']],
     ['1', ['assets/fonts/checks.woff2', 'app.charts.js', 'app.finance-ui.js', 'app.artists.js', 'app.schedule.js', 'app.crew.js']],
     ['2', ['app.insights.js']],
-    ['16', ['styles.landing.css']],
+    ['17', ['styles.landing.css']],
     ['2', ['assets/landing/brick-wall.webp']],
     ['1', ['styles.brand.css', 'app.chrome.js']],
     ['15', ['styles.app.css']],
@@ -107,7 +107,7 @@
     ['64', ['styles.css']],
     ['100', ['supabase.js']],
     ['158', ['app.js']],
-    ['212', ['sw.js']]
+    ['213', ['sw.js']]
   ];
 
   const assetVersions = {};

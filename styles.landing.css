@@ -942,6 +942,28 @@ body.light-theme .lp-wall__wash--c { --lp-tint: 236 206 140; }
 body.light-theme .lp-wall__wash--l { --lp-tint: 150 214 180; }
 body.light-theme .lp-wall__wash--r { --lp-tint: 150 166 214; }
 
+/* Black stage (dark theme): the house is dark, so the page is pitch black and
+   the brick exists only where a beam lands on it. The washes come up a touch
+   to make up for losing the ambient wall. */
+body:not(.light-theme) .lp {
+  background: #020303;
+}
+
+body:not(.light-theme) .lp-wall::before { opacity: 0; }
+
+body:not(.light-theme) .lp-wall__wash { --lp-wash-o: 0.56; }
+body:not(.light-theme) .lp-wall__wash--c { --lp-wash-o: 0.6; }
+
+body:not(.light-theme) .lp-header.is-scrolled {
+  background: rgb(2 3 3 / 0.82);
+}
+
+body:not(.light-theme) .lp-cta__inner {
+  background:
+    radial-gradient(60% 80% at 50% 0%, rgb(217 180 90 / 0.16), transparent 70%),
+    #050706;
+}
+
 /* Phones stack the copy over the beams, so keep the small print readable. */
 @media (max-width: 599px) {
   body.light-theme .lp-wall__wash { --lp-wash-o: 0.45; }
