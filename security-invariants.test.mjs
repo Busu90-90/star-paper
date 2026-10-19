@@ -206,7 +206,7 @@ test('third-party script loaders and deploy preflight pin browser supply-chain c
   const preflight = read('./scripts/preflight.mjs');
   const fontCss = read('./assets/vendor/fonts/star-paper-fonts.css');
   const styles = read('./styles.css');
-  const tokensCss = read('./star-paper-tokens.css');
+  const utilitiesCss = read('./styles.utilities.css');
   const supabaseSdk = assets.runtimeScript('supabase');
 
   assert.ok(index.includes(`href="${supabaseSdk.src}"`));
@@ -233,7 +233,7 @@ test('third-party script loaders and deploy preflight pin browser supply-chain c
   assert.match(publicPageManifest, /SP_PUBLIC_PAGES/);
   assert.match(bootHead, /SP_PUBLIC_PAGES/);
   assert.doesNotMatch(bootHead, /var\s+publicRoutes\s*=\s*\{/);
-  assert.match(bootFlags, /applyPolishFlagsBeforePaint/);
+  assert.match(bootFlags, /applyLogoSpinBeforePaint/);
   assert.match(bootBody, /forceBootForAuthOrAppRoutes/);
   assert.doesNotMatch(index, /setupDeferredLibraries/);
   assert.doesNotMatch(index, /wireCriticalButtons/);
@@ -250,7 +250,7 @@ test('third-party script loaders and deploy preflight pin browser supply-chain c
   assert.doesNotMatch(index, /fonts\.googleapis\.com|fonts\.gstatic\.com/);
   assert.doesNotMatch(headers, /fonts\.googleapis\.com|fonts\.gstatic\.com/);
   assert.doesNotMatch(styles, /fonts\.googleapis\.com|fonts\.gstatic\.com/);
-  assert.doesNotMatch(tokensCss, /fonts\.googleapis\.com|fonts\.gstatic\.com/);
+  assert.doesNotMatch(utilitiesCss, /fonts\.googleapis\.com|fonts\.gstatic\.com/);
   assert.match(fontCss, /font-family: 'Montserrat'/);
   assert.match(fontCss, /font-family: 'Space Mono'/);
   assert.doesNotMatch(fontCss, /https?:\/\//);

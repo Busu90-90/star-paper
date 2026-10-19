@@ -125,23 +125,13 @@ Owns:
 
 The land data lookup order is local asset, then built-in continent fallback. The local asset and the vendored `assets/vendor/` globe modules should stay in the service worker app shell list so the globe remains sharp when public CDN access is blocked. The globe module is presentation-only; it must not change Supabase booking queries, schema shape, or the underlying self-hosted Three.js scene/data pipeline.
 
-### `app.shell.js`
-
-Owns:
-
-- refined app-shell class toggles
-- the `localStorage.sp_shell_refined_off` kill switch
-- runtime polish classes for app-owned cards, primary actions, and in-app links
-
-The shell relayer is additive and gated by `html.sp-shell-refined`. It must also respect `sp_prem_off` and `sp_handcraft_off`, because those switches are intended to disable premium/handcrafted visual relayering across the app shell.
-
 ### `app.boot-head.js`, `app.boot-flags.js`, and `app.boot-body.js`
 
 Own:
 
 - canonical legacy-host redirect cleanup
 - public landing route isolation before the app shell renders
-- prepaint premium/handcraft/shell kill-switch classes
+- prepaint logo-spin preference
 - initial body theme classes
 - auth-callback and app-route boot-loader forcing
 
@@ -157,19 +147,18 @@ Own the intentionally public landing-page boot path:
 
 - app-route hash stripping on public landing URLs
 - public section hash stripping and manual scroll restoration for top-of-page landing loads
-- prepaint premium/handcraft kill-switch class setup
 - initial body theme class setup
 - landing theme-toggle binding
 
 These files replace the old inline scripts in `how-it-works.html`, `proof.html`, and `testimonials.html`. Public landing pages must not contain inline script blocks, inline style blocks, or inline style attributes, and their document CSP must not allow `'unsafe-inline'`. Keep `frame-ancestors 'none'` in `_headers`; do not put it in meta CSP because browsers ignore it there.
 
-Signed-out pages use the `.lp` design-system shell (`lp lp--home` on `index.html`, `lp lp--page` on the public pages, `lp lp-auth` for sign-in). They scroll normally with the window (no mandatory scroll-snap), share one header (with a mobile menu sheet) and footer, and use cross-document view transitions between public pages. Screens and auth panels switch with the `hidden` attribute (`setActiveScreen`, `showAuthPanel`), never inline `style.display`. Public pages load only `sp-design-tokens.css`, `styles.landing.css` and the regular Phosphor sheet; the globe (Three.js), premium/shell layers and the fill/duotone icon sheets load only once the app shell is active. Links from the home hero must target `how-it-works.html` without `#landing-features` so the browser cannot skip the hero on first paint.
+Signed-out pages use the `.lp` design-system shell (`lp lp--home` on `index.html`, `lp lp--page` on the public pages, `lp lp-auth` for sign-in). They scroll normally with the window (no mandatory scroll-snap), share one header (with a mobile menu sheet) and footer, and use cross-document view transitions between public pages. Screens and auth panels switch with the `hidden` attribute (`setActiveScreen`, `showAuthPanel`), never inline `style.display`. Public pages load only `sp-design-tokens.css`, `styles.landing.css` and the regular Phosphor sheet; the globe (Three.js) and the fill/duotone icon sheets load only once the app shell is active. Links from the home hero must target `how-it-works.html` without `#landing-features` so the browser cannot skip the hero on first paint.
 
 ### `app.root-shell.js`
 
 Owns:
 
-- deferred Sentry, Chart.js, jsPDF, globe, premium, and shell module loading
+- deferred Sentry, Chart.js, jsPDF, and globe module loading
 - the local-development cold-start guard
 - the `file://` local-file warning
 - the capture-phase root-shell `data-action` bridge
@@ -484,13 +473,12 @@ When shipping auth, sync, reports, or boot changes, deploy matching versions of:
 - `app.reports.js`
 - `app.tasks.js`
 - `app.globe.js`
-- `app.shell.js`
 - `app.boot-head.js`
 - `app.boot-flags.js`
 - `app.boot-body.js`
 - `app.root-shell.js`
 - `styles.css`
-- `styles.shell.css`
+- `styles.utilities.css`
 - `sp-design-tokens.css`
 - `styles.landing.css`
 - `index.html`
