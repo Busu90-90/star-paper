@@ -30,7 +30,7 @@ matters most, whether that's the primary action or the money you're looking at.
 - **Money is never colour-only.** Every amount carries a sign (+/−) or arrow, which matters for colour-blind readers.
 - **No violet.** The music cue comes from the record motif (the logo, groove texture and stage lights), not from a second accent colour.
 - **The hero art is always a night stage**, even in the light theme, where it becomes a dark panel on the sage page.
-- **The light theme is Sage**, a grey-green stage (`#D9E3DA`) with near-white cards (`#F5F8F5`) and forest ink. It's mid-tone on purpose: the stage beams turn into deeper emerald, amber and gold washes that still read on it, and it stays clear of a cream "paper" look.
+- **The light theme is Sage**, a grey-green stage (`#D9E3DA`) with near-white cards (`#F5F8F5`) and forest ink. It's mid-tone on purpose: the stage beams turn into deeper emerald, amber and navy washes that still read on it, and it stays clear of a cream "paper" look.
 
 ### Contrast (WCAG 2.2)
 
@@ -79,8 +79,8 @@ Every text pair passes AA (4.5:1).
 - **Story slides:** four slides in one horizontal scroll-snap track: Mainstage, How it works, Proof, Voices.
   - A connected stepper sits under the slides. Seen steps fill gold, and the active step shows a progress bar that drives auto-advance.
   - Phones show dots with a "2 / 4" counter.
-- **Stage rig:** one SVG truss spans the full width under the header with three moving-head lamps (emerald, warm white, gold) whose beams fall through the whole showcase; in light mode it sits behind the slides so text stays readable, and its beams become deeper coloured washes. Each slide's art is swappable (`<figure class="lp-art lp-art--*">`).
-  - The beams are coloured like a real show: emerald stage-left, warm white key light in the centre, gold stage-right. These are the brand's three lights (money in, ivory, foil); the pool on the floor mixes all three.
+- **Stage rig:** one SVG truss spans the full width under the header with three moving-head lamps (emerald, warm white, sapphire) whose beams fall through the whole showcase; in light mode it sits behind the slides so text stays readable, and its beams become deeper coloured washes. Each slide's art is swappable (`<figure class="lp-art lp-art--*">`).
+  - The beams are coloured like a real show: emerald stage-left, warm white key light in the centre (amber in light mode), sapphire stage-right (navy in light mode). No two beams share a colour, so the stage never reads as two gold lights; the pool on the floor mixes all three.
   - Each head and its beam pivot on the same yoke point and share one animation, so they sweep together: the side heads swing out wide, cross over the centre, hold, then return. Reduced motion leaves them still.
 - **Buttons:**
   - `lp-btn--gold` is solid foil, the single primary per view.
