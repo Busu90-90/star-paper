@@ -775,7 +775,7 @@ body.light-theme .lp-header.is-scrolled {
   .lp-tab__bar { left: 4px; right: 4px; bottom: 6px; }
 }
 
-/* Stage rig: an SVG steel box truss with three PAR-can lamps (sprite in
+/* Stage rig: an SVG steel box truss with two LED PARs and a Fresnel (sprite in
    index.html), and three soft volumetric beams. The beams sit ABOVE the
    cards (screen blend), so the light reads as passing through the glass and
    falls all the way to the floor of the slide. The art panel is always a
@@ -814,7 +814,8 @@ body.light-theme .lp-art::before {
   --lp-lamp-l: 19%;
   --lp-lamp-c: 50%;
   --lp-lamp-r: 81%;
-  --lp-lens: 62px;
+  --lp-pivot: 31px;
+  --lp-lens: calc(var(--lp-pivot) + 54px);
   position: absolute;
   inset: 0 calc(50% - 50vw);
   z-index: 3;
@@ -824,30 +825,37 @@ body.light-theme .lp-art::before {
 /* The rig hangs right under the header and its beams fall through the whole
    showcase, so the slides start below the lamps. */
 .lp-show {
-  padding-top: 88px;
+  padding-top: 116px;
 }
 
 .lp-rig__truss {
   position: absolute;
-  top: 10px;
+  top: 2px;
   left: 0;
   width: 100%;
-  height: 18px;
+  height: 34px;
+  overflow: visible;
   filter: drop-shadow(0 6px 10px rgb(0 0 0 / 0.55));
 }
 
 .lp-rig__lamp {
   position: absolute;
-  top: 16px;
-  width: 52px;
-  height: 58px;
-  margin-left: -26px;
+  top: calc(var(--lp-pivot) - 2px);
+  width: 68px;
+  height: 75px;
+  margin-left: -34px;
   overflow: visible;
   filter: drop-shadow(0 8px 10px rgb(0 0 0 / 0.5));
 }
 
-/* Moving heads: each lamp and its beam pivot on the same point (the yoke, 18px
-   below the rig top) and run the same animation, so the head and its light
+@media (max-width: 599px) {
+  .lp-rig { --lp-lens: calc(var(--lp-pivot) + 42px); }
+  .lp-show { padding-top: 104px; }
+  .lp-rig__lamp { width: 52px; height: 57px; margin-left: -26px; }
+}
+
+/* Moving heads: each lamp and its beam pivot on the same point (the yoke bolt
+   under its truss clamp, --lp-pivot below the rig top) and run the same animation, so the head and its light
    always sweep together. Colours: emerald stage-left, warm white centre,
    sapphire stage-right, so no two lights read as the same gold. */
 .lp-rig__lamp { transform-origin: 50% 2px; }
@@ -864,7 +872,7 @@ body.light-theme .lp-art::before {
   top: var(--lp-lens);
   bottom: 0;
   translate: -50% 0;
-  transform-origin: 50% calc(18px - var(--lp-lens));
+  transform-origin: 50% calc(var(--lp-pivot) - var(--lp-lens));
   filter: blur(7px);
   mix-blend-mode: screen;
 }
@@ -890,6 +898,32 @@ body.light-theme .lp-rig__pool { mix-blend-mode: multiply; opacity: 0.9; }
     rgb(var(--lp-beam-tint) / 0.15) 58%,
     rgb(var(--lp-beam-tint) / 0.06) 88%,
     rgb(var(--lp-beam-tint) / 0.02) 100%);
+}
+
+/* Like a real rig: light spills on the backdrop right under each head, and
+   every beam lands as its own soft pool that travels with the sweep. */
+.lp-rig__beam::before,
+.lp-rig__beam::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  translate: -50% 0;
+  pointer-events: none;
+}
+
+.lp-rig__beam::before {
+  top: -40px;
+  width: min(300px, 46%);
+  height: 220px;
+  background: radial-gradient(50% 50% at 50% 30%, rgb(var(--lp-beam-tint) / 0.34), rgb(var(--lp-beam-tint) / 0.1) 55%, transparent 75%);
+}
+
+.lp-rig__beam::after {
+  bottom: -26px;
+  width: 62%;
+  height: 72px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(var(--lp-beam-core) / 0.4), rgb(var(--lp-beam-tint) / 0.18) 60%, transparent);
 }
 
 /* A brighter hot core down the middle of each cone. */

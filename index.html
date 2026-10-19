@@ -30,7 +30,7 @@
     <link rel="stylesheet" href="styles.utilities.css?v=1">
     <!-- Design system: tokens + signed-out pages (landing, auth). Loaded last so it owns those screens. -->
     <link rel="stylesheet" href="sp-design-tokens.css?v=4">
-    <link rel="stylesheet" href="styles.landing.css?v=10">
+    <link rel="stylesheet" href="styles.landing.css?v=11">
     <link rel="stylesheet" href="styles.brand.css?v=1">
     <link rel="stylesheet" href="styles.app.css?v=8">
     <link rel="preload" href="assets/vendor/fonts/font-29-fraunces-latin-opsz-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
@@ -57,29 +57,63 @@
     <!-- ═══ Signed-out: landing (styles.landing.css, app.landing.js) ═══ -->
     <div class="lp lp--home" id="landingScreen" data-page="home">
         <a class="lp-skip" href="#lpMain">Skip to content</a>
-        <!-- Stage rig, drawn once: a steel box truss with three PAR-can lamps. Each slide reuses it. -->
+        <!-- Stage rig, drawn once: a steel box truss, two LED PARs and a Fresnel key light with barn doors. -->
         <svg class="lp-sprite" aria-hidden="true" focusable="false">
             <defs>
                 <linearGradient id="lpSteel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9BA79E"/><stop offset=".35" stop-color="#4C5A50"/><stop offset=".6" stop-color="#1E2822"/><stop offset="1" stop-color="#5E6C62"/></linearGradient>
                 <linearGradient id="lpCan" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#11170F"/><stop offset=".45" stop-color="#3A463C"/><stop offset=".6" stop-color="#58665A"/><stop offset="1" stop-color="#0D120F"/></linearGradient>
                 <radialGradient id="lpLens" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFFBE6"/><stop offset=".45" stop-color="#F6E68A"/><stop offset="1" stop-color="#B8862B"/></radialGradient>
                 <radialGradient id="lpBloom" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFF6CF" stop-opacity=".9"/><stop offset=".4" stop-color="#F6E68A" stop-opacity=".35"/><stop offset="1" stop-color="#F6E68A" stop-opacity="0"/></radialGradient>
+                <!-- Truss bay: front and back chords with lattice, so the rig reads as a real box truss. -->
+                <pattern id="lpTrussBay" width="26" height="22" patternUnits="userSpaceOnUse" patternTransform="scale(1.3)">
+                    <rect x="0" y="1.5" width="26" height="2" fill="#2B352E"/><rect x="0" y="14.5" width="26" height="2" fill="#2B352E"/>
+                    <path d="M0 16.5 L13 3.5 L26 16.5" fill="none" stroke="#2E3830" stroke-width="1"/>
+                    <path d="M1 5 V19" stroke="#55635A" stroke-width="1.3"/>
+                    <path d="M0 7.5 L13 17 L26 7.5" fill="none" stroke="#8A978D" stroke-width="1.4" stroke-linejoin="round"/>
+                    <rect x="0" y="4" width="26" height="3.6" fill="url(#lpSteel)"/><rect x="0" y="17" width="26" height="3.6" fill="url(#lpSteel)"/>
+                    <path d="M0 4.6 H26 M0 17.6 H26" stroke="#DCE5DE" stroke-width=".7" opacity=".55"/>
+                </pattern>
+                <!-- Half-coupler clamp that hangs a fixture off the bottom chord. -->
+                <g id="lpRigClamp">
+                    <rect x="-5.5" y="14" width="11" height="9" rx="2" fill="#161D18" stroke="#6E7C72" stroke-width=".9"/>
+                    <circle cx="0" cy="18.5" r="1.7" fill="#9BA79E"/>
+                    <path d="M-5.5 16 H-8 M5.5 16 H8" stroke="#6E7C72" stroke-width="1.6" stroke-linecap="round"/>
+                </g>
+                <!-- LED PAR: yoke, finned can, flared bezel and a face of coloured diodes. -->
                 <symbol id="lpRigLamp" viewBox="-30 -8 60 66">
-                    <path d="M-20 -6 V8 M20 -6 V8 M-20 -6 H20" fill="none" stroke="url(#lpSteel)" stroke-width="3.5" stroke-linecap="round"/>
-                    <circle cx="-20" cy="8" r="3" fill="#2A342D" stroke="#7D8A80" stroke-width="1"/><circle cx="20" cy="8" r="3" fill="#2A342D" stroke="#7D8A80" stroke-width="1"/>
-                    <rect x="-17" y="2" width="34" height="38" rx="7" fill="url(#lpCan)" stroke="#6E7C72" stroke-width=".8"/>
-                    <path d="M-15 10 H15 M-15 16 H15 M-15 22 H15" stroke="#0A0F0C" stroke-width="1.2" opacity=".7"/>
-                    <path d="M-19 38 H19 L23 44 H-23 Z" fill="#1A221C" stroke="#58665A" stroke-width=".8"/>
-                    <ellipse cx="0" cy="45" rx="17" ry="4.5" fill="url(#lpLens)"/>
-                    <ellipse cx="0" cy="45" rx="17" ry="4.5" fill="currentColor" fill-opacity=".55"/>
-                    <ellipse cx="0" cy="47" rx="28" ry="12" fill="url(#lpBloom)"/>
-                    <ellipse cx="0" cy="47" rx="24" ry="10" fill="currentColor" fill-opacity=".22"/>
+                    <path d="M-21 -6 V13 M21 -6 V13 M-21 -6 H21" fill="none" stroke="url(#lpSteel)" stroke-width="3.6" stroke-linecap="round"/>
+                    <circle cx="0" cy="-6" r="2.4" fill="#2A342D" stroke="#9BA79E" stroke-width=".8"/>
+                    <rect x="-18" y="0" width="36" height="33" rx="6" fill="url(#lpCan)" stroke="#6E7C72" stroke-width=".8"/>
+                    <path d="M-16 5 H16 M-16 9 H16 M-16 13 H16 M-16 17 H16 M-16 21 H16 M-16 25 H16" stroke="#070B08" stroke-width="1.3" opacity=".75"/>
+                    <path d="M-16 6.2 H16 M-16 10.2 H16 M-16 14.2 H16 M-16 18.2 H16 M-16 22.2 H16 M-16 26.2 H16" stroke="#8A978D" stroke-width=".5" opacity=".45"/>
+                    <circle cx="-21" cy="13" r="3.8" fill="#1A221C" stroke="#7D8A80" stroke-width="1"/><circle cx="-21" cy="13" r="1.3" fill="#9BA79E"/>
+                    <circle cx="21" cy="13" r="3.8" fill="#1A221C" stroke="#7D8A80" stroke-width="1"/><circle cx="21" cy="13" r="1.3" fill="#9BA79E"/>
+                    <path d="M-19 31 H19 L23 39 H-23 Z" fill="#141B16" stroke="#58665A" stroke-width=".8"/>
+                    <ellipse cx="0" cy="42" rx="21.5" ry="7" fill="#0A0E0B" stroke="#4C5A50" stroke-width="1"/>
+                    <ellipse cx="0" cy="42.2" rx="18" ry="5.4" fill="currentColor" fill-opacity=".28"/>
+                    <g fill="currentColor"><circle cx="-9.2" cy="39.6" r="1.45"/><circle cx="-4.6" cy="39.6" r="1.45"/><circle cx="0.0" cy="39.6" r="1.45"/><circle cx="4.6" cy="39.6" r="1.45"/><circle cx="9.2" cy="39.6" r="1.45"/><circle cx="-13.8" cy="42.2" r="1.45"/><circle cx="-9.2" cy="42.2" r="1.45"/><circle cx="-4.6" cy="42.2" r="1.45"/><circle cx="0.0" cy="42.2" r="1.45"/><circle cx="4.6" cy="42.2" r="1.45"/><circle cx="9.2" cy="42.2" r="1.45"/><circle cx="13.8" cy="42.2" r="1.45"/><circle cx="-9.2" cy="44.8" r="1.45"/><circle cx="-4.6" cy="44.8" r="1.45"/><circle cx="0.0" cy="44.8" r="1.45"/><circle cx="4.6" cy="44.8" r="1.45"/><circle cx="9.2" cy="44.8" r="1.45"/></g>
+                    <g fill="#FFFFFF" fill-opacity=".85"><circle cx="-9.2" cy="39.6" r=".55"/><circle cx="-4.6" cy="39.6" r=".55"/><circle cx="0.0" cy="39.6" r=".55"/><circle cx="4.6" cy="39.6" r=".55"/><circle cx="9.2" cy="39.6" r=".55"/><circle cx="-13.8" cy="42.2" r=".55"/><circle cx="-9.2" cy="42.2" r=".55"/><circle cx="-4.6" cy="42.2" r=".55"/><circle cx="0.0" cy="42.2" r=".55"/><circle cx="4.6" cy="42.2" r=".55"/><circle cx="9.2" cy="42.2" r=".55"/><circle cx="13.8" cy="42.2" r=".55"/><circle cx="-9.2" cy="44.8" r=".55"/><circle cx="-4.6" cy="44.8" r=".55"/><circle cx="0.0" cy="44.8" r=".55"/><circle cx="4.6" cy="44.8" r=".55"/><circle cx="9.2" cy="44.8" r=".55"/></g>
+                    <ellipse cx="0" cy="47" rx="27" ry="11" fill="url(#lpBloom)" opacity=".55"/>
                 </symbol>
-                <symbol id="lpRigTruss" viewBox="0 0 600 30" preserveAspectRatio="none">
-                    <rect x="0" y="2" width="600" height="5" rx="2.5" fill="url(#lpSteel)"/>
-                    <rect x="0" y="22" width="600" height="5" rx="2.5" fill="url(#lpSteel)"/>
-                    <path d="M0 7 L15 22 L30 7 L45 22 L60 7 L75 22 L90 7 L105 22 L120 7 L135 22 L150 7 L165 22 L180 7 L195 22 L210 7 L225 22 L240 7 L255 22 L270 7 L285 22 L300 7 L315 22 L330 7 L345 22 L360 7 L375 22 L390 7 L405 22 L420 7 L435 22 L450 7 L465 22 L480 7 L495 22 L510 7 L525 22 L540 7 L555 22 L570 7 L585 22 L600 7" fill="none" stroke="#6E7C72" stroke-width="1.6" stroke-linejoin="round"/>
-                    <path d="M0 3.2 H600 M0 23.2 H600" stroke="#D7E0D9" stroke-width=".8" opacity=".55"/>
+                <!-- Fresnel key light: yoke, vented body, glass lens and four-leaf barn doors. -->
+                <symbol id="lpRigFresnel" viewBox="-30 -8 60 66">
+                    <path d="M-21 -6 V13 M21 -6 V13 M-21 -6 H21" fill="none" stroke="url(#lpSteel)" stroke-width="3.6" stroke-linecap="round"/>
+                    <circle cx="0" cy="-6" r="2.4" fill="#2A342D" stroke="#9BA79E" stroke-width=".8"/>
+                    <rect x="-17" y="0" width="34" height="30" rx="4" fill="url(#lpCan)" stroke="#6E7C72" stroke-width=".8"/>
+                    <path d="M-11 4 V12 M-7 4 V12 M-3 4 V12 M1 4 V12 M5 4 V12 M9 4 V12" stroke="#070B08" stroke-width="1.6" stroke-linecap="round" opacity=".8"/>
+                    <path d="M-15 18 H15" stroke="#8A978D" stroke-width=".6" opacity=".5"/>
+                    <circle cx="-21" cy="13" r="3.8" fill="#1A221C" stroke="#7D8A80" stroke-width="1"/><circle cx="-21" cy="13" r="1.3" fill="#9BA79E"/>
+                    <circle cx="21" cy="13" r="3.8" fill="#1A221C" stroke="#7D8A80" stroke-width="1"/><circle cx="21" cy="13" r="1.3" fill="#9BA79E"/>
+                    <path d="M-20 29 L-30 44 L-26.5 46 L-17.5 34 Z" fill="#141B16" stroke="#4C5A50" stroke-width=".8"/>
+                    <path d="M20 29 L30 44 L26.5 46 L17.5 34 Z" fill="#141B16" stroke="#4C5A50" stroke-width=".8"/>
+                    <rect x="-20" y="28" width="40" height="6" rx="1.5" fill="#1A221C" stroke="#58665A" stroke-width=".8"/>
+                    <ellipse cx="0" cy="40" rx="17" ry="5" fill="url(#lpLens)"/>
+                    <ellipse cx="0" cy="40" rx="17" ry="5" fill="currentColor" fill-opacity=".45"/>
+                    <ellipse cx="0" cy="40" rx="11.5" ry="3.3" fill="none" stroke="#FFFFFF" stroke-width=".6" opacity=".55"/>
+                    <ellipse cx="0" cy="40" rx="6" ry="1.7" fill="none" stroke="#FFFFFF" stroke-width=".6" opacity=".7"/>
+                    <path d="M-16 35 H16 L18 37 H-18 Z" fill="#141B16" opacity=".9"/>
+                    <ellipse cx="0" cy="45" rx="28" ry="12" fill="url(#lpBloom)"/>
+                    <ellipse cx="0" cy="45" rx="23" ry="9" fill="currentColor" fill-opacity=".2"/>
                 </symbol>
             </defs>
         </svg>
@@ -108,7 +142,7 @@
             <!-- lp:show: the hero is a four-slide showcase. Each slide is copy + art; the art blocks are swappable. -->
             <section class="lp-show" id="lpShow" aria-roledescription="carousel" aria-label="Star Paper at a glance" data-lp-show>
                 <!-- One stage rig hangs under the header and lights the whole showcase. -->
-                <div class="lp-rig" aria-hidden="true"><svg class="lp-rig__truss" viewBox="0 0 600 30" preserveAspectRatio="none" focusable="false"><use href="#lpRigTruss"/></svg><span class="lp-rig__beam lp-rig__beam--l"><span class="lp-rig__cone"></span></span><span class="lp-rig__beam lp-rig__beam--c"><span class="lp-rig__cone"></span><span class="lp-rig__dust"></span></span><span class="lp-rig__beam lp-rig__beam--r"><span class="lp-rig__cone"></span></span><svg class="lp-rig__lamp lp-rig__lamp--l" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--c" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><svg class="lp-rig__lamp lp-rig__lamp--r" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp"/></svg><span class="lp-rig__pool"></span></div>
+                <div class="lp-rig" aria-hidden="true"><svg class="lp-rig__truss" focusable="false"><rect x="0" y="0" width="100%" height="28.6" fill="url(#lpTrussBay)"/><use href="#lpRigClamp" x="19%" y="8"/><use href="#lpRigClamp" x="50%" y="8"/><use href="#lpRigClamp" x="81%" y="8"/></svg><span class="lp-rig__beam lp-rig__beam--l"><span class="lp-rig__cone"></span></span><span class="lp-rig__beam lp-rig__beam--c"><span class="lp-rig__cone"></span><span class="lp-rig__dust"></span></span><span class="lp-rig__beam lp-rig__beam--r"><span class="lp-rig__cone"></span></span><svg class="lp-rig__lamp lp-rig__lamp--l" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp" x="-30" y="-8" width="60" height="66"/></svg><svg class="lp-rig__lamp lp-rig__lamp--c" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigFresnel" x="-30" y="-8" width="60" height="66"/></svg><svg class="lp-rig__lamp lp-rig__lamp--r" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp" x="-30" y="-8" width="60" height="66"/></svg><span class="lp-rig__pool"></span></div>
                 <div class="lp-show__track" data-lp-track>
 
                     <article class="lp-slide" id="mainstage" role="group" aria-roledescription="slide" aria-label="1 of 4: The mainstage" data-lp-slide>
