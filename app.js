@@ -174,12 +174,14 @@ const SP_ROUTE_APP_SECTIONS = new Set([
     'artists',
     'bookings',
     'calendar',
+    'cashflow',
     'dashboard',
     'expenses',
     'financials',
     'global',
     'money',
     'otherIncome',
+    'receivables',
     'reports',
     'schedule',
     'settings',
@@ -636,6 +638,8 @@ function getSectionIconMarkup(iconKey) {
             artists:    'ph-microphone-stage',
             bookings:   'ph-calendar-check',
             financials: 'ph-chart-bar',
+            cashflow:   'ph-chart-line-up',
+            receivables:'ph-hand-coins',
             expenses:   'ph-receipt',
             tour:       'ph-globe',
             global:     'ph-globe-hemisphere-east',
@@ -4473,7 +4477,7 @@ function showLoginForm(options = {}) {
             }
         }
 
-        const SP_MONEY_TAB_IDS = new Set(['financials', 'expenses', 'otherIncome', 'reports']);
+        const SP_MONEY_TAB_IDS = new Set(['financials', 'cashflow', 'receivables', 'expenses', 'otherIncome', 'reports']);
         const SP_SCHEDULE_TAB_IDS = new Set(['global', 'bookings', 'calendar']);
         const SP_APP_SECTION_IDS = new Set(['dashboard', 'money', 'schedule', 'artists', 'tasks', 'settings', ...SP_MONEY_TAB_IDS, ...SP_SCHEDULE_TAB_IDS]);
 
@@ -4952,11 +4956,11 @@ function showLoginForm(options = {}) {
             section = normalizeAppSection(section);
             // Map sub-sections to their parent section div
             const PARENT_MAP = {
-                financials: 'money', expenses: 'money', otherIncome: 'money', reports: 'money',
+                financials: 'money', cashflow: 'money', receivables: 'money', expenses: 'money', otherIncome: 'money', reports: 'money',
                 global: 'schedule', bookings: 'schedule', calendar: 'schedule'
             };
             const NAV_SECTION_MAP = {
-                financials: 'money', expenses: 'money', otherIncome: 'money', reports: 'money',
+                financials: 'money', cashflow: 'money', receivables: 'money', expenses: 'money', otherIncome: 'money', reports: 'money',
                 global: 'schedule', bookings: 'schedule', calendar: 'schedule'
             };
 
@@ -5030,6 +5034,8 @@ function showLoginForm(options = {}) {
                 'dashboard':  'Home',
                 'money':      'Money',
                 'financials': 'Money',
+                'cashflow':   'Money',
+                'receivables':'Money',
                 'artists':    'Artists',
                 'schedule':   'Schedule',
                 'global':     'Schedule',
@@ -5051,14 +5057,8 @@ function showLoginForm(options = {}) {
             document.title = `Star Paper | ${nextTitle}`;
 
             const dataHydrationPending = window.__spDataHydrationPending === true;
-            if (section === 'financials') {
-                activateMoneyTab('financials');
-            } else if (section === 'expenses') {
-                activateMoneyTab('expenses');
-            } else if (section === 'otherIncome') {
-                activateMoneyTab('otherIncome');
-            } else if (section === 'reports') {
-                activateMoneyTab('reports');
+            if (isMoneyTabSection(section)) {
+                activateMoneyTab(section);
             } else if (section === 'global') {
                 activateScheduleTab('global');
             } else if (section === 'bookings') {
@@ -5077,6 +5077,8 @@ function showLoginForm(options = {}) {
                 } else if (section === 'financials') {
                     updateDashboard();
                     renderPerformanceMap();
+                } else if (section === 'cashflow' || section === 'receivables') {
+                    updateDashboard();
                 } else if (section === 'expenses') {
                     renderExpenses();
                 } else if (section === 'otherIncome') {
@@ -8013,12 +8015,16 @@ function showLoginForm(options = {}) {
             return String(entry?.status || 'received').toLowerCase() === 'received';
         }
 
-        // Home (app.home.js) draws its charts from these same rules.
+        // Home (app.home.js) and the Money tabs (app.money.js) draw their charts from these same rules.
         window.SPMoney = {
             isEarningBooking,
             getBookingCollected,
             isReceivedOtherIncome,
-            getMonthlyGoal: () => getCurrentMonthlyRevenueGoal()
+            getMonthlyGoal: () => getCurrentMonthlyRevenueGoal(),
+            getBBF: () => {
+                const context = getActiveBBFContext();
+                return { amount: Math.round(Number(context?.amount) || 0), label: context?.periodLabel || '' };
+            }
         };
 
         function getCurrentMonthData() {
@@ -8552,6 +8558,7 @@ function showLoginForm(options = {}) {
             // Update velocity gauge
             updateVelocityGauge();
             window.SPHome?.render?.();
+            window.SPMoneyPages?.render?.();
 
             // Delay chart rendering to ensure DOM is ready
             setTimeout(() => {
