@@ -2261,3 +2261,70 @@ body.light-theme #appContainer .spc-grad--area .spc-s0 { stop-opacity: 0.24; }
 #appContainer #settings .sp-target__field input { flex: 1 1 auto; min-width: 0; font-family: var(--sp-font-money); }
 #appContainer #settings .sp-target__unit { color: var(--sp-ink-3); font-size: var(--sp-text-xs); font-weight: 600; }
 #appContainer #settings .sp-targets__actions { display: flex; flex-wrap: wrap; grid-column: 1 / -1; gap: var(--sp-space-2); }
+
+/* ── 20. Phase 4: payments, budgets, import, six-month cases ─────────────── */
+/* Booking form › Payments received */
+#appContainer .sp-payments { display: grid; gap: var(--sp-space-3); margin: var(--sp-space-4) 0; padding: var(--sp-space-4); border: 1px solid var(--sp-line); border-radius: var(--sp-radius-md); background: var(--sp-surface-2); }
+#appContainer .sp-payments__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--sp-space-2); }
+#appContainer .sp-payments__title { color: var(--sp-ink); font-weight: 700; }
+#appContainer .sp-payments__open { color: var(--sp-gold-text); font-family: var(--sp-font-money); font-size: var(--sp-text-sm); font-weight: 700; }
+#appContainer .sp-payments__list { display: grid; gap: var(--sp-space-1); margin: 0; padding: 0; list-style: none; }
+#appContainer .sp-payments__item { display: grid; grid-template-columns: minmax(84px, auto) minmax(0, 1fr) auto auto; align-items: center; gap: var(--sp-space-3); padding: var(--sp-space-2) 0; border-bottom: 1px solid var(--sp-line); font-size: var(--sp-text-sm); }
+#appContainer .sp-payments__item:last-child { border-bottom: 0; }
+#appContainer .sp-payments__item--deposit { grid-template-columns: minmax(84px, auto) minmax(0, 1fr) auto; }
+#appContainer .sp-payments__when { color: var(--sp-ink); font-weight: 600; }
+#appContainer .sp-payments__via { overflow: hidden; color: var(--sp-ink-3); text-overflow: ellipsis; white-space: nowrap; }
+#appContainer .sp-payments__amt { color: var(--sp-in); font-family: var(--sp-font-money); font-weight: 700; }
+#appContainer .sp-payments__remove { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 1px solid var(--sp-line); border-radius: 50%; background: transparent; color: var(--sp-ink-3); cursor: pointer; }
+#appContainer .sp-payments__remove:hover { border-color: var(--sp-out); color: var(--sp-out); }
+#appContainer .sp-payments__empty { color: var(--sp-ink-3); font-size: var(--sp-text-sm); }
+#appContainer .sp-payments__form { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); align-items: end; gap: var(--sp-space-3); }
+#appContainer .sp-payments__field { display: grid; gap: 4px; margin: 0; }
+#appContainer .sp-payments__field > span { color: var(--sp-ink-3); font-size: 11px; font-weight: 600; letter-spacing: var(--sp-tracking-caps); text-transform: uppercase; }
+#appContainer .sp-payments__field :is(input, select) { width: 100%; min-width: 0; }
+#appContainer .sp-payments__add { width: 100%; margin: 0; }
+
+/* Settings › Monthly budgets and Import */
+#appContainer #settings :is(.settings-budgets-card, .settings-import-card) { grid-column: 1 / -1; }
+#appContainer #settings .sp-budgets { display: grid; gap: var(--sp-space-3); }
+#appContainer #settings .sp-budgets__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-space-3); }
+#appContainer #settings .sp-budget { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: var(--sp-space-3) var(--sp-space-4); border: 1px solid var(--sp-line); border-radius: var(--sp-radius-md); background: var(--sp-surface-2); }
+#appContainer #settings .sp-budget__name { color: var(--sp-ink); font-weight: 600; }
+#appContainer #settings .sp-budget__hint { color: var(--sp-ink-3); font-size: var(--sp-text-xs); }
+#appContainer #settings .sp-budgets__total { align-self: center; color: var(--sp-ink-2); font-family: var(--sp-font-money); font-size: var(--sp-text-sm); font-weight: 600; }
+#appContainer #settings .sp-import { display: grid; gap: var(--sp-space-3); }
+#appContainer #settings .sp-import__row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-space-3); }
+#appContainer #settings .sp-import__field { display: grid; gap: 4px; margin: 0; }
+#appContainer #settings .sp-import__field > span { color: var(--sp-ink-3); font-size: 11px; font-weight: 600; letter-spacing: var(--sp-tracking-caps); text-transform: uppercase; }
+#appContainer #settings .sp-import__field :is(input, select) { width: 100%; min-width: 0; }
+#appContainer #settings .sp-import__hint { margin: 0; color: var(--sp-ink-3); font-size: var(--sp-text-xs); }
+#appContainer #settings .sp-import__preview { display: grid; gap: var(--sp-space-2); padding: var(--sp-space-3) var(--sp-space-4); border: 1px solid var(--sp-line); border-radius: var(--sp-radius-md); background: var(--sp-surface-2); overflow-x: auto; }
+#appContainer #settings .sp-import__summary { margin: 0; color: var(--sp-ink); font-weight: 700; }
+#appContainer #settings .sp-import__note { margin: 0; color: var(--sp-ink-3); font-size: var(--sp-text-sm); }
+#appContainer #settings .sp-import__error { margin: 0; color: var(--sp-out); font-size: var(--sp-text-sm); font-weight: 600; }
+#appContainer #settings .sp-import__problems { margin: 0; padding-left: var(--sp-space-5); color: var(--sp-ink-2); font-size: var(--sp-text-xs); }
+#appContainer #settings .sp-import__table { width: 100%; border-collapse: collapse; font-size: var(--sp-text-sm); }
+#appContainer #settings .sp-import__table :is(th, td) { padding: 6px var(--sp-space-2); border-bottom: 1px solid var(--sp-line); background: transparent; color: var(--sp-ink-2); text-align: left; white-space: nowrap; }
+#appContainer #settings .sp-import__table th { color: var(--sp-ink-3); font-size: 11px; font-weight: 600; letter-spacing: var(--sp-tracking-caps); text-transform: uppercase; }
+
+/* Expenses › budget marker */
+#appContainer #money .mv-cbar__mark.is-budget { width: 3px; margin-left: -1.5px; background: var(--sp-gold); opacity: 1; box-shadow: 0 0 0 2px var(--sp-surface-1); }
+#appContainer #money .mv-pl__table.has-budget :is(th, td):nth-child(5) { border-left: 1px solid var(--sp-line); }
+
+/* Cash flow › Next 6 months */
+#appContainer #money .mv-scen__inputs { display: flex; flex-wrap: wrap; align-items: end; gap: var(--sp-space-3); margin-bottom: var(--sp-space-4); }
+#appContainer #money .mv-scen__input { display: grid; gap: 4px; margin: 0; }
+#appContainer #money .mv-scen__field { display: flex; align-items: center; gap: var(--sp-space-2); color: var(--sp-ink-3); font-size: var(--sp-text-sm); font-weight: 600; }
+#appContainer #money .mv-scen__field input { width: 96px; font-family: var(--sp-font-money); }
+#appContainer #money .mv-scen__save { margin: 0; }
+#appContainer #money .mv-scen__cases { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-space-3); margin-bottom: var(--sp-space-4); }
+#appContainer #money .mv-scen__case { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: var(--sp-space-3) var(--sp-space-4); border: 1px solid var(--sp-line); border-radius: var(--sp-radius-md); background: var(--sp-surface-2); }
+#appContainer #money .mv-scen__case.is-key { border-color: var(--sp-line-strong); background: var(--sp-gold-soft); }
+#appContainer #money .mv-scen__value { overflow: hidden; color: var(--sp-ink); font-size: var(--sp-text-lg); font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+#appContainer #money .mv-scen__value.is-bad { color: var(--sp-out); }
+#appContainer #money .mv-scen__table { margin-top: var(--sp-space-3); }
+@media (max-width: 599px) {
+  #appContainer #money .mv-scen__cases { grid-template-columns: 1fr; }
+  #appContainer .sp-payments__item { grid-template-columns: minmax(0, 1fr) auto auto; }
+  #appContainer .sp-payments__via { grid-column: 1 / -1; grid-row: 2; }
+}

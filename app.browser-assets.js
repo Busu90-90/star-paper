@@ -60,14 +60,16 @@
     ]],
     ['1', ['app.offline-cache.js']],
     ['3', ['app.todayboard.js']],
-    ['27', ['app.browser-assets.js']],
-    ['2', ['app.boot-head.js', 'app.money.js']],
+    ['28', ['app.browser-assets.js']],
+    ['2', ['app.boot-head.js']],
+    ['3', ['app.money.js']],
     ['3', ['app.home.js']],
-    ['1', ['assets/fonts/checks.woff2', 'app.charts.js', 'app.insights.js']],
+    ['1', ['assets/fonts/checks.woff2', 'app.charts.js', 'app.finance-ui.js']],
+    ['2', ['app.insights.js']],
     ['14', ['styles.landing.css']],
     ['2', ['assets/landing/brick-wall.webp']],
     ['1', ['styles.brand.css', 'app.chrome.js']],
-    ['12', ['styles.app.css']],
+    ['13', ['styles.app.css']],
     ['8', ['app.root-shell.js']],
     ['2', ['app.public-pages.js']],
     ['4', ['app.boot-flags.js']],
@@ -102,9 +104,9 @@
     ['20', ['app.reports.js']],
     ['27', ['manifest.json']],
     ['64', ['styles.css']],
-    ['98', ['supabase.js']],
-    ['155', ['app.js']],
-    ['207', ['sw.js']]
+    ['99', ['supabase.js']],
+    ['156', ['app.js']],
+    ['208', ['sw.js']]
   ];
 
   const assetVersions = {};
@@ -313,6 +315,7 @@
     url('./app.money.js'),
     url('./app.charts.js'),
     url('./app.insights.js'),
+    url('./app.finance-ui.js'),
     url('./app.landing.js'),
     url('./app.chrome.js'),
     url('./app.globe.js'),

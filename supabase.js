@@ -807,6 +807,9 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         : '0',
       bbfEntries: stamp(data.bbfEntries, ['updatedAt']),
       closingThoughts: stamp(data.closingThoughts, ['updatedAt']),
+      financeSettings: data.financeSettings?.updatedAt || '',
+      categoryBudgets: stamp(data.categoryBudgets, ['updatedAt']),
+      bookingPayments: stamp(data.bookingPayments, ['updatedAt', 'createdAt']),
       theme: data.theme || '',
     };
     try {
@@ -2496,6 +2499,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       depositMethod: row.deposit_method || 'cash',
       depositRef: row.deposit_ref || '',
       contact: row.contact,
+      promoter: row.promoter || '',
       status: row.status,
       notes: row.notes,
       locationType: row.location_type,
@@ -2522,6 +2526,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       deposit_method: b.depositMethod || 'cash',
       deposit_ref: b.depositRef || '',
       contact: b.contact || '',
+      promoter: String(b.promoter || '').trim(),
       status: b.status || 'pending',
       notes: b.notes || '',
       location_type: b.locationType || 'uganda',
@@ -2539,6 +2544,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       receipt: row.receipt || null,
       paymentMethod: row.payment_method || 'cash',
       paymentRef: row.payment_ref || '',
+      paidTo: row.paid_to || '',
+      bookingId: row.booking_id || null,
       artistId: row.artist_id || null,
       artist: row.artist_name || '',
       teamId: row.team_id,
@@ -2564,6 +2571,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       receipt: e.receipt || '',
       payment_method: e.paymentMethod || 'cash',
       payment_ref: e.paymentRef || '',
+      paid_to: String(e.paidTo || '').trim(),
+      booking_id: isCloudId(e.bookingId) ? e.bookingId : null,
     };
   }
 
@@ -2744,6 +2753,46 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       amount: Number(goal?.amount) || 0,
       period: goal?.period || 'monthly',
       updated_at: new Date().toISOString(),
+    };
+  }
+
+  // ── Finance settings, category budgets, booking payments — rows ↔ app ──
+  function rowToFinanceSettings(row) {
+    const settings = row?.settings && typeof row.settings === 'object' ? row.settings : {};
+    return { settings, updatedAt: row?.updated_at || null };
+  }
+
+  function rowToCategoryBudget(row) {
+    return {
+      period: row.period || 'default',
+      category: String(row.category || ''),
+      amount: Number(row.amount) || 0,
+      updatedAt: row.updated_at || null,
+    };
+  }
+
+  function categoryBudgetToRow(entry, ownerId, teamId) {
+    return {
+      user_id: teamId ? null : ownerId,
+      team_id: teamId || null,
+      period: entry?.period || 'default',
+      category: String(entry?.category || '').trim().toLowerCase(),
+      amount: Math.max(0, Number(entry?.amount) || 0),
+      updated_at: new Date().toISOString(),
+    };
+  }
+
+  function rowToBookingPayment(row) {
+    return {
+      id: row.id,
+      bookingId: row.booking_id,
+      amount: Number(row.amount) || 0,
+      paidOn: row.paid_on || null,
+      method: row.method || 'cash',
+      ref: row.ref || '',
+      notes: row.notes || '',
+      createdAt: row.created_at || null,
+      updatedAt: row.updated_at || null,
     };
   }
 
@@ -3576,6 +3625,124 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
   }
 
+  // The three finance tables arrived after the rest of the schema; a missing
+  // table or a role without finance access just means "nothing saved yet".
+  async function loadFinanceSettings(options = {}) {
+    const ownerId = getOwnerId();
+    if (!ownerId) return null;
+    const workspaceMeta = normalizeWorkspaceMeta(options.workspaceMeta || {});
+    try {
+      const { data, error } = await applyScopeFilterForMeta(
+        db.from('finance_settings').select('*').limit(1),
+        'user_id',
+        workspaceMeta
+      );
+      if (error) { warn('Finance settings load error:', error); return null; }
+      const row = (data || [])[0];
+      return row ? rowToFinanceSettings(row) : { settings: {}, updatedAt: null };
+    } catch (err) {
+      warn('Finance settings load failed:', err);
+      return null;
+    }
+  }
+
+  async function saveFinanceSettings(entry, options = {}) {
+    const ownerId = getOwnerId();
+    if (!ownerId || !entry || typeof entry.settings !== 'object') return;
+    const workspaceMeta = normalizeWorkspaceMeta(options.workspaceMeta || {});
+    const teamId = workspaceMeta.teamId || null;
+    const { error } = await db.from('finance_settings').upsert(
+      [{
+        user_id: teamId ? null : ownerId,
+        team_id: teamId,
+        settings: entry.settings,
+        updated_at: new Date().toISOString(),
+      }],
+      { onConflict: teamId ? 'team_id' : 'user_id' }
+    );
+    throwIfSupabaseError('Finance settings save', error);
+  }
+
+  async function loadCategoryBudgets(options = {}) {
+    const ownerId = getOwnerId();
+    if (!ownerId) return null;
+    const workspaceMeta = normalizeWorkspaceMeta(options.workspaceMeta || {});
+    try {
+      const { data, error } = await applyScopeFilterForMeta(
+        db.from('category_budgets').select('*').order('period', { ascending: true }),
+        'user_id',
+        workspaceMeta
+      );
+      if (error) { warn('Category budgets load error:', error); return null; }
+      return (data || []).map(rowToCategoryBudget);
+    } catch (err) {
+      warn('Category budgets load failed:', err);
+      return null;
+    }
+  }
+
+  async function saveCategoryBudgets(entries, options = {}) {
+    const ownerId = getOwnerId();
+    if (!ownerId || !Array.isArray(entries)) return;
+    const workspaceMeta = normalizeWorkspaceMeta(options.workspaceMeta || {});
+    const rows = entries
+      .map((entry) => categoryBudgetToRow(entry, ownerId, workspaceMeta.teamId))
+      .filter((row) => row.category);
+    if (rows.length === 0) return;
+    const { error } = await db.from('category_budgets').upsert(
+      rows,
+      { onConflict: workspaceMeta.teamId ? 'team_id,period,category' : 'user_id,period,category' }
+    );
+    throwIfSupabaseError('Category budgets save', error);
+  }
+
+  async function loadBookingPayments(options = {}) {
+    const ownerId = getOwnerId();
+    if (!ownerId) return null;
+    const workspaceMeta = normalizeWorkspaceMeta(options.workspaceMeta || {});
+    try {
+      const { data, error } = await applyScopeFilterForMeta(
+        db.from('booking_payments').select('*').order('paid_on', { ascending: true }),
+        'owner_id',
+        workspaceMeta
+      );
+      if (error) { warn('Booking payments load error:', error); return null; }
+      return (data || []).map(rowToBookingPayment);
+    } catch (err) {
+      warn('Booking payments load failed:', err);
+      return null;
+    }
+  }
+
+  // Single-row writes from the Record payment form. They wait for any cloud
+  // save in flight so two auth-bearing requests never overlap.
+  async function addBookingPayment(payment) {
+    const ownerId = getOwnerId();
+    if (!ownerId) throw new Error('Sign in to record payments.');
+    if (!isCloudId(payment?.bookingId)) throw new Error('This booking has not synced yet. Try again in a moment.');
+    await Promise.resolve(window.__spLastCloudSyncPromise).catch(() => {});
+    const workspaceMeta = getActiveWorkspaceMeta('booking-payment');
+    const { data, error } = await db.from('booking_payments').insert([{
+      owner_id: ownerId,
+      team_id: workspaceMeta.teamId || null,
+      booking_id: payment.bookingId,
+      amount: Math.max(0, Number(payment.amount) || 0),
+      paid_on: payment.paidOn || new Date().toISOString().slice(0, 10),
+      method: payment.method || 'cash',
+      ref: String(payment.ref || '').trim(),
+      notes: String(payment.notes || '').trim(),
+    }]).select('*');
+    throwIfSupabaseError('Booking payment save', error);
+    return data && data[0] ? rowToBookingPayment(data[0]) : null;
+  }
+
+  async function deleteBookingPayment(id) {
+    if (!getOwnerId() || !isCloudId(id)) return;
+    await Promise.resolve(window.__spLastCloudSyncPromise).catch(() => {});
+    const { error } = await db.from('booking_payments').delete().eq('id', id);
+    throwIfSupabaseError('Booking payment delete', error);
+  }
+
   async function loadClosingThoughts(options = {}) {
     const ownerId = getOwnerId();
     if (!ownerId) return null;
@@ -3665,6 +3832,9 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       const revenueGoal      = await timedLoad('loadRevenueGoal',     () => loadRevenueGoal({ workspaceMeta }),     LOAD_QUERY_TIMEOUT_MS);
       const bbfEntries       = await timedLoad('loadBBFEntries',      () => loadBBFEntries({ workspaceMeta }),      LOAD_QUERY_TIMEOUT_MS);
       const closingThoughts  = await timedLoad('loadClosingThoughts', () => loadClosingThoughts({ workspaceMeta }), LOAD_QUERY_TIMEOUT_MS);
+      const financeSettings  = await timedLoad('loadFinanceSettings', () => loadFinanceSettings({ workspaceMeta }), LOAD_QUERY_TIMEOUT_MS);
+      const categoryBudgets  = await timedLoad('loadCategoryBudgets', () => loadCategoryBudgets({ workspaceMeta }), LOAD_QUERY_TIMEOUT_MS);
+      const bookingPayments  = await timedLoad('loadBookingPayments', () => loadBookingPayments({ workspaceMeta }), LOAD_QUERY_TIMEOUT_MS);
 
       const payload = {};
       const coreMeta = core.value?.__meta || null;
@@ -3678,6 +3848,9 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       if (revenueGoal.value) payload.revenueGoal = revenueGoal.value;
       if (bbfEntries.value) payload.bbfEntries = bbfEntries.value;
       if (closingThoughts.value) payload.closingThoughts = closingThoughts.value;
+      if (financeSettings.value) payload.financeSettings = financeSettings.value;
+      if (categoryBudgets.value) payload.categoryBudgets = categoryBudgets.value;
+      if (bookingPayments.value) payload.bookingPayments = bookingPayments.value;
       if (profile?.preferred_theme) payload.theme = profile.preferred_theme;
 
       const allCriticalTimedOut = [core, audienceMetrics, tasks, revenueGoal, bbfEntries, closingThoughts].every(r => r.timedOut);
@@ -4101,6 +4274,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       revenueGoal,
       bbfEntries,
       closingThoughts,
+      financeSettings,
+      categoryBudgets,
       theme,
     } = payload || {};
 
@@ -4145,6 +4320,17 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       if (Array.isArray(closingThoughts)) {
         failedStep = 'saveClosingThoughts';
         await saveClosingThoughts(closingThoughts, { workspaceMeta });
+        didSave = true;
+      }
+      // Present only when edited on this device since the last save.
+      if (financeSettings) {
+        failedStep = 'saveFinanceSettings';
+        await saveFinanceSettings(financeSettings, { workspaceMeta });
+        didSave = true;
+      }
+      if (Array.isArray(categoryBudgets)) {
+        failedStep = 'saveCategoryBudgets';
+        await saveCategoryBudgets(categoryBudgets, { workspaceMeta });
         didSave = true;
       }
       if (theme) {
@@ -7749,6 +7935,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     deleteOtherIncome,
     deleteArtist,
     deleteTask,
+    addBookingPayment,
+    deleteBookingPayment,
     reloadAppData,
     reloadForResolvedWorkspace,
 
