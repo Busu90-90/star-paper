@@ -884,17 +884,22 @@ body.light-theme .lp-art::before {
   background: radial-gradient(closest-side, rgb(255 240 205 / 0.4), rgb(255 230 180 / 0.12) 55%, transparent);
 }
 
+/* Light mode can't add light to a pale page, so the follow spot works the
+   other way round: a warm amber pool of full-strength brick, ringed by a
+   soft shadow, so the patch under the cursor stands out from the wash. */
 body.light-theme .lp-wall__spot {
   background:
-    linear-gradient(rgb(236 206 140), rgb(236 206 140)),
-    linear-gradient(rgb(255 255 255 / 0.12), rgb(255 255 255 / 0.12)),
+    linear-gradient(rgb(238 196 112), rgb(238 196 112)),
     var(--lp-brick) calc(-1 * var(--lp-sx, 0px)) calc(-1 * var(--lp-sy, 0px)) / var(--lp-brick-size) repeat;
-  background-blend-mode: multiply, normal, normal;
+  background-blend-mode: multiply, normal;
   mix-blend-mode: multiply;
 }
 
-body.light-theme .lp-wall__spot.is-on { opacity: 0.6; }
-body.light-theme .lp-wall__spot::after { display: none; }
+body.light-theme .lp-wall__spot.is-on { opacity: 0.85; }
+
+body.light-theme .lp-wall__spot::after {
+  background: radial-gradient(closest-side, transparent 52%, rgb(24 52 36 / 0.22) 74%, transparent);
+}
 
 /* Ambient: the wall is only just there in the dark, fading out downwards. */
 .lp-wall::before {
