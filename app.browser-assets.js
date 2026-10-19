@@ -3,7 +3,6 @@
 
   const versionGroups = [
     ['1', [
-      'app.boot-head.js',
       'assets/world-atlas/land-50m.json',
       'assets/vendor/fonts/font-01-Wnz6HAc5bAfYB2Q7azYYmg8.woff2',
       'assets/vendor/fonts/font-02-Wnz6HAc5bAfYB2Q7YjYYmg8.woff2',
@@ -61,15 +60,17 @@
     ]],
     ['1', ['app.offline-cache.js']],
     ['3', ['app.todayboard.js']],
-    ['23', ['app.browser-assets.js']],
+    ['24', ['app.browser-assets.js']],
+    ['2', ['app.boot-head.js', 'app.home.js']],
+    ['1', ['app.money.js']],
     ['13', ['styles.landing.css']],
     ['1', ['assets/landing/brick-wall.webp']],
-    ['1', ['styles.brand.css', 'app.chrome.js', 'app.home.js']],
-    ['9', ['styles.app.css']],
-    ['7', ['app.root-shell.js']],
+    ['1', ['styles.brand.css', 'app.chrome.js']],
+    ['10', ['styles.app.css']],
+    ['8', ['app.root-shell.js']],
     ['2', ['app.public-pages.js']],
     ['4', ['app.boot-flags.js']],
-    ['2', ['app.boot-body.js']],
+    ['3', ['app.boot-body.js']],
     ['1', ['styles.utilities.css']],
     ['4', ['app.landing.js']],
     ['2', ['assets/vendor/fonts/star-paper-fonts.css']],
@@ -101,8 +102,8 @@
     ['27', ['manifest.json']],
     ['64', ['styles.css']],
     ['98', ['supabase.js']],
-    ['153', ['app.js']],
-    ['203', ['sw.js']]
+    ['154', ['app.js']],
+    ['204', ['sw.js']]
   ];
 
   const assetVersions = {};
@@ -307,6 +308,7 @@
     url('./app.reports.js'),
     url('./app.js'),
     url('./app.home.js'),
+    url('./app.money.js'),
     url('./app.landing.js'),
     url('./app.chrome.js'),
     url('./app.globe.js'),

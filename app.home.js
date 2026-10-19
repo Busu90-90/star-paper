@@ -298,8 +298,7 @@
         host.append(figure, legend);
     }
 
-    function renderAging(data) {
-        const host = $('hv2Aging');
+    function renderAging(data, host = $('hv2Aging')) {
         if (!host) return;
         host.replaceChildren();
         if (!data.total) {
@@ -391,7 +390,18 @@
         resizeTimer = setTimeout(render, 150);
     });
 
-    window.SPHome = { render };
+    // app.money.js reuses the same data and pieces for the Money tabs.
+    window.SPHome = {
+        render,
+        monthlySeries,
+        receivables,
+        setDelta,
+        drawSpark,
+        renderAging,
+        fmt: { ugx, compact, asAmount, parseDate, monthIndex, DAY_MS },
+        dom: { el, svg },
+        money
+    };
     if (document.readyState !== 'loading') render();
     else document.addEventListener('DOMContentLoaded', render);
 })();

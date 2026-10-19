@@ -1303,7 +1303,7 @@ canvas.is-pin-hover { cursor: pointer; }
 #appContainer #dashboard .hv2-delta { display: block; margin: var(--sp-space-1) 0 0; color: var(--sp-ink-3); font-size: var(--sp-text-xs); font-weight: 600; }
 #appContainer #dashboard .hv2-delta.is-good { color: var(--sp-in); }
 #appContainer #dashboard .hv2-delta.is-bad { color: var(--sp-out); }
-#appContainer #dashboard .hv2-empty { margin: 0; padding: var(--sp-space-6) var(--sp-space-3); border: 1px dashed var(--sp-line); border-radius: var(--sp-radius-md); color: var(--sp-ink-3); text-align: center; }
+#appContainer :is(#dashboard, #money) .hv2-empty { margin: 0; padding: var(--sp-space-6) var(--sp-space-3); border: 1px dashed var(--sp-line); border-radius: var(--sp-radius-md); color: var(--sp-ink-3); text-align: center; }
 
 /* Hero: the one big number, gold-edged, with its six-month line */
 #appContainer #dashboard .hv2-hero {
@@ -1446,15 +1446,15 @@ canvas.is-pin-hover { cursor: pointer; }
 #appContainer #dashboard .hv2-donut__swatch { background: var(--c); }
 
 /* Unpaid balances by age */
-#appContainer #dashboard .hv2-aging__list { display: grid; gap: var(--sp-space-3); margin: 0; padding: 0; list-style: none; }
-#appContainer #dashboard .hv2-aging__row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px var(--sp-space-3); }
-#appContainer #dashboard .hv2-aging__label { color: var(--sp-ink-2); font-size: var(--sp-text-xs); }
-#appContainer #dashboard .hv2-aging__amt { grid-row: 1; grid-column: 2; color: var(--sp-ink); font-weight: 700; }
-#appContainer #dashboard .hv2-aging__bar { grid-column: 1; display: block; height: 8px; border-radius: var(--sp-radius-pill); background: var(--sp-surface-3); overflow: hidden; }
-#appContainer #dashboard .hv2-aging__fill { display: block; width: var(--w, 0%); height: 100%; border-radius: inherit; background: var(--sp-gold); }
-#appContainer #dashboard .hv2-aging__row:not(.hv2-aging__row--upcoming) .hv2-aging__fill { background: var(--sp-out); }
-#appContainer #dashboard .hv2-aging__row--d30 .hv2-aging__fill { background: color-mix(in srgb, var(--sp-out) 60%, var(--sp-gold)); }
-#appContainer #dashboard .hv2-aging__count { grid-column: 2; color: var(--sp-ink-3); font-size: 11px; text-align: right; }
+#appContainer :is(#dashboard, #money) .hv2-aging__list { display: grid; gap: var(--sp-space-3); margin: 0; padding: 0; list-style: none; }
+#appContainer :is(#dashboard, #money) .hv2-aging__row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px var(--sp-space-3); }
+#appContainer :is(#dashboard, #money) .hv2-aging__label { color: var(--sp-ink-2); font-size: var(--sp-text-xs); }
+#appContainer :is(#dashboard, #money) .hv2-aging__amt { grid-row: 1; grid-column: 2; color: var(--sp-ink); font-weight: 700; }
+#appContainer :is(#dashboard, #money) .hv2-aging__bar { grid-column: 1; display: block; height: 8px; border-radius: var(--sp-radius-pill); background: var(--sp-surface-3); overflow: hidden; }
+#appContainer :is(#dashboard, #money) .hv2-aging__fill { display: block; width: var(--w, 0%); height: 100%; border-radius: inherit; background: var(--sp-gold); }
+#appContainer :is(#dashboard, #money) .hv2-aging__row:not(.hv2-aging__row--upcoming) .hv2-aging__fill { background: var(--sp-out); }
+#appContainer :is(#dashboard, #money) .hv2-aging__row--d30 .hv2-aging__fill { background: color-mix(in srgb, var(--sp-out) 60%, var(--sp-gold)); }
+#appContainer :is(#dashboard, #money) .hv2-aging__count { grid-column: 2; color: var(--sp-ink-3); font-size: 11px; text-align: right; }
 
 @media (max-width: 1023px) {
   #appContainer #dashboard .hv2-hero { grid-template-columns: minmax(0, 1fr); }
@@ -1531,7 +1531,7 @@ canvas.is-pin-hover { cursor: pointer; }
 
 /* Tabs fill the row on phones instead of scrolling the last one off-screen. */
 @media (max-width: 699px) {
-  #appContainer #money .sp-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; }
+  #appContainer #money .sp-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
   #appContainer #money .sp-tab { justify-content: center; padding: 0 var(--sp-space-2); font-size: var(--sp-text-xs); }
   #appContainer #money .sp-tab .ph { display: none; }
 }
@@ -1594,6 +1594,136 @@ canvas.is-pin-hover { cursor: pointer; }
 #appContainer #money .expense-field.expense-red { color: var(--sp-out); }
 #appContainer #money .expense-field.expense-red > span { color: var(--sp-ink-3); }
 #appContainer #money .expense-actions { display: flex; justify-content: flex-end; gap: var(--sp-space-2); margin-top: var(--sp-space-3); }
+
+
+/* Overview, Cash flow, Receivables (app.money.js): rows of one wide card and
+   one narrow card, a strip of four tiles, and charts drawn at card width. */
+#appContainer #money .sp-tab-panel--active { display: grid; gap: var(--sp-space-4); }
+#appContainer #money .sp-tab-panel > .card { margin: 0; }
+#appContainer #money .mv-row { display: grid; gap: var(--sp-space-4); min-width: 0; }
+#appContainer #money :is(.mv-card, .mv-tile) { margin: 0; min-width: 0; }
+@media (min-width: 1024px) {
+  #appContainer #money .mv-row { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; }
+}
+#appContainer #money .mv-card__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-space-3); margin-bottom: var(--sp-space-3); }
+#appContainer #money .card h3.mv-title, #appContainer #money .mv-title { margin: 0; color: var(--sp-ink); font-family: var(--sp-font-ui); font-size: var(--sp-text-md); font-weight: 700; letter-spacing: 0; }
+#appContainer #money .mv-label { color: var(--sp-ink-3); font-size: 11px; font-weight: 600; letter-spacing: var(--sp-tracking-caps); text-transform: uppercase; }
+#appContainer #money .mv-sub { margin: var(--sp-space-1) 0 0; color: var(--sp-ink-3); font-size: var(--sp-text-xs); }
+#appContainer #money .mv-note { margin: var(--sp-space-3) 0 0; color: var(--sp-ink-2); font-size: var(--sp-text-sm); line-height: var(--sp-leading-snug); }
+#appContainer #money .mv-note.is-bad { color: var(--sp-out); }
+#appContainer #money .mv-empty { margin: 0; padding: var(--sp-space-6) var(--sp-space-3); border: 1px dashed var(--sp-line); border-radius: var(--sp-radius-md); color: var(--sp-ink-3); text-align: center; list-style: none; }
+#appContainer #money :is(.mv-delta, .mv-tile__sub) { display: block; margin-top: var(--sp-space-1); color: var(--sp-ink-3); font-size: var(--sp-text-xs); font-weight: 600; }
+#appContainer #money :is(.mv-delta, .mv-tile__sub, .hv2-delta).is-good { color: var(--sp-in); }
+#appContainer #money :is(.mv-delta, .mv-tile__sub, .hv2-delta).is-bad { color: var(--sp-out); }
+
+/* Four tiles: label, number, one line of context */
+#appContainer #money .mv-strip { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-space-3); }
+@media (min-width: 1024px) { #appContainer #money .mv-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-space-4); } }
+#appContainer #money .mv-tile { display: flex; flex-direction: column; padding: var(--sp-space-4); container-type: inline-size; }
+#appContainer #money .mv-tile--key { border-color: var(--sp-line-strong); background-image: radial-gradient(120% 140% at 0% 0%, var(--sp-gold-soft), transparent 60%), var(--sp-sheen); }
+#appContainer #money .mv-tile__value { display: block; margin-top: var(--sp-space-2); color: var(--sp-ink); font-size: clamp(0.9375rem, 9cqi, var(--sp-text-xl)); font-weight: 700; line-height: 1.15; white-space: nowrap; }
+#appContainer #money .mv-tile__value.is-in { color: var(--sp-in); }
+#appContainer #money .mv-tile__value.is-out { color: var(--sp-out); }
+
+/* Waterfall */
+#appContainer #money .mv-waterfall, #appContainer #money .mv-forecast { display: block; width: 100%; height: auto; overflow: visible; }
+#appContainer #money .mv-wf__zero { stroke: var(--sp-line-strong); }
+#appContainer #money .mv-wf__link { stroke: var(--sp-ink-3); stroke-dasharray: 3 3; }
+#appContainer #money .mv-wf__bar--in { fill: var(--sp-gold); }
+#appContainer #money .mv-wf__bar--out { fill: var(--sp-sage); }
+#appContainer #money .mv-wf__bar--total { fill: var(--sp-in); }
+#appContainer #money .mv-wf__bar--loss { fill: var(--sp-out); }
+#appContainer #money .mv-wf__value { fill: var(--sp-ink); font-family: var(--sp-font-money); font-size: 12px; font-weight: 700; }
+#appContainer #money .mv-wf__axis { fill: var(--sp-ink-3); font-family: var(--sp-font-ui); font-size: 11px; }
+
+/* Biggest changes */
+#appContainer #money .mv-summary { margin: 0 0 var(--sp-space-3); color: var(--sp-ink); font-weight: 600; line-height: var(--sp-leading-snug); }
+#appContainer #money .mv-changes { display: grid; gap: var(--sp-space-2); margin: 0; padding: 0; list-style: none; }
+#appContainer #money .mv-change { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: var(--sp-space-3); padding: var(--sp-space-3); border: 1px solid var(--sp-line); border-radius: var(--sp-radius-md); background: var(--sp-surface-2); }
+#appContainer #money .mv-change__icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; font-size: 17px; }
+#appContainer #money .mv-change.is-good .mv-change__icon { background: color-mix(in srgb, var(--sp-in) 16%, transparent); color: var(--sp-in); }
+#appContainer #money .mv-change.is-bad .mv-change__icon { background: color-mix(in srgb, var(--sp-out) 16%, transparent); color: var(--sp-out); }
+#appContainer #money .mv-change__body { display: flex; flex-direction: column; min-width: 0; }
+#appContainer #money .mv-change__name { color: var(--sp-ink); font-weight: 600; }
+#appContainer #money .mv-change__detail { color: var(--sp-ink-3); font-size: var(--sp-text-xs); }
+#appContainer #money .mv-change__amt { font-weight: 700; white-space: nowrap; }
+#appContainer #money .mv-change.is-good .mv-change__amt { color: var(--sp-in); }
+#appContainer #money .mv-change.is-bad .mv-change__amt { color: var(--sp-out); }
+
+/* Profit and loss (collapsed until opened) */
+#appContainer #money .mv-pl__summary { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--sp-space-2); cursor: pointer; list-style: none; }
+#appContainer #money .mv-pl__summary::-webkit-details-marker { display: none; }
+#appContainer #money .mv-pl__summary::after { content: '+'; margin-left: auto; color: var(--sp-gold-text); font-size: var(--sp-text-lg); font-weight: 700; line-height: 1; }
+#appContainer #money .mv-pl[open] .mv-pl__summary::after { content: '−'; }
+#appContainer #money .mv-pl__scroll { margin-top: var(--sp-space-3); overflow-x: auto; }
+#appContainer #money .mv-pl__table { width: 100%; min-width: 0; border-collapse: collapse; font-size: var(--sp-text-sm); }
+#appContainer #money .mv-pl__table :is(th, td) { padding: var(--sp-space-2) var(--sp-space-3); border-bottom: 1px solid var(--sp-line); background: transparent; color: var(--sp-ink-2); font-family: var(--sp-font-ui); font-size: var(--sp-text-sm); font-weight: 400; letter-spacing: 0; text-align: left; text-transform: none; white-space: nowrap; }
+#appContainer #money .mv-pl__table td.money { font-family: var(--sp-font-money); }
+#appContainer #money .mv-pl__table tr { background: transparent; }
+#appContainer #money .mv-pl__table thead th { color: var(--sp-ink-3); font-size: 11px; text-transform: uppercase; letter-spacing: var(--sp-tracking-caps); font-weight: 600; letter-spacing: var(--sp-tracking-caps); text-transform: uppercase; }
+#appContainer #money .mv-pl__table .is-num { text-align: right; }
+#appContainer #money .mv-pl__table .is-good { color: var(--sp-in); }
+#appContainer #money .mv-pl__table .is-bad { color: var(--sp-out); }
+#appContainer #money .mv-pl__table .mv-pl__sub th { padding-left: var(--sp-space-6); color: var(--sp-ink-3); }
+#appContainer #money .mv-pl__table :is(.mv-pl__group, .mv-pl__total) :is(th, td:not(.is-good, .is-bad)) { color: var(--sp-ink); font-weight: 600; }
+#appContainer #money .mv-pl__table .mv-pl__net :is(th, td) { border-bottom: 0; color: var(--sp-ink); font-weight: 700; }
+
+/* Cash flow forecast */
+#appContainer #money .mv-mincash { display: inline-flex; flex: none; align-items: center; gap: var(--sp-space-2); min-height: 36px; padding: 0 var(--sp-space-3); border: 1px solid var(--sp-line); border-radius: var(--sp-radius-pill); background: var(--sp-surface-2); color: var(--sp-ink); font: inherit; font-size: var(--sp-text-sm); font-weight: 600; cursor: pointer; }
+#appContainer #money .mv-mincash:hover { border-color: var(--sp-line-strong); }
+#appContainer #money .mv-mincash .ph { color: var(--sp-gold-text); }
+#appContainer #money .mv-mincash-editor:not([hidden]) { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-space-2); margin-bottom: var(--sp-space-3); }
+#appContainer #money .mv-mincash-editor label { flex-basis: 100%; }
+#appContainer #money .mv-mincash-editor input { flex: 1 1 160px; min-width: 0; }
+#appContainer #money .mv-legend { display: flex; flex-wrap: wrap; gap: var(--sp-space-2) var(--sp-space-4); margin-bottom: var(--sp-space-2); color: var(--sp-ink-3); font-size: var(--sp-text-xs); }
+#appContainer #money .mv-legend span::before { content: ''; display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 3px; vertical-align: -1px; }
+#appContainer #money .mv-legend__in::before { background: var(--sp-gold); }
+#appContainer #money .mv-legend__out::before { background: var(--sp-sage); }
+#appContainer #money .mv-legend__cash::before { height: 2px !important; vertical-align: 3px !important; background: var(--sp-ink); }
+#appContainer #money .mv-legend__pending::before { height: 0 !important; vertical-align: 4px !important; border-top: 2px dashed var(--sp-ink-3); border-radius: 0 !important; }
+#appContainer #money .mv-legend__min::before { height: 0 !important; vertical-align: 4px !important; border-top: 2px dashed var(--sp-out); border-radius: 0 !important; }
+#appContainer #money .mv-fc__grid { stroke: var(--sp-line); stroke-dasharray: 3 4; }
+#appContainer #money .mv-fc__zero { stroke: var(--sp-line-strong); }
+#appContainer #money .mv-fc__axis { fill: var(--sp-ink-3); font-family: var(--sp-font-ui); font-size: 11px; }
+#appContainer #money .mv-fc__hit { fill: transparent; }
+#appContainer #money .mv-fc__week:hover .mv-fc__hit { fill: var(--sp-gold-soft); }
+#appContainer #money .mv-fc__in { fill: var(--sp-gold); }
+#appContainer #money .mv-fc__out { fill: var(--sp-sage); }
+#appContainer #money .mv-fc__min { stroke: var(--sp-out); stroke-width: 1.5; stroke-dasharray: 6 4; }
+#appContainer #money .mv-fc__cash { fill: none; stroke: var(--sp-ink); stroke-width: 2; stroke-linejoin: round; }
+#appContainer #money .mv-fc__pending { fill: none; stroke: var(--sp-ink-3); stroke-width: 1.5; stroke-dasharray: 4 4; }
+#appContainer #money .mv-fc__dot { fill: var(--sp-ink); }
+#appContainer #money .mv-fc__dot--low { fill: var(--sp-out); stroke: var(--sp-surface-2); stroke-width: 2; }
+
+/* Top 10 unpaid: show, when, balance, call / WhatsApp */
+#appContainer #money .mv-unpaid { display: grid; gap: var(--sp-space-2); margin: 0; padding: 0; list-style: none; counter-reset: unpaid; }
+#appContainer #money .mv-unpaid__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) auto 80px;
+  align-items: center;
+  gap: var(--sp-space-2) var(--sp-space-4);
+  padding: var(--sp-space-3) var(--sp-space-4);
+  border: 1px solid var(--sp-line);
+  border-radius: var(--sp-radius-md);
+  background: var(--sp-surface-2);
+}
+#appContainer #money .mv-unpaid__row.is-late { border-left: 3px solid var(--sp-out); }
+#appContainer #money :is(.mv-unpaid__main, .mv-unpaid__when) { display: flex; flex-direction: column; min-width: 0; }
+#appContainer #money .mv-unpaid__event { overflow: hidden; color: var(--sp-ink); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+#appContainer #money :is(.mv-unpaid__meta, .mv-unpaid__date, .mv-unpaid__contact) { overflow: hidden; color: var(--sp-ink-3); font-size: var(--sp-text-xs); text-overflow: ellipsis; white-space: nowrap; }
+#appContainer #money .mv-unpaid__late { color: var(--sp-ink-2); font-size: var(--sp-text-xs); font-weight: 600; }
+#appContainer #money .mv-unpaid__row.is-late .mv-unpaid__late { color: var(--sp-out); }
+#appContainer #money .mv-unpaid__amt { color: var(--sp-ink); font-weight: 700; white-space: nowrap; text-align: right; }
+#appContainer #money .mv-unpaid__actions { display: flex; justify-content: flex-end; gap: var(--sp-space-2); min-width: 0; }
+#appContainer #money .mv-unpaid__btn { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--sp-line); border-radius: 50%; background: var(--sp-surface-1); color: var(--sp-gold-text); font-size: 17px; text-decoration: none; }
+#appContainer #money .mv-unpaid__btn:hover { border-color: var(--sp-line-strong); background: var(--sp-gold-soft); }
+@media (max-width: 699px) {
+  #appContainer #money .mv-unpaid__row { grid-template-columns: minmax(0, 1fr) auto; padding: var(--sp-space-3); }
+  #appContainer #money .mv-unpaid__when { grid-row: 2; grid-column: 1; }
+  #appContainer #money .mv-unpaid__amt { grid-row: 1; grid-column: 2; }
+  #appContainer #money .mv-unpaid__actions { grid-row: 2; grid-column: 2; justify-content: flex-end; }
+  #appContainer #money .mv-card__head { flex-wrap: wrap; }
+}
 
 /* Reports: one gold action (the PDF); CSV and notes are secondary. */
 

@@ -6,9 +6,9 @@
     <meta name="star-paper:public-root" content="app-shell">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:;">
     <title>Star Paper</title>
-    <script src="app.browser-assets.js?v=23"></script>
+    <script src="app.browser-assets.js?v=24"></script>
     <script src="app.public-pages.js?v=2"></script>
-    <script src="app.boot-head.js?v=1"></script>
+    <script src="app.boot-head.js?v=2"></script>
     <link rel="manifest" href="manifest.json?v=27">
     <meta name="theme-color" content="#0A1210">
     <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2">
@@ -32,7 +32,7 @@
     <link rel="stylesheet" href="sp-design-tokens.css?v=4">
     <link rel="stylesheet" href="styles.landing.css?v=13">
     <link rel="stylesheet" href="styles.brand.css?v=1">
-    <link rel="stylesheet" href="styles.app.css?v=9">
+    <link rel="stylesheet" href="styles.app.css?v=10">
     <link rel="preload" href="assets/vendor/fonts/font-29-fraunces-latin-opsz-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="assets/vendor/fonts/font-31-inter-tight-latin-wght-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <!-- Vendored Phosphor Icons 2.1.1 - unified icon system -->
@@ -40,7 +40,7 @@
     <!-- Fill + duotone icon sheets load with the app shell (app.root-shell.js). -->
 </head>
 <body>
-    <script src="app.boot-body.js?v=2"></script>
+    <script src="app.boot-body.js?v=3"></script>
     <div class="app-boot-loader hidden" id="appBootLoader" aria-live="polite" aria-hidden="true" data-state="loading-session">
         <div class="app-boot-loader__inner">
             <img src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="Star Paper" class="app-boot-loader__logo sp-spin-mark" />
@@ -798,8 +798,10 @@
             <div class="section" id="money">
                 <div class="sp-tabs" id="moneyTabs">
                     <button class="sp-tab sp-tab--active" data-tab="financials" data-action="switchMoneyTab"><i class="ph ph-chart-bar" aria-hidden="true"></i> Overview</button>
+                    <button class="sp-tab" data-tab="cashflow" data-action="switchMoneyTab"><i class="ph ph-chart-line-up" aria-hidden="true"></i> Cash flow</button>
+                    <button class="sp-tab" data-tab="receivables" data-action="switchMoneyTab"><i class="ph ph-hand-coins" aria-hidden="true"></i> Receivables</button>
                     <button class="sp-tab" data-tab="expenses" data-action="switchMoneyTab"><i class="ph ph-receipt" aria-hidden="true"></i> Expenses</button>
-                    <button class="sp-tab" data-tab="otherIncome" data-action="switchMoneyTab"><i class="ph ph-plus-circle" aria-hidden="true"></i> Other Income</button>
+                    <button class="sp-tab" data-tab="otherIncome" data-action="switchMoneyTab"><i class="ph ph-plus-circle" aria-hidden="true"></i> Income</button>
                     <button class="sp-tab" data-tab="reports" data-action="switchMoneyTab"><i class="ph ph-clipboard-text" aria-hidden="true"></i> Reports</button>
                 </div>
                 <div class="sp-tab-panel sp-tab-panel--active" id="moneyPanel-financials">
@@ -810,29 +812,30 @@
                     <div class="stats-grid">
                         <div class="stat-card stat-card-clickable" data-action="showDetailView" data-detail-key="deposits"
                              title="Click to view deposits">
-                            <div class="stat-label">Deposits Received</div>
+                            <div class="stat-label">Collected from shows</div>
                             <div class="stat-value deposit-blue" id="depositsReceived">UGX 0</div>
+                            <span class="mv-delta" id="mvDeltaShows"></span>
                             <div class="stat-click-hint">View deposits -></div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-label">Other Income</div>
                             <div class="stat-value income-green" id="otherIncomeTotal">UGX 0</div>
-                            <div class="stat-click-hint">Current month</div>
+                            <span class="mv-delta" id="mvDeltaOther"></span>
                         </div>
                         <div class="stat-card">
                             <div class="stat-label">Expenses</div>
                             <div class="stat-value expense-red" id="financialsExpenses">UGX 0</div>
-                            <div class="stat-click-hint">Current month</div>
+                            <span class="mv-delta" id="mvDeltaExpenses"></span>
                         </div>
                         <div class="stat-card">
                             <div class="stat-label">Net Profit</div>
                             <div class="stat-value income-green" id="financialsCashAtHand">UGX 0</div>
-                            <div class="stat-click-hint">Current month</div>
+                            <span class="mv-delta" id="mvDeltaNet"></span>
                         </div>
                         <div class="stat-card">
                             <div class="stat-label">Balances Due</div>
                             <div class="stat-value expense-red" id="financialsBalancesDue">UGX 0</div>
-                            <div class="stat-click-hint">Outstanding this month</div>
+                            <span class="mv-delta" id="mvOwedLate"></span>
                         </div>
                     </div>
                     <div class="monthly-goal-track monthly-goal-track--financials">
@@ -864,10 +867,29 @@
                     </div>
                 </div>
 
-                <div class="card">
-                    <h3 class="section-title" data-icon="reports"><span class="section-title__text">Cashflow (<span id="cashflowPeriodLabel">Month Year</span>)</span></h3>
-                    <div class="timeline-list" id="cashFlowTimeline"></div>
+                <div class="mv-row">
+                    <div class="card mv-card mv-card--wide">
+                        <div class="mv-card__head">
+                            <h3 class="mv-title">Where the money went</h3>
+                            <span class="mv-label" id="mvWaterfallPeriod"></span>
+                        </div>
+                        <svg class="mv-waterfall" id="mvWaterfall" role="img" aria-label="Money in, costs and what was left this month" focusable="false"></svg>
+                        <p class="mv-note" id="mvWaterfallNote"></p>
+                    </div>
+                    <div class="card mv-card">
+                        <div class="mv-card__head">
+                            <h3 class="mv-title">Biggest changes</h3>
+                            <span class="mv-label">vs last month</span>
+                        </div>
+                        <p class="mv-summary" id="mvSummary"></p>
+                        <ul class="mv-changes" id="mvChanges"></ul>
+                    </div>
                 </div>
+
+                <details class="card mv-card mv-pl">
+                    <summary class="mv-pl__summary"><span class="mv-title">Profit and loss</span><span class="mv-label">This month, last month and the change</span></summary>
+                    <div class="mv-pl__scroll"><table class="mv-pl__table" id="mvPnl"></table></div>
+                </details>
 
                 <div class="card">
                     <h3 class="section-title" data-icon="reports">Financial Snapshot</h3>
@@ -876,6 +898,61 @@
                     </div>
                 </div>
 
+                </div>
+                <div class="sp-tab-panel" id="moneyPanel-cashflow">
+                <div class="mv-strip">
+                    <div class="card mv-tile"><span class="mv-label">Opening cash</span><span class="mv-tile__value money" id="mvCfOpen">UGX 0</span><span class="mv-tile__sub" id="mvCfOpenSub"></span></div>
+                    <div class="card mv-tile"><span class="mv-label">Cash in</span><span class="mv-tile__value money is-in" id="mvCfIn">UGX 0</span><span class="mv-tile__sub" id="mvCfInSub"></span></div>
+                    <div class="card mv-tile"><span class="mv-label">Cash out</span><span class="mv-tile__value money is-out" id="mvCfOut">UGX 0</span><span class="mv-tile__sub" id="mvCfOutSub"></span></div>
+                    <div class="card mv-tile mv-tile--key"><span class="mv-label">Cash now</span><span class="mv-tile__value money" id="mvCfClose">UGX 0</span><span class="mv-tile__sub" id="mvCfCloseSub"></span></div>
+                </div>
+
+                <div class="card mv-card">
+                    <div class="mv-card__head">
+                        <div>
+                            <h3 class="mv-title">Next 13 weeks</h3>
+                            <p class="mv-sub">Unpaid balances arrive on show dates; spending runs at your 12-week average.</p>
+                        </div>
+                        <button class="mv-mincash" type="button" data-mv-mincash><span class="mv-label">Minimum cash</span> <span class="money" id="mvMinCash">UGX 0</span> <i class="ph ph-pencil-simple" aria-hidden="true"></i></button>
+                    </div>
+                    <form class="mv-mincash-editor" id="mvMinCashEditor" hidden>
+                        <label class="mv-label" for="mvMinCashInput">Lowest cash you want to hold (UGX)</label>
+                        <input type="number" id="mvMinCashInput" min="0" step="10000" inputmode="numeric" />
+                        <button class="btn-primary" type="submit">Save</button>
+                        <button class="back-btn" type="button" data-mv-mincash-cancel>Cancel</button>
+                    </form>
+                    <div class="mv-legend"><span class="mv-legend__in">Money due in</span><span class="mv-legend__out">Spending</span><span class="mv-legend__cash">Cash</span><span class="mv-legend__pending">If pending shows confirm</span><span class="mv-legend__min">Minimum</span></div>
+                    <svg class="mv-forecast" id="mvForecast" role="img" aria-label="Cash forecast for the next 13 weeks" focusable="false"></svg>
+                    <p class="mv-note" id="mvForecastNote"></p>
+                </div>
+
+                <div class="card">
+                    <h3 class="section-title" data-icon="reports"><span class="section-title__text">Cashflow (<span id="cashflowPeriodLabel">Month Year</span>)</span></h3>
+                    <div class="timeline-list" id="cashFlowTimeline"></div>
+                </div>
+                </div>
+                <div class="sp-tab-panel" id="moneyPanel-receivables">
+                <div class="mv-strip">
+                    <div class="card mv-tile mv-tile--key"><span class="mv-label">Owed to you</span><span class="mv-tile__value money" id="mvArTotal">UGX 0</span><span class="mv-tile__sub" id="mvArTotalSub"></span></div>
+                    <div class="card mv-tile"><span class="mv-label">Overdue</span><span class="mv-tile__value money is-out" id="mvArLate">UGX 0</span><span class="mv-tile__sub" id="mvArLateSub"></span></div>
+                    <div class="card mv-tile"><span class="mv-label">Due in next 30 days</span><span class="mv-tile__value money" id="mvAr30">UGX 0</span><span class="mv-tile__sub" id="mvAr30Sub"></span></div>
+                    <div class="card mv-tile"><span class="mv-label">Due in 31 to 90 days</span><span class="mv-tile__value money" id="mvAr90">UGX 0</span><span class="mv-tile__sub" id="mvAr90Sub"></span></div>
+                </div>
+                <div class="mv-row mv-row--flip">
+                    <div class="card mv-card mv-card--wide">
+                        <div class="mv-card__head">
+                            <h3 class="mv-title">Top 10 unpaid</h3>
+                            <span class="mv-label">Biggest and longest late first</span>
+                        </div>
+                        <ol class="mv-unpaid" id="mvUnpaid"></ol>
+                    </div>
+                    <div class="card mv-card">
+                        <div class="mv-card__head">
+                            <h3 class="mv-title">Unpaid balances by age</h3>
+                        </div>
+                        <div class="hv2-aging" id="mvAging"></div>
+                    </div>
+                </div>
                 </div>
                 <div class="sp-tab-panel" id="moneyPanel-expenses">
                 <!-- Removed: FAB button handles this -->
@@ -1715,7 +1792,7 @@
           loaded above, and these deferred scripts keep document order:
           Supabase boot wiring is installed before app.js initializes UI helpers.
         -->
-<script src="app.root-shell.js?v=7" defer></script>
+<script src="app.root-shell.js?v=8" defer></script>
 <script src="app.offline-cache.js?v=1"></script>
 <script src="supabase.js?v=98" defer></script>
         <script src="app.migrations.js?v=10"></script>
@@ -1723,8 +1800,9 @@
         <script src="app.todayboard.js?v=3"></script>
         <script src="app.tasks.js?v=6"></script>
     <script src="app.reports.js?v=20"></script>
-<script src="app.js?v=153" defer></script>
-<script src="app.home.js?v=1" defer></script>
+<script src="app.js?v=154" defer></script>
+<script src="app.home.js?v=2" defer></script>
+<script src="app.money.js?v=1" defer></script>
 <script src="app.landing.js?v=4" defer></script>
 <script src="app.chrome.js?v=1" defer></script>
 
