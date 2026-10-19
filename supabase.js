@@ -353,6 +353,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     'schedule',
     'settings',
     'tasks',
+    'crew',
   ]);
   const SP_APP_ROUTE_HASH_ALIASES = new Map(
     Array.from(SP_APP_ROUTE_HASHES).map((section) => [section.toLowerCase(), section])
@@ -905,31 +906,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
     const channel = db.channel(`sp-team-notify-${_activeTeamId}`);
 
-    // Messages: notify on new chat messages even when panel is closed
-    channel.on(
-      'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'messages', filter: `team_id=eq.${_activeTeamId}` },
-      (payload) => {
-        const msg = payload.new;
-        // Don't notify for own messages
-        if (msg && msg.user_id === getOwnerId()) return;
-        const sender = msg?.username || 'A teammate';
-        toastSafe('Info', `New message from ${sender}`);
-        // Increment badge on team nav if it exists
-        const badge = document.getElementById('spTeamChatBadge');
-        if (badge) {
-          const count = (parseInt(badge.textContent, 10) || 0) + 1;
-          badge.textContent = String(count);
-          badge.hidden = false;
-          document.dispatchEvent(new CustomEvent('sp:notify', { detail: { kind: 'message', text: `New message from ${sender}` } }));
-        }
-        // If chat panel is open, append message through DOM text nodes.
-        const container = document.getElementById('spTeamChatMessages');
-        if (container) {
-          appendChatMessage(container, msg);
-        }
-      }
-    );
+    // New crew messages are handled by app.crew.js (its own channel).
 
     // Team members: notify on roster changes
     channel.on(
@@ -6384,6 +6361,9 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         copyInviteCode();
       } else if (action === 'send-chat') {
         sendChatMessage();
+      } else if (action === 'open-crew') {
+        closeTeamModal();
+        if (typeof window.showSection === 'function') window.showSection('crew');
       } else if (action === 'switch-team') {
         const teamId = actionEl.dataset.spTeamId || '';
         if (teamId && !normalizeCloudId(teamId)) return;
@@ -6683,21 +6663,11 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       membersSection.appendChild(domEl('div', { className: 'sp-team-invite-code' }, inviteChildren));
       children.push(membersSection);
 
-      const chatMessages = domEl('div', { id: 'spTeamChatMessages', className: 'sp-chat-messages' }, options.chatLoading
-        ? [createMuted('Loading chat...')]
-        : []);
       children.push(domEl('div', { className: 'sp-team-section' }, [
-        domEl('h4', { text: 'Team Chat' }),
-        chatMessages,
-        domEl('div', { className: 'sp-chat-input-row' }, [
-          domEl('input', {
-            id: 'spChatInput',
-            className: 'form-input',
-            type: 'text',
-            attrs: { placeholder: 'Type a message...' },
-            data: { spTeamAction: 'send-chat' },
-          }),
-          teamActionButton('Send', 'send-chat'),
+        domEl('h4', { text: 'Crew chat' }),
+        createMuted('Talk shows, plans and day-to-day work with your crew, as a group or one to one.'),
+        domEl('div', { className: 'sp-team-actions' }, [
+          teamActionButton('Open crew chat', 'open-crew'),
         ]),
       ]));
     }
@@ -6848,26 +6818,6 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         : '',
     });
 
-    try {
-      const msgs = await withTimeout(() => loadMessages(_activeTeamId), 5000, 'loadMessages');
-      renderChatMessages(msgs);
-      subscribeToTeamChat(_activeTeamId, (newMsg) => {
-        const container = document.getElementById('spTeamChatMessages');
-        appendChatMessage(container, newMsg);
-      });
-    } catch (err) {
-      warn('showTeamModal chat load delayed:', err);
-      const chatContainer = document.getElementById('spTeamChatMessages');
-      if (chatContainer) {
-        chatContainer.replaceChildren(domEl('div', { className: 'sp-team-empty-state' }, [
-          domEl('div', { className: 'sp-team-empty-title', text: 'Chat is still loading' }),
-          domEl('p', { text: 'Team workspace actions are ready. Retry the modal if chat does not appear.' }),
-          domEl('div', { className: 'sp-team-actions' }, [
-            teamActionButton('Retry', 'retry'),
-          ]),
-        ]));
-      }
-    }
   };
 
   function buildMessageElement(msg) {
