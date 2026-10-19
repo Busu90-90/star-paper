@@ -102,7 +102,16 @@ body.light-theme:has(#appContainer.screen-active) { background-color: var(--sp-s
   overflow: visible;
   transition: width var(--sp-dur-3) var(--sp-ease-out);
 }
-body.light-theme #appContainer .sidebar { background: var(--sp-surface-1); }
+/* Legacy styles.css paints the light sidebar cream and its nav gold with
+   !important; the sage theme needs its own surface and readable ink. */
+body.light-theme #appContainer .sidebar { background: var(--sp-surface-1) !important; border-right-color: var(--sp-line); }
+body.light-theme #appContainer .nav-item.active {
+  background: linear-gradient(90deg, var(--sp-gold-soft), transparent 85%) !important;
+  border-color: var(--sp-line) !important;
+  box-shadow: none !important;
+  color: var(--sp-ink) !important;
+}
+body.light-theme #appContainer .nav-item:hover:not(.active) { background: var(--sp-surface-3) !important; color: var(--sp-ink) !important; }
 
 #appContainer .sb-brand {
   display: flex;
