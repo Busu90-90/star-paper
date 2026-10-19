@@ -4,8 +4,6 @@
   const versionGroups = [
     ['1', [
       'app.boot-head.js',
-      'app.boot-body.js',
-      'app.shell.js',
       'assets/world-atlas/land-50m.json',
       'assets/vendor/fonts/font-01-Wnz6HAc5bAfYB2Q7azYYmg8.woff2',
       'assets/vendor/fonts/font-02-Wnz6HAc5bAfYB2Q7YjYYmg8.woff2',
@@ -69,7 +67,9 @@
     ['8', ['styles.app.css']],
     ['6', ['app.root-shell.js']],
     ['2', ['app.public-pages.js']],
-    ['3', ['app.boot-flags.js']],
+    ['4', ['app.boot-flags.js']],
+    ['2', ['app.boot-body.js']],
+    ['1', ['styles.utilities.css']],
     ['4', ['app.landing.js']],
     ['2', ['assets/vendor/fonts/star-paper-fonts.css']],
     ['4', ['sp-design-tokens.css']],
@@ -81,7 +81,6 @@
       'star_paper_logo_pack/star_paper_apple_180.png',
       'star_paper_logo_pack/star_paper_maskable_512.png'
     ]],
-    ['5', ['app.premium.js']],
     ['5', [
       'star_paper_logo_pack/star_paper_32.png',
       'star_paper_logo_pack/star_paper_64.png',
@@ -95,17 +94,14 @@
     ]],
     ['6', ['app.tasks.js']],
     ['8', ['app.actions.js']],
-    ['10', ['styles.premium.css']],
     ['10', ['app.migrations.js']],
-    ['14', ['styles.shell.css']],
     ['15', ['app.globe.js']],
     ['20', ['app.reports.js']],
-    ['24', ['star-paper-tokens.css']],
     ['27', ['manifest.json']],
-    ['63', ['styles.css']],
+    ['64', ['styles.css']],
     ['98', ['supabase.js']],
     ['152', ['app.js']],
-    ['200', ['sw.js']]
+    ['201', ['sw.js']]
   ];
 
   const assetVersions = {};
@@ -244,9 +240,7 @@
   const appShell = Object.freeze([
     './index.html',
     url('./styles.css'),
-    url('./styles.premium.css'),
-    url('./styles.shell.css'),
-    url('./star-paper-tokens.css'),
+    url('./styles.utilities.css'),
     url('./sp-design-tokens.css'),
     url('./styles.landing.css'),
     url('./styles.brand.css'),
@@ -313,8 +307,6 @@
     url('./app.landing.js'),
     url('./app.chrome.js'),
     url('./app.globe.js'),
-    url('./app.premium.js'),
-    url('./app.shell.js'),
     url('./assets/world-atlas/land-50m.json'),
     url('./manifest.json'),
     url('./star_paper_logo_pack/star_paper_32.png'),

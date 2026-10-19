@@ -458,11 +458,9 @@ const todayBoard = read('app.todayboard.js');
 const tasks = read('app.tasks.js');
 const reports = read('app.reports.js');
 const styles = read('styles.css');
-const premiumCss = read('styles.premium.css');
-const shellCss = read('styles.shell.css');
+const utilitiesCss = read('styles.utilities.css');
 const landingCss = read('styles.landing.css');
 const designTokensCss = read('sp-design-tokens.css');
-const tokensCss = read('star-paper-tokens.css');
 const landing = read('app.landing.js');
 const sw = read('sw.js');
 const headers = read('_headers');
@@ -510,11 +508,9 @@ for (const [fileName, text] of [
   ['assets/vendor/three/OrbitControls.js', orbitControls],
   ['assets/vendor/topojson-client/topojson-client.esm.js', topojsonClient],
   ['styles.css', styles],
-  ['styles.premium.css', premiumCss],
-  ['styles.shell.css', shellCss],
+  ['styles.utilities.css', utilitiesCss],
   ['styles.landing.css', landingCss],
   ['sp-design-tokens.css', designTokensCss],
-  ['star-paper-tokens.css', tokensCss],
   ['_headers', headers],
   ['README.md', readme],
   ['STAR_PAPER_DOCUMENTATION.md', docs],
@@ -565,7 +561,7 @@ assert(index.includes(versionedAssetUrl('app.boot-flags.js')), `index.html must 
 assert(index.includes(versionedAssetUrl('app.boot-body.js')), `index.html must load external ${versionedAssetUrl('app.boot-body.js')}`);
 for (const [fileName, text, signature] of [
   ['app.boot-head.js', bootHead, 'redirectLegacyNetlifyOrigin'],
-  ['app.boot-flags.js', bootFlags, 'applyPolishFlagsBeforePaint'],
+  ['app.boot-flags.js', bootFlags, 'applyLogoSpinBeforePaint'],
   ['app.boot-body.js', bootBody, 'forceBootForAuthOrAppRoutes'],
 ]) {
   assert(text.includes(signature), `${fileName} missing externalized boot signature: ${signature}`);
@@ -692,7 +688,14 @@ for (const [name, src] of [['supabase.js', supabase], ['app.tasks.js', tasks], [
 assert(styleWrites(app) <= 2, `app.js inline style writes grew (${styleWrites(app)}); only the fallback map pin position may remain`);
 assert(styleWrites(globe) <= 7, `app.globe.js inline style writes grew (${styleWrites(globe)}); only per-frame pin card / drag positions may remain`);
 assert(!rootShell.includes("loadScript('premium')") && !rootShell.includes("loadScript('shell')"), 'The legacy premium/shell polish layers are retired and must not load');
-assert(bootFlags.includes("'sp-prem-off', 'sp-handcraft-off', 'sp-shell-off'"), 'app.boot-flags.js must keep the legacy polish layers switched off');
+for (const retired of ['styles.premium.css', 'styles.shell.css', 'star-paper-tokens.css', 'app.premium.js', 'app.shell.js']) {
+  assert(!existsSync(join(root, retired)), `${retired} is retired (stage B5) and must stay deleted`);
+  for (const [fileName, text] of [['index.html', index], ['app.browser-assets.js', read('app.browser-assets.js')], ['sw.js', sw]]) {
+    assert(!text.includes(retired), `${fileName} must not reference the retired ${retired}`);
+  }
+}
+assert(!/sp-prem-|sp-shell-(off|refined)|sp-handcraft-off/.test(index + bootFlags + read('app.boot-body.js') + styles), 'The retired premium/shell polish flags must not come back');
+assert(index.includes(versionedAssetUrl('styles.utilities.css')), `index.html does not load ${versionedAssetUrl('styles.utilities.css')}`);
 assert(rootShell.includes('whenAppShellActive('), 'app.root-shell.js must defer the globe/Three.js loader until the app shell is active');
 for (const legacy of ['app.handcraft.js', 'styles.handcraft.css', 'notebook-board', 'sp-compass', 'landing-snap-page']) {
   for (const [fileName, text] of [['index.html', index], ['app.js', app], ['app.browser-assets.js', read('app.browser-assets.js')], ['styles.css', styles]]) {

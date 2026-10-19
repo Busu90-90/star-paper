@@ -7,7 +7,7 @@ matters most, whether that's the primary action or the money you're looking at.
 - Tokens: `sp-design-tokens.css`. Every colour, size, radius, shadow and duration comes from here.
 - Signed-out screens: `styles.landing.css` (`.lp-*`).
 - Brand mark spin: `styles.brand.css`.
-- Signed-in app shell: `styles.app.css` (scoped to `#appContainer` and the overlays it opens), driven by `app.chrome.js`. It is being rebuilt section by section (stages B0–B5). The legacy premium/shell polish layers are switched off and get deleted in B5.
+- Signed-in app shell: `styles.app.css` (scoped to `#appContainer` and the overlays it opens), driven by `app.chrome.js`. It was rebuilt section by section (stages B0–B5); B5 deleted the legacy premium, shell and relayering token layers. The few ungated helpers they carried (CSP style replacements, availability results, report tones) live in `styles.utilities.css`; new app styling goes in `styles.app.css`.
 
 ## Palette
 

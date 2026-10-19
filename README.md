@@ -35,7 +35,6 @@ Do not open `index.html` through `file://`; Google OAuth and email-confirm redir
 - `app.reports.js` - PDF/report generation and report presentation helpers.
 - `app.tasks.js` - task rendering and task interactions.
 - `app.globe.js` - Schedule Global globe rendering, land topology loading, tour pins/arcs, itinerary panel behavior, and booking-detail sheet wiring.
-- `app.shell.js` - additive app-shell refinement bootstrap that gates landing-aligned shell polish behind `localStorage.sp_shell_refined_off`.
 - `app.boot-head.js`, `app.boot-flags.js`, `app.boot-body.js` - externalized prepaint and route/auth boot guards required before the main app bundle.
 - `app.public-pages.js` - source of truth for public root HTML markers and clean/`.html` landing route pairs consumed by boot, service-worker, and preflight checks.
 - `app.browser-assets.js` - browser asset contract for local version query strings, service-worker precache URLs, same-origin runtime scripts, external CDN SRI pins, and vendored runtime file hashes.
@@ -122,7 +121,7 @@ The app is considered healthy when all of the following hold:
 - Saving data persists to Supabase and reappears after refresh, re-login, or opening the same account in another browser.
 - Profile updates persist through Supabase and re-render after refresh.
 - Reports use cloud-backed data and BBF contributes to closing balance, not period profit.
-- The refined app shell is opt-in at runtime through the `sp-shell-refined` class and can be disabled with `localStorage.sp_shell_refined_off = '1'`; premium and handcraft kill switches also disable the shell relayer.
+- The signed-in app shell is styled by `styles.app.css` on the `sp-design-tokens.css` roles. The old premium, handcraft and shell polish layers and their kill switches were removed in stage B5.
 - Schedule > Global loads the local land atlas first, then the built-in continent fallback. The globe remains visible while the itinerary appears as a right-side glass panel on desktop and a three-snap bottom sheet on mobile (`peek`, `half`, `full`). Desktop layout reserves a left detail rail and right itinerary rail so the globe canvas and toolbar stay in the clean center lane.
 - Globe itinerary selection is bidirectional: itinerary rows focus visible pins, visible pin taps scroll/highlight the matching row, and the detail sheet opens from the row chevron, double-tap, or mobile swipe action.
 
@@ -144,13 +143,12 @@ Always deploy the matching versions of:
 - `app.reports.js`
 - `app.tasks.js`
 - `app.globe.js`
-- `app.shell.js`
 - `app.boot-head.js`
 - `app.boot-flags.js`
 - `app.boot-body.js`
 - `app.root-shell.js`
 - `styles.css`
-- `styles.shell.css`
+- `styles.utilities.css`
 - `sp-design-tokens.css`
 - `styles.landing.css`
 - `index.html`

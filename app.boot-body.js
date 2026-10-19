@@ -1,8 +1,6 @@
 (function applyStoredThemeBeforePaint() {
   try {
     document.body.classList.toggle('light-theme', localStorage.getItem('starPaperTheme') === 'light');
-    document.body.classList.toggle('sp-shell-refined', document.documentElement.classList.contains('sp-shell-refined'));
-    document.body.classList.toggle('sp-shell-off', document.documentElement.classList.contains('sp-shell-off'));
   } catch (_err) {}
 })();
 

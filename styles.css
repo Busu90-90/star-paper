@@ -71,9 +71,6 @@ html.sp-force-boot #appBootLoader.hidden {
     display: none !important;
 }
 
-html.sp-prem-off .sp-prem-widget { display: none !important; }
-html.sp-shell-off .sp-shell-widget { display: none !important; }
-
 /* ============================================================================
    SECTION 2: BASE TYPOGRAPHY & BODY
    ============================================================================ */
@@ -4519,7 +4516,6 @@ body.light-theme #userName, body.light-theme #sidebarUserName { color: #1b1b1b; 
     backdrop-filter: blur(6px);
     transition: opacity 0.35s ease, visibility 0.35s ease;
 }
-.app-boot-loader.sp-prem-reveal { opacity: 1; transform: none; }
 .app-boot-loader.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
 .app-boot-loader__inner { display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .app-boot-loader__logo {
