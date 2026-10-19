@@ -14,6 +14,23 @@
       notify, account)        money semantics
    ========================================================================== */
 
+/* Checks: the in-app display face (page titles, section headings, brand
+   word). Body text, card titles and money stay in Inter Tight / JetBrains
+   Mono so small text stays readable; Fraunces is the fallback. */
+@font-face {
+  font-family: 'Checks';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url(./assets/fonts/checks.woff2?v=1) format('woff2');
+}
+#appContainer,
+:is(#confirmDeleteModal, #receiptModal, #profileModal, #spBbfModal, #spPdfExportModal, #spAboutModal, #spAdminModal, #spTeamModal) {
+  --sp-font-display: 'Checks', 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+}
+/* Checks sets wide: let the brand word fit the rail. */
+body #appContainer .sb-brand__word { letter-spacing: 0.04em; }
+
 /* ── 1. Page + scope ─────────────────────────────────────────────────────── */
 [hidden] { display: none !important; }
 
@@ -1153,6 +1170,18 @@ body.light-theme #appContainer input[type="date"] { color-scheme: light; }
 #appContainer .nudge-banner,
 #appContainer .today-board__alerts > * { border-radius: var(--sp-radius-md); }
 
+/* Clean edges: no coloured stripe down the left of a card or row. Every
+   card keeps one even 1px border; state shows in the icon, text colour or
+   a soft background instead. */
+#appContainer :is(.nudge-item, .dashboard-alert-item, .availability-result-panel) { border: 1px solid var(--sp-line); }
+#appContainer .nudge-item--warning { border-color: color-mix(in srgb, var(--sp-gold) 30%, var(--sp-line)); }
+#appContainer .nudge-item--alert { border-color: color-mix(in srgb, var(--sp-out) 30%, var(--sp-line)); }
+#appContainer .sp-global-stop { border-left: 1px solid rgba(255, 255, 255, 0.06); }
+#appContainer .sp-global-stop:hover { border-left-color: rgba(255, 255, 255, 0.12); }
+#appContainer :is(.sp-global-stop.is-active, .sp-global-stop.is-past.is-active) { border-left-color: rgba(212, 175, 55, 0.34); }
+.sp-palette__result, .sp-palette__result:hover, .sp-palette__result[aria-selected="true"] { border-left: 0; }
+.sp-palette__result { padding-left: 20px; }
+
 /* Scrollbars inside the app */
 #appContainer * { scrollbar-width: thin; scrollbar-color: var(--sp-moss) transparent; }
 
@@ -1707,7 +1736,6 @@ canvas.is-pin-hover { cursor: pointer; }
   border-radius: var(--sp-radius-md);
   background: var(--sp-surface-2);
 }
-#appContainer #money .mv-unpaid__row.is-late { border-left: 3px solid var(--sp-out); }
 #appContainer #money :is(.mv-unpaid__main, .mv-unpaid__when) { display: flex; flex-direction: column; min-width: 0; }
 #appContainer #money .mv-unpaid__event { overflow: hidden; color: var(--sp-ink); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 #appContainer #money :is(.mv-unpaid__meta, .mv-unpaid__date, .mv-unpaid__contact) { overflow: hidden; color: var(--sp-ink-3); font-size: var(--sp-text-xs); text-overflow: ellipsis; white-space: nowrap; }

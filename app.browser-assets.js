@@ -60,13 +60,13 @@
     ]],
     ['1', ['app.offline-cache.js']],
     ['3', ['app.todayboard.js']],
-    ['24', ['app.browser-assets.js']],
+    ['25', ['app.browser-assets.js']],
     ['2', ['app.boot-head.js', 'app.home.js']],
-    ['1', ['app.money.js']],
+    ['1', ['app.money.js', 'assets/fonts/checks.woff2']],
     ['13', ['styles.landing.css']],
     ['1', ['assets/landing/brick-wall.webp']],
     ['1', ['styles.brand.css', 'app.chrome.js']],
-    ['10', ['styles.app.css']],
+    ['11', ['styles.app.css']],
     ['8', ['app.root-shell.js']],
     ['2', ['app.public-pages.js']],
     ['4', ['app.boot-flags.js']],
@@ -103,7 +103,7 @@
     ['64', ['styles.css']],
     ['98', ['supabase.js']],
     ['154', ['app.js']],
-    ['204', ['sw.js']]
+    ['205', ['sw.js']]
   ];
 
   const assetVersions = {};
@@ -248,6 +248,7 @@
     url('./assets/landing/brick-wall.webp'),
     url('./styles.brand.css'),
     url('./styles.app.css'),
+    url('./assets/fonts/checks.woff2'),
     url('./assets/vendor/fonts/star-paper-fonts.css'),
     url('./assets/vendor/fonts/font-01-Wnz6HAc5bAfYB2Q7azYYmg8.woff2'),
     url('./assets/vendor/fonts/font-02-Wnz6HAc5bAfYB2Q7YjYYmg8.woff2'),
