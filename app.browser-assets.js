@@ -60,13 +60,14 @@
     ]],
     ['1', ['app.offline-cache.js']],
     ['3', ['app.todayboard.js']],
-    ['26', ['app.browser-assets.js']],
-    ['2', ['app.boot-head.js', 'app.home.js']],
-    ['1', ['app.money.js', 'assets/fonts/checks.woff2']],
+    ['27', ['app.browser-assets.js']],
+    ['2', ['app.boot-head.js', 'app.money.js']],
+    ['3', ['app.home.js']],
+    ['1', ['assets/fonts/checks.woff2', 'app.charts.js', 'app.insights.js']],
     ['14', ['styles.landing.css']],
     ['2', ['assets/landing/brick-wall.webp']],
     ['1', ['styles.brand.css', 'app.chrome.js']],
-    ['11', ['styles.app.css']],
+    ['12', ['styles.app.css']],
     ['8', ['app.root-shell.js']],
     ['2', ['app.public-pages.js']],
     ['4', ['app.boot-flags.js']],
@@ -74,7 +75,7 @@
     ['1', ['styles.utilities.css']],
     ['4', ['app.landing.js']],
     ['2', ['assets/vendor/fonts/star-paper-fonts.css']],
-    ['4', ['sp-design-tokens.css']],
+    ['5', ['sp-design-tokens.css']],
     ['2', [
       'favicon.svg',
       'star_paper_logo_pack/star-paper-mark.svg',
@@ -102,8 +103,8 @@
     ['27', ['manifest.json']],
     ['64', ['styles.css']],
     ['98', ['supabase.js']],
-    ['154', ['app.js']],
-    ['206', ['sw.js']]
+    ['155', ['app.js']],
+    ['207', ['sw.js']]
   ];
 
   const assetVersions = {};
@@ -310,6 +311,8 @@
     url('./app.js'),
     url('./app.home.js'),
     url('./app.money.js'),
+    url('./app.charts.js'),
+    url('./app.insights.js'),
     url('./app.landing.js'),
     url('./app.chrome.js'),
     url('./app.globe.js'),

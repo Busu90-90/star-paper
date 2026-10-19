@@ -6,7 +6,7 @@
     <meta name="star-paper:public-root" content="app-shell">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:;">
     <title>Star Paper</title>
-    <script src="app.browser-assets.js?v=26"></script>
+    <script src="app.browser-assets.js?v=27"></script>
     <script src="app.public-pages.js?v=2"></script>
     <script src="app.boot-head.js?v=2"></script>
     <link rel="manifest" href="manifest.json?v=27">
@@ -29,10 +29,10 @@
     <link rel="stylesheet" href="styles.css?v=64">
     <link rel="stylesheet" href="styles.utilities.css?v=1">
     <!-- Design system: tokens + signed-out pages (landing, auth). Loaded last so it owns those screens. -->
-    <link rel="stylesheet" href="sp-design-tokens.css?v=4">
+    <link rel="stylesheet" href="sp-design-tokens.css?v=5">
     <link rel="stylesheet" href="styles.landing.css?v=14">
     <link rel="stylesheet" href="styles.brand.css?v=1">
-    <link rel="stylesheet" href="styles.app.css?v=11">
+    <link rel="stylesheet" href="styles.app.css?v=12">
     <link rel="preload" href="assets/vendor/fonts/font-29-fraunces-latin-opsz-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="assets/vendor/fonts/font-31-inter-tight-latin-wght-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <!-- Vendored Phosphor Icons 2.1.1 - unified icon system -->
@@ -666,6 +666,7 @@
 
                     <div class="hv2-top">
                         <section class="card hv2-card hv2-hero" aria-labelledby="hv2HeroLabel">
+                            <span class="sp-icon-tile sp-icon-tile--foil hv2-hero__icon" aria-hidden="true"><i class="ph ph-coins"></i></span>
                             <div class="hv2-hero__text">
                                 <p class="hv2-label" id="hv2HeroLabel">Cash in · <span id="glancePeriodLabel">this month</span></p>
                                 <p class="hv2-hero__value money" id="totalIncome"><span class="sp-skeleton"></span></p>
@@ -674,7 +675,7 @@
                                     Brought forward <span class="bbf-month-label" id="bbfMonthLabel"></span>: <span class="money" id="dashboardBBF">UGX 0</span>
                                 </button>
                             </div>
-                            <svg class="hv2-spark hv2-spark--hero" id="hv2HeroSpark" viewBox="0 0 240 72" preserveAspectRatio="none" aria-hidden="true" focusable="false"></svg>
+                            <svg class="hv2-spark hv2-spark--hero" id="hv2HeroSpark" viewBox="0 0 240 96" preserveAspectRatio="none" aria-hidden="true" focusable="false"></svg>
                         </section>
 
                         <section class="card hv2-card hv2-goal" aria-labelledby="hv2GoalTitle">
@@ -704,27 +705,29 @@
 
                     <section class="hv2-kpis" aria-label="Key numbers this month">
                         <div class="card hv2-card hv2-kpi">
-                            <span class="hv2-kpi__icon"><i class="ph ph-trend-up" aria-hidden="true"></i></span>
-                            <p class="hv2-label">Net profit</p>
+                            <span class="sp-icon-tile hv2-kpi__icon"><i class="ph ph-trend-up" aria-hidden="true"></i></span>
+                            <p class="hv2-label" title="Money in this month minus expenses this month">Net profit</p>
                             <p class="hv2-kpi__value money" id="dashboardCashAtHand"><span class="sp-skeleton"></span></p>
                             <p class="hv2-delta" id="hv2ProfitDelta"></p>
                             <svg class="hv2-spark" id="hv2ProfitSpark" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" focusable="false"></svg>
                         </div>
                         <button class="card hv2-card hv2-kpi" type="button" data-action="showSection" data-section="schedule">
-                            <span class="hv2-kpi__icon"><i class="ph ph-hand-coins" aria-hidden="true"></i></span>
-                            <span class="hv2-label">Owed to you</span>
+                            <span class="sp-icon-tile hv2-kpi__icon"><i class="ph ph-hand-coins" aria-hidden="true"></i></span>
+                            <span class="hv2-label" title="Unpaid balances on confirmed and completed shows">Owed to you</span>
                             <span class="hv2-kpi__value money" id="hv2Owed">UGX 0</span>
                             <span class="hv2-delta" id="hv2OwedLate"></span>
+                            <span class="hv2-meter" aria-hidden="true"><span class="hv2-meter__fill hv2-meter__fill--bad" id="hv2OwedMeter"></span></span>
                         </button>
                         <button class="card hv2-card hv2-kpi" type="button" data-action="showSection" data-section="schedule">
-                            <span class="hv2-kpi__icon"><i class="ph ph-calendar-check" aria-hidden="true"></i></span>
-                            <span class="hv2-label">Booked, next 30 days</span>
+                            <span class="sp-icon-tile hv2-kpi__icon"><i class="ph ph-calendar-check" aria-hidden="true"></i></span>
+                            <span class="hv2-label" title="Fees of confirmed and pending shows in the next 30 days">Booked, next 30 days</span>
                             <span class="hv2-kpi__value money" id="hv2Booked30">UGX 0</span>
                             <span class="hv2-delta" id="hv2Booked30Count"></span>
+                            <span class="hv2-meter" aria-hidden="true"><span class="hv2-meter__fill" id="hv2BookedMeter"></span></span>
                         </button>
                         <div class="card hv2-card hv2-kpi">
-                            <span class="hv2-kpi__icon"><i class="ph ph-receipt" aria-hidden="true"></i></span>
-                            <p class="hv2-label">Expenses</p>
+                            <span class="sp-icon-tile hv2-kpi__icon"><i class="ph ph-receipt" aria-hidden="true"></i></span>
+                            <p class="hv2-label" title="Everything logged as an expense this month">Expenses</p>
                             <p class="hv2-kpi__value money" id="dashboardExpenses"><span class="sp-skeleton"></span></p>
                             <p class="hv2-delta" id="hv2ExpenseDelta"></p>
                             <svg class="hv2-spark" id="hv2ExpenseSpark" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" focusable="false"></svg>
@@ -805,39 +808,46 @@
                     <button class="sp-tab" data-tab="reports" data-action="switchMoneyTab"><i class="ph ph-clipboard-text" aria-hidden="true"></i> Reports</button>
                 </div>
                 <div class="sp-tab-panel sp-tab-panel--active" id="moneyPanel-financials">
-                <div class="card mainstage-pulse-card dashboard-financials-card">
-                    <div class="mainstage-strip__head">
-                        <h3 class="section-title" data-icon="dashboard" id="dashboardFinancialHeading">Current Month Financials</h3>
+                <div class="mv-page-head">
+                    <h3 class="mv-page-title" id="dashboardFinancialHeading">Current Month Financials</h3>
+                </div>
+                <div class="mv-strip mv-strip--five">
+                    <button class="card mv-tile mv-tile--key" type="button" data-action="showDetailView" data-detail-key="deposits" title="Deposits plus balances paid on confirmed and completed shows this month. Tap to see deposits.">
+                        <span class="sp-icon-tile sp-icon-tile--foil" aria-hidden="true"><i class="ph ph-microphone-stage"></i></span>
+                        <span class="mv-label">Collected from shows</span>
+                        <span class="mv-tile__value money" id="depositsReceived">UGX 0</span>
+                        <span class="mv-delta" id="mvDeltaShows"></span>
+                        <svg class="mv-spark" id="mvSparkShows" aria-hidden="true" focusable="false"></svg>
+                    </button>
+                    <div class="card mv-tile" title="Royalties, sponsorships and other money marked received this month">
+                        <span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-plus-circle"></i></span>
+                        <span class="mv-label">Other income</span>
+                        <span class="mv-tile__value money" id="otherIncomeTotal">UGX 0</span>
+                        <span class="mv-delta" id="mvDeltaOther"></span>
+                        <svg class="mv-spark" id="mvSparkOther" aria-hidden="true" focusable="false"></svg>
                     </div>
-                    <div class="stats-grid">
-                        <div class="stat-card stat-card-clickable" data-action="showDetailView" data-detail-key="deposits"
-                             title="Click to view deposits">
-                            <div class="stat-label">Collected from shows</div>
-                            <div class="stat-value deposit-blue" id="depositsReceived">UGX 0</div>
-                            <span class="mv-delta" id="mvDeltaShows"></span>
-                            <div class="stat-click-hint">View deposits -></div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Other Income</div>
-                            <div class="stat-value income-green" id="otherIncomeTotal">UGX 0</div>
-                            <span class="mv-delta" id="mvDeltaOther"></span>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Expenses</div>
-                            <div class="stat-value expense-red" id="financialsExpenses">UGX 0</div>
-                            <span class="mv-delta" id="mvDeltaExpenses"></span>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Net Profit</div>
-                            <div class="stat-value income-green" id="financialsCashAtHand">UGX 0</div>
-                            <span class="mv-delta" id="mvDeltaNet"></span>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Balances Due</div>
-                            <div class="stat-value expense-red" id="financialsBalancesDue">UGX 0</div>
-                            <span class="mv-delta" id="mvOwedLate"></span>
-                        </div>
+                    <div class="card mv-tile" title="Everything logged as an expense this month">
+                        <span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-receipt"></i></span>
+                        <span class="mv-label">Expenses</span>
+                        <span class="mv-tile__value money" id="financialsExpenses">UGX 0</span>
+                        <span class="mv-delta" id="mvDeltaExpenses"></span>
+                        <svg class="mv-spark" id="mvSparkExpenses" aria-hidden="true" focusable="false"></svg>
                     </div>
+                    <div class="card mv-tile" title="Money in this month minus expenses this month">
+                        <span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-trend-up"></i></span>
+                        <span class="mv-label">Net profit</span>
+                        <span class="mv-tile__value money" id="financialsCashAtHand">UGX 0</span>
+                        <span class="mv-delta" id="mvDeltaNet"></span>
+                        <svg class="mv-spark" id="mvSparkNet" aria-hidden="true" focusable="false"></svg>
+                    </div>
+                    <button class="card mv-tile" type="button" data-action="switchMoneyTab" data-tab="receivables" title="Unpaid balances on this month's shows. Tap for Receivables.">
+                        <span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-hand-coins"></i></span>
+                        <span class="mv-label">Balances due</span>
+                        <span class="mv-tile__value money" id="financialsBalancesDue">UGX 0</span>
+                        <span class="mv-delta" id="mvOwedLate"></span>
+                    </button>
+                </div>
+                <div class="card mv-card mv-goalcard">
                     <div class="monthly-goal-track monthly-goal-track--financials">
                         <div class="monthly-goal-track__top">
                             <div class="monthly-goal-track__title">Monthly Revenue Goal</div>
@@ -891,20 +901,29 @@
                     <div class="mv-pl__scroll"><table class="mv-pl__table" id="mvPnl"></table></div>
                 </details>
 
-                <div class="card">
-                    <h3 class="section-title" data-icon="reports">Financial Snapshot</h3>
-                    <div class="chart-container sp-chart-host">
-                        <canvas id="performanceChart"></canvas>
+                <div class="card mv-card">
+                    <div class="mv-card__head">
+                        <div>
+                            <h3 class="mv-title">Last 12 months</h3>
+                            <p class="mv-sub" id="mvYearBest"></p>
+                        </div>
+                        <div class="mv-legend"><span class="mv-legend__in">Money in</span><span class="mv-legend__out">Money out</span><span class="mv-legend__net">Net</span></div>
                     </div>
+                    <div class="mv-yearsum">
+                        <span><span class="mv-label">In</span> <span class="money" id="mvYearIn">UGX 0</span></span>
+                        <span><span class="mv-label">Out</span> <span class="money" id="mvYearOut">UGX 0</span></span>
+                        <span><span class="mv-label">Kept</span> <span class="money" id="mvYearNet">UGX 0</span></span>
+                    </div>
+                    <svg class="mv-chart" id="mvYear" role="img" aria-label="Money in and out over the last 12 months" focusable="false"></svg>
                 </div>
 
                 </div>
                 <div class="sp-tab-panel" id="moneyPanel-cashflow">
                 <div class="mv-strip">
-                    <div class="card mv-tile"><span class="mv-label">Opening cash</span><span class="mv-tile__value money" id="mvCfOpen">UGX 0</span><span class="mv-tile__sub" id="mvCfOpenSub"></span></div>
-                    <div class="card mv-tile"><span class="mv-label">Cash in</span><span class="mv-tile__value money is-in" id="mvCfIn">UGX 0</span><span class="mv-tile__sub" id="mvCfInSub"></span></div>
-                    <div class="card mv-tile"><span class="mv-label">Cash out</span><span class="mv-tile__value money is-out" id="mvCfOut">UGX 0</span><span class="mv-tile__sub" id="mvCfOutSub"></span></div>
-                    <div class="card mv-tile mv-tile--key"><span class="mv-label">Cash now</span><span class="mv-tile__value money" id="mvCfClose">UGX 0</span><span class="mv-tile__sub" id="mvCfCloseSub"></span></div>
+                    <div class="card mv-tile"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-door-open"></i></span><span class="mv-label">Opening cash</span><span class="mv-tile__value money" id="mvCfOpen">UGX 0</span><span class="mv-tile__sub" id="mvCfOpenSub"></span></div>
+                    <div class="card mv-tile"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-arrow-down-left"></i></span><span class="mv-label">Cash in</span><span class="mv-tile__value money is-in" id="mvCfIn">UGX 0</span><span class="mv-tile__sub" id="mvCfInSub"></span></div>
+                    <div class="card mv-tile"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-arrow-up-right"></i></span><span class="mv-label">Cash out</span><span class="mv-tile__value money is-out" id="mvCfOut">UGX 0</span><span class="mv-tile__sub" id="mvCfOutSub"></span></div>
+                    <div class="card mv-tile mv-tile--key"><span class="sp-icon-tile sp-icon-tile--foil" aria-hidden="true"><i class="ph ph-wallet"></i></span><span class="mv-label">Cash now</span><span class="mv-tile__value money" id="mvCfClose">UGX 0</span><span class="mv-tile__sub" id="mvCfCloseSub"></span></div>
                 </div>
 
                 <div class="card mv-card">
@@ -921,7 +940,7 @@
                         <button class="btn-primary" type="submit">Save</button>
                         <button class="back-btn" type="button" data-mv-mincash-cancel>Cancel</button>
                     </form>
-                    <div class="mv-legend"><span class="mv-legend__in">Money due in</span><span class="mv-legend__out">Spending</span><span class="mv-legend__cash">Cash</span><span class="mv-legend__pending">If pending shows confirm</span><span class="mv-legend__min">Minimum</span></div>
+                    <div class="mv-legend"><span class="mv-legend__in">Money due in</span><span class="mv-legend__out">Spending</span><span class="mv-legend__cash">Cash after the week</span><span class="mv-legend__pending">If pending shows confirm</span><span class="mv-legend__min">Minimum</span></div>
                     <svg class="mv-forecast" id="mvForecast" role="img" aria-label="Cash forecast for the next 13 weeks" focusable="false"></svg>
                     <p class="mv-note" id="mvForecastNote"></p>
                 </div>
@@ -933,10 +952,10 @@
                 </div>
                 <div class="sp-tab-panel" id="moneyPanel-receivables">
                 <div class="mv-strip">
-                    <div class="card mv-tile mv-tile--key"><span class="mv-label">Owed to you</span><span class="mv-tile__value money" id="mvArTotal">UGX 0</span><span class="mv-tile__sub" id="mvArTotalSub"></span></div>
-                    <div class="card mv-tile"><span class="mv-label">Overdue</span><span class="mv-tile__value money is-out" id="mvArLate">UGX 0</span><span class="mv-tile__sub" id="mvArLateSub"></span></div>
-                    <div class="card mv-tile"><span class="mv-label">Due in next 30 days</span><span class="mv-tile__value money" id="mvAr30">UGX 0</span><span class="mv-tile__sub" id="mvAr30Sub"></span></div>
-                    <div class="card mv-tile"><span class="mv-label">Due in 31 to 90 days</span><span class="mv-tile__value money" id="mvAr90">UGX 0</span><span class="mv-tile__sub" id="mvAr90Sub"></span></div>
+                    <div class="card mv-tile mv-tile--key"><span class="sp-icon-tile sp-icon-tile--foil" aria-hidden="true"><i class="ph ph-hand-coins"></i></span><span class="mv-label">Owed to you</span><span class="mv-tile__value money" id="mvArTotal">UGX 0</span><span class="mv-tile__sub" id="mvArTotalSub"></span></div>
+                    <div class="card mv-tile"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-warning-circle"></i></span><span class="mv-label">Overdue</span><span class="mv-tile__value money is-out" id="mvArLate">UGX 0</span><span class="mv-tile__sub" id="mvArLateSub"></span></div>
+                    <div class="card mv-tile"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-calendar-blank"></i></span><span class="mv-label">Due in next 30 days</span><span class="mv-tile__value money" id="mvAr30">UGX 0</span><span class="mv-tile__sub" id="mvAr30Sub"></span></div>
+                    <div class="card mv-tile"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-calendar-dots"></i></span><span class="mv-label">Due in 31 to 90 days</span><span class="mv-tile__value money" id="mvAr90">UGX 0</span><span class="mv-tile__sub" id="mvAr90Sub"></span></div>
                 </div>
                 <div class="mv-row mv-row--flip">
                     <div class="card mv-card mv-card--wide">
@@ -955,7 +974,51 @@
                 </div>
                 </div>
                 <div class="sp-tab-panel" id="moneyPanel-expenses">
-                <!-- Removed: FAB button handles this -->
+                <!-- Spending analysis (app.insights.js); the form and list follow. -->
+                <div class="mv-strip">
+                    <div class="card mv-tile mv-tile--key"><span class="sp-icon-tile sp-icon-tile--foil" aria-hidden="true"><i class="ph ph-receipt"></i></span><span class="mv-label">Spent this month</span><span class="mv-tile__value money" id="mvExTotal">UGX 0</span><span class="mv-delta" id="mvExTotalDelta"></span><svg class="mv-spark" id="mvExTotalSpark" aria-hidden="true" focusable="false"></svg></div>
+                    <div class="card mv-tile" title="Spending as a share of money in this month"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-percent"></i></span><span class="mv-label">Share of money in</span><span class="mv-tile__value money" id="mvExShare">—</span><span class="mv-tile__sub" id="mvExShareSub"></span></div>
+                    <div class="card mv-tile"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-crown-simple"></i></span><span class="mv-label">Biggest cost</span><span class="mv-tile__value" id="mvExTop">—</span><span class="mv-tile__sub" id="mvExTopSub"></span></div>
+                    <div class="card mv-tile"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-calendar-blank"></i></span><span class="mv-label">Per day</span><span class="mv-tile__value money" id="mvExDaily">UGX 0</span><span class="mv-tile__sub" id="mvExDailySub"></span></div>
+                </div>
+                <div class="mv-row">
+                    <div class="card mv-card mv-card--wide">
+                        <div class="mv-card__head">
+                            <div>
+                                <h3 class="mv-title">Spending by category</h3>
+                                <p class="mv-sub">The marker on each bar is your usual month (average of the three before).</p>
+                            </div>
+                            <span class="mv-label" id="mvExPeriod"></span>
+                        </div>
+                        <div class="mv-excat">
+                            <div id="mvExDonut"></div>
+                            <ul class="mv-cbars" id="mvExBars"></ul>
+                        </div>
+                    </div>
+                    <div class="card mv-card">
+                        <div class="mv-card__head">
+                            <h3 class="mv-title">Flags</h3>
+                            <span class="mv-label" id="mvExFlagCount"></span>
+                        </div>
+                        <ul class="mv-flags" id="mvExFlags"></ul>
+                    </div>
+                </div>
+                <div class="mv-row">
+                    <div class="card mv-card mv-card--wide">
+                        <div class="mv-card__head">
+                            <h3 class="mv-title">Last 6 months</h3>
+                            <div class="mv-legend"><span class="mv-legend__out">Spent</span><span class="mv-legend__inline">Money in</span></div>
+                        </div>
+                        <svg class="mv-chart" id="mvExTrend" role="img" aria-label="Spending over the last six months" focusable="false"></svg>
+                    </div>
+                    <div class="card mv-card">
+                        <div class="mv-card__head">
+                            <h3 class="mv-title">By artist</h3>
+                            <span class="mv-label">This month</span>
+                        </div>
+                        <ul class="mv-abars" id="mvExArtists"></ul>
+                    </div>
+                </div>
 
                 <div class="card" id="addExpenseForm" hidden>
                     <h3 class="section-title" data-icon="expenses">New Expense</h3>
@@ -1223,6 +1286,23 @@
                         <div class="stat-card"><div class="stat-label">Balances Due</div><div class="stat-value expense-red" id="reportBalancesDue">UGX 0</div></div>
                     </div>
                 </div>
+
+                <section class="card mv-card sp-health" id="spHealth" aria-labelledby="spHealthTitle">
+                    <div class="sp-health__head">
+                        <div class="sp-health__score">
+                            <svg viewBox="0 0 120 120" class="sp-health__ring" aria-hidden="true" focusable="false">
+                                <circle class="sp-health__track" cx="60" cy="60" r="50"></circle>
+                                <circle class="sp-health__fill" id="spHealthRing" cx="60" cy="60" r="50" pathLength="100" stroke-dasharray="0 100"></circle>
+                            </svg>
+                            <span class="sp-health__pct money" id="spHealthScore">100%</span>
+                        </div>
+                        <div>
+                            <h3 class="mv-title" id="spHealthTitle">Data health</h3>
+                            <p class="mv-sub" id="spHealthSummary">Checking your records.</p>
+                        </div>
+                    </div>
+                    <ul class="sp-health__list" id="spHealthList"></ul>
+                </section>
 
                 <!-- Money Moves Dashboard (rendered by app.reports.js) -->
                 <div id="spMomentumDashboard" class="sp-rpt-dashboard"></div>
@@ -1605,6 +1685,24 @@
                             </div>
                         </div>
 
+                        <div class="settings-panel settings-targets-card" id="spTargetsPanel">
+                            <div class="settings-panel-label">Targets &amp; alerts</div>
+                            <p class="sp-targets__intro">Home's "Needs you" warns you when a number crosses one of these. Saved on this device for now; the monthly goal syncs with your account.</p>
+                            <form class="sp-targets" id="spTargetsForm" novalidate>
+                                <label class="sp-target"><span class="sp-target__name">Monthly goal</span><span class="sp-target__hint">Money in you aim for each month</span><span class="sp-target__field"><span class="sp-target__unit">UGX</span><input type="number" id="spTargetGoal" min="0" step="10000" inputmode="numeric" placeholder="Not set"></span></label>
+                                <label class="sp-target"><span class="sp-target__name">Minimum cash</span><span class="sp-target__hint">Lowest cash you want to hold. Blank means one month of spending.</span><span class="sp-target__field"><span class="sp-target__unit">UGX</span><input type="number" id="spTargetMinCash" min="0" step="10000" inputmode="numeric" placeholder="1 month of spending"></span></label>
+                                <label class="sp-target"><span class="sp-target__name">Profit margin floor</span><span class="sp-target__hint">Warn when you keep less than this share of money in</span><span class="sp-target__field"><input type="number" id="spTargetMargin" min="0" max="100" step="1" inputmode="numeric"><span class="sp-target__unit">%</span></span></label>
+                                <label class="sp-target"><span class="sp-target__name">Overdue after</span><span class="sp-target__hint">Days after a show before an unpaid balance is flagged</span><span class="sp-target__field"><input type="number" id="spTargetOverdue" min="0" step="1" inputmode="numeric"><span class="sp-target__unit">days</span></span></label>
+                                <label class="sp-target"><span class="sp-target__name">Money-in drop</span><span class="sp-target__hint">Warn when money in is down this much on the same point last month</span><span class="sp-target__field"><input type="number" id="spTargetDrop" min="0" max="100" step="1" inputmode="numeric"><span class="sp-target__unit">%</span></span></label>
+                                <label class="sp-target"><span class="sp-target__name">Spending jump</span><span class="sp-target__hint">Warn when a category is this far above its usual month</span><span class="sp-target__field"><input type="number" id="spTargetJump" min="0" step="5" inputmode="numeric"><span class="sp-target__unit">%</span></span></label>
+                                <label class="sp-target"><span class="sp-target__name">Cash runway</span><span class="sp-target__hint">Warn when cash covers fewer months of spending than this</span><span class="sp-target__field"><input type="number" id="spTargetRunway" min="0" step="0.5" inputmode="decimal"><span class="sp-target__unit">months</span></span></label>
+                                <div class="sp-targets__actions">
+                                    <button type="submit" class="btn-primary">Save targets</button>
+                                    <button type="button" class="back-btn" data-sp-targets-reset>Reset to defaults</button>
+                                </div>
+                            </form>
+                        </div>
+
                         <div class="settings-panel settings-admin-card">
                             <div class="settings-panel-label">Admin</div>
                             <div class="settings-admin-actions">
@@ -1800,9 +1898,11 @@
         <script src="app.todayboard.js?v=3"></script>
         <script src="app.tasks.js?v=6"></script>
     <script src="app.reports.js?v=20"></script>
-<script src="app.js?v=154" defer></script>
-<script src="app.home.js?v=2" defer></script>
-<script src="app.money.js?v=1" defer></script>
+<script src="app.js?v=155" defer></script>
+<script src="app.charts.js?v=1" defer></script>
+<script src="app.home.js?v=3" defer></script>
+<script src="app.money.js?v=2" defer></script>
+<script src="app.insights.js?v=1" defer></script>
 <script src="app.landing.js?v=4" defer></script>
 <script src="app.chrome.js?v=1" defer></script>
 
