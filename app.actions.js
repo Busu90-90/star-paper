@@ -21,6 +21,8 @@
     }
 
     function handleClick(event) {
+        // app.root-shell.js already ran this action in the capture phase.
+        if (event && event.spActionHandled) return;
         const elementTarget = getElementTarget(event);
         if (!elementTarget || typeof elementTarget.closest !== 'function') return;
         const target = elementTarget.closest('[data-action]');

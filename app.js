@@ -8013,6 +8013,14 @@ function showLoginForm(options = {}) {
             return String(entry?.status || 'received').toLowerCase() === 'received';
         }
 
+        // Home (app.home.js) draws its charts from these same rules.
+        window.SPMoney = {
+            isEarningBooking,
+            getBookingCollected,
+            isReceivedOtherIncome,
+            getMonthlyGoal: () => getCurrentMonthlyRevenueGoal()
+        };
+
         function getCurrentMonthData() {
             const now = new Date();
             const currentMonth = now.getMonth();
@@ -8543,6 +8551,7 @@ function showLoginForm(options = {}) {
             if (typeof window.updateTodayBoard === 'function') window.updateTodayBoard();
             // Update velocity gauge
             updateVelocityGauge();
+            window.SPHome?.render?.();
 
             // Delay chart rendering to ensure DOM is ready
             setTimeout(() => {
@@ -9437,7 +9446,7 @@ function showLoginForm(options = {}) {
             }
 
             // ── Collection Nudge ──────────────────────────────────────────────
-            const unpaid = allBookings.filter(b => (Math.round(Number(b.balance) || 0)) > 0);
+            const unpaid = allBookings.filter(b => isEarningBooking(b) && (Math.round(Number(b.balance) || 0)) > 0);
             if (unpaid.length > 0) {
                 const total = unpaid.reduce((s, b) => s + (Math.round(Number(b.balance) || 0)), 0);
                 nudges.push({

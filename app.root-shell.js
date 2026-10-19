@@ -390,13 +390,16 @@
     if (action === 'saveBooking' || action === 'saveExpense' ||
         action === 'saveOtherIncome' || action === 'saveArtist') return;
 
-    if (action === 'showSection') { handleShowSection(el); return; }
-    if (action === 'openQuickAdd') { handleOpenQuickAdd(el); return; }
-    if (action === 'switchMoneyTab') { handleSwitchMoneyTab(el); return; }
-    if (action === 'switchScheduleTab') { handleSwitchScheduleTab(el); return; }
+    // app.actions.js also listens for clicks; marking the event stops it running
+    // the same action a second time (which closed toggles right after opening).
+    if (action === 'showSection') { e.spActionHandled = true; handleShowSection(el); return; }
+    if (action === 'openQuickAdd') { e.spActionHandled = true; handleOpenQuickAdd(el); return; }
+    if (action === 'switchMoneyTab') { e.spActionHandled = true; handleSwitchMoneyTab(el); return; }
+    if (action === 'switchScheduleTab') { e.spActionHandled = true; handleSwitchScheduleTab(el); return; }
 
     var fn = MAP[action];
     if (typeof fn === 'function') {
+      e.spActionHandled = true;
       try { fn(el); }
       catch (err) { console.error('[StarPaper] action "' + action + '" threw:', err); }
     } else if (action && ![
