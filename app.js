@@ -1993,6 +1993,241 @@ function getSectionIconMarkup(iconKey) {
             saveRevenueGoalFromInput('financialsMonthlyGoalInput', 'financialsMonthlyGoalEditor');
         }
 
+        // ── Finance settings, category budgets and booking payments ────────────
+        // Targets, minimum cash and forecast assumptions live in one settings
+        // document per workspace; budgets are rows per category and month. Both
+        // are kept per scope on this device and pushed with the next cloud save
+        // only after an edit here, so a read-only role never writes them.
+        const FINANCE_STORE_KEY = 'starPaperFinance';
+        let financeStore = Storage.loadSync(FINANCE_STORE_KEY, {});
+        let bookingPayments = [];
+        const financeDirty = { settings: false, budgets: false };
+
+        function financeScope() {
+            const scopeKey = getActiveDataScopeKey() || 'default';
+            if (!financeStore || typeof financeStore !== 'object') financeStore = {};
+            if (!financeStore[scopeKey]) financeStore[scopeKey] = { settings: null, budgets: [] };
+            return financeStore[scopeKey];
+        }
+
+        function persistFinanceStore() {
+            Storage.saveSync(FINANCE_STORE_KEY, financeStore);
+        }
+
+        // Before the account kept them, targets and minimum cash were saved
+        // per browser; carry those over the first time this scope is read.
+        function legacyFinanceSettings() {
+            const settings = {};
+            try {
+                const targets = JSON.parse(window.localStorage.getItem('starPaperTargets') || 'null');
+                if (targets && typeof targets === 'object') settings.targets = targets;
+                const minCash = window.localStorage.getItem('starPaperMinCash');
+                if (minCash !== null && minCash !== '' && Number.isFinite(Number(minCash))) settings.minCash = Number(minCash);
+            } catch (_) { /* nothing carried over */ }
+            return settings;
+        }
+
+        function getFinanceSettings() {
+            const scope = financeScope();
+            if (!scope.settings) {
+                const carried = legacyFinanceSettings();
+                scope.settings = carried;
+                if (Object.keys(carried).length) financeDirty.settings = true;
+                persistFinanceStore();
+            }
+            return JSON.parse(JSON.stringify(scope.settings || {}));
+        }
+
+        function pushFinanceEdits(kind) {
+            financeDirty[kind] = true;
+            persistFinanceStore();
+            return Promise.resolve(syncCloudExtras()).then((result) => {
+                if (result?.cloudSynced) financeDirty[kind] = false;
+                return result;
+            });
+        }
+
+        function updateFinanceSettings(patch) {
+            if (guardTeamPermission('finance', 'change targets')) return null;
+            const next = { ...getFinanceSettings(), ...(patch || {}) };
+            financeScope().settings = next;
+            return pushFinanceEdits('settings');
+        }
+
+        function getCategoryBudgets() {
+            return (financeScope().budgets || []).map((entry) => ({ ...entry }));
+        }
+
+        // Month-specific budget first, then the standing monthly default.
+        function getCategoryBudget(category, period) {
+            const key = String(category || '').trim().toLowerCase();
+            const list = financeScope().budgets || [];
+            const exact = list.find((entry) => entry.category === key && entry.period === period);
+            const fallback = list.find((entry) => entry.category === key && entry.period === 'default');
+            const hit = exact || fallback;
+            return hit && Number(hit.amount) > 0 ? Math.round(Number(hit.amount)) : null;
+        }
+
+        function setCategoryBudgets(entries) {
+            if (guardTeamPermission('finance', 'change budgets')) return null;
+            const scope = financeScope();
+            const list = Array.isArray(scope.budgets) ? scope.budgets.slice() : [];
+            (entries || []).forEach((entry) => {
+                const category = String(entry?.category || '').trim().toLowerCase();
+                const period = entry?.period || 'default';
+                if (!category) return;
+                const amount = Math.max(0, Math.round(Number(entry.amount) || 0));
+                const index = list.findIndex((item) => item.category === category && item.period === period);
+                const row = { category, period, amount, updatedAt: new Date().toISOString() };
+                if (index >= 0) list[index] = row; else list.push(row);
+            });
+            scope.budgets = list;
+            return pushFinanceEdits('budgets');
+        }
+
+        function getBookingPayments(bookingId) {
+            const list = Array.isArray(bookingPayments) ? bookingPayments : [];
+            return bookingId ? list.filter((entry) => String(entry.bookingId) === String(bookingId)) : list.slice();
+        }
+
+        // A payment lowers the booking's open balance and keeps the date it
+        // arrived, so aging and cash-in use when money really came in.
+        async function recordBookingPayment(bookingId, payment) {
+            if (guardTeamPermission('finance', 'record payments')) return null;
+            const booking = bookings.find((entry) => String(entry.id) === String(bookingId));
+            if (!booking) throw new Error('Booking not found.');
+            const amount = Math.round(Number(payment?.amount) || 0);
+            // Same rule as the booking form: fee less deposit less payments.
+            const open = Math.max(0, Math.round(Number(booking.fee) || 0) - Math.round(Number(booking.deposit) || 0) - recordedPaymentsTotal(booking.id));
+            if (amount <= 0) throw new Error('Enter the amount received.');
+            if (amount > open) throw new Error(`That is more than the open balance of UGX ${open.toLocaleString()}.`);
+            if (typeof window.SP?.addBookingPayment !== 'function') throw new Error('Sign in to record payments.');
+            const saved = await window.SP.addBookingPayment({ ...payment, amount, bookingId: booking.id });
+            if (saved) bookingPayments.push(saved);
+            booking.balance = open - amount;
+            await saveUserData();
+            if (typeof window.renderBookings === 'function') window.renderBookings();
+            updateDashboard();
+            return saved;
+        }
+
+        async function removeBookingPayment(paymentId) {
+            if (guardTeamPermission('finance', 'remove payments')) return;
+            const payment = bookingPayments.find((entry) => entry.id === paymentId);
+            if (!payment) return;
+            await window.SP?.deleteBookingPayment?.(paymentId);
+            bookingPayments = bookingPayments.filter((entry) => entry.id !== paymentId);
+            const booking = bookings.find((entry) => String(entry.id) === String(payment.bookingId));
+            if (booking) {
+                booking.balance = Math.round(Number(booking.balance) || 0) + Math.round(Number(payment.amount) || 0);
+                await saveUserData();
+            }
+            if (typeof window.renderBookings === 'function') window.renderBookings();
+            updateDashboard();
+        }
+
+        function applyFinanceCloudData(cloudData) {
+            const scope = financeScope();
+            if (cloudData.financeSettings && !financeDirty.settings) {
+                const cloudSettings = cloudData.financeSettings.settings || {};
+                if (Object.keys(cloudSettings).length || !cloudData.financeSettings.updatedAt) {
+                    // An empty cloud document with local values means this device
+                    // has not pushed them yet; keep them and push.
+                    if (!Object.keys(cloudSettings).length) {
+                        const local = scope.settings || legacyFinanceSettings();
+                        scope.settings = local;
+                        if (Object.keys(local).length) financeDirty.settings = true;
+                    } else {
+                        scope.settings = cloudSettings;
+                    }
+                }
+            }
+            if (Array.isArray(cloudData.categoryBudgets) && !financeDirty.budgets) {
+                scope.budgets = cloudData.categoryBudgets.map((entry) => ({
+                    category: String(entry.category || '').toLowerCase(),
+                    period: entry.period || 'default',
+                    amount: Number(entry.amount) || 0,
+                    updatedAt: entry.updatedAt || null,
+                }));
+            }
+            if (Array.isArray(cloudData.bookingPayments)) {
+                bookingPayments = cloudData.bookingPayments.slice();
+            }
+            persistFinanceStore();
+        }
+
+        // CSV import: rows arrive already checked by app.finance-ui.js.
+        async function importFinanceRecords(batch) {
+            if (guardReadOnly('import records')) return null;
+            const newBookings = Array.isArray(batch?.bookings) ? batch.bookings : [];
+            const newExpenses = Array.isArray(batch?.expenses) ? batch.expenses : [];
+            if (newExpenses.length && guardTeamPermission('finance', 'import expenses')) return null;
+            let seq = 0;
+            const nextId = () => Date.now() + (seq += 1);
+            newBookings.forEach((row) => {
+                const fee = Math.round(Number(row.fee) || 0);
+                const deposit = Math.min(fee, Math.round(Number(row.deposit) || 0));
+                const booking = {
+                    id: nextId(),
+                    event: sanitizeTextInput(row.event),
+                    artist: sanitizeTextInput(row.artist),
+                    artistId: null,
+                    date: row.date,
+                    capacity: Math.round(Number(row.capacity) || 0),
+                    fee,
+                    deposit,
+                    balance: Math.max(0, fee - deposit),
+                    depositMethod: 'cash',
+                    depositRef: '',
+                    contact: sanitizeTextInput(row.contact || ''),
+                    promoter: sanitizeTextInput(row.promoter || ''),
+                    status: ['confirmed', 'pending', 'cancelled'].includes(row.status) ? row.status : 'confirmed',
+                    notes: sanitizeTextInput(row.notes || ''),
+                    locationType: 'uganda',
+                    location: sanitizeTextInput(row.location || ''),
+                    createdAt: Date.now()
+                };
+                const linkedArtist = ensureArtistForBookingName(booking.artist, currentManagerId);
+                booking.artistId = linkedArtist?.id || null;
+                bookings.push(booking);
+            });
+            newExpenses.forEach((row) => {
+                expenses.push({
+                    id: nextId(),
+                    description: sanitizeTextInput(row.description),
+                    amount: Math.round(Number(row.amount) || 0),
+                    date: row.date,
+                    category: sanitizeTextInput(row.category || 'other'),
+                    paymentMethod: 'cash',
+                    paymentRef: '',
+                    paidTo: sanitizeTextInput(row.paidTo || ''),
+                    bookingId: null,
+                    artist: sanitizeTextInput(row.artist || ''),
+                    artistId: null,
+                    receipt: null,
+                    createdAt: Date.now()
+                });
+            });
+            const result = await saveUserData();
+            if (typeof window.renderBookings === 'function') window.renderBookings();
+            if (typeof window.renderExpenses === 'function') window.renderExpenses();
+            updateDashboard();
+            return result;
+        }
+
+        window.SPFinance = {
+            importRecords: importFinanceRecords,
+            getSettings: getFinanceSettings,
+            updateSettings: updateFinanceSettings,
+            getBudgets: getCategoryBudgets,
+            getBudget: getCategoryBudget,
+            setBudgets: setCategoryBudgets,
+            getPayments: getBookingPayments,
+            recordPayment: recordBookingPayment,
+            removePayment: removeBookingPayment,
+            canEdit: () => !getActiveTeamId() || hasTeamPermission('finance'),
+        };
+
         // ── Balance Brought Forward (BBF) ─────────────────────────────────────
         const BBF_ARTIST_MARKER = '::artist::';
 
@@ -4722,6 +4957,8 @@ function showLoginForm(options = {}) {
                 Storage.saveSync(CLOSING_THOUGHTS_STORAGE_KEY, store);
             }
 
+            applyFinanceCloudData(cloudData);
+
             if (Array.isArray(cloudData.tasks) && typeof window.applyTaskSync === 'function') {
                 window.applyTaskSync(cloudData.tasks, { source: 'cloud', render: false });
             }
@@ -4847,6 +5084,12 @@ function showLoginForm(options = {}) {
                 bbfEntries,
                 closingThoughts,
             };
+            if (financeDirty.settings) {
+                payload.financeSettings = { settings: getFinanceSettings() };
+            }
+            if (financeDirty.budgets) {
+                payload.categoryBudgets = getCategoryBudgets();
+            }
             if (includeTheme) {
                 payload.theme = theme;
             }
@@ -6513,6 +6756,10 @@ function showLoginForm(options = {}) {
             if (paymentMethodSelect) paymentMethodSelect.value = 'cash';
             const paymentRefInput = document.getElementById('expensePaymentRef');
             if (paymentRefInput) paymentRefInput.value = '';
+            const paidToInput = document.getElementById('expensePaidTo');
+            if (paidToInput) paidToInput.value = '';
+            const expenseBookingSelect = document.getElementById('expenseBooking');
+            if (expenseBookingSelect) expenseBookingSelect.value = '';
             const artistSelect = document.getElementById('expenseArtist');
             if (artistSelect) artistSelect.value = '';
             document.getElementById('expenseReceipt').value = '';
@@ -6550,6 +6797,8 @@ function showLoginForm(options = {}) {
                     category: sanitizeTextInput(document.getElementById('expenseCategory').value),
                     paymentMethod: normalizePaymentMethod(document.getElementById('expensePaymentMethod')?.value),
                     paymentRef: sanitizeTextInput(document.getElementById('expensePaymentRef')?.value || ''),
+                    paidTo: sanitizeTextInput(document.getElementById('expensePaidTo')?.value || ''),
+                    bookingId: document.getElementById('expenseBooking')?.value || null,
                     receipt: receiptSrc,
                     createdAt: existingExpense?.createdAt || Date.now()
                 };
@@ -6710,6 +6959,11 @@ function showLoginForm(options = {}) {
             if (editPaymentMethod) editPaymentMethod.value = normalizePaymentMethod(expense.paymentMethod);
             const editPaymentRef = document.getElementById('expensePaymentRef');
             if (editPaymentRef) editPaymentRef.value = expense.paymentRef || '';
+            window.SPFinanceUI?.fillExpenseBookingOptions?.(expense.bookingId);
+            const editPaidTo = document.getElementById('expensePaidTo');
+            if (editPaidTo) editPaidTo.value = expense.paidTo || '';
+            const editExpenseBooking = document.getElementById('expenseBooking');
+            if (editExpenseBooking) editExpenseBooking.value = expense.bookingId || '';
             setFinanceArtistSelectValue('expenseArtist', expense);
 
             const safeReceipt = normalizeSafeImageSource(expense.receipt);
@@ -7310,10 +7564,16 @@ function showLoginForm(options = {}) {
         }
 
         // Bookings Functions
+        // Payments logged against a booking after its deposit.
+        function recordedPaymentsTotal(bookingId) {
+            if (!bookingId) return 0;
+            return getBookingPayments(bookingId).reduce((sum, entry) => sum + Math.round(Number(entry.amount) || 0), 0);
+        }
+
         function calculateBalance() {
             const fee = parseMoneyInputValue(document.getElementById('bookingFee').value);
             const deposit = parseMoneyInputValue(document.getElementById('bookingDeposit').value);
-            const balance = fee - deposit;
+            const balance = fee - deposit - recordedPaymentsTotal(editingBookingId);
             document.getElementById('bookingBalance').value = formatMoneyInputDisplay(balance);
         }
 
@@ -7356,6 +7616,9 @@ function showLoginForm(options = {}) {
             if (clearDepositRef) clearDepositRef.value = '';
             document.getElementById('bookingCapacity').value = '';
             document.getElementById('bookingContact').value = '';
+            const clearPromoter = document.getElementById('bookingPromoter');
+            if (clearPromoter) clearPromoter.value = '';
+            window.SPFinanceUI?.hidePayments?.();
             document.getElementById('bookingStatus').value = 'confirmed';
             document.getElementById('bookingNotes').value = '';
             document.getElementById('bookingLocationType').value = 'uganda';
@@ -7378,8 +7641,8 @@ function showLoginForm(options = {}) {
                 const feeValue = parseMoneyInputValue(document.getElementById('bookingFee').value);
                 const depositValue = parseMoneyInputValue(document.getElementById('bookingDeposit').value);
                 const capacityValue = Math.round(Number(document.getElementById('bookingCapacity').value) || 0);
-                const balanceValue = feeValue - depositValue;
                 const existingBooking = editingBookingId ? bookings.find(b => isSameRecordId(b.id, editingBookingId)) : null;
+                const balanceValue = Math.max(0, feeValue - depositValue - recordedPaymentsTotal(existingBooking?.id));
 
                 const booking = {
                     id: editingBookingId || Date.now(),
@@ -7394,6 +7657,7 @@ function showLoginForm(options = {}) {
                     depositMethod: normalizePaymentMethod(document.getElementById('bookingDepositMethod')?.value),
                     depositRef: sanitizeTextInput(document.getElementById('bookingDepositRef')?.value || ''),
                     contact: sanitizeTextInput(document.getElementById('bookingContact').value),
+                    promoter: sanitizeTextInput(document.getElementById('bookingPromoter')?.value || ''),
                     status: sanitizeTextInput(document.getElementById('bookingStatus').value),
                     notes: sanitizeTextInput(document.getElementById('bookingNotes').value),
                     locationType: sanitizeTextInput(locationType),
@@ -7932,6 +8196,8 @@ function showLoginForm(options = {}) {
             document.getElementById('bookingBalance').value = formatMoneyInputDisplay(booking.balance);
             document.getElementById('bookingCapacity').value = booking.capacity || '';
             document.getElementById('bookingContact').value = booking.contact;
+            const populatePromoter = document.getElementById('bookingPromoter');
+            if (populatePromoter) populatePromoter.value = booking.promoter || '';
             document.getElementById('bookingStatus').value = booking.status;
             document.getElementById('bookingNotes').value = booking.notes;
             const populateDepositMethod = document.getElementById('bookingDepositMethod');
@@ -7949,6 +8215,7 @@ function showLoginForm(options = {}) {
             }
 
             showAddBooking();
+            window.SPFinanceUI?.showPayments?.(booking.id);
         }
 
         // Custom delete confirmation — avoids browser confirm() dialog
@@ -8563,6 +8830,7 @@ function showLoginForm(options = {}) {
             window.SPHome?.render?.();
             window.SPMoneyPages?.render?.();
             window.SPInsights?.render?.();
+            window.SPFinanceUI?.render?.();
 
             // Delay chart rendering to ensure DOM is ready
             setTimeout(() => {

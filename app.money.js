@@ -47,19 +47,25 @@
     }
 
     function readMinCash() {
-        try {
-            const raw = window.localStorage.getItem(MIN_CASH_KEY);
-            if (raw === null || raw === '') return null;
-            const value = Number(raw);
-            return Number.isFinite(value) && value >= 0 ? Math.round(value) : null;
-        } catch (_) { return null; }
+        let raw = null;
+        if (window.SPFinance) {
+            raw = window.SPFinance.getSettings().minCash;
+        } else {
+            try { raw = window.localStorage.getItem(MIN_CASH_KEY); } catch (_) { raw = null; }
+        }
+        if (raw === null || raw === undefined || raw === '') return null;
+        const value = Number(raw);
+        return Number.isFinite(value) && value >= 0 ? Math.round(value) : null;
     }
 
     function saveMinCash(value) {
+        const next = value === null ? null : Math.round(value);
+        if (window.SPFinance) return window.SPFinance.updateSettings({ minCash: next });
         try {
-            if (value === null) window.localStorage.removeItem(MIN_CASH_KEY);
-            else window.localStorage.setItem(MIN_CASH_KEY, String(Math.round(value)));
-        } catch (_) { /* this device only until Settings > Targets syncs it */ }
+            if (next === null) window.localStorage.removeItem(MIN_CASH_KEY);
+            else window.localStorage.setItem(MIN_CASH_KEY, String(next));
+        } catch (_) { /* this device only */ }
+        return null;
     }
 
     function setText(id, text) {
@@ -335,9 +341,17 @@
         table.replaceChildren();
         const last = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
+        // Budget columns appear once any category has a monthly budget.
+        const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const budgetOf = (k) => window.SPFinance?.getBudget?.(k, period) || 0;
+        const allCats = [...new Set([...cur.categories.keys(), ...prev.categories.keys(), ...(window.SPFinance?.getBudgets?.() || []).filter((b) => b.amount > 0).map((b) => b.category)])];
+        const showBudget = allCats.some((k) => budgetOf(k) > 0);
+        const budgetSum = (filter) => allCats.filter(filter).reduce((sum, k) => sum + budgetOf(k), 0);
+        table.classList.toggle('has-budget', showBudget);
+
         const head = el('thead');
         const hr = el('tr');
-        ['UGX', monthName(now, 'short'), monthName(last, 'short'), 'Change'].forEach((text, i) => {
+        ['UGX', monthName(now, 'short'), monthName(last, 'short'), 'Change'].concat(showBudget ? ['Budget', 'Vs budget'] : []).forEach((text, i) => {
             const th = el('th', i ? 'is-num' : '', text);
             th.setAttribute('scope', 'col');
             hr.appendChild(th);
@@ -345,7 +359,7 @@
         head.appendChild(hr);
 
         const body = el('tbody');
-        const row = (label, a, b, { kind = '', upIsGood = true, money = true } = {}) => {
+        const row = (label, a, b, { kind = '', upIsGood = true, money = true, budget = null } = {}) => {
             const tr = el('tr', kind ? `mv-pl__${kind}` : '');
             const th = el('th', '', label);
             th.setAttribute('scope', 'row');
@@ -354,20 +368,26 @@
             const fmt = (v) => (money ? Math.round(v).toLocaleString('en-US') : `${v}%`);
             tr.append(th, el('td', 'is-num money', fmt(a)), el('td', 'is-num money', fmt(b)),
                 el('td', `is-num money ${tone}`, change ? `${change > 0 ? '+' : '−'}${fmt(Math.abs(change))}` : '—'));
+            if (showBudget) {
+                const gap = budget ? a - budget : 0;
+                const gapTone = !budget || !gap ? '' : gap > 0 ? 'is-bad' : 'is-good';
+                tr.append(el('td', 'is-num money', budget ? fmt(budget) : ''),
+                    el('td', `is-num money ${gapTone}`, budget ? (gap ? `${gap > 0 ? '+' : '−'}${fmt(Math.abs(gap))}` : 'On budget') : ''));
+            }
             body.appendChild(tr);
         };
-        const cats = (filter) => [...new Set([...cur.categories.keys(), ...prev.categories.keys()])]
+        const cats = (filter) => [...new Set([...cur.categories.keys(), ...prev.categories.keys()].concat(showBudget ? allCats : []))]
             .filter(filter)
             .sort((a, b) => (cur.categories.get(b) || 0) - (cur.categories.get(a) || 0));
 
         row('Show money collected', cur.shows, prev.shows);
         row('Other income', cur.other, prev.other);
         row('Money in', cur.in, prev.in, { kind: 'total' });
-        row('Show costs', cur.showCosts, prev.showCosts, { kind: 'group', upIsGood: false });
-        cats((k) => SHOW_COSTS.has(k)).forEach((k) => row(categoryLabel(k), cur.categories.get(k) || 0, prev.categories.get(k) || 0, { kind: 'sub', upIsGood: false }));
-        row('Overheads', cur.overheads, prev.overheads, { kind: 'group', upIsGood: false });
-        cats((k) => !SHOW_COSTS.has(k)).forEach((k) => row(categoryLabel(k), cur.categories.get(k) || 0, prev.categories.get(k) || 0, { kind: 'sub', upIsGood: false }));
-        row('Money out', cur.out, prev.out, { kind: 'total', upIsGood: false });
+        row('Show costs', cur.showCosts, prev.showCosts, { kind: 'group', upIsGood: false, budget: budgetSum((k) => SHOW_COSTS.has(k)) });
+        cats((k) => SHOW_COSTS.has(k)).forEach((k) => row(categoryLabel(k), cur.categories.get(k) || 0, prev.categories.get(k) || 0, { kind: 'sub', upIsGood: false, budget: budgetOf(k) }));
+        row('Overheads', cur.overheads, prev.overheads, { kind: 'group', upIsGood: false, budget: budgetSum((k) => !SHOW_COSTS.has(k)) });
+        cats((k) => !SHOW_COSTS.has(k)).forEach((k) => row(categoryLabel(k), cur.categories.get(k) || 0, prev.categories.get(k) || 0, { kind: 'sub', upIsGood: false, budget: budgetOf(k) }));
+        row('Money out', cur.out, prev.out, { kind: 'total', upIsGood: false, budget: budgetSum(() => true) });
         row('Left over', cur.net, prev.net, { kind: 'net' });
         const margin = (l) => (l.in > 0 ? Math.round((l.net / l.in) * 100) : 0);
         row('Kept of every 100 in', margin(cur), margin(prev), { kind: 'sub', money: false });
@@ -525,6 +545,155 @@
         });
     }
 
+    // ── Next 6 months: three cases ─────────────────────────────────────────
+    // Income basis: a show counts in the month it's played. Confirmed fees
+    // count in full, pending fees at the win rate; other income and spending
+    // run at the last three months' average, spending adjusted by the change.
+    const SCENARIOS = [
+        { key: 'cautious', name: 'Cautious', win: (w) => w * 0.5, cost: (c) => c + 10, other: 0.5, tone: 'ink' },
+        { key: 'expected', name: 'Expected', win: (w) => w, cost: (c) => c, other: 1, tone: 'gold' },
+        { key: 'hopeful', name: 'Hopeful', win: (w) => Math.min(100, w * 1.5), cost: (c) => c - 5, other: 1, tone: 'gold' }
+    ];
+
+    function historicWinRate(today) {
+        const { parseDate, DAY_MS } = home().fmt;
+        const from = new Date(today.getTime() - 365 * DAY_MS);
+        let won = 0;
+        let lost = 0;
+        (window.bookings || []).forEach((b) => {
+            const d = parseDate(b.date);
+            if (!d || d < from || d >= today) return;
+            const status = String(b.status || '').toLowerCase();
+            if (status === 'cancelled') lost += 1;
+            else if (status === 'confirmed' || status === 'completed') won += 1;
+        });
+        return won + lost >= 4 ? Math.round((won / (won + lost)) * 100) : 50;
+    }
+
+    function scenarioInputs(today) {
+        const stored = window.SPFinance?.getSettings?.().scenario || {};
+        const win = Number.isFinite(Number(stored.winRate)) && stored.winRate !== null && stored.winRate !== '' ? Number(stored.winRate) : historicWinRate(today);
+        const cost = Number.isFinite(Number(stored.costChange)) && stored.costChange !== null && stored.costChange !== '' ? Number(stored.costChange) : 0;
+        return { win: Math.max(0, Math.min(100, win)), cost: Math.max(-50, Math.min(200, cost)), saved: stored.winRate !== undefined };
+    }
+
+    function sixMonthPlan(now) {
+        const H = home();
+        const m = H.money();
+        const { asAmount, parseDate, monthIndex } = H.fmt;
+        const today = startOfDay(now);
+        const inputs = scenarioInputs(today);
+        const recent = [1, 2, 3].map((back) => monthLines(new Date(now.getFullYear(), now.getMonth() - back, 1)));
+        const avgOut = recent.reduce((a, l) => a + l.out, 0) / 3;
+        const avgOther = recent.reduce((a, l) => a + l.other, 0) / 3;
+        const months = Array.from({ length: 6 }, (_, i) => {
+            const date = new Date(now.getFullYear(), now.getMonth() + 1 + i, 1);
+            return { date, idx: monthIndex(date), booked: 0, pending: 0, bookedCount: 0, pendingCount: 0 };
+        });
+        (window.bookings || []).forEach((b) => {
+            const d = parseDate(b.date);
+            if (!d) return;
+            const month = months.find((row) => row.idx === monthIndex(d));
+            if (!month) return;
+            const status = String(b.status || '').toLowerCase();
+            if (m.isEarningBooking(b)) { month.booked += asAmount(b.fee); month.bookedCount += 1; }
+            else if (status === 'pending') { month.pending += asAmount(b.fee); month.pendingCount += 1; }
+        });
+        const cases = SCENARIOS.map((sc) => {
+            const win = sc.win(inputs.win) / 100;
+            const costFactor = 1 + sc.cost(inputs.cost) / 100;
+            const rows = months.map((row) => {
+                const income = row.booked + row.pending * win + avgOther * sc.other;
+                const spend = avgOut * costFactor;
+                return { income, spend, profit: income - spend };
+            });
+            const income = rows.reduce((a, r) => a + r.income, 0);
+            const profit = rows.reduce((a, r) => a + r.profit, 0);
+            return { ...sc, rows, income, profit, margin: income > 0 ? Math.round((profit / income) * 100) : null };
+        });
+        return { months, cases, inputs, avgOut, avgOther };
+    }
+
+    function renderScenarios(now) {
+        const C = window.SPCharts;
+        const H = home();
+        if (!C || !$('mvScenChart')) return;
+        const { el } = H.dom;
+        const { ugx, compact } = H.fmt;
+        const plan = sixMonthPlan(now);
+        const { months, cases, inputs } = plan;
+        const win = $('mvScenWin');
+        const cost = $('mvScenCost');
+        if (win && document.activeElement !== win) win.value = String(Math.round(inputs.win));
+        if (cost && document.activeElement !== cost) cost.value = String(Math.round(inputs.cost));
+        const editable = window.SPFinance?.canEdit?.() !== false;
+        if (win) win.disabled = !editable;
+        if (cost) cost.disabled = !editable;
+        const first = months[0].date.toLocaleDateString('en-US', { month: 'short' });
+        const last = months[5].date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        setText('mvScenSub', `${first} to ${last}. Confirmed shows, plus pending shows at your win rate, less spending at your recent pace.`);
+
+        const host = $('mvScenCases');
+        if (host) {
+            host.replaceChildren(...cases.map((sc) => {
+                const box = el('div', `mv-scen__case${sc.key === 'expected' ? ' is-key' : ''}`);
+                const value = el('span', `mv-scen__value money${sc.profit < 0 ? ' is-bad' : ''}`, ugx(sc.profit));
+                const sub = sc.margin === null ? 'Nothing coming in' : `${compact(sc.income)} in, keeps ${sc.margin}%`;
+                box.append(el('span', 'mv-label', sc.name), value, el('span', 'mv-tile__sub', sub));
+                return box;
+            }));
+        }
+
+        const labels = months.map((r) => r.date.toLocaleDateString('en-US', { month: 'short' }));
+        const expected = cases[1];
+        // Running profit, so each line ends on its card's six-month total.
+        const running = (sc) => { let sum = 0; return sc.rows.map((r) => (sum += r.profit)); };
+        C.lineChart($('mvScenChart'), {
+            labels,
+            titles: months.map((r) => `By end of ${r.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`),
+            series: [
+                { name: 'Expected', values: running(expected), tone: 'gold', area: true },
+                { name: 'Cautious', values: running(cases[0]), tone: 'ink', dashed: true, thin: true },
+                { name: 'Hopeful', values: running(cases[2]), tone: 'gold', dashed: true, thin: true }
+            ],
+            fmt: ugx,
+            axisFmt: compact,
+            endLabel: compact(expected.profit)
+        });
+
+        const table = $('mvScenTable');
+        if (table) {
+            table.replaceChildren();
+            const head = el('thead');
+            const hr = el('tr');
+            ['Expected', 'Confirmed', 'Pending', 'Other', 'Spending', 'Profit'].forEach((text, i) => {
+                const th = el('th', i ? 'is-num' : '', text);
+                th.setAttribute('scope', 'col');
+                hr.appendChild(th);
+            });
+            head.appendChild(hr);
+            const body = el('tbody');
+            const winShare = inputs.win / 100;
+            months.forEach((row, i) => {
+                const r = expected.rows[i];
+                const tr = el('tr');
+                const th = el('th', '', row.date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }));
+                th.setAttribute('scope', 'row');
+                tr.append(th,
+                    el('td', 'is-num money', row.booked ? Math.round(row.booked).toLocaleString('en-US') : '—'),
+                    el('td', 'is-num money', row.pending ? Math.round(row.pending * winShare).toLocaleString('en-US') : '—'),
+                    el('td', 'is-num money', Math.round(plan.avgOther).toLocaleString('en-US')),
+                    el('td', 'is-num money', Math.round(r.spend).toLocaleString('en-US')),
+                    el('td', `is-num money ${r.profit < 0 ? 'is-bad' : 'is-good'}`, Math.round(r.profit).toLocaleString('en-US')));
+                body.appendChild(tr);
+            });
+            table.append(head, body);
+        }
+        const pendingTotal = months.reduce((a, r) => a + r.pendingCount, 0);
+        const bookedTotal = months.reduce((a, r) => a + r.bookedCount, 0);
+        setText('mvScenNote', `${bookedTotal} confirmed and ${pendingTotal} pending show${pendingTotal === 1 ? '' : 's'} in these months. Spending runs at ${compact(plan.avgOut)} a month (last three months)${inputs.cost ? `, ${inputs.cost > 0 ? 'up' : 'down'} ${Math.abs(inputs.cost)}%` : ''}. Cautious halves the win rate and adds 10% to costs; Hopeful raises the win rate by half and trims costs 5%.${inputs.saved ? '' : ` The ${Math.round(inputs.win)}% win rate comes from your last 12 months.`}`);
+    }
+
     // ── Receivables ────────────────────────────────────────────────────────
     function phoneDigits(contact) {
         const digits = String(contact || '').replace(/[^\d+]/g, '');
@@ -533,6 +702,32 @@
         if (/^0\d{9}$/.test(bare)) return `256${bare.slice(1)}`;
         if (/^7\d{8}$/.test(bare)) return `256${bare}`;
         return bare;
+    }
+
+    // How long after a show its balance was cleared, from recorded payments
+    // (last 12 months, fully paid shows only).
+    function collectionDays(today) {
+        const H = home();
+        const { parseDate, DAY_MS } = H.fmt;
+        const payments = window.SPFinance?.getPayments?.() || [];
+        if (!payments.length) return null;
+        const lastPaid = new Map();
+        payments.forEach((p) => {
+            const d = parseDate(p.paidOn);
+            if (!d) return;
+            const key = String(p.bookingId);
+            if (!lastPaid.has(key) || d > lastPaid.get(key)) lastPaid.set(key, d);
+        });
+        const from = new Date(today.getTime() - 365 * DAY_MS);
+        const spans = [];
+        (window.bookings || []).forEach((b) => {
+            const paid = lastPaid.get(String(b.id));
+            const show = parseDate(b.date);
+            if (!paid || !show || show < from || Math.round(Number(b.balance) || 0) > 0) return;
+            spans.push(Math.max(0, Math.round((startOfDay(paid) - startOfDay(show)) / DAY_MS)));
+        });
+        if (!spans.length) return null;
+        return { days: Math.round(spans.reduce((a, v) => a + v, 0) / spans.length), count: spans.length };
     }
 
     function renderReceivables(now) {
@@ -549,7 +744,9 @@
         const due90 = rows.filter((r) => r.days <= -31 && r.days > -91);
         const sum = (list) => list.reduce((a, r) => a + r.balance, 0);
         setText('mvArTotal', ugx(owed.total));
-        setText('mvArTotalSub', rows.length ? `Across ${plural(rows.length, 'show')}` : 'Every show is paid up');
+        const collect = collectionDays(today);
+        const collectText = collect ? `paid ${collect.days === 0 ? 'on the day' : `${plural(collect.days, 'day')} after the show`} on average` : '';
+        setText('mvArTotalSub', [rows.length ? `Across ${plural(rows.length, 'show')}` : 'Every show is paid up', collectText].filter(Boolean).join('; '));
         setText('mvArLate', ugx(owed.late));
         const lateSub = $('mvArLateSub');
         if (lateSub) {
@@ -579,7 +776,7 @@
                 const main = el('div', 'mv-unpaid__main');
                 main.append(
                     el('span', 'mv-unpaid__event', b.event || 'Untitled show'),
-                    el('span', 'mv-unpaid__meta', [b.artist, b.location || b.venue].filter(Boolean).join(' · ') || 'No artist set')
+                    el('span', 'mv-unpaid__meta', [b.artist, b.promoter ? `via ${b.promoter}` : '', b.location || b.venue].filter(Boolean).join(' · ') || 'No artist set')
                 );
                 const when = el('div', 'mv-unpaid__when');
                 const dateText = row.date ? row.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'No date';
@@ -627,6 +824,7 @@
         renderPnl(cur, prev, now);
         renderYear(now);
         renderCashflow(cur, now);
+        renderScenarios(now);
         renderReceivables(now);
     }
 
@@ -653,6 +851,19 @@
     });
 
     document.addEventListener('submit', (event) => {
+        if (event.target?.id !== 'mvScenForm') return;
+        event.preventDefault();
+        const win = Number(String($('mvScenWin')?.value || '').trim());
+        const cost = Number(String($('mvScenCost')?.value || '').trim());
+        if (!Number.isFinite(win) || win < 0 || win > 100 || !Number.isFinite(cost)) {
+            if (typeof window.toastError === 'function') window.toastError('Win rate must be 0 to 100%, and spending change a number.');
+            return;
+        }
+        window.SPFinance?.updateSettings?.({ scenario: { winRate: Math.round(win), costChange: Math.round(cost) } });
+        render();
+    });
+
+    document.addEventListener('submit', (event) => {
         if (event.target?.id !== 'mvMinCashEditor') return;
         event.preventDefault();
         const raw = String($('mvMinCashInput')?.value || '').trim();
@@ -668,7 +879,7 @@
         resizeTimer = setTimeout(render, 150);
     });
 
-    window.SPMoneyPages = { render, monthLines, forecast, averageWeeklySpend, unpaidRows, readMinCash, saveMinCash, categoryKey, categoryLabel, SHOW_COSTS };
+    window.SPMoneyPages = { render, monthLines, forecast, sixMonthPlan, averageWeeklySpend, unpaidRows, readMinCash, saveMinCash, categoryKey, categoryLabel, SHOW_COSTS };
     if (document.readyState !== 'loading') render();
     else document.addEventListener('DOMContentLoaded', render);
 })();

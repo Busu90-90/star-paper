@@ -11,7 +11,7 @@
     'use strict';
 
     const TARGETS_KEY = 'starPaperTargets';
-    const DEFAULT_TARGETS = Object.freeze({ marginFloor: 20, overdueDays: 14, revenueDrop: 25, spendJump: 50, runwayMonths: 2 });
+    const DEFAULT_TARGETS = Object.freeze({ marginFloor: 20, overdueDays: 14, revenueDrop: 25, spendJump: 50, runwayMonths: 2, budgetOver: 10 });
     const MAX_MONEY_ALERTS = 4;
 
     const $ = (id) => document.getElementById(id);
@@ -46,10 +46,14 @@
         if (tone) node.classList.add(tone);
     }
 
-    // ── Targets (this device until targets sync with the account) ─────────
+    // ── Targets (saved with the account through SPFinance) ──────────────
+    function storedTargets() {
+        if (window.SPFinance) return window.SPFinance.getSettings().targets || {};
+        try { return JSON.parse(window.localStorage.getItem(TARGETS_KEY) || '{}') || {}; } catch (_) { return {}; }
+    }
+
     function targets() {
-        let stored = {};
-        try { stored = JSON.parse(window.localStorage.getItem(TARGETS_KEY) || '{}') || {}; } catch (_) { stored = {}; }
+        const stored = storedTargets();
         const out = { ...DEFAULT_TARGETS };
         Object.keys(DEFAULT_TARGETS).forEach((key) => {
             const value = Number(stored[key]);
@@ -59,10 +63,26 @@
     }
 
     function saveTargets(next) {
+        if (window.SPFinance) return window.SPFinance.updateSettings({ targets: next });
         try { window.localStorage.setItem(TARGETS_KEY, JSON.stringify(next)); } catch (_) { /* per-device only */ }
+        return null;
     }
 
     // ── Shared data ───────────────────────────────────────────────────────
+    function periodKey(date) {
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    // Budget for a category in the month of `date` (month-specific, else the
+    // standing monthly budget), or null when none is set.
+    function budgetFor(key, date) {
+        return window.SPFinance?.getBudget?.(key, periodKey(date)) ?? null;
+    }
+
+    function budgetKeys() {
+        return new Set((window.SPFinance?.getBudgets?.() || []).filter((b) => Number(b.amount) > 0).map((b) => b.category));
+    }
+
     function expensesIn(date) {
         const { parseDate, monthIndex } = H().fmt;
         const target = monthIndex(date);
@@ -184,10 +204,36 @@
             }
         }
 
-        // 3. A category well above its usual month (top two).
+        // 3a. A category over its budget by more than the allowed margin.
+        const overBudget = new Set();
+        [...cur.categories.entries()]
+            .map(([key, amount]) => ({ key, amount, budget: budgetFor(key, now) }))
+            .filter((row) => row.budget && row.amount > row.budget * (1 + t.budgetOver / 100))
+            .sort((a, b) => (b.amount - b.budget) - (a.amount - a.budget))
+            .slice(0, 2)
+            .forEach((row) => {
+                overBudget.add(row.key);
+                const over = Math.round(((row.amount - row.budget) / row.budget) * 100);
+                const daysLeft = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate();
+                out.push({
+                    type: over >= 50 ? 'alert' : 'warning',
+                    icon: 'ph-wallet',
+                    id: `fin-budget-${row.key}-${period}`,
+                    text: `${m.categoryLabel(row.key)} is ${over}% over budget this month.`,
+                    detail: [
+                        { k: 'Why', v: `${compact(row.amount)} spent against a ${compact(row.budget)} budget, with ${plural(daysLeft, 'day')} to go.` },
+                        { k: 'Try', v: 'Pause this category until next month, or raise its budget in Settings if the plan changed.' }
+                    ],
+                    action: 'showSection',
+                    actionId: 'expenses'
+                });
+            });
+
+        // 3b. A category well above its usual month (top two).
         const usual = usualByCategory(now);
         [...cur.categories.entries()]
             .map(([key, amount]) => ({ key, amount, avg: usual.get(key) || 0 }))
+            .filter((row) => !overBudget.has(row.key) && !budgetFor(row.key, now))
             .filter((row) => row.avg > 0 && row.amount - row.avg >= 50000 && ((row.amount - row.avg) / row.avg) * 100 >= t.spendJump)
             .sort((a, b) => (b.amount - b.avg) - (a.amount - a.avg))
             .slice(0, 2)
@@ -321,11 +367,18 @@
             } else seen.set(key, e);
         });
 
-        // A category well above its usual month.
+        // Over budget, else well above its usual month.
         const cur = m.monthLines(now);
         const usual = usualByCategory(now);
         const t = targets();
         cur.categories.forEach((amount, key) => {
+            const budget = budgetFor(key, now);
+            if (budget && amount > budget) {
+                flags.push({ tone: 'warning', icon: 'ph-wallet', title: `${m.categoryLabel(key)} over budget`, text: `${compact(amount)} spent against a ${compact(budget)} budget, ${compact(amount - budget)} over.` });
+                return;
+            }
+            // A budget is the plan: within it, a rise on the usual month is expected.
+            if (budget) return;
             const avg = usual.get(key) || 0;
             if (avg > 0 && amount - avg >= 50000 && ((amount - avg) / avg) * 100 >= t.spendJump) {
                 flags.push({ tone: 'warning', icon: 'ph-chart-line-up', title: `${m.categoryLabel(key)} jumped`, text: `${compact(amount)} this month against ${compact(avg)} usually. Bringing it back to usual saves ${compact(amount - avg)}.` });
@@ -398,15 +451,19 @@
         const bars = $('mvExBars');
         if (bars) {
             bars.replaceChildren();
-            const keys = new Set([...cur.categories.keys(), ...usual.keys()]);
-            const list = [...keys].map((key) => ({ key, amount: cur.categories.get(key) || 0, avg: usual.get(key) || 0 }))
-                .filter((r) => r.amount > 0 || r.avg > 0)
-                .sort((a, b) => b.amount - a.amount || b.avg - a.avg)
+            const keys = new Set([...cur.categories.keys(), ...usual.keys(), ...budgetKeys()]);
+            const list = [...keys].map((key) => ({ key, amount: cur.categories.get(key) || 0, avg: usual.get(key) || 0, budget: budgetFor(key, now) }))
+                .filter((r) => r.amount > 0 || r.avg > 0 || r.budget)
+                .sort((a, b) => b.amount - a.amount || (b.budget || b.avg) - (a.budget || a.avg))
                 .slice(0, 8);
-            const max = Math.max(1, ...list.map((r) => Math.max(r.amount, r.avg)));
+            const max = Math.max(1, ...list.map((r) => Math.max(r.amount, r.budget || r.avg)));
+            const anyBudget = list.some((r) => r.budget);
+            setText('mvExBarsSub', anyBudget
+                ? 'The marker on each bar is its monthly budget; without one, your usual month (average of the three before).'
+                : 'The marker on each bar is your usual month (average of the three before). Set budgets in Settings.');
             if (!list.length) bars.appendChild(el('li', 'mv-empty', 'Nothing spent in the last four months.'));
             list.forEach((r, i) => {
-                const over = r.avg > 0 && r.amount > r.avg * 1.1;
+                const over = r.budget ? r.amount > r.budget : (r.avg > 0 && r.amount > r.avg * 1.1);
                 const li = el('li', `mv-cbar${over ? ' is-over' : ''}`);
                 const head = el('div', 'mv-cbar__head');
                 const pctIn = cur.in > 0 ? `${Math.round((r.amount / cur.in) * 100)}% of money in` : '';
@@ -415,16 +472,21 @@
                 const fill = el('span', `mv-cbar__fill spc-c${(Math.min(i, 5)) + 1}`);
                 fill.style.setProperty('--w', `${((r.amount / max) * 100).toFixed(1)}%`);
                 track.appendChild(fill);
-                if (r.avg > 0) {
-                    const mark = el('span', 'mv-cbar__mark');
-                    mark.style.setProperty('--at', `${((r.avg / max) * 100).toFixed(1)}%`);
-                    mark.title = `Usual month: ${ugx(r.avg)}`;
+                const markAt = r.budget || r.avg;
+                if (markAt > 0) {
+                    const mark = el('span', `mv-cbar__mark${r.budget ? ' is-budget' : ''}`);
+                    mark.style.setProperty('--at', `${((markAt / max) * 100).toFixed(1)}%`);
+                    mark.title = r.budget ? `Budget: ${ugx(r.budget)}` : `Usual month: ${ugx(r.avg)}`;
                     track.appendChild(mark);
                 }
-                const sub = el('span', 'mv-cbar__sub', [r.avg > 0 ? `Usually ${compact(r.avg)}` : 'New this month', pctIn].filter(Boolean).join(' · '));
+                const budgetText = r.budget
+                    ? (r.amount > r.budget ? `${compact(r.amount - r.budget)} over a ${compact(r.budget)} budget` : `${Math.round((r.amount / r.budget) * 100)}% of ${compact(r.budget)} budget`)
+                    : null;
+                const sub = el('span', 'mv-cbar__sub', [budgetText || (r.avg > 0 ? `Usually ${compact(r.avg)}` : 'New this month'), pctIn].filter(Boolean).join(' · '));
                 li.append(head, track, sub);
                 c.bindItem(li, m.categoryLabel(r.key), [
                     { label: 'This month', value: ugx(r.amount), tone: `c${Math.min(i, 5) + 1}` },
+                    { label: 'Budget', value: r.budget ? ugx(r.budget) : 'Not set', tone: 'gold' },
                     { label: 'Usual month', value: r.avg > 0 ? ugx(r.avg) : '—', tone: 'ink' }
                 ], 'Usual month is the average of the three months before this one.');
                 bars.appendChild(li);
@@ -599,7 +661,8 @@
         ['spTargetOverdue', 'overdueDays'],
         ['spTargetDrop', 'revenueDrop'],
         ['spTargetJump', 'spendJump'],
-        ['spTargetRunway', 'runwayMonths']
+        ['spTargetRunway', 'runwayMonths'],
+        ['spTargetBudget', 'budgetOver']
     ];
 
     function fillTargetsForm() {
@@ -622,10 +685,15 @@
             const value = Number(String($(id)?.value || '').trim());
             if (Number.isFinite(value) && value >= 0) next[key] = value;
         });
-        saveTargets(next);
         const minRaw = String($('spTargetMinCash')?.value || '').trim();
         const min = Number(minRaw);
-        M()?.saveMinCash?.(minRaw === '' || !Number.isFinite(min) || min < 0 ? null : min);
+        const minCash = minRaw === '' || !Number.isFinite(min) || min < 0 ? null : Math.round(min);
+        if (window.SPFinance) {
+            if (window.SPFinance.updateSettings({ targets: next, minCash }) === null) return;
+        } else {
+            saveTargets(next);
+            M()?.saveMinCash?.(minCash);
+        }
 
         const goalRaw = String($('spTargetGoal')?.value || '').trim();
         const goal = goalRaw === '' ? 0 : Number(goalRaw);
@@ -673,7 +741,7 @@
         resizeTimer = setTimeout(render, 150);
     });
 
-    window.SPInsights = { render, alerts, targets, healthIssues, expenseFlags, DEFAULT_TARGETS };
+    window.SPInsights = { render, alerts, targets, healthIssues, expenseFlags, budgetFor, DEFAULT_TARGETS };
     const boot = () => { render(); if (typeof window.updateTodayBoard === 'function') window.updateTodayBoard(); };
     if (document.readyState !== 'loading') boot();
     else document.addEventListener('DOMContentLoaded', boot);

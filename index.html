@@ -6,7 +6,7 @@
     <meta name="star-paper:public-root" content="app-shell">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:;">
     <title>Star Paper</title>
-    <script src="app.browser-assets.js?v=27"></script>
+    <script src="app.browser-assets.js?v=28"></script>
     <script src="app.public-pages.js?v=2"></script>
     <script src="app.boot-head.js?v=2"></script>
     <link rel="manifest" href="manifest.json?v=27">
@@ -32,7 +32,7 @@
     <link rel="stylesheet" href="sp-design-tokens.css?v=5">
     <link rel="stylesheet" href="styles.landing.css?v=14">
     <link rel="stylesheet" href="styles.brand.css?v=1">
-    <link rel="stylesheet" href="styles.app.css?v=12">
+    <link rel="stylesheet" href="styles.app.css?v=13">
     <link rel="preload" href="assets/vendor/fonts/font-29-fraunces-latin-opsz-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="assets/vendor/fonts/font-31-inter-tight-latin-wght-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <!-- Vendored Phosphor Icons 2.1.1 - unified icon system -->
@@ -945,6 +945,25 @@
                     <p class="mv-note" id="mvForecastNote"></p>
                 </div>
 
+                <div class="card mv-card mv-scen" id="mvScenarios">
+                    <div class="mv-card__head">
+                        <div>
+                            <h3 class="mv-title">Next 6 months</h3>
+                            <p class="mv-sub" id="mvScenSub">Confirmed shows, plus pending shows at your win rate, less spending at your recent pace.</p>
+                        </div>
+                        <div class="mv-legend"><span class="mv-legend__in">Expected</span><span class="mv-legend__net">Cautious</span><span class="mv-legend__inline">Hopeful</span></div>
+                    </div>
+                    <form class="mv-scen__inputs" id="mvScenForm" novalidate>
+                        <label class="mv-scen__input"><span class="mv-label">Pending shows that confirm</span><span class="mv-scen__field"><input type="number" id="mvScenWin" min="0" max="100" step="5" inputmode="numeric"><span>%</span></span></label>
+                        <label class="mv-scen__input"><span class="mv-label">Spending change</span><span class="mv-scen__field"><input type="number" id="mvScenCost" min="-50" max="200" step="5" inputmode="numeric"><span>%</span></span></label>
+                        <button class="back-btn mv-scen__save" type="submit">Update</button>
+                    </form>
+                    <div class="mv-scen__cases" id="mvScenCases"></div>
+                    <svg class="mv-chart" id="mvScenChart" role="img" aria-label="Running profit over the next six months under three cases" focusable="false"></svg>
+                    <div class="mv-pl__scroll"><table class="mv-pl__table mv-scen__table" id="mvScenTable"></table></div>
+                    <p class="mv-note" id="mvScenNote"></p>
+                </div>
+
                 <div class="card">
                     <h3 class="section-title" data-icon="reports"><span class="section-title__text">Cashflow (<span id="cashflowPeriodLabel">Month Year</span>)</span></h3>
                     <div class="timeline-list" id="cashFlowTimeline"></div>
@@ -986,7 +1005,7 @@
                         <div class="mv-card__head">
                             <div>
                                 <h3 class="mv-title">Spending by category</h3>
-                                <p class="mv-sub">The marker on each bar is your usual month (average of the three before).</p>
+                                <p class="mv-sub" id="mvExBarsSub">The marker on each bar is your usual month (average of the three before).</p>
                             </div>
                             <span class="mv-label" id="mvExPeriod"></span>
                         </div>
@@ -1069,6 +1088,17 @@
                         <div class="form-group">
                             <label>Payment Ref (Optional)</label>
                             <input type="text" id="expensePaymentRef" placeholder="MoMo TxID or reference" maxlength="64" />
+                        </div>
+                        <div class="form-group">
+                            <label for="expensePaidTo">Paid To (Optional)</label>
+                            <input type="text" id="expensePaidTo" maxlength="80" list="expensePaidToList" placeholder="Vendor or person" />
+                            <datalist id="expensePaidToList"></datalist>
+                        </div>
+                        <div class="form-group">
+                            <label for="expenseBooking">For Show (Optional)</label>
+                            <select id="expenseBooking">
+                                <option value="">Not tied to a show</option>
+                            </select>
                         </div>
                     </div>
                     <div class="form-group sp-csp-style-16">
@@ -1479,6 +1509,11 @@
                             <input type="text" id="bookingContact" />
                         </div>
                         <div class="form-group">
+                            <label for="bookingPromoter">Promoter / Client (Optional)</label>
+                            <input type="text" id="bookingPromoter" maxlength="80" list="bookingPromoterList" placeholder="Who pays the fee" />
+                            <datalist id="bookingPromoterList"></datalist>
+                        </div>
+                        <div class="form-group">
                             <label>Status</label>
                             <select id="bookingStatus">
                                 <option value="confirmed">Confirmed</option>
@@ -1501,6 +1536,20 @@
                             <label>Country</label>
                             <select id="bookingAbroadLocation"></select>
                         </div>
+                    </div>
+                    <div class="sp-payments" id="spBookingPayments" hidden>
+                        <div class="sp-payments__head">
+                            <span class="sp-payments__title">Payments received</span>
+                            <span class="sp-payments__open" id="spPaymentsOpen"></span>
+                        </div>
+                        <ul class="sp-payments__list" id="spPaymentsList"></ul>
+                        <form class="sp-payments__form" id="spPaymentForm" novalidate>
+                            <label class="sp-payments__field"><span>Amount (UGX)</span><input type="number" id="spPaymentAmount" min="0" step="1000" inputmode="numeric" required></label>
+                            <label class="sp-payments__field"><span>Date</span><input type="date" id="spPaymentDate" required></label>
+                            <label class="sp-payments__field"><span>Via</span><select id="spPaymentMethod"><option value="cash">Cash</option><option value="mtn_momo">MTN MoMo</option><option value="airtel_money">Airtel Money</option><option value="bank">Bank Transfer</option><option value="other">Other</option></select></label>
+                            <label class="sp-payments__field"><span>Ref (optional)</span><input type="text" id="spPaymentRef" maxlength="64" placeholder="TxID"></label>
+                            <button type="submit" class="btn-primary sp-payments__add">Record payment</button>
+                        </form>
                     </div>
                     <div class="form-group sp-csp-style-16">
                         <label>Notes</label>
@@ -1687,7 +1736,7 @@
 
                         <div class="settings-panel settings-targets-card" id="spTargetsPanel">
                             <div class="settings-panel-label">Targets &amp; alerts</div>
-                            <p class="sp-targets__intro">Home's "Needs you" warns you when a number crosses one of these. Saved on this device for now; the monthly goal syncs with your account.</p>
+                            <p class="sp-targets__intro">Home's "Needs you" warns you when a number crosses one of these. Saved with your account, so every device and teammate sees the same limits.</p>
                             <form class="sp-targets" id="spTargetsForm" novalidate>
                                 <label class="sp-target"><span class="sp-target__name">Monthly goal</span><span class="sp-target__hint">Money in you aim for each month</span><span class="sp-target__field"><span class="sp-target__unit">UGX</span><input type="number" id="spTargetGoal" min="0" step="10000" inputmode="numeric" placeholder="Not set"></span></label>
                                 <label class="sp-target"><span class="sp-target__name">Minimum cash</span><span class="sp-target__hint">Lowest cash you want to hold. Blank means one month of spending.</span><span class="sp-target__field"><span class="sp-target__unit">UGX</span><input type="number" id="spTargetMinCash" min="0" step="10000" inputmode="numeric" placeholder="1 month of spending"></span></label>
@@ -1696,9 +1745,44 @@
                                 <label class="sp-target"><span class="sp-target__name">Money-in drop</span><span class="sp-target__hint">Warn when money in is down this much on the same point last month</span><span class="sp-target__field"><input type="number" id="spTargetDrop" min="0" max="100" step="1" inputmode="numeric"><span class="sp-target__unit">%</span></span></label>
                                 <label class="sp-target"><span class="sp-target__name">Spending jump</span><span class="sp-target__hint">Warn when a category is this far above its usual month</span><span class="sp-target__field"><input type="number" id="spTargetJump" min="0" step="5" inputmode="numeric"><span class="sp-target__unit">%</span></span></label>
                                 <label class="sp-target"><span class="sp-target__name">Cash runway</span><span class="sp-target__hint">Warn when cash covers fewer months of spending than this</span><span class="sp-target__field"><input type="number" id="spTargetRunway" min="0" step="0.5" inputmode="decimal"><span class="sp-target__unit">months</span></span></label>
+                                <label class="sp-target"><span class="sp-target__name">Over budget by</span><span class="sp-target__hint">Warn when a category passes its monthly budget by more than this</span><span class="sp-target__field"><input type="number" id="spTargetBudget" min="0" step="5" inputmode="numeric"><span class="sp-target__unit">%</span></span></label>
                                 <div class="sp-targets__actions">
                                     <button type="submit" class="btn-primary">Save targets</button>
                                     <button type="button" class="back-btn" data-sp-targets-reset>Reset to defaults</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="settings-panel settings-budgets-card" id="spBudgetsPanel">
+                            <div class="settings-panel-label">Monthly budgets</div>
+                            <p class="sp-targets__intro">What you plan to spend in each category every month. Expenses and Profit &amp; loss compare against these, and "Needs you" warns when a category runs over.</p>
+                            <form class="sp-budgets" id="spBudgetsForm" novalidate>
+                                <div class="sp-budgets__grid" id="spBudgetsGrid"></div>
+                                <div class="sp-targets__actions">
+                                    <button type="submit" class="btn-primary">Save budgets</button>
+                                    <span class="sp-budgets__total" id="spBudgetsTotal"></span>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="settings-panel settings-import-card" id="spImportPanel">
+                            <div class="settings-panel-label">Import from a spreadsheet</div>
+                            <p class="sp-targets__intro">Bring in bookings or expenses from a CSV file (File › Download › CSV in Excel or Google Sheets). The first row must name the columns.</p>
+                            <form class="sp-import" id="spImportForm" novalidate>
+                                <div class="sp-import__row">
+                                    <label class="sp-import__field"><span>What's in the file</span>
+                                        <select id="spImportKind">
+                                            <option value="bookings">Bookings</option>
+                                            <option value="expenses">Expenses</option>
+                                        </select>
+                                    </label>
+                                    <label class="sp-import__field sp-import__file"><span>CSV file</span><input type="file" id="spImportFile" accept=".csv,text/csv"></label>
+                                </div>
+                                <p class="sp-import__hint" id="spImportHint"></p>
+                                <div class="sp-import__preview" id="spImportPreview" hidden></div>
+                                <div class="sp-targets__actions">
+                                    <button type="submit" class="btn-primary" id="spImportGo" disabled>Import</button>
+                                    <button type="button" class="back-btn" id="spImportReset" hidden>Choose another file</button>
                                 </div>
                             </form>
                         </div>
@@ -1892,17 +1976,18 @@
         -->
 <script src="app.root-shell.js?v=8" defer></script>
 <script src="app.offline-cache.js?v=1"></script>
-<script src="supabase.js?v=98" defer></script>
+<script src="supabase.js?v=99" defer></script>
         <script src="app.migrations.js?v=10"></script>
         <script src="app.actions.js?v=9"></script>
         <script src="app.todayboard.js?v=3"></script>
         <script src="app.tasks.js?v=6"></script>
     <script src="app.reports.js?v=20"></script>
-<script src="app.js?v=155" defer></script>
+<script src="app.js?v=156" defer></script>
 <script src="app.charts.js?v=1" defer></script>
 <script src="app.home.js?v=3" defer></script>
-<script src="app.money.js?v=2" defer></script>
-<script src="app.insights.js?v=1" defer></script>
+<script src="app.money.js?v=3" defer></script>
+<script src="app.insights.js?v=2" defer></script>
+<script src="app.finance-ui.js?v=1" defer></script>
 <script src="app.landing.js?v=4" defer></script>
 <script src="app.chrome.js?v=1" defer></script>
 
