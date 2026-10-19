@@ -61,8 +61,9 @@
     ]],
     ['1', ['app.offline-cache.js']],
     ['3', ['app.todayboard.js']],
-    ['21', ['app.browser-assets.js']],
-    ['12', ['styles.landing.css']],
+    ['22', ['app.browser-assets.js']],
+    ['13', ['styles.landing.css']],
+    ['1', ['assets/landing/brick-wall.webp']],
     ['1', ['styles.brand.css', 'app.chrome.js']],
     ['8', ['styles.app.css']],
     ['6', ['app.root-shell.js']],
@@ -101,7 +102,7 @@
     ['64', ['styles.css']],
     ['98', ['supabase.js']],
     ['152', ['app.js']],
-    ['201', ['sw.js']]
+    ['202', ['sw.js']]
   ];
 
   const assetVersions = {};
@@ -243,6 +244,7 @@
     url('./styles.utilities.css'),
     url('./sp-design-tokens.css'),
     url('./styles.landing.css'),
+    url('./assets/landing/brick-wall.webp'),
     url('./styles.brand.css'),
     url('./styles.app.css'),
     url('./assets/vendor/fonts/star-paper-fonts.css'),

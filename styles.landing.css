@@ -810,7 +810,8 @@ body.light-theme .lp-art::before {
   overflow: hidden;
 }
 
-.lp-rig {
+.lp-rig,
+.lp-wall {
   --lp-lamp-l: 19%;
   --lp-lamp-c: 50%;
   --lp-lamp-r: 81%;
@@ -821,9 +822,124 @@ body.light-theme .lp-art::before {
   position: absolute;
   inset: 0 calc(50% - 50vw);
   top: var(--lp-rig-lift);
-  z-index: 3;
   pointer-events: none;
 }
+
+.lp-rig {
+  z-index: 3;
+}
+
+/* The back wall. A brick texture sits behind the slides and only shows where
+   a beam lands on it: each wash is the brick, tinted that lamp's colour and
+   masked to a soft wedge aimed from the lamp. The wedge angle (--lp-aim) runs
+   the same keyframes as its lamp, so the lit bricks sweep with the light.
+   Cone half-angle comes from the wall's own size (container units), so the
+   wedge matches the beam on phones and desktops alike. */
+@property --lp-aim {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.lp-wall {
+  --lp-brick: url('assets/landing/brick-wall.webp');
+  --lp-brick-size: clamp(300px, 30vw, 480px) auto;
+  z-index: 0;
+  overflow: hidden;
+  container-type: size;
+}
+
+.lp-show__track { position: relative; z-index: 1; }
+
+/* Ambient: the wall is only just there in the dark, fading out downwards. */
+.lp-wall::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--lp-brick) 0 0 / var(--lp-brick-size) repeat;
+  mix-blend-mode: screen;
+  opacity: 0.05;
+  -webkit-mask-image: linear-gradient(180deg, #000 10%, rgb(0 0 0 / 0.4) 70%, transparent);
+  mask-image: linear-gradient(180deg, #000 10%, rgb(0 0 0 / 0.4) 70%, transparent);
+}
+
+.lp-wall__wash {
+  --lp-aim: 0deg;
+  --lp-x: var(--lp-lamp-c);
+  --lp-tint: 247 243 232;
+  /* Half the beam's spread, from its width over the drop below the lens
+     (never under 12deg, so tall phone stages still show some brick). */
+  --lp-half: max(12deg, atan2(calc(var(--lp-spread) * 100cqw), calc(100cqh - var(--lp-lens))));
+  --lp-spread: 0.39;
+  --lp-wedge: conic-gradient(from calc(180deg + var(--lp-aim) - var(--lp-half)) at var(--lp-x) var(--lp-pivot),
+    transparent 0deg,
+    rgb(0 0 0 / 0.75) calc(var(--lp-half) * 0.55),
+    #000 var(--lp-half),
+    rgb(0 0 0 / 0.75) calc(var(--lp-half) * 1.45),
+    transparent calc(var(--lp-half) * 2),
+    transparent 360deg);
+  /* Brightest just under the lamp, easing off down the wall. */
+  --lp-throw: radial-gradient(120% 100% at var(--lp-x) var(--lp-pivot), #000 0%, rgb(0 0 0 / 0.6) 40%, rgb(0 0 0 / 0.22) 100%);
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(rgb(var(--lp-tint)), rgb(var(--lp-tint))),
+    var(--lp-brick) 0 0 / var(--lp-brick-size) repeat;
+  background-blend-mode: multiply, normal;
+  mix-blend-mode: screen;
+  opacity: 0.34;
+  -webkit-mask-image: var(--lp-wedge), var(--lp-throw);
+  -webkit-mask-composite: source-in;
+  mask-image: var(--lp-wedge), var(--lp-throw);
+  mask-composite: intersect;
+}
+
+.lp-wall__wash--c {
+  --lp-spread: 0.48;
+  opacity: 0.36;
+  animation: lp-aim-c 5s var(--sp-ease-in-out) -2s infinite alternate;
+}
+
+.lp-wall__wash--l {
+  --lp-aim: 16deg;
+  --lp-x: var(--lp-lamp-l);
+  --lp-tint: 95 211 160;
+  opacity: 0.32;
+  animation: lp-aim-l 4s var(--sp-ease-in-out) infinite alternate;
+}
+
+.lp-wall__wash--r {
+  --lp-aim: -16deg;
+  --lp-x: var(--lp-lamp-r);
+  --lp-tint: 110 150 230;
+  opacity: 0.36;
+  animation: lp-aim-r 4.5s var(--sp-ease-in-out) -4s infinite alternate;
+}
+
+/* Light mode: a whitewashed wall. Each wash is the lamp's colour laid over a
+   brick lifted towards white, multiplied in, so the coloured light picks out
+   mortar and brick faces on the sage stage without greying the whole page. */
+body.light-theme .lp-wall::before {
+  background:
+    linear-gradient(rgb(255 255 255 / 0.55), rgb(255 255 255 / 0.55)),
+    var(--lp-brick) 0 0 / var(--lp-brick-size) repeat;
+  mix-blend-mode: multiply;
+  opacity: 0.05;
+}
+
+body.light-theme .lp-wall__wash {
+  background:
+    linear-gradient(rgb(var(--lp-tint)), rgb(var(--lp-tint))),
+    linear-gradient(rgb(255 255 255 / 0.35), rgb(255 255 255 / 0.35)),
+    var(--lp-brick) 0 0 / var(--lp-brick-size) repeat;
+  background-blend-mode: multiply, normal, normal;
+  mix-blend-mode: multiply;
+  opacity: 0.3;
+}
+
+body.light-theme .lp-wall__wash--c { --lp-tint: 236 206 140; }
+body.light-theme .lp-wall__wash--l { --lp-tint: 150 214 180; }
+body.light-theme .lp-wall__wash--r { --lp-tint: 150 166 214; }
 
 /* The rig's truss sits on the header's bottom edge and its beams fall through
    the whole showcase, so the slides start below the lamps. */
@@ -884,7 +1000,6 @@ body.light-theme .lp-art::before {
    behind the slides and each beam turns into a deeper coloured wash that
    multiplies into the sage stage: emerald, amber and navy. */
 body.light-theme .lp-rig { z-index: 0; }
-body.light-theme .lp-show__track { position: relative; z-index: 1; }
 body.light-theme .lp-rig__beam { mix-blend-mode: multiply; opacity: 0.95; }
 body.light-theme .lp-rig__beam--c { --lp-beam-core: 200 160 70; --lp-beam-tint: 190 150 60; }
 body.light-theme .lp-rig__beam--l { --lp-beam-core: 40 160 110; --lp-beam-tint: 30 140 95; opacity: 0.85; }
@@ -1042,6 +1157,27 @@ body.light-theme .lp-rig__pool { mix-blend-mode: multiply; opacity: 0.9; }
   0% { rotate: -12deg; }
   50% { rotate: 6deg; }
   100% { rotate: 12deg; }
+}
+
+/* The wall washes track their lamps: same stops as lp-head-*. */
+@keyframes lp-aim-l {
+  0% { --lp-aim: 30deg; }
+  45% { --lp-aim: -16deg; }
+  60% { --lp-aim: -16deg; }
+  100% { --lp-aim: 8deg; }
+}
+
+@keyframes lp-aim-r {
+  0% { --lp-aim: -30deg; }
+  45% { --lp-aim: 16deg; }
+  60% { --lp-aim: 16deg; }
+  100% { --lp-aim: -8deg; }
+}
+
+@keyframes lp-aim-c {
+  0% { --lp-aim: -12deg; }
+  50% { --lp-aim: 6deg; }
+  100% { --lp-aim: 12deg; }
 }
 
 /* Shared dark glass for every card that sits under the lights. */
