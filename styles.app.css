@@ -1364,10 +1364,7 @@ canvas.is-pin-hover { cursor: pointer; }
 #appContainer #dashboard .hv2-bbf :is(.money, span) { color: var(--sp-ink-2); font-size: inherit; font-style: normal; }
 #appContainer #dashboard .hv2-bbf:hover { color: var(--sp-gold-text); }
 #appContainer #dashboard .hv2-spark { display: block; width: 100%; height: 32px; overflow: visible; }
-#appContainer #dashboard .hv2-spark--hero { height: 72px; }
-#appContainer #dashboard .hv2-spark__line { fill: none; stroke: var(--sp-gold); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-#appContainer #dashboard .hv2-spark__area { fill: var(--sp-gold-soft); stroke: none; }
-#appContainer #dashboard .hv2-spark__dot { fill: var(--sp-gold-hi); stroke: var(--sp-surface-2); stroke-width: 2; vector-effect: non-scaling-stroke; }
+#appContainer #dashboard .hv2-spark--hero { height: 96px; }
 
 /* Goal ring */
 #appContainer #dashboard .hv2-goal__body { position: relative; display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: center; gap: var(--sp-space-4); }
@@ -1401,9 +1398,9 @@ canvas.is-pin-hover { cursor: pointer; }
 }
 #appContainer #dashboard button.hv2-kpi { cursor: pointer; }
 #appContainer #dashboard button.hv2-kpi:hover { border-color: var(--sp-line-strong); }
-#appContainer #dashboard .hv2-kpi__icon { display: grid; place-items: center; width: 32px; height: 32px; margin-bottom: var(--sp-space-3); border-radius: 10px; background: var(--sp-gold-soft); color: var(--sp-gold-text); font-size: 17px; }
 #appContainer #dashboard .hv2-kpi__value { display: block; margin: var(--sp-space-1) 0 0; color: var(--sp-ink); font-size: clamp(0.9375rem, 9cqi, var(--sp-text-xl)); font-weight: 700; line-height: 1.15; white-space: nowrap; }
-#appContainer #dashboard .hv2-kpi .hv2-spark { margin-top: auto; padding-top: var(--sp-space-3); }
+#appContainer #dashboard .hv2-kpi .hv2-spark { margin-top: auto; padding: 0; }
+#appContainer #dashboard .hv2-kpi .hv2-delta { margin-bottom: var(--sp-space-3); }
 
 /* Quick actions: one row of pills (scrolls sideways on phones) */
 #appContainer #dashboard .hv2-quick { display: flex; gap: var(--sp-space-2); overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
@@ -1439,40 +1436,8 @@ canvas.is-pin-hover { cursor: pointer; }
 #appContainer #dashboard .hv2-legend__out::before { background: var(--sp-sage); }
 #appContainer #dashboard .hv2-legend__net::before { height: 2px !important; vertical-align: 3px !important; background: var(--sp-ink); }
 #appContainer #dashboard .hv2-trend { display: block; width: 100%; height: auto; }
-#appContainer #dashboard .hv2-trend__grid { stroke: var(--sp-line); stroke-dasharray: 3 4; }
-#appContainer #dashboard .hv2-trend__zero { stroke: var(--sp-line-strong); }
-#appContainer #dashboard .hv2-trend__axis { fill: var(--sp-ink-3); font-family: var(--sp-font-ui); font-size: 11px; }
-#appContainer #dashboard .hv2-trend__hit { fill: transparent; }
-#appContainer #dashboard .hv2-trend__month:hover .hv2-trend__hit { fill: var(--sp-gold-soft); }
-#appContainer #dashboard .hv2-trend__in { fill: var(--sp-gold); }
-#appContainer #dashboard .hv2-trend__out { fill: var(--sp-sage); }
-#appContainer #dashboard .hv2-trend__net { fill: none; stroke: var(--sp-ink); stroke-width: 2; stroke-linejoin: round; }
-#appContainer #dashboard .hv2-trend__netdot { fill: var(--sp-ink); }
 
 /* Revenue by artist: donut beside (or above) its legend */
-#appContainer #dashboard .hv2-donut { display: grid; grid-template-columns: 132px minmax(0, 1fr); align-items: center; gap: var(--sp-space-4); }
-#appContainer #dashboard .hv2-donut:has(.hv2-empty) { display: block; }
-#appContainer #dashboard .hv2-donut__figure { position: relative; width: 132px; height: 132px; }
-#appContainer #dashboard .hv2-donut__ring { width: 100%; height: 100%; transform: rotate(-90deg); }
-#appContainer #dashboard .hv2-donut__ring circle { fill: none; stroke-width: 14; }
-#appContainer #dashboard .hv2-donut__track { stroke: var(--sp-surface-3); }
-#appContainer #dashboard .hv2-donut__center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
-#appContainer #dashboard .hv2-donut__total { color: var(--sp-ink); font-size: var(--sp-text-lg); font-weight: 700; }
-#appContainer #dashboard .hv2-donut__sub { color: var(--sp-ink-3); font-size: 11px; }
-#appContainer #dashboard .hv2-donut__legend { display: grid; gap: var(--sp-space-2); margin: 0; padding: 0; list-style: none; }
-#appContainer #dashboard .hv2-donut__item { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: 2px var(--sp-space-2); }
-#appContainer #dashboard .hv2-donut__swatch { width: 10px; height: 10px; border-radius: 3px; }
-#appContainer #dashboard .hv2-donut__name { overflow: hidden; color: var(--sp-ink); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-#appContainer #dashboard .hv2-donut__pct { color: var(--sp-ink-2); font-weight: 700; }
-#appContainer #dashboard .hv2-donut__amt { grid-column: 2 / 4; color: var(--sp-ink-3); font-size: var(--sp-text-xs); }
-#appContainer #dashboard .hv2-c1 { --c: var(--sp-gold); }
-#appContainer #dashboard .hv2-c2 { --c: var(--sp-sage); }
-#appContainer #dashboard .hv2-c3 { --c: var(--sp-in); }
-#appContainer #dashboard .hv2-c4 { --c: var(--sp-gold-deep); }
-#appContainer #dashboard .hv2-c5 { --c: var(--sp-ink-2); }
-#appContainer #dashboard .hv2-c6 { --c: var(--sp-ink-3); }
-#appContainer #dashboard .hv2-donut__seg { stroke: var(--c); }
-#appContainer #dashboard .hv2-donut__swatch { background: var(--c); }
 
 /* Unpaid balances by age */
 #appContainer :is(#dashboard, #money) .hv2-aging__list { display: grid; gap: var(--sp-space-3); margin: 0; padding: 0; list-style: none; }
@@ -1487,11 +1452,9 @@ canvas.is-pin-hover { cursor: pointer; }
 
 @media (max-width: 1023px) {
   #appContainer #dashboard .hv2-hero { grid-template-columns: minmax(0, 1fr); }
-  #appContainer #dashboard .hv2-spark--hero { height: 56px; }
+  #appContainer #dashboard .hv2-spark--hero { height: 84px; }
 }
 @media (max-width: 420px) {
-  #appContainer #dashboard .hv2-donut { grid-template-columns: minmax(0, 1fr); justify-items: center; }
-  #appContainer #dashboard .hv2-donut__legend { width: 100%; }
   #appContainer #dashboard .hv2-kpi { padding: var(--sp-space-3); }
 }
 
@@ -2059,3 +2022,242 @@ canvas.is-pin-hover { cursor: pointer; }
   #appContainer #settings .settings-inline-action { grid-column: 1 / -1; justify-self: start; }
   #appContainer #settings .settings-toggle-group { width: 100%; min-width: 0; }
 }
+
+/* ── 19. Charts and insights (app.charts.js, app.insights.js) ─────────────
+   One chart language for Home and Money: soft gradient areas under smooth
+   lines, a glowing last point with its value in a pill, rounded bars with
+   the current month lit, and one tooltip that follows the pointer. Tones
+   are set per element (spc-tone--*, spc-c1..6) so light mode follows.    */
+.spc-tone--gold, .spc-c1, .spc-tone--c1 { --tone: var(--sp-gold); --tone-hi: var(--sp-gold-hi); --c: var(--sp-gold); }
+.spc-tone--sage, .spc-c2, .spc-tone--c2 { --tone: var(--sp-sage); --tone-hi: color-mix(in srgb, var(--sp-sage) 55%, var(--sp-ivory)); --c: var(--sp-sage); }
+.spc-tone--in, .spc-c3, .spc-tone--c3 { --tone: var(--sp-in); --tone-hi: color-mix(in srgb, var(--sp-in) 60%, var(--sp-ivory)); --c: var(--sp-in); }
+.spc-tone--out { --tone: var(--sp-out); --tone-hi: color-mix(in srgb, var(--sp-out) 60%, var(--sp-ivory)); --c: var(--sp-out); }
+.spc-c4, .spc-tone--c4 { --tone: var(--sp-gold-deep); --tone-hi: var(--sp-gold); --c: var(--sp-gold-deep); }
+.spc-c5, .spc-tone--c5 { --tone: var(--sp-steel); --tone-hi: var(--sp-steel-hi); --c: var(--sp-steel); }
+.spc-c6, .spc-tone--c6 { --tone: var(--sp-ink-3); --tone-hi: var(--sp-ink-2); --c: var(--sp-ink-3); }
+.spc-tone--ink { --tone: var(--sp-ink); --tone-hi: var(--sp-ink); --c: var(--sp-ink); }
+body.light-theme :is(.spc-tone--gold, .spc-c1, .spc-tone--c1) { --tone: var(--sp-gold-deep); --tone-hi: var(--sp-gold); --c: var(--sp-gold-deep); }
+body.light-theme :is(.spc-tone--sage, .spc-c2, .spc-tone--c2) { --tone: var(--sp-moss-2); --tone-hi: var(--sp-sage); --c: var(--sp-moss-2); }
+body.light-theme :is(.spc-c4, .spc-tone--c4) { --tone: var(--sp-gold-text); --tone-hi: var(--sp-gold-deep); --c: var(--sp-gold-text); }
+
+#appContainer .spc-grad--area .spc-s0 { stop-color: var(--tone); stop-opacity: 0.36; }
+#appContainer .spc-grad--area .spc-s1 { stop-color: var(--tone); stop-opacity: 0; }
+body.light-theme #appContainer .spc-grad--area .spc-s0 { stop-opacity: 0.24; }
+#appContainer .spc-grad--bar .spc-s0 { stop-color: var(--tone-hi); }
+#appContainer .spc-grad--bar .spc-s1 { stop-color: var(--tone); }
+
+#appContainer .spc-area { stroke: none; }
+#appContainer .spc-line { fill: none; stroke: var(--tone); stroke-width: 2.25; stroke-linejoin: round; stroke-linecap: round; }
+#appContainer .spc-line--thin { stroke-width: 1.5; }
+#appContainer .spc-line--dashed { stroke-dasharray: 5 5; opacity: 0.85; }
+#appContainer .spc-tone--gold.spc-line:not(.spc-line--thin) { filter: drop-shadow(0 3px 6px var(--sp-gold-glow)); }
+#appContainer .spc-dot { fill: var(--tone-hi); stroke: var(--sp-surface-2); stroke-width: 2; }
+#appContainer .spc-halo { fill: var(--tone); opacity: 0.22; transform-box: fill-box; transform-origin: center; animation: spc-pulse 2.6s var(--sp-ease-in-out) infinite; }
+@keyframes spc-pulse { 0%, 100% { transform: scale(0.75); opacity: 0.3; } 50% { transform: scale(1.3); opacity: 0.08; } }
+@media (prefers-reduced-motion: reduce) { #appContainer .spc-halo { animation: none; } }
+#appContainer .spc-pill__bg { fill: color-mix(in srgb, var(--tone) 20%, var(--sp-surface-1)); stroke: color-mix(in srgb, var(--tone) 60%, transparent); stroke-width: 1; }
+#appContainer .spc-pill__text { fill: var(--sp-ink); font-family: var(--sp-font-money); font-size: 11px; font-weight: 700; }
+#appContainer .spc-pill--flat .spc-pill__bg { fill: var(--sp-surface-1); }
+#appContainer .spc-pill--flat .spc-pill__text { fill: var(--sp-out); }
+#appContainer .spc-flat { stroke: var(--sp-line-strong); stroke-dasharray: 3 4; }
+#appContainer .spc-grid { stroke: var(--sp-line); stroke-dasharray: 2 6; }
+#appContainer .spc-zero { stroke: var(--sp-line-strong); }
+#appContainer .spc-axis { fill: var(--sp-ink-3); font-family: var(--sp-font-ui); font-size: 11px; }
+#appContainer .spc-axis--on { fill: var(--sp-gold-text); font-weight: 700; }
+#appContainer .spc-guide { stroke: var(--sp-gold); stroke-dasharray: 3 4; opacity: 0; pointer-events: none; }
+#appContainer .spc-guide.is-on { opacity: 0.7; }
+#appContainer .spc-col__bg { fill: transparent; transition: fill var(--sp-dur-2) var(--sp-ease-out); }
+#appContainer .spc-col.is-hot .spc-col__bg { fill: var(--sp-gold-soft); }
+#appContainer .spc-bar { transition: opacity var(--sp-dur-2) var(--sp-ease-out); }
+#appContainer .hv2-trend .spc-col .spc-bar { opacity: 0.5; }
+#appContainer .hv2-trend .spc-col:is(.is-current, .is-hot) .spc-bar { opacity: 1; }
+#appContainer .hv2-trend .spc-col.is-current .spc-col__bg { fill: color-mix(in srgb, var(--sp-gold) 7%, transparent); }
+#appContainer .spc-netdot { fill: var(--sp-ink); stroke: var(--sp-surface-2); stroke-width: 2; }
+#appContainer :is(.hv2-trend, .mv-chart, .mv-waterfall, .mv-forecast) { display: block; width: 100%; height: auto; overflow: visible; touch-action: pan-y; cursor: crosshair; }
+#appContainer .mv-fc__min { stroke: var(--sp-out); stroke-width: 1.5; stroke-dasharray: 6 4; }
+#appContainer .mv-fc__pending { fill: none; stroke: var(--sp-ink-3); stroke-width: 1.5; stroke-dasharray: 4 4; }
+#appContainer .mv-fc__dot--low { fill: var(--sp-out); stroke: var(--sp-surface-2); stroke-width: 2; filter: drop-shadow(0 0 5px var(--sp-out)); }
+
+/* Tooltip (lives on body so cards never clip it) */
+.spc-tip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 90;
+  min-width: 180px;
+  max-width: 270px;
+  padding: 10px 12px;
+  border: 1px solid var(--sp-line-strong);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--sp-surface-1) 94%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--sp-shadow-2);
+  color: var(--sp-ink);
+  font-family: var(--sp-font-ui);
+  font-size: 12px;
+  line-height: 1.35;
+  pointer-events: none;
+  transform: translate(calc(var(--tip-x, 0px) + 16px), calc(var(--tip-y, 0px) - 50%));
+}
+.spc-tip.is-left { transform: translate(calc(var(--tip-x, 0px) - 100% - 16px), calc(var(--tip-y, 0px) - 50%)); }
+.spc-tip[hidden] { display: none; }
+.spc-tip__title { margin: 0 0 6px; color: var(--sp-gold-text); font-weight: 700; }
+.spc-tip__row { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; align-items: center; gap: 8px; margin: 3px 0 0; }
+.spc-tip__sw { width: 8px; height: 8px; border-radius: 50%; background: var(--tone, var(--sp-ink)); }
+.spc-tip__label { color: var(--sp-ink-3); }
+.spc-tip__value { color: var(--sp-ink); font-family: var(--sp-font-money); font-weight: 700; white-space: nowrap; }
+.spc-tip__value.is-bad { color: var(--sp-out); }
+.spc-tip__value.is-good { color: var(--sp-in); }
+.spc-tip__note { margin: 6px 0 0; padding-top: 6px; border-top: 1px solid var(--sp-line); color: var(--sp-ink-3); font-size: 11px; }
+
+/* Donut: rounded segments with gaps, total in the middle, % legend */
+#appContainer .spc-donut { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--sp-space-5); }
+#appContainer .spc-donut:is(.is-empty, .is-solo) { display: block; }
+#appContainer .spc-donut.is-solo .spc-donut__figure { margin: 0 auto; }
+#appContainer .spc-donut__figure { position: relative; width: var(--size, 140px); height: var(--size, 140px); }
+#appContainer .spc-donut__ring { width: 100%; height: 100%; overflow: visible; transform: rotate(-90deg); }
+#appContainer .spc-donut__ring circle { fill: none; stroke-width: 13; }
+#appContainer .spc-donut__track { stroke: var(--sp-surface-3); }
+#appContainer .spc-donut__seg { stroke: var(--c); stroke-linecap: round; cursor: pointer; transition: stroke-width var(--sp-dur-2) var(--sp-ease-out), opacity var(--sp-dur-2); }
+#appContainer .spc-donut__seg.is-hot { stroke-width: 17; }
+#appContainer .spc-donut.has-hot .spc-donut__seg:not(.is-hot) { opacity: 0.35; }
+#appContainer .spc-donut__centre { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; }
+#appContainer .spc-donut__total { color: var(--sp-ink); font-family: var(--sp-font-money); font-size: var(--sp-text-lg); font-weight: 700; }
+#appContainer .spc-donut__sub { color: var(--sp-ink-3); font-size: 11px; letter-spacing: 0.04em; }
+#appContainer .spc-donut__legend { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+#appContainer .spc-donut__item { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: 0 var(--sp-space-2); padding: 6px 8px; border-radius: 10px; transition: background var(--sp-dur-2); }
+#appContainer .spc-donut__item.is-hot { background: var(--sp-gold-soft); }
+#appContainer .spc-donut__swatch { width: 10px; height: 10px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 22%, transparent); }
+#appContainer .spc-donut__name { overflow: hidden; color: var(--sp-ink); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+#appContainer .spc-donut__pct { color: var(--sp-ink); font-family: var(--sp-font-money); font-weight: 700; }
+#appContainer .spc-donut__amt { grid-column: 2 / 4; color: var(--sp-ink-3); font-size: var(--sp-text-xs); }
+@media (max-width: 420px) {
+  #appContainer .spc-donut { grid-template-columns: minmax(0, 1fr); justify-items: center; }
+  #appContainer .spc-donut__legend { width: 100%; }
+}
+
+/* Icon tiles: soft gold chip on KPIs, gold foil on the key number */
+#appContainer .sp-icon-tile { display: grid; flex: none; place-items: center; width: 40px; height: 40px; margin-bottom: var(--sp-space-3); border: 1px solid var(--sp-line-strong); border-radius: 12px; background: linear-gradient(145deg, var(--sp-gold-soft), transparent 80%); color: var(--sp-gold-text); font-size: 19px; }
+#appContainer .sp-icon-tile--foil { border: 0; background: var(--sp-foil); color: var(--sp-ink-on-gold); box-shadow: var(--sp-glow-gold); }
+
+/* Home hero: foil icon, the number, its line */
+#appContainer #dashboard .hv2-hero { grid-template-columns: auto minmax(0, 1fr) minmax(140px, 44%); align-items: center; }
+#appContainer #dashboard .hv2-hero__icon { width: 64px; height: 64px; margin: 0; border-radius: 16px; font-size: 30px; }
+@media (max-width: 1023px) {
+  #appContainer #dashboard .hv2-hero { grid-template-columns: auto minmax(0, 1fr); }
+  #appContainer #dashboard .hv2-hero__icon { width: 48px; height: 48px; border-radius: 14px; font-size: 24px; align-self: start; }
+  #appContainer #dashboard .hv2-spark--hero { grid-column: 1 / -1; }
+}
+
+/* Change lines: a tinted pill when it's good or bad news */
+#appContainer :is(#dashboard, #money) :is(.hv2-delta, .mv-delta, .mv-tile__sub):is(.is-good, .is-bad) { display: inline-flex; width: fit-content; max-width: 100%; padding: 2px 8px; border-radius: var(--sp-radius-pill); }
+#appContainer :is(#dashboard, #money) :is(.hv2-delta, .mv-delta, .mv-tile__sub).is-good { background: var(--sp-in-soft); }
+#appContainer :is(#dashboard, #money) :is(.hv2-delta, .mv-delta, .mv-tile__sub).is-bad { background: var(--sp-out-soft); }
+
+/* KPI meters (owed: how much is late; booked: how much is confirmed) */
+#appContainer #dashboard .hv2-meter { display: block; height: 6px; margin-top: auto; border-radius: var(--sp-radius-pill); background: var(--sp-surface-3); overflow: hidden; }
+#appContainer #dashboard .hv2-meter__fill { display: block; width: var(--w, 0%); height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--sp-gold-lo), var(--sp-gold)); transition: width var(--sp-dur-4) var(--sp-ease-out); }
+#appContainer #dashboard .hv2-meter__fill--bad { background: linear-gradient(90deg, color-mix(in srgb, var(--sp-out) 60%, transparent), var(--sp-out)); }
+#appContainer #dashboard button.hv2-kpi .hv2-delta { margin-bottom: var(--sp-space-3); }
+
+/* Money tiles: icon, label, number, change, six-month line */
+#appContainer #money .mv-page-head { display: flex; align-items: baseline; justify-content: space-between; }
+#appContainer #money .mv-page-title { margin: 0; color: var(--sp-ink); font-family: var(--sp-font-display); font-size: var(--sp-text-xl); font-weight: 700; }
+#appContainer #money .mv-strip--five { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#appContainer #money .mv-strip--five > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+@media (min-width: 700px) { #appContainer #money .mv-strip--five { grid-template-columns: repeat(3, minmax(0, 1fr)); } #appContainer #money .mv-strip--five > :last-child:nth-child(odd) { grid-column: auto; } }
+@media (min-width: 1200px) { #appContainer #money .mv-strip--five { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+#appContainer #money button.mv-tile { width: 100%; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+#appContainer #money button.mv-tile:hover { border-color: var(--sp-line-strong); }
+#appContainer #money .mv-tile .mv-delta { margin-bottom: var(--sp-space-2); }
+#appContainer #money .mv-spark { display: block; width: 100%; height: 36px; margin-top: auto; overflow: visible; }
+#appContainer #money .mv-tile__value.income-green { color: var(--sp-in); }
+#appContainer #money .mv-tile__value.expense-red { color: var(--sp-out); }
+#appContainer #money :is(#depositsReceived, #otherIncomeTotal, #financialsExpenses) { color: var(--sp-ink); }
+#appContainer #money .mv-goalcard .monthly-goal-track { margin: 0; padding: 0; border: 0; background: none; box-shadow: none; }
+#appContainer #money .mv-yearsum { display: flex; flex-wrap: wrap; gap: var(--sp-space-2) var(--sp-space-6); margin-bottom: var(--sp-space-3); }
+#appContainer #money .mv-yearsum .money { color: var(--sp-ink); font-weight: 700; }
+#appContainer #money .mv-yearsum .money.is-bad { color: var(--sp-out); }
+#appContainer #money .mv-legend__net::before { height: 0 !important; vertical-align: 4px !important; border-top: 2px dashed var(--sp-ink); border-radius: 0 !important; }
+#appContainer #money .mv-legend__inline::before { height: 0 !important; vertical-align: 4px !important; border-top: 2px dashed var(--sp-gold); border-radius: 0 !important; }
+#appContainer #money .mv-legend__cash::before { background: var(--sp-gold); }
+#appContainer #money .mv-wf__value { fill: var(--sp-ink); }
+
+/* Expenses: donut beside category bars with the usual-month marker */
+#appContainer #money .mv-excat { display: grid; gap: var(--sp-space-6); align-items: start; }
+@media (min-width: 700px) { #appContainer #money .mv-excat { grid-template-columns: auto minmax(0, 1fr); } }
+#appContainer #money .mv-cbars { display: grid; gap: var(--sp-space-3); margin: 0; padding: 0; list-style: none; }
+#appContainer #money .mv-cbar { padding: 6px 8px; border-radius: 10px; transition: background var(--sp-dur-2); }
+#appContainer #money .mv-cbar:hover { background: var(--sp-gold-soft); }
+#appContainer #money .mv-cbar__head { display: flex; justify-content: space-between; gap: var(--sp-space-3); }
+#appContainer #money .mv-cbar__name { color: var(--sp-ink); font-weight: 600; }
+#appContainer #money .mv-cbar__amt { color: var(--sp-ink); font-weight: 700; white-space: nowrap; }
+#appContainer #money .mv-cbar.is-over .mv-cbar__amt { color: var(--sp-out); }
+#appContainer #money .mv-cbar__track { position: relative; height: 10px; margin: 6px 0 4px; border-radius: var(--sp-radius-pill); background: var(--sp-surface-3); }
+#appContainer #money .mv-cbar__fill { position: absolute; inset: 0 auto 0 0; width: var(--w, 0%); border-radius: inherit; background: linear-gradient(90deg, color-mix(in srgb, var(--c) 55%, transparent), var(--c)); }
+#appContainer #money .mv-cbar__mark { position: absolute; top: -4px; bottom: -4px; left: var(--at, 0%); width: 2px; margin-left: -1px; border-radius: 2px; background: var(--sp-ink); opacity: 0.75; }
+#appContainer #money .mv-cbar__sub { color: var(--sp-ink-3); font-size: var(--sp-text-xs); }
+#appContainer #money .mv-flags { display: grid; gap: var(--sp-space-2); margin: 0; padding: 0; list-style: none; }
+#appContainer #money .mv-flag { display: grid; grid-template-columns: 32px minmax(0, 1fr); align-items: start; gap: var(--sp-space-3); padding: var(--sp-space-3); border: 1px solid var(--sp-line); border-radius: var(--sp-radius-md); background: var(--sp-surface-2); }
+#appContainer #money .mv-flag__icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; font-size: 17px; background: var(--sp-sage-soft); color: var(--sp-sage-text); }
+#appContainer #money .mv-flag.is-warning .mv-flag__icon { background: var(--sp-gold-soft); color: var(--sp-gold-text); }
+#appContainer #money .mv-flag__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+#appContainer #money .mv-flag__title { color: var(--sp-ink); font-weight: 600; }
+#appContainer #money .mv-flag__text { color: var(--sp-ink-3); font-size: var(--sp-text-xs); line-height: 1.45; }
+#appContainer #money .mv-abars { display: grid; gap: var(--sp-space-3); margin: 0; padding: 0; list-style: none; }
+#appContainer #money .mv-abar { display: grid; grid-template-columns: minmax(0, 120px) minmax(0, 1fr) auto 40px; align-items: center; gap: var(--sp-space-3); }
+#appContainer #money .mv-abar__name { overflow: hidden; color: var(--sp-ink); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+#appContainer #money .mv-abar__track { display: block; height: 10px; border-radius: var(--sp-radius-pill); background: var(--sp-surface-3); overflow: hidden; }
+#appContainer #money .mv-abar__fill { display: block; width: var(--w, 0%); height: 100%; border-radius: inherit; background: linear-gradient(90deg, color-mix(in srgb, var(--c) 55%, transparent), var(--c)); }
+#appContainer #money .mv-abar__amt { color: var(--sp-ink); font-weight: 700; white-space: nowrap; }
+#appContainer #money .mv-abar__pct { color: var(--sp-ink-3); font-size: var(--sp-text-xs); text-align: right; }
+
+/* Data health (Reports) */
+#appContainer #money .sp-health__head { display: flex; align-items: center; gap: var(--sp-space-4); margin-bottom: var(--sp-space-4); }
+#appContainer #money .sp-health__score { position: relative; flex: none; width: 72px; height: 72px; }
+#appContainer #money .sp-health__ring { width: 100%; height: 100%; transform: rotate(-90deg); }
+#appContainer #money .sp-health__ring circle { fill: none; stroke-width: 10; }
+#appContainer #money .sp-health__track { stroke: var(--sp-surface-3); }
+#appContainer #money .sp-health__fill { stroke: var(--sp-gold); stroke-linecap: round; transition: stroke-dasharray var(--sp-dur-4) var(--sp-ease-out); }
+#appContainer #money .sp-health.is-clean .sp-health__fill { stroke: var(--sp-in); }
+#appContainer #money .sp-health__pct { position: absolute; inset: 0; display: grid; place-items: center; color: var(--sp-ink); font-size: var(--sp-text-sm); font-weight: 700; }
+#appContainer #money .sp-health__list { display: grid; gap: var(--sp-space-2); margin: 0; padding: 0; list-style: none; }
+#appContainer #money .sp-health__row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: start; gap: var(--sp-space-3); padding: var(--sp-space-3) var(--sp-space-4); border: 1px solid var(--sp-line); border-radius: var(--sp-radius-md); background: var(--sp-surface-2); }
+#appContainer #money .sp-health__icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; font-size: 17px; background: var(--sp-sage-soft); color: var(--sp-sage-text); }
+#appContainer #money .sp-health__row.is-high .sp-health__icon { background: var(--sp-out-soft); color: var(--sp-out); }
+#appContainer #money .sp-health__row.is-medium .sp-health__icon { background: var(--sp-gold-soft); color: var(--sp-gold-text); }
+#appContainer #money .sp-health__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+#appContainer #money .sp-health__record { overflow: hidden; color: var(--sp-ink); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+#appContainer #money .sp-health__issue { color: var(--sp-ink-2); font-size: var(--sp-text-sm); }
+#appContainer #money .sp-health__fix { color: var(--sp-ink-3); font-size: var(--sp-text-xs); }
+#appContainer #money .sp-health__fix::before { content: 'Suggested: '; color: var(--sp-gold-text); font-weight: 600; }
+#appContainer #money .sp-health__side { display: flex; flex-direction: column; align-items: flex-end; gap: var(--sp-space-2); }
+#appContainer #money .sp-health__conf { padding: 2px 8px; border-radius: var(--sp-radius-pill); background: var(--sp-sage-soft); color: var(--sp-sage-text); font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+#appContainer #money .sp-health__conf.is-high { background: var(--sp-out-soft); color: var(--sp-out); }
+#appContainer #money .sp-health__conf.is-medium { background: var(--sp-gold-soft); color: var(--sp-gold-text); }
+#appContainer #money .sp-health__open { min-height: 30px; padding: 0 var(--sp-space-3); border: 1px solid var(--sp-line); border-radius: var(--sp-radius-pill); background: transparent; color: var(--sp-gold-text); font-size: var(--sp-text-xs); font-weight: 600; cursor: pointer; }
+#appContainer #money .sp-health__open:hover { border-color: var(--sp-line-strong); background: var(--sp-gold-soft); }
+@media (max-width: 560px) {
+  #appContainer #money .sp-health__row { grid-template-columns: 32px minmax(0, 1fr); }
+  #appContainer #money .sp-health__side { grid-column: 2; flex-direction: row; align-items: center; justify-content: space-between; }
+  #appContainer #money .mv-abar { grid-template-columns: minmax(0, 1fr) auto; }
+  #appContainer #money .mv-abar__track { grid-column: 1 / -1; grid-row: 2; }
+  #appContainer #money .mv-abar__pct { display: none; }
+}
+
+/* Needs you: each money alert carries its numbers, cause and next step */
+#appContainer .nudge-text .nudge-detail { display: block; margin-top: 3px; color: var(--sp-ink-3); font-size: var(--sp-text-xs); line-height: 1.45; }
+#appContainer .nudge-text .nudge-detail b { margin-right: 4px; color: var(--sp-ink-2); font-weight: 700; }
+
+/* Settings > Targets & alerts */
+#appContainer #settings .settings-targets-card { grid-column: 1 / -1; }
+#appContainer #settings .sp-targets__intro { margin: 0; color: var(--sp-ink-3); font-size: var(--sp-text-sm); }
+#appContainer #settings .sp-targets { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--sp-space-3); }
+#appContainer #settings .sp-target { display: flex; flex-direction: column; gap: 2px; padding: var(--sp-space-3) var(--sp-space-4); border: 1px solid var(--sp-line); border-radius: var(--sp-radius-md); background: var(--sp-surface-2); }
+#appContainer #settings .sp-target__name { color: var(--sp-ink); font-weight: 600; }
+#appContainer #settings .sp-target__hint { color: var(--sp-ink-3); font-size: var(--sp-text-xs); }
+#appContainer #settings .sp-target__field { display: flex; align-items: center; gap: var(--sp-space-2); margin-top: auto; padding-top: var(--sp-space-2); }
+#appContainer #settings .sp-target__field input { flex: 1 1 auto; min-width: 0; font-family: var(--sp-font-money); }
+#appContainer #settings .sp-target__unit { color: var(--sp-ink-3); font-size: var(--sp-text-xs); font-weight: 600; }
+#appContainer #settings .sp-targets__actions { display: flex; flex-wrap: wrap; grid-column: 1 / -1; gap: var(--sp-space-2); }

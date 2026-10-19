@@ -7610,6 +7610,9 @@ function showLoginForm(options = {}) {
         }
 
         function updatePerformanceChart() {
+            // Money > Overview now draws its own 12-month chart (app.charts.js);
+            // only load Chart.js if an old canvas is still on the page.
+            if (!document.getElementById('performanceChart')) return;
             // Check if Chart.js is loaded
             if (typeof Chart === 'undefined') {
                 if (typeof window.__spLoadDeferredLibrary === 'function') {
@@ -8559,6 +8562,7 @@ function showLoginForm(options = {}) {
             updateVelocityGauge();
             window.SPHome?.render?.();
             window.SPMoneyPages?.render?.();
+            window.SPInsights?.render?.();
 
             // Delay chart rendering to ensure DOM is ready
             setTimeout(() => {
@@ -9492,6 +9496,12 @@ function showLoginForm(options = {}) {
                 });
             }
 
+            // ── Money alerts (app.insights.js): margin, drops, spikes, runway ──
+            const moneyAlerts = typeof window.SPInsights?.alerts === 'function' ? window.SPInsights.alerts(now) : [];
+            moneyAlerts.forEach((alert) => nudges.push(alert));
+            const nudgeRank = { alert: 0, warning: 1, info: 2, success: 3 };
+            nudges.sort((a, b) => (nudgeRank[a.type] ?? 2) - (nudgeRank[b.type] ?? 2));
+
             window.__spNudges = nudges;
             document.dispatchEvent(new CustomEvent('sp:nudges', { detail: { nudges } }));
 
@@ -9537,7 +9547,7 @@ function showLoginForm(options = {}) {
                 return `
                 <div class="${itemClasses.join(' ')}" data-nudge-id="${escapeHtml(n.id)}"${actionAttrs}>
                     <span class="nudge-icon">${iconHtml}</span>
-                    <span class="nudge-text">${escapeHtml(n.text)}</span>
+                    <span class="nudge-text">${escapeHtml(n.text)}${(Array.isArray(n.detail) ? n.detail : []).map((d) => `<span class="nudge-detail"><b>${escapeHtml(d.k)}</b> ${escapeHtml(d.v)}</span>`).join('')}</span>
                     <button class="nudge-dismiss" data-nudge-dismiss="1" aria-label="Dismiss"><i class="ph ph-x" aria-hidden="true"></i></button>
                 </div>`;
             }).join('');
@@ -9589,6 +9599,8 @@ function showLoginForm(options = {}) {
             }, 80);
         }
 
+        window.SPOpenBooking = openBookingFromNudge;
+
         function followUpUnpaidFromNudge(actionId) {
             let bookingId = resolveBookingId(actionId);
             if (bookingId === null) {
@@ -9607,6 +9619,14 @@ function showLoginForm(options = {}) {
             }
             if (action === 'followUpUnpaid') {
                 followUpUnpaidFromNudge(actionId);
+                return;
+            }
+            if (action === 'showSection' && actionId) {
+                showSection(actionId);
+                return;
+            }
+            if (action === 'openBBFModal' && typeof openBBFModal === 'function') {
+                openBBFModal();
             }
         }
 

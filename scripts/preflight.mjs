@@ -393,6 +393,8 @@ for (const path of [
   'app.tasks.js',
   'app.home.js',
   'app.money.js',
+  'app.charts.js',
+  'app.insights.js',
   'supabase.js',
   'sw.js',
   'manifest.json',
@@ -1377,6 +1379,8 @@ for (const [fileName, text, budget] of [
   ['app.landing.js', landing, { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
   ['app.home.js', read('app.home.js'), { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
   ['app.money.js', read('app.money.js'), { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
+  ['app.charts.js', read('app.charts.js'), { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
+  ['app.insights.js', read('app.insights.js'), { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
   ['app.tasks.js', tasks, { innerHTML: 2, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
 ]) {
   assertCountAtMost(text, /\.innerHTML\s*(?:=|\+=)/g, budget.innerHTML, `${fileName} audited innerHTML sink budget`);

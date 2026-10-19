@@ -176,6 +176,15 @@
         H.setDelta($('mvDeltaOther'), cur.other, prev.other);
         H.setDelta($('mvDeltaExpenses'), cur.out, prev.out, { upIsGood: false });
         H.setDelta($('mvDeltaNet'), cur.net, prev.net);
+        const C = window.SPCharts;
+        if (C) {
+            const now = new Date();
+            const months = Array.from({ length: 6 }, (_, i) => monthLines(new Date(now.getFullYear(), now.getMonth() - 5 + i, 1)));
+            C.spark($('mvSparkShows'), months.map((l) => l.shows), { tone: 'gold' });
+            C.spark($('mvSparkOther'), months.map((l) => l.other), { tone: 'gold' });
+            C.spark($('mvSparkExpenses'), months.map((l) => l.out), { tone: 'sage' });
+            C.spark($('mvSparkNet'), months.map((l) => l.net), { tone: 'in' });
+        }
         const late = $('mvOwedLate');
         if (late) {
             // The tile is this month's shows; the line points at everything owed.
@@ -221,6 +230,14 @@
         const slot = W / steps.length;
         const barW = Math.min(64, slot * 0.56);
 
+        const C = window.SPCharts;
+        const fills = C ? {
+            in: C.gradient(node, 'bar-gold'),
+            out: C.gradient(node, 'bar-sage'),
+            total: C.gradient(node, 'bar-in'),
+            loss: C.gradient(node, 'bar-out')
+        } : {};
+        const columns = [];
         node.appendChild(svg('line', { x1: 0, x2: W, y1: y(0), y2: y(0), class: 'mv-wf__zero' }));
         steps.forEach((step, i) => {
             const x = slot * i + (slot - barW) / 2;
@@ -228,8 +245,11 @@
             const y2 = y(Math.min(step.from, step.to));
             const tone = step.kind === 'total' ? (step.value < 0 ? 'mv-wf__bar--loss' : 'mv-wf__bar--total') : `mv-wf__bar--${step.kind}`;
             const g = svg('g', { class: 'mv-wf__step' });
-            g.appendChild(svg('title', {}, `${step.label}: ${ugx(step.value)}`));
-            g.appendChild(svg('rect', { x, y: y1, width: barW, height: Math.max(step.value ? 2 : 0, y2 - y1), rx: 4, class: `mv-wf__bar ${tone}` }));
+            g.appendChild(svg('rect', { x: slot * i + 2, y: top - 18, width: slot - 4, height: plotH + 18, rx: 10, class: 'spc-col__bg' }));
+            const fillKey = step.kind === 'total' ? (step.value < 0 ? 'loss' : 'total') : step.kind;
+            g.appendChild(svg('rect', { x, y: y1, width: barW, height: Math.max(step.value ? 2 : 0, y2 - y1), rx: 6, class: `mv-wf__bar ${tone}`, ...(fills[fillKey] ? { fill: fills[fillKey] } : {}) }));
+            const share = cur.in > 0 ? `${Math.round((Math.abs(step.value) / cur.in) * 100)}% of money in` : '';
+            columns.push({ x0: slot * i, x1: slot * (i + 1), cx: x + barW / 2, node: g, title: step.label, rows: [{ label: step.kind === 'out' ? 'Paid out' : step.kind === 'total' ? 'Left over' : 'Came in', value: ugx(step.value), tone: fillKey === 'in' ? 'gold' : fillKey === 'out' ? 'sage' : fillKey }], note: share });
             const sign = step.kind === 'out' && step.value ? '−' : '';
             g.appendChild(svg('text', { x: x + barW / 2, y: y1 - 6, class: 'mv-wf__value', 'text-anchor': 'middle' }, `${sign}${compact(Math.abs(step.value))}`));
             const words = narrow ? step.label.split(' ') : [step.label];
@@ -242,6 +262,7 @@
             }
             node.appendChild(g);
         });
+        if (C) C.bindColumns(node, columns, { top, bottom: H2 - bottom, W });
 
         const note = $('mvWaterfallNote');
         if (note) {
@@ -411,8 +432,8 @@
         const H2 = narrow ? 220 : 260;
         node.setAttribute('viewBox', `0 0 ${W} ${H2}`);
         const left = 46;
-        const right = 8;
-        const top = 12;
+        const right = 14;
+        const top = 34;
         const bottom = 24;
         const plotW = W - left - right;
         const plotH = H2 - top - bottom;
@@ -423,30 +444,84 @@
         const y = (v) => top + (1 - (v - min) / (max - min)) * plotH;
 
         [max, max / 2, 0, min < 0 ? min : null].filter((v) => v !== null).forEach((v) => {
-            node.appendChild(svg('line', { x1: left, x2: W - right, y1: y(v), y2: y(v), class: v === 0 ? 'mv-fc__zero' : 'mv-fc__grid' }));
-            node.appendChild(svg('text', { x: left - 6, y: y(v) + 4, class: 'mv-fc__axis', 'text-anchor': 'end' }, compact(v)));
+            node.appendChild(svg('line', { x1: left, x2: W - right, y1: y(v), y2: y(v), class: v === 0 ? 'spc-zero' : 'spc-grid' }));
+            node.appendChild(svg('text', { x: left - 8, y: y(v) + 4, class: 'spc-axis', 'text-anchor': 'end' }, compact(v)));
         });
 
+        const C = window.SPCharts;
+        const inFill = C ? C.gradient(node, 'bar-gold') : null;
+        const outFill = C ? C.gradient(node, 'bar-sage') : null;
         const slot = plotW / weeks.length;
-        const barW = Math.max(3, Math.min(12, slot * 0.28));
+        const barW = Math.max(3, Math.min(12, slot * 0.26));
         const cx = (i) => left + slot * i + slot / 2;
+        const columns = [];
         weeks.forEach((week, i) => {
-            const g = svg('g', { class: 'mv-fc__week' });
+            const g = svg('g', { class: 'spc-col' });
             const label = `${week.start.getDate()} ${monthName(week.start, 'short')}`;
-            g.appendChild(svg('title', {}, `Week of ${label}: in ${ugx(week.in)}, out ${ugx(week.out)}, cash ${ugx(week.cash)}${week.pending ? `, ${ugx(week.pending)} more if pending shows confirm` : ''}`));
-            g.appendChild(svg('rect', { x: left + slot * i, y: top, width: slot, height: plotH, class: 'mv-fc__hit' }));
-            g.appendChild(svg('rect', { x: cx(i) - barW - 1, y: y(week.in), width: barW, height: Math.max(0, y(0) - y(week.in)), rx: 2, class: 'mv-fc__in' }));
-            g.appendChild(svg('rect', { x: cx(i) + 1, y: y(week.out), width: barW, height: Math.max(0, y(0) - y(week.out)), rx: 2, class: 'mv-fc__out' }));
-            if (!narrow || i % 2 === 0) g.appendChild(svg('text', { x: cx(i), y: H2 - 6, class: 'mv-fc__axis', 'text-anchor': 'middle' }, label));
+            g.appendChild(svg('rect', { x: left + slot * i + 1, y: top, width: slot - 2, height: plotH, rx: 8, class: 'spc-col__bg' }));
+            const inPath = C ? C.barPath(cx(i) - barW - 1, y(week.in), barW, y(0) - y(week.in), 4) : '';
+            const outPath = C ? C.barPath(cx(i) + 1, y(week.out), barW, y(0) - y(week.out), 4) : '';
+            if (inPath) g.appendChild(svg('path', { d: inPath, fill: inFill, class: 'spc-bar' }));
+            if (outPath) g.appendChild(svg('path', { d: outPath, fill: outFill, class: 'spc-bar' }));
+            if (!narrow || i % 2 === 0) g.appendChild(svg('text', { x: cx(i), y: H2 - 6, class: 'spc-axis', 'text-anchor': 'middle' }, label));
             node.appendChild(g);
+            const rows = [
+                { label: 'Due in', value: ugx(week.in), tone: 'gold' },
+                { label: 'Spending', value: ugx(week.out), tone: 'sage' },
+                { label: 'Cash after', value: ugx(week.cash), tone: 'ink', state: week.cash < minCash ? 'bad' : '' }
+            ];
+            if (week.pending) rows.push({ label: 'If pending confirm', value: ugx(week.cashWithPending), tone: 'ink' });
+            columns.push({ x0: left + slot * i, x1: left + slot * (i + 1), cx: cx(i), node: g, title: `Week of ${label}`, rows, note: week.cash < minCash ? 'Below your minimum cash' : '' });
         });
 
+        const pts = weeks.map((w, i) => [cx(i), y(w.cash)]);
+        const line = C ? C.smoothPath(pts) : pts.map(([px, py], i) => `${i ? 'L' : 'M'}${px} ${py}`).join(' ');
+        if (C) node.appendChild(svg('path', { d: `${line} L${pts[pts.length - 1][0]} ${y(Math.max(0, min))} L${pts[0][0]} ${y(Math.max(0, min))} Z`, fill: C.gradient(node, 'area-gold'), class: 'spc-area' }));
         node.appendChild(svg('line', { x1: left, x2: W - right, y1: y(minCash), y2: y(minCash), class: 'mv-fc__min' }));
-        const path = (key) => weeks.map((w, i) => `${i ? 'L' : 'M'}${cx(i).toFixed(1)} ${y(w[key]).toFixed(1)}`).join(' ');
-        if (weeks.some((w) => w.pending)) node.appendChild(svg('path', { d: path('cashWithPending'), class: 'mv-fc__pending' }));
-        node.appendChild(svg('path', { d: path('cash'), class: 'mv-fc__cash' }));
+        if (weeks.some((w) => w.pending)) {
+            const pend = weeks.map((w, i) => [cx(i), y(w.cashWithPending)]);
+            node.appendChild(svg('path', { d: C ? C.smoothPath(pend) : '', class: 'mv-fc__pending' }));
+        }
+        node.appendChild(svg('path', { d: line, class: 'spc-line spc-tone--gold' }));
         weeks.forEach((w, i) => {
-            node.appendChild(svg('circle', { cx: cx(i), cy: y(w.cash), r: w.cash < minCash ? 4.5 : 3, class: w.cash < minCash ? 'mv-fc__dot mv-fc__dot--low' : 'mv-fc__dot' }));
+            if (w.cash < minCash) node.appendChild(svg('circle', { cx: cx(i), cy: y(w.cash), r: 4.5, class: 'mv-fc__dot--low' }));
+        });
+        if (C) {
+            const last = pts[pts.length - 1];
+            C.endDot(node, last[0], last[1], weeks[weeks.length - 1].cash < minCash ? 'out' : 'gold');
+            C.pill(node, last[0], last[1], compact(weeks[weeks.length - 1].cash), { tone: 'gold', W });
+            const minPill = C.pill(node, left + 46, y(minCash) - 2, `Min ${compact(minCash)}`, { tone: 'out', W });
+            minPill.classList.add('spc-pill--flat');
+            C.bindColumns(node, columns, { top, bottom: H2 - bottom, W });
+        }
+    }
+
+    // Twelve months of money in and out (replaces the old Chart.js snapshot).
+    function renderYear(now) {
+        const C = window.SPCharts;
+        const H = home();
+        if (!C || !$('mvYear')) return;
+        const rows = H.monthlySeries(12, now);
+        const { ugx, compact } = H.fmt;
+        const totalIn = rows.reduce((a, r) => a + r.in, 0);
+        const totalOut = rows.reduce((a, r) => a + r.out, 0);
+        setText('mvYearIn', ugx(totalIn));
+        setText('mvYearOut', ugx(totalOut));
+        setText('mvYearNet', ugx(totalIn - totalOut));
+        setTone($('mvYearNet'), totalIn - totalOut < 0 ? 'is-bad' : null);
+        const best = rows.reduce((a, r) => (r.in > a.in ? r : a), rows[0]);
+        setText('mvYearBest', best.in > 0 ? `${best.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}: ${compact(best.in)} in` : 'No money in yet');
+        C.lineChart($('mvYear'), {
+            labels: rows.map((r) => r.label),
+            titles: rows.map((r) => r.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })),
+            series: [
+                { name: 'Money in', values: rows.map((r) => r.in), tone: 'gold', area: true },
+                { name: 'Money out', values: rows.map((r) => r.out), tone: 'sage', area: true },
+                { name: 'Net', values: rows.map((r) => r.net), tone: 'ink', dashed: true, thin: true }
+            ],
+            fmt: ugx,
+            axisFmt: compact,
+            endLabel: compact(rows[rows.length - 1].in)
         });
     }
 
@@ -550,6 +625,7 @@
         renderWaterfall(cur, now);
         renderChanges(cur, prev, now);
         renderPnl(cur, prev, now);
+        renderYear(now);
         renderCashflow(cur, now);
         renderReceivables(now);
     }
@@ -592,7 +668,7 @@
         resizeTimer = setTimeout(render, 150);
     });
 
-    window.SPMoneyPages = { render };
+    window.SPMoneyPages = { render, monthLines, forecast, averageWeeklySpend, unpaidRows, readMinCash, saveMinCash, categoryKey, categoryLabel, SHOW_COSTS };
     if (document.readyState !== 'loading') render();
     else document.addEventListener('DOMContentLoaded', render);
 })();

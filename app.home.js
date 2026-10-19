@@ -183,24 +183,10 @@
         node.classList.add(up === upIsGood ? 'is-good' : 'is-bad');
     }
 
-    function drawSpark(node, values, { fill = false } = {}) {
+    function drawSpark(node, values, { label = '' } = {}) {
         if (!node) return;
+        if (window.SPCharts) { window.SPCharts.spark(node, values, { area: true, label }); return; }
         node.replaceChildren();
-        if (!values.length || values.every((v) => v === 0)) return;
-        const [, , w, h] = (node.getAttribute('viewBox') || '0 0 120 32').split(' ').map(Number);
-        const min = Math.min(0, ...values);
-        const max = Math.max(...values);
-        const span = max - min || 1;
-        const pad = 3;
-        const pts = values.map((v, i) => [
-            values.length === 1 ? w / 2 : (i / (values.length - 1)) * w,
-            pad + (1 - (v - min) / span) * (h - pad * 2)
-        ]);
-        const line = pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ');
-        if (fill) node.appendChild(svg('path', { d: `${line} L${w} ${h} L0 ${h} Z`, class: 'hv2-spark__area' }));
-        node.appendChild(svg('path', { d: line, class: 'hv2-spark__line' }));
-        const [lx, ly] = pts[pts.length - 1];
-        node.appendChild(svg('circle', { cx: lx, cy: ly, r: 3, class: 'hv2-spark__dot' }));
     }
 
     function renderGoal(collected) {
@@ -220,82 +206,76 @@
 
     function renderTrend(rows) {
         const node = $('hv2Trend');
-        if (!node) return;
+        const C = window.SPCharts;
+        if (!node || !C) return;
         node.replaceChildren();
         // Draw at the card's real width so axis text stays readable on phones.
         const W = Math.max(300, Math.round(node.clientWidth || node.parentElement?.clientWidth || 640));
-        const H = W < 480 ? 200 : 220;
+        const H = W < 480 ? 220 : 250;
         node.setAttribute('viewBox', `0 0 ${W} ${H}`);
         const left = 44;
+        const right = 8;
         const bottom = 24;
-        const top = 10;
-        const plotW = W - left - 8;
+        const top = 34;
+        const plotW = W - left - right;
         const plotH = H - top - bottom;
-        const max = Math.max(1, ...rows.map((r) => Math.max(r.in, r.out)));
+        const max = Math.max(1, ...rows.map((r) => Math.max(r.in, r.out))) * 1.05;
         const min = Math.min(0, ...rows.map((r) => r.net));
         const span = max - min;
         const y = (v) => top + (1 - (v - min) / span) * plotH;
+        const inFill = C.gradient(node, 'bar-gold');
+        const outFill = C.gradient(node, 'bar-sage');
 
-        [max, max / 2, 0, min < 0 ? min : null].filter((v) => v !== null).forEach((v) => {
-            node.appendChild(svg('line', { x1: left, x2: W - 8, y1: y(v), y2: y(v), class: v === 0 ? 'hv2-trend__zero' : 'hv2-trend__grid' }));
-            node.appendChild(svg('text', { x: left - 6, y: y(v) + 4, class: 'hv2-trend__axis', 'text-anchor': 'end' }, compact(v)));
+        [max / 1.05, max / 2.1, 0, min < 0 ? min : null].filter((v) => v !== null).forEach((v) => {
+            node.appendChild(svg('line', { x1: left, x2: W - right, y1: y(v), y2: y(v), class: v === 0 ? 'spc-zero' : 'spc-grid' }));
+            node.appendChild(svg('text', { x: left - 8, y: y(v) + 4, class: 'spc-axis', 'text-anchor': 'end' }, compact(v)));
         });
 
         const slot = plotW / rows.length;
-        const barW = Math.max(4, Math.min(18, slot * 0.28));
+        const barW = Math.max(5, Math.min(22, slot * 0.3));
+        const zero = y(0);
         const netPts = [];
+        const columns = [];
         rows.forEach((row, i) => {
             const cx = left + slot * i + slot / 2;
-            const g = svg('g', { class: 'hv2-trend__month' });
-            g.appendChild(svg('title', {}, `${row.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}: in ${ugx(row.in)}, out ${ugx(row.out)}, net ${ugx(row.net)}`));
-            g.appendChild(svg('rect', { x: left + slot * i, y: top, width: slot, height: plotH, class: 'hv2-trend__hit' }));
-            const zero = y(0);
-            g.appendChild(svg('rect', { x: cx - barW - 1, y: y(row.in), width: barW, height: Math.max(0, zero - y(row.in)), rx: 3, class: 'hv2-trend__in' }));
-            g.appendChild(svg('rect', { x: cx + 1, y: y(row.out), width: barW, height: Math.max(0, zero - y(row.out)), rx: 3, class: 'hv2-trend__out' }));
-            g.appendChild(svg('text', { x: cx, y: H - 6, class: 'hv2-trend__axis', 'text-anchor': 'middle' }, row.label));
+            const current = i === rows.length - 1;
+            const g = svg('g', { class: `spc-col${current ? ' is-current' : ''}` });
+            g.appendChild(svg('rect', { x: left + slot * i + 2, y: top - 8, width: slot - 4, height: plotH + 8, rx: 10, class: 'spc-col__bg' }));
+            const inPath = C.barPath(cx - barW - 1.5, y(row.in), barW, zero - y(row.in), 6);
+            const outPath = C.barPath(cx + 1.5, y(row.out), barW, zero - y(row.out), 6);
+            if (inPath) g.appendChild(svg('path', { d: inPath, fill: inFill, class: 'spc-bar' }));
+            if (outPath) g.appendChild(svg('path', { d: outPath, fill: outFill, class: 'spc-bar' }));
+            g.appendChild(svg('text', { x: cx, y: H - 6, class: `spc-axis${current ? ' spc-axis--on' : ''}`, 'text-anchor': 'middle' }, row.label));
             node.appendChild(g);
             netPts.push([cx, y(row.net)]);
+            columns.push({
+                x0: left + slot * i, x1: left + slot * (i + 1), cx, node: g,
+                title: row.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+                rows: [
+                    { label: 'Money in', value: ugx(row.in), tone: 'gold' },
+                    { label: 'Money out', value: ugx(row.out), tone: 'sage' },
+                    { label: 'Net', value: ugx(row.net), tone: 'ink', state: row.net < 0 ? 'bad' : row.net > 0 ? 'good' : '' }
+                ]
+            });
         });
-        node.appendChild(svg('path', { d: netPts.map(([x, py], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${py.toFixed(1)}`).join(' '), class: 'hv2-trend__net' }));
-        netPts.forEach(([x, py]) => node.appendChild(svg('circle', { cx: x, cy: py, r: 3, class: 'hv2-trend__netdot' })));
+        node.appendChild(svg('path', { d: C.smoothPath(netPts), class: 'spc-line spc-tone--ink spc-line--thin' }));
+        netPts.forEach(([x, py], i) => node.appendChild(svg('circle', { cx: x, cy: py, r: i === netPts.length - 1 ? 4 : 3, class: 'spc-netdot' })));
+        const last = rows[rows.length - 1];
+        if (last.in > 0) C.pill(node, netPts[netPts.length - 1][0] - barW / 2 - 1.5, y(last.in), compact(last.in), { tone: 'gold', W });
+        C.bindColumns(node, columns, { top, bottom: H - bottom, W });
     }
 
     function renderDonut(rows) {
         const host = $('hv2ArtistDonut');
-        if (!host) return;
-        host.replaceChildren();
+        if (!host || !window.SPCharts) return;
         const total = rows.reduce((sum, row) => sum + row.amount, 0);
-        if (!total) {
-            host.appendChild(el('p', 'hv2-empty', 'No money collected from shows this month yet.'));
-            return;
-        }
-        const ring = svg('svg', { viewBox: '0 0 120 120', class: 'hv2-donut__ring', 'aria-hidden': 'true', focusable: 'false' });
-        ring.appendChild(svg('circle', { cx: 60, cy: 60, r: 46, class: 'hv2-donut__track' }));
-        let offset = 0;
-        rows.forEach((row, i) => {
-            const share = (row.amount / total) * 100;
-            ring.appendChild(svg('circle', {
-                cx: 60, cy: 60, r: 46, pathLength: 100,
-                class: `hv2-donut__seg hv2-c${i + 1}`,
-                'stroke-dasharray': `${Math.max(0, share - (rows.length > 1 ? 0.8 : 0)).toFixed(2)} 100`,
-                'stroke-dashoffset': (-offset).toFixed(2)
-            }));
-            offset += share;
+        window.SPCharts.donut(host, rows, {
+            centre: compact(total),
+            centreSub: 'this month',
+            fmt: ugx,
+            empty: 'No money collected from shows this month yet.',
+            size: 132
         });
-        const center = el('div', 'hv2-donut__center');
-        center.append(el('span', 'hv2-donut__total money', compact(total)), el('span', 'hv2-donut__sub', 'this month'));
-        const figure = el('div', 'hv2-donut__figure');
-        figure.append(ring, center);
-
-        const legend = el('ul', 'hv2-donut__legend');
-        rows.forEach((row, i) => {
-            const li = el('li', 'hv2-donut__item');
-            const swatch = el('span', `hv2-donut__swatch hv2-c${i + 1}`);
-            swatch.setAttribute('aria-hidden', 'true');
-            li.append(swatch, el('span', 'hv2-donut__name', row.name), el('span', 'hv2-donut__pct', `${Math.round((row.amount / total) * 100)}%`), el('span', 'hv2-donut__amt money', ugx(row.amount)));
-            legend.appendChild(li);
-        });
-        host.append(figure, legend);
     }
 
     function renderAging(data, host = $('hv2Aging')) {
@@ -339,7 +319,7 @@
         const prev = series[series.length - 2];
 
         setDelta($('hv2HeroDelta'), cur.in, prev.in);
-        drawSpark($('hv2HeroSpark'), last6.map((r) => r.in), { fill: true });
+        drawSpark($('hv2HeroSpark'), last6.map((r) => r.in), { fill: true, label: cur.in ? compact(cur.in) : '' });
         setDelta($('hv2ProfitDelta'), cur.net, prev.net);
         drawSpark($('hv2ProfitSpark'), last6.map((r) => r.net));
         setDelta($('hv2ExpenseDelta'), cur.out, prev.out, { upIsGood: false });
@@ -351,18 +331,23 @@
         const lateEl = $('hv2OwedLate');
         if (lateEl) {
             lateEl.classList.remove('is-good', 'is-bad', 'is-flat');
-            lateEl.textContent = owed.late > 0 ? `${ugx(owed.late)} overdue` : 'Nothing overdue';
+            lateEl.textContent = owed.late > 0 ? `${ugx(owed.late)} overdue (${Math.round((owed.late / owed.total) * 100)}%)` : 'Nothing overdue';
             lateEl.classList.add(owed.late > 0 ? 'is-bad' : 'is-good');
         }
 
+        const owedMeter = $('hv2OwedMeter');
+        if (owedMeter) owedMeter.style.setProperty('--w', `${owed.total ? ((owed.late / owed.total) * 100).toFixed(1) : 0}%`);
+
         const ahead = bookedAhead(now, 30);
+        const bookedMeter = $('hv2BookedMeter');
+        if (bookedMeter) bookedMeter.style.setProperty('--w', `${ahead.count ? (((ahead.count - ahead.pending) / ahead.count) * 100).toFixed(1) : 0}%`);
         const bookedEl = $('hv2Booked30');
         if (bookedEl) bookedEl.textContent = ugx(ahead.amount);
         const bookedCountEl = $('hv2Booked30Count');
         if (bookedCountEl) {
             bookedCountEl.classList.add('is-flat');
             bookedCountEl.textContent = ahead.count
-                ? `${ahead.count} show${ahead.count > 1 ? 's' : ''}${ahead.pending ? `, ${ahead.pending} pending` : ''}`
+                ? `${ahead.count} show${ahead.count > 1 ? 's' : ''}${ahead.pending ? `, ${ahead.pending} still pending` : ', all confirmed'}`
                 : 'No shows booked yet';
         }
 

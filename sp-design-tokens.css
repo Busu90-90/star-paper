@@ -21,6 +21,8 @@
   --sp-moss-2: #4A5E4F;
   --sp-ivory: #F7F3E8;
   --sp-sage: #A9C2A7;
+  --sp-steel: #7E9CB0;      /* fifth chart series (donuts, bars) */
+  --sp-steel-hi: #A9C3D3;
   --sp-gold-hi: #F6E68A;
   --sp-gold: #D9B45A;
   --sp-gold-lo: #B8862B;
@@ -157,6 +159,8 @@ body.light-theme {
   --sp-in-soft: rgb(23 132 90 / 0.12);
   --sp-out: #A3402B;
   --sp-out-soft: rgb(185 74 51 / 0.12);
+  --sp-steel: #557489;
+  --sp-steel-hi: #7E9CB0;
   --sp-focus: #7A5818;
 
   --sp-shadow-1: 0 1px 2px rgb(20 32 25 / 0.08);
