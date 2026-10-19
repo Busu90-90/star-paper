@@ -60,13 +60,13 @@
     ]],
     ['1', ['app.offline-cache.js']],
     ['3', ['app.todayboard.js']],
-    ['31', ['app.browser-assets.js']],
+    ['32', ['app.browser-assets.js']],
     ['2', ['app.boot-head.js']],
     ['3', ['app.money.js']],
     ['3', ['app.home.js']],
     ['1', ['assets/fonts/checks.woff2', 'app.charts.js', 'app.finance-ui.js', 'app.artists.js', 'app.schedule.js', 'app.crew.js']],
     ['2', ['app.insights.js']],
-    ['15', ['styles.landing.css']],
+    ['16', ['styles.landing.css']],
     ['2', ['assets/landing/brick-wall.webp']],
     ['1', ['styles.brand.css', 'app.chrome.js']],
     ['15', ['styles.app.css']],
@@ -76,7 +76,7 @@
     ['3', ['app.boot-body.js']],
     ['1', ['styles.utilities.css']],
     ['4', ['app.landing.js']],
-    ['1', ['app.landing-lights.js']],
+    ['2', ['app.landing-lights.js']],
     ['2', ['assets/vendor/fonts/star-paper-fonts.css']],
     ['5', ['sp-design-tokens.css']],
     ['2', [
@@ -107,7 +107,7 @@
     ['64', ['styles.css']],
     ['100', ['supabase.js']],
     ['158', ['app.js']],
-    ['211', ['sw.js']]
+    ['212', ['sw.js']]
   ];
 
   const assetVersions = {};

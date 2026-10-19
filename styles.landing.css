@@ -1187,31 +1187,23 @@ body.light-theme .lp-rig__pool { mix-blend-mode: multiply; opacity: 0.9; }
 }
 
 /* ── Light controller ──────────────────────────────────────────────────────
-   app.landing-lights.js drives the rig once it can (it sets data-lp-lights):
-   lamp angles (--lp-aim-*) and levels (--lp-lv-*) arrive as custom properties
-   from one adopted stylesheet, so the keyframe sweeps above step aside. It
-   runs the same sweep when idle, a follow spot under the cursor, a lighting
-   cue per slide, and the headline's shadow (--lp-sh-*). */
+   app.landing-lights.js drives the rig once it can (it sets data-lp-lights).
+   It steers every lamp, beam and wash through paused Web Animations on
+   rotate, --lp-aim, --lp-lv and opacity, so the keyframe sweeps above step
+   aside. It runs the same sweep when idle, a follow spot under the cursor,
+   a lighting cue per slide, and the headline's shadow (--lp-sh-*). */
+@property --lp-lv {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 1;
+}
+
 .lp-show[data-lp-lights] :is(.lp-rig__lamp, .lp-rig__beam, .lp-rig__cone, .lp-wall__wash) {
   animation: none;
 }
 
-.lp-show[data-lp-lights] :is(.lp-rig__lamp--l, .lp-rig__beam--l) { rotate: var(--lp-aim-l, 16deg); }
-.lp-show[data-lp-lights] :is(.lp-rig__lamp--c, .lp-rig__beam--c) { rotate: var(--lp-aim-c, 0deg); }
-.lp-show[data-lp-lights] :is(.lp-rig__lamp--r, .lp-rig__beam--r) { rotate: var(--lp-aim-r, -16deg); }
-
-.lp-show[data-lp-lights] .lp-wall__wash--l { --lp-aim: var(--lp-aim-l, 16deg); --lp-lv: var(--lp-lv-l, 1); }
-.lp-show[data-lp-lights] .lp-wall__wash--c { --lp-aim: var(--lp-aim-c, 0deg); --lp-lv: var(--lp-lv-c, 1); }
-.lp-show[data-lp-lights] .lp-wall__wash--r { --lp-aim: var(--lp-aim-r, -16deg); --lp-lv: var(--lp-lv-r, 1); }
-
-.lp-show[data-lp-lights] :is(.lp-rig__beam--l .lp-rig__cone, .lp-rig__beam--l::before, .lp-rig__beam--l::after) { opacity: var(--lp-lv-l, 1); }
-.lp-show[data-lp-lights] :is(.lp-rig__beam--c .lp-rig__cone, .lp-rig__beam--c::before, .lp-rig__beam--c::after) { opacity: var(--lp-lv-c, 1); }
-.lp-show[data-lp-lights] :is(.lp-rig__beam--r .lp-rig__cone, .lp-rig__beam--r::before, .lp-rig__beam--r::after) { opacity: var(--lp-lv-r, 1); }
-
-/* A lamp's lens dims with its level, so a dark lamp reads as off. */
-.lp-show[data-lp-lights] .lp-rig__lamp--l { filter: drop-shadow(0 8px 10px rgb(0 0 0 / 0.5)) brightness(calc(0.4 + 0.6 * var(--lp-lv-l, 1))); }
-.lp-show[data-lp-lights] .lp-rig__lamp--c { filter: drop-shadow(0 8px 10px rgb(0 0 0 / 0.5)) brightness(calc(0.4 + 0.6 * var(--lp-lv-c, 1))); }
-.lp-show[data-lp-lights] .lp-rig__lamp--r { filter: drop-shadow(0 8px 10px rgb(0 0 0 / 0.5)) brightness(calc(0.4 + 0.6 * var(--lp-lv-r, 1))); }
+/* Turning heads stay on their own layers, so a new angle never repaints them. */
+.lp-show[data-lp-lights] :is(.lp-rig__lamp, .lp-rig__beam) { will-change: rotate; }
 
 /* Real shadows: the headline throws one onto the wall, away from the light. */
 .lp-show[data-lp-lights] .lp-slide[data-active] .lp-display {
@@ -1247,7 +1239,10 @@ body.light-theme .lp-show[data-lp-lights] .lp-slide[data-active] .lp-display {
   100% { filter: brightness(1); }
 }
 
-/* House lights: switching theme plays a cue over the whole screen. */
+/* House lights: switching theme plays a cue over the whole screen. Going
+   dark, the stage blacks out and the rig hangs above the blackout, so the
+   lamps are seen striking up one by one before the page fades back in. Going
+   light, a warm house-lights wash comes up from the top and fades away. */
 .lp-house {
   position: fixed;
   inset: 0;
@@ -1257,24 +1252,28 @@ body.light-theme .lp-show[data-lp-lights] .lp-slide[data-active] .lp-display {
 }
 
 .lp-house.is-down {
-  background: #040806;
-  animation: lp-house-down 1100ms ease-out both;
+  background: #030605;
+  animation: lp-house-down 2800ms var(--sp-ease-in-out) both;
 }
 
 .lp-house.is-up {
-  background: radial-gradient(120% 90% at 50% 0%, #FFF9EA, #EFE8D6 70%);
-  animation: lp-house-up 1100ms ease-out both;
+  background:
+    radial-gradient(90% 70% at 50% -10%, #FFFDF4, rgb(255 244 214 / 0.9) 45%, rgb(239 232 214 / 0.85) 100%);
+  animation: lp-house-up 2200ms var(--sp-ease-in-out) both;
 }
 
+.lp.lp-house-cue .lp-rig { z-index: 61; }
+
 @keyframes lp-house-down {
-  0% { opacity: 0.92; }
-  30% { opacity: 0.8; }
+  0% { opacity: 0.97; }
+  55% { opacity: 0.9; }
   100% { opacity: 0; }
 }
 
 @keyframes lp-house-up {
-  0% { opacity: 0; }
-  22% { opacity: 0.75; }
+  0% { opacity: 0.55; }
+  22% { opacity: 0.92; }
+  50% { opacity: 0.8; }
   100% { opacity: 0; }
 }
 

@@ -7,9 +7,11 @@
 // - Finale: the three beams close in on Start free in the closing panel.
 // - House lights: switching theme plays a lamps-on or house-lights-up cue.
 // - Name in lights: a marquee sign with the visitor's artist, saved as a PNG.
-// Lamp angles and levels go into one constructed stylesheet as custom
-// properties, so no element ever carries an inline style. Without that API,
-// or with reduced motion, the CSS sweep in styles.landing.css runs on its own.
+// Each lamp, beam and wall wash is steered through a paused Web Animation
+// whose time is set every frame (a "dial"), the same engine the CSS sweep
+// runs on, so a new angle never restyles the lamp drawings. The markup
+// carries no inline styles. With reduced motion, or without Web Animations,
+// the CSS sweep in styles.landing.css runs on its own.
 (function initStarPaperLandingLights() {
   'use strict';
 
@@ -28,30 +30,15 @@
   function smooth(t) { return t * t * (3 - 2 * t); }
   function deg(rad) { return rad * 180 / Math.PI; }
 
-  // One adopted stylesheet holds every value the lights compute.
-  function createVarSheet() {
-    try {
-      if (!('adoptedStyleSheets' in document) || typeof CSSStyleSheet !== 'function') return null;
-      var sheet = new CSSStyleSheet();
-      sheet.replaceSync('');
-      document.adoptedStyleSheets = document.adoptedStyleSheets.concat([sheet]);
-      var blocks = {};
-      var last = '';
-      return {
-        set: function (selector, vars) {
-          var body = Object.keys(vars).map(function (key) { return key + ':' + vars[key]; }).join(';');
-          blocks[selector] = selector + '{' + body + '}';
-        },
-        flush: function () {
-          var text = Object.keys(blocks).map(function (key) { return blocks[key]; }).join('\n');
-          if (text === last) return;
-          last = text;
-          sheet.replaceSync(text);
-        }
-      };
-    } catch (_err) {
-      return null;
-    }
+  // Writes custom properties onto one element, skipping values that have not
+  // changed since the last write.
+  function setVars(el, vars) {
+    var cache = el.lpVars || (el.lpVars = {});
+    Object.keys(vars).forEach(function (key) {
+      if (cache[key] === vars[key]) return;
+      cache[key] = vars[key];
+      el.style.setProperty(key, vars[key]);
+    });
   }
 
   // The idle sweep, matching lp-head-* keyframes (alternate, eased per stop).
@@ -94,16 +81,72 @@
     return 1;
   }
 
+  // Lamp level while the house lights come up: down, hold, back up.
+  function dip(t) {
+    if (t < 0 || t >= 2400) return 1;
+    if (t < 300) return 1 - 0.8 * (t / 300);
+    if (t < 1300) return 0.2;
+    return 0.2 + 0.8 * smooth((t - 1300) / 1100);
+  }
+
+  // A paused animation scrubbed by value: dial(t) shows the frame at t ms.
+  // Only writes when the frame actually changes.
+  function makeDial(el, keyframes, span, pseudo) {
+    if (!el) return function () {};
+    var options = { duration: span, fill: 'both', easing: 'linear' };
+    if (pseudo) options.pseudoElement = pseudo;
+    var anim = el.animate(keyframes, options);
+    anim.pause();
+    var shown = null;
+    return function (t) {
+      var at = Math.round(clamp(t, 0, span));
+      if (at === shown) return;
+      shown = at;
+      anim.currentTime = at;
+    };
+  }
+
   function centreOf(el) {
     var r = el.getBoundingClientRect();
     return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height };
   }
 
   // ── Hero rig ────────────────────────────────────────────────────────────
-  function setupRig(root, vars) {
+  function setupRig(root) {
     var show = root.querySelector('[data-lp-show]');
     var rig = show && show.querySelector('.lp-rig');
-    if (!show || !rig || !vars) return;
+    var wall = show && show.querySelector('.lp-wall');
+    if (!show || !rig || !wall) return null;
+    if (typeof rig.animate !== 'function') return null;
+    var LAMP_SHADOW = 'drop-shadow(0 8px 10px rgb(0 0 0 / 0.5)) ';
+    var SWING = [{ rotate: '-70deg' }, { rotate: '70deg' }];
+    var dials = {};
+    try {
+      ['l', 'c', 'r'].forEach(function (key) {
+        var beam = rig.querySelector('.lp-rig__beam--' + key);
+        var lamp = rig.querySelector('.lp-rig__lamp--' + key);
+        var wash = wall.querySelector('.lp-wall__wash--' + key);
+        var cone = beam && beam.querySelector('.lp-rig__cone');
+        var aims = [
+          makeDial(lamp, SWING, 1400),
+          makeDial(beam, SWING, 1400),
+          makeDial(wash, [{ '--lp-aim': '-70deg' }, { '--lp-aim': '70deg' }], 1400)
+        ];
+        var levels = [
+          makeDial(lamp, [{ filter: LAMP_SHADOW + 'brightness(0.4)' }, { filter: LAMP_SHADOW + 'brightness(1)' }], 100),
+          makeDial(wash, [{ '--lp-lv': '0' }, { '--lp-lv': '1' }], 100),
+          makeDial(cone, [{ opacity: 0 }, { opacity: 1 }], 100),
+          makeDial(beam, [{ opacity: 0 }, { opacity: 1 }], 100, '::before'),
+          makeDial(beam, [{ opacity: 0 }, { opacity: 1 }], 100, '::after')
+        ];
+        dials[key] = {
+          aim: function (deg) { aims.forEach(function (dial) { dial((deg + 70) * 10); }); },
+          level: function (value) { levels.forEach(function (dial) { dial(value * 100); }); }
+        };
+      });
+    } catch (_err) {
+      return null;
+    }
     var slides = Array.prototype.slice.call(show.querySelectorAll('[data-lp-slide]'));
     var PCT = { l: 0.19, c: 0.5, r: 0.81 };
     var PIVOT = 31;
@@ -116,6 +159,11 @@
     var cue = { name: 'mainstage', since: started, changed: -1 };
     var pointer = { x: 0, y: 0, at: -1e9 };
     var shadow = { x: 0, y: 0, a: 0 };
+    var shadowEl = null;
+    // Lamps strike up this far apart; the theme cue spreads them out.
+    var gap = 180;
+    // The house-lights-up cue dims the lamps while the house lights are on.
+    var dipAt = -1e9;
     var running = false;
     var visible = true;
     var last = 0;
@@ -168,7 +216,7 @@
 
     function plan(now, piv) {
       var name = cue.name;
-      var following = now - pointer.at < 2600;
+      var following = now - pointer.at < 3500;
       var slide = slides[activeSlide()];
       lamps.l.rate = lamps.c.rate = lamps.r.rate = 3;
       lamps.l.want = lamps.c.want = lamps.r.want = 1;
@@ -203,16 +251,23 @@
       }
 
       // The follow spot wins over any cue while the visitor is steering it.
+      // The side heads lean a little towards the cursor too.
       if (following) {
         lamps.c.target = aimAt(piv.c, pointer);
         lamps.c.want = 1;
-        lamps.c.rate = 5;
+        lamps.c.rate = 7;
+        lamps.l.target += (aimAt(piv.l, pointer) - lamps.l.target) * 0.35;
+        lamps.r.target += (aimAt(piv.r, pointer) - lamps.r.target) * 0.35;
       }
     }
 
     function castShadow(piv, dt) {
       var slide = slides[activeSlide()];
       var heading = slide ? slide.querySelector('.lp-display') : null;
+      if (heading !== shadowEl) {
+        if (shadowEl) setVars(shadowEl, { '--lp-sh-a': '0' });
+        shadowEl = heading;
+      }
       var goal = { x: 0, y: 0, a: 0 };
       if (heading) {
         var h = centreOf(heading);
@@ -246,29 +301,28 @@
       var piv = pivots();
       setCue(cuesBySlide[activeSlide()] || 'mainstage', now);
       plan(now, piv);
-      var m = master(now);
+      var m = master(now) * dip(now - dipAt);
       ['l', 'c', 'r'].forEach(function (key, i) {
         var lamp = lamps[key];
         var k = 1 - Math.exp(-dt * lamp.rate);
         lamp.aim += (lamp.target - lamp.aim) * k;
         // Lamps strike one after another on first light.
-        var stagger = strikeAt((now - started - i * 180) / 900);
+        var stagger = strikeAt((now - started - i * gap) / 900);
         var level = lamp.want * Math.min(m, stagger);
         lamp.level += (level - lamp.level) * (1 - Math.exp(-dt * 14));
       });
       castShadow(piv, dt);
-      vars.set('#lpShow', {
-        '--lp-aim-l': lamps.l.aim.toFixed(2) + 'deg',
-        '--lp-aim-c': lamps.c.aim.toFixed(2) + 'deg',
-        '--lp-aim-r': lamps.r.aim.toFixed(2) + 'deg',
-        '--lp-lv-l': lamps.l.level.toFixed(3),
-        '--lp-lv-c': lamps.c.level.toFixed(3),
-        '--lp-lv-r': lamps.r.level.toFixed(3),
-        '--lp-sh-x': shadow.x.toFixed(1) + 'px',
-        '--lp-sh-y': shadow.y.toFixed(1) + 'px',
-        '--lp-sh-a': shadow.a.toFixed(3)
+      ['l', 'c', 'r'].forEach(function (key) {
+        dials[key].aim(lamps[key].aim);
+        dials[key].level(lamps[key].level);
       });
-      vars.flush();
+      if (shadowEl) {
+        setVars(shadowEl, {
+          '--lp-sh-x': Math.round(shadow.x) + 'px',
+          '--lp-sh-y': Math.round(shadow.y) + 'px',
+          '--lp-sh-a': (Math.round(shadow.a * 50) / 50).toFixed(2)
+        });
+      }
       requestAnimationFrame(frame);
     }
 
@@ -312,17 +366,21 @@
     sync();
 
     return {
-      // Theme cue: drop every lamp out and strike them up again in turn.
-      restrike: function () { started = performance.now(); }
+      // Lamps on: every lamp drops out, then they strike up one by one.
+      restrike: function () {
+        started = performance.now() + 350;
+        gap = 450;
+      },
+      // House lights up: the lamps dim under the house lights, then return.
+      dip: function () { dipAt = performance.now(); }
     };
   }
 
   // ── Finale: three beams close in on Start free ──────────────────────────
-  function setupFinale(root, vars) {
+  function setupFinale(root) {
     var panel = root.querySelector('[data-lp-finale]');
     var target = panel && panel.querySelector('[data-lp-finale-target]');
     if (!panel || !target) return;
-    if (!vars) return;
     var PCT = { l: 0.12, c: 0.5, r: 0.88 };
 
     function measure() {
@@ -338,8 +396,7 @@
         out['--lp-fin-' + key] = aim.toFixed(2) + 'deg';
         out['--lp-fin-len-' + key] = Math.hypot(x - px, y).toFixed(0) + 'px';
       });
-      vars.set('[data-lp-finale]', out);
-      vars.flush();
+      setVars(panel, out);
     }
 
     panel.setAttribute('data-lp-lights', '');
@@ -374,9 +431,18 @@
       house.classList.remove('is-up', 'is-down');
       void house.offsetWidth;
       house.classList.add(isLight ? 'is-up' : 'is-down');
-      if (!isLight && rig) rig.restrike();
+      // Going dark, the rig hangs above the blackout so the lamps are seen
+      // striking up one by one before the stage fades back in.
+      root.classList.toggle('lp-house-cue', !isLight);
+      if (rig) {
+        if (isLight) rig.dip();
+        else rig.restrike();
+      }
     }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
-    house.addEventListener('animationend', function () { house.classList.remove('is-up', 'is-down'); });
+    house.addEventListener('animationend', function () {
+      house.classList.remove('is-up', 'is-down');
+      root.classList.remove('lp-house-cue');
+    });
   }
 
   // ── Name in lights ──────────────────────────────────────────────────────
@@ -566,9 +632,8 @@
     var root = document.getElementById('landingScreen');
     if (!root || !root.classList.contains('lp')) return;
     setupMarquee(root);
-    var vars = createVarSheet();
-    var rig = reduceMotion ? null : setupRig(root, vars);
-    setupFinale(root, vars);
+    var rig = reduceMotion ? null : setupRig(root);
+    setupFinale(root);
     setupHouseLights(root, rig);
   });
 })();
