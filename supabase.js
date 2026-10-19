@@ -1583,15 +1583,6 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     _localBootFallbackTimer = setTimeout(tick, timeoutMs);
   }
 
-  function hasLocalThemePreference() {
-    try {
-      const value = localStorage.getItem('starPaperTheme');
-      return value === 'light' || value === 'dark';
-    } catch (_err) {
-      return false;
-    }
-  }
-
   function resetCloudSaveFlagsSafe(reason = 'supabase-screen') {
     try {
       if (typeof window.__spResetCloudSaveInFlightFlags === 'function') {
@@ -3892,9 +3883,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     if (profile.preferred_currency) {
       applyCurrency(profile.preferred_currency);
     }
-    if (profile.preferred_theme && typeof window.applyTheme === 'function' && !hasLocalThemePreference()) {
-      window.applyTheme(profile.preferred_theme, { persist: true, syncRemote: false });
-    }
+    // The theme this device is already showing wins over the one saved on the
+    // account, so signing in never flips dark to light (or back) under the user.
     const stableUsername = resolveSessionUsername(activeSession.user, profile, usernameHint);
     if (profile.username === 'Manager' && stableUsername && stableUsername !== 'Manager') {
       _profile = { ...profile, username: stableUsername };

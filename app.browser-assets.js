@@ -64,15 +64,15 @@
     ['1', ['app.offline-cache.js']],
     ['3', ['app.todayboard.js']],
     ['21', ['app.browser-assets.js']],
-    ['8', ['styles.landing.css']],
+    ['9', ['styles.landing.css']],
     ['1', ['styles.brand.css', 'app.chrome.js']],
-    ['6', ['styles.app.css']],
+    ['8', ['styles.app.css']],
     ['6', ['app.root-shell.js']],
     ['2', ['app.public-pages.js']],
     ['3', ['app.boot-flags.js']],
     ['4', ['app.landing.js']],
     ['2', ['assets/vendor/fonts/star-paper-fonts.css']],
-    ['3', ['sp-design-tokens.css']],
+    ['4', ['sp-design-tokens.css']],
     ['2', [
       'favicon.svg',
       'star_paper_logo_pack/star-paper-mark.svg',
@@ -103,8 +103,8 @@
     ['24', ['star-paper-tokens.css']],
     ['27', ['manifest.json']],
     ['63', ['styles.css']],
-    ['97', ['supabase.js']],
-    ['151', ['app.js']],
+    ['98', ['supabase.js']],
+    ['152', ['app.js']],
     ['200', ['sw.js']]
   ];
 

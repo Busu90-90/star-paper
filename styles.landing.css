@@ -869,12 +869,16 @@ body.light-theme .lp-art::before {
   mix-blend-mode: screen;
 }
 
-/* In light mode the beams would wash out dark text, so the rig hangs
-   behind the slides and its light reads as a soft tint. */
+/* In light mode pale light can't show on a light page, so the rig hangs
+   behind the slides and each beam turns into a deeper coloured wash that
+   multiplies into the sage stage: emerald, amber and gold. */
 body.light-theme .lp-rig { z-index: 0; }
 body.light-theme .lp-show__track { position: relative; z-index: 1; }
-body.light-theme .lp-rig__beam { mix-blend-mode: multiply; opacity: 0.55; }
-body.light-theme .lp-rig__pool { mix-blend-mode: multiply; }
+body.light-theme .lp-rig__beam { mix-blend-mode: multiply; opacity: 0.95; }
+body.light-theme .lp-rig__beam--c { --lp-beam-core: 200 160 70; --lp-beam-tint: 190 150 60; }
+body.light-theme .lp-rig__beam--l { --lp-beam-core: 40 160 110; --lp-beam-tint: 30 140 95; opacity: 0.85; }
+body.light-theme .lp-rig__beam--r { --lp-beam-core: 205 160 60; --lp-beam-tint: 184 134 43; opacity: 0.85; }
+body.light-theme .lp-rig__pool { mix-blend-mode: multiply; opacity: 0.9; }
 
 .lp-rig__cone {
   position: absolute;

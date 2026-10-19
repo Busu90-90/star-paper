@@ -22,14 +22,15 @@ matters most, whether that's the primary action or the money you're looking at.
 | `--sp-sage` | `#A9C2A7` | Secondary accent (team, quiet badges) |
 | `--sp-foil` | `#F6E68A → #E3C46B → #B8862B → #A67C2A` | Gold foil gradient (primary actions, wordmark, display italics) |
 | `--sp-gold` | `#D9B45A` | Solid gold (dots, focus, hairlines at alpha) |
-| `--sp-in` | `#5FD3A0` (dark) / `#17845A` (light) | Money in. Always with `+` or ▲ |
-| `--sp-out` | `#F0846C` (dark) / `#B94A33` (light) | Money out. Always with `−` or ▼ |
+| `--sp-in` | `#5FD3A0` (dark) / `#13704C` (light) | Money in. Always with `+` or ▲ |
+| `--sp-out` | `#F0846C` (dark) / `#A3402B` (light) | Money out. Always with `−` or ▼ |
 
 **Rules**
 - **One accent.** Gold marks the primary action and key money figures, nothing decorative. That's what makes the CTA stand out (Von Restorff).
 - **Money is never colour-only.** Every amount carries a sign (+/−) or arrow, which matters for colour-blind readers.
 - **No violet.** The music cue comes from the record motif (the logo, groove texture and stage lights), not from a second accent colour.
-- **The hero art is always a night stage**, even in the light theme, where it becomes a dark panel on paper.
+- **The hero art is always a night stage**, even in the light theme, where it becomes a dark panel on the sage page.
+- **The light theme is Sage**, a grey-green stage (`#D9E3DA`) with near-white cards (`#F5F8F5`) and forest ink. It's mid-tone on purpose: the stage beams turn into deeper emerald, amber and gold washes that still read on it, and it stays clear of a cream "paper" look.
 
 ### Contrast (WCAG 2.2)
 
@@ -43,10 +44,10 @@ matters most, whether that's the primary action or the money you're looking at.
 | Money in on Forest | 8.6:1 | Amounts |
 | Money out on Forest | 6.2:1 | Amounts |
 | Ink on gold `#16130A` on `#D9B45A` | 9.4:1 | Text on gold buttons |
-| Forest ink `#142019` on Ivory | 15.1:1 | Light theme body |
-| Ink-3 light `#5F6B61` on Ivory | 5.0:1 | Light theme hints |
-| Gold text light `#8A6420` on Ivory | 4.8:1 | Light theme links |
-| Money in light / out light on White | 4.7:1 / 5.1:1 | Light theme amounts |
+| Forest ink `#0F1C15` on Sage `#D9E3DA` | 13.3:1 | Light theme body |
+| Ink-3 light `#4F5E54` on Sage | 5.2:1 | Light theme hints |
+| Gold text light `#7A5818` on Sage | 4.9:1 | Light theme links |
+| Money in / out light on Sage | 4.6:1 / 4.8:1 | Light theme amounts |
 
 Every text pair passes AA (4.5:1).
 
@@ -78,7 +79,7 @@ Every text pair passes AA (4.5:1).
 - **Story slides:** four slides in one horizontal scroll-snap track: Mainstage, How it works, Proof, Voices.
   - A connected stepper sits under the slides. Seen steps fill gold, and the active step shows a progress bar that drives auto-advance.
   - Phones show dots with a "2 / 4" counter.
-- **Stage rig:** one SVG truss spans the full width under the header with three moving-head lamps (emerald, warm white, gold) whose beams fall through the whole showcase; in light mode it sits behind the slides so text stays readable. Each slide's art is swappable (`<figure class="lp-art lp-art--*">`).
+- **Stage rig:** one SVG truss spans the full width under the header with three moving-head lamps (emerald, warm white, gold) whose beams fall through the whole showcase; in light mode it sits behind the slides so text stays readable, and its beams become deeper coloured washes. Each slide's art is swappable (`<figure class="lp-art lp-art--*">`).
   - The beams are coloured like a real show: emerald stage-left, warm white key light in the centre, gold stage-right. These are the brand's three lights (money in, ivory, foil); the pool on the floor mixes all three.
   - Each head and its beam pivot on the same yoke point and share one animation, so they sweep together: the side heads swing out wide, cross over the centre, hold, then return. Reduced motion leaves them still.
 - **Buttons:**

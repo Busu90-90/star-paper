@@ -102,7 +102,17 @@ body.light-theme:has(#appContainer.screen-active) { background-color: var(--sp-s
   overflow: visible;
   transition: width var(--sp-dur-3) var(--sp-ease-out);
 }
-body.light-theme #appContainer .sidebar { background: var(--sp-surface-1); }
+/* Legacy styles.css paints the light sidebar cream and its nav gold with
+   !important; the sage theme needs its own surface and readable ink. */
+body.light-theme #appContainer .sidebar { background: var(--sp-surface-1) !important; border-right-color: var(--sp-line); }
+body.light-theme #appContainer .nav-item.active {
+  background: linear-gradient(90deg, var(--sp-gold-soft), transparent 85%) !important;
+  border-color: var(--sp-line) !important;
+  box-shadow: none !important;
+  color: var(--sp-ink) !important;
+}
+body.light-theme #appContainer .nav-item:hover:not(.active) { background: var(--sp-surface-3) !important; color: var(--sp-ink) !important; }
+body.light-theme #appContainer .sb-foot button { box-shadow: none; }
 
 #appContainer .sb-brand {
   display: flex;
@@ -270,14 +280,14 @@ body.light-theme #appContainer .sb-brand__word { background: none; -webkit-text-
 /* Collapsed rail */
 body.sidebar--collapsed #appContainer .sidebar { width: var(--app-sidebar-rail); padding-inline: var(--sp-space-2); }
 body.sidebar--collapsed #appContainer :is(.sb-brand__word, .nav-label, .sb-group-label, .sb-profile__text, .sb-profile__caret, .sb-icon-btn) { display: none; }
-body.sidebar--collapsed #appContainer .sb-brand { flex-direction: column; gap: var(--sp-space-2); padding-inline: 0; }
+body.sidebar--collapsed #appContainer .sb-brand { flex-direction: column; gap: var(--sp-space-3); padding-inline: 0; }
 body.sidebar--collapsed #appContainer .nav-item { justify-content: center; padding: 0; }
 body.sidebar--collapsed #appContainer .nav-item .nav-badge { position: absolute; top: 4px; right: 4px; min-width: 16px; height: 16px; font-size: 10px; padding: 0 4px; }
 body.sidebar--collapsed #appContainer .nav-item.active::before { left: -9px; }
 body.sidebar--collapsed #appContainer .sb-group-label + .sidebar-nav,
 body.sidebar--collapsed #appContainer .sidebar-nav--more { margin-top: var(--sp-space-3); padding-top: var(--sp-space-3); border-top: 1px solid var(--sp-line); }
 body.sidebar--collapsed #appContainer .sb-foot { justify-content: center; }
-body.sidebar--collapsed #appContainer .sb-profile { flex: none; padding: var(--sp-space-1); }
+body.sidebar--collapsed #appContainer .sb-profile { flex: 1; justify-content: center; gap: 0; padding: var(--sp-space-1); }
 body.sidebar--collapsed #appContainer .sidebar [data-tooltip]:hover::after {
   content: attr(data-tooltip);
   position: absolute;

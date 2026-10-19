@@ -135,34 +135,35 @@
 body.light-theme {
   color-scheme: light;
 
-  /* Paper: ivory page, white cards, forest ink. Hero art stays a night stage. */
-  --sp-stage: var(--sp-ivory);
-  --sp-surface-1: #FFFFFF;
-  --sp-surface-2: #FBF8F0;
-  --sp-surface-3: #EEF1E8;
-  --sp-line: rgb(20 32 25 / 0.10);
-  --sp-line-strong: rgb(20 32 25 / 0.22);
+  /* Sage: grey-green page, near-white cards, forest ink. Hero art stays a
+     night stage. Mid-tone enough that the coloured stage beams still read. */
+  --sp-stage: #D9E3DA;
+  --sp-surface-1: #F5F8F5;
+  --sp-surface-2: #EAF0EB;
+  --sp-surface-3: #DEE7DF;
+  --sp-line: rgb(15 40 28 / 0.12);
+  --sp-line-strong: rgb(15 40 28 / 0.26);
 
-  --sp-ink: #142019;
-  --sp-ink-2: #3D4A40;
-  --sp-ink-3: #5F6B61;
+  --sp-ink: #0F1C15;
+  --sp-ink-2: #34443A;
+  --sp-ink-3: #4F5E54;
 
-  --sp-gold-text: #8A6420;
+  --sp-gold-text: #7A5818;
   --sp-gold-soft: rgb(166 124 42 / 0.12);
   --sp-gold-glow: rgb(166 124 42 / 0.28);
   --sp-sage-text: #3F5A44;
   --sp-sage-soft: rgb(53 70 58 / 0.10);
-  --sp-in: #17845A;
+  --sp-in: #13704C;
   --sp-in-soft: rgb(23 132 90 / 0.12);
-  --sp-out: #B94A33;
+  --sp-out: #A3402B;
   --sp-out-soft: rgb(185 74 51 / 0.12);
-  --sp-focus: #8A6420;
+  --sp-focus: #7A5818;
 
   --sp-shadow-1: 0 1px 2px rgb(20 32 25 / 0.08);
   --sp-shadow-2: 0 12px 30px -14px rgb(20 32 25 / 0.22);
   --sp-shadow-3: 0 30px 70px -28px rgb(20 32 25 / 0.35);
   --sp-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.8), rgb(255 255 255 / 0) 40%);
-  --sp-grooves: repeating-radial-gradient(circle at 50% -20%, rgb(20 32 25 / 0.035) 0 1px, transparent 1px 7px);
+  --sp-grooves: repeating-radial-gradient(circle at 50% -20%, rgb(15 40 28 / 0.05) 0 1px, transparent 1px 7px);
 }
 
 @media (prefers-reduced-motion: reduce) {
