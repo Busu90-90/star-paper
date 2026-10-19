@@ -657,7 +657,7 @@ assert(!/--sp-violet|124 92 255|#7C5CFF/i.test(designTokensCss + landingCss), 'F
 assert(!/lp-menu-btn|id="lpMenu"|lp-sheet/.test(index), 'The landing has no hamburger menu; the story slides carry the sections');
 assert(index.includes('class="lp-auth__medallion"') && index.includes('class="lp-auth__steps"'), 'Sign-in card must carry the step medallion and the sign-up stepper');
 assert(index.includes('id="authSuccessPanel"'), 'Sign-up must end on a success moment (peak-end)');
-assert(index.includes('id="lpRigLamp"') && (index.match(/href="#lpRigLamp"/g) || []).length === 3 && (index.match(/class="lp-rig"/g) || []).length === 1, 'One stage rig with three lamps hangs over the whole showcase');
+assert(index.includes('id="lpRigLamp"') && index.includes('id="lpRigFresnel"') && (index.match(/href="#lpRig(Lamp|Fresnel)"/g) || []).length === 3 && (index.match(/href="#lpRigClamp"/g) || []).length === 3 && (index.match(/class="lp-rig"/g) || []).length === 1, 'One stage rig with three clamped lamps hangs over the whole showcase');
 assert(landingCss.includes('.lp-rig {') && /\.lp-rig \{[^}]*z-index: 3/.test(landingCss), 'Stage beams must sit above the cards so the light falls through them');
 assert((index.match(/data-lp-quote /g) || []).length === 3 && landing.includes('function setupQuotes(root)'), 'Testimonials must rotate through all three quotes');
 assert(!/class="lp-trust"|lpJobsTitle/.test(index), 'The landing keeps one closing band; the trust strip and jobs section are merged into it');
