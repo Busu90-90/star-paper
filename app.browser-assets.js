@@ -100,8 +100,8 @@
     ['27', ['manifest.json']],
     ['64', ['styles.css']],
     ['98', ['supabase.js']],
-    ['152', ['app.js']],
-    ['201', ['sw.js']]
+    ['153', ['app.js']],
+    ['202', ['sw.js']]
   ];
 
   const assetVersions = {};
