@@ -60,16 +60,16 @@
     ]],
     ['1', ['app.offline-cache.js']],
     ['3', ['app.todayboard.js']],
-    ['28', ['app.browser-assets.js']],
+    ['29', ['app.browser-assets.js']],
     ['2', ['app.boot-head.js']],
     ['3', ['app.money.js']],
     ['3', ['app.home.js']],
-    ['1', ['assets/fonts/checks.woff2', 'app.charts.js', 'app.finance-ui.js']],
+    ['1', ['assets/fonts/checks.woff2', 'app.charts.js', 'app.finance-ui.js', 'app.artists.js', 'app.schedule.js']],
     ['2', ['app.insights.js']],
     ['14', ['styles.landing.css']],
     ['2', ['assets/landing/brick-wall.webp']],
     ['1', ['styles.brand.css', 'app.chrome.js']],
-    ['13', ['styles.app.css']],
+    ['14', ['styles.app.css']],
     ['8', ['app.root-shell.js']],
     ['2', ['app.public-pages.js']],
     ['4', ['app.boot-flags.js']],
@@ -97,7 +97,7 @@
       'star_paper_logo_pack/star_paper_black.png',
       'star_paper_logo_pack/star_paper_white.png'
     ]],
-    ['6', ['app.tasks.js']],
+    ['7', ['app.tasks.js']],
     ['9', ['app.actions.js']],
     ['10', ['app.migrations.js']],
     ['15', ['app.globe.js']],
@@ -105,8 +105,8 @@
     ['27', ['manifest.json']],
     ['64', ['styles.css']],
     ['99', ['supabase.js']],
-    ['156', ['app.js']],
-    ['208', ['sw.js']]
+    ['157', ['app.js']],
+    ['209', ['sw.js']]
   ];
 
   const assetVersions = {};
@@ -316,6 +316,8 @@
     url('./app.charts.js'),
     url('./app.insights.js'),
     url('./app.finance-ui.js'),
+    url('./app.artists.js'),
+    url('./app.schedule.js'),
     url('./app.landing.js'),
     url('./app.chrome.js'),
     url('./app.globe.js'),

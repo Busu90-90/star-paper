@@ -4283,6 +4283,7 @@ function showLoginForm(options = {}) {
         window.renderBookings     ||= renderBookings;
         window.renderOtherIncome  ||= renderOtherIncome;
         window.renderArtists      ||= renderArtists;
+        window.SPArtistAvatar = resolveDisplayArtistAvatar;
         window.updateDashboard    ||= updateDashboard;
         window.renderCalendar     ||= renderCalendar;
         window.updateReportStatistics ||= updateReportStatistics;
@@ -7472,6 +7473,7 @@ function showLoginForm(options = {}) {
 
         function renderArtists() {
             const grid = document.getElementById('artistGrid');
+            window.SPArtistsPage?.render?.();
             const artistList = getArtists();
             
             if (artistList.length === 0) {
@@ -7765,9 +7767,80 @@ function showLoginForm(options = {}) {
             return `${eventPart}-${datePart}-${index}`;
         }
 
+        // Payment state shown under Balance Due, and the filter chips above
+        // the list (All, Upcoming, Pending, Unpaid, Overdue).
+        let bookingFilter = 'all';
+
+        function bookingPayState(booking) {
+            const status = String(booking?.status || '').toLowerCase();
+            if (status !== 'confirmed' && status !== 'completed') return null;
+            const fee = Math.round(Number(booking?.fee) || 0);
+            if (fee <= 0) return null;
+            const balance = Math.round(Number(booking?.balance) || 0);
+            if (balance <= 0) return { key: 'paid', text: 'Paid' };
+            const date = booking?.date ? new Date(booking.date) : null;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const days = date && !Number.isNaN(date.getTime()) ? Math.floor((today - date) / 86400000) : 0;
+            const limit = window.SPInsights?.targets?.().overdueDays ?? 14;
+            if (days > limit) return { key: 'overdue', text: `Overdue ${days} days` };
+            return fee - balance > 0 ? { key: 'part', text: 'Part paid' } : { key: 'unpaid', text: 'Unpaid' };
+        }
+
+        function matchesBookingFilter(booking) {
+            if (bookingFilter === 'all') return true;
+            const status = String(booking?.status || '').toLowerCase();
+            if (bookingFilter === 'pending') return status === 'pending';
+            if (bookingFilter === 'upcoming') {
+                const date = booking?.date ? new Date(booking.date) : null;
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                return status !== 'cancelled' && Boolean(date) && date >= today;
+            }
+            const pay = bookingPayState(booking);
+            if (bookingFilter === 'overdue') return pay?.key === 'overdue';
+            if (bookingFilter === 'unpaid') return Boolean(pay) && pay.key !== 'paid';
+            return true;
+        }
+
+        function bookingPayPill(booking) {
+            const pay = bookingPayState(booking);
+            return pay ? `<span class="pay-pill pay-pill--${pay.key}">${escapeHtml(pay.text)}</span>` : '';
+        }
+
+        document.addEventListener('click', (event) => {
+            const chip = event.target.closest?.('[data-booking-filter]');
+            if (!chip) return;
+            bookingFilter = chip.getAttribute('data-booking-filter') || 'all';
+            document.querySelectorAll('[data-booking-filter]').forEach((node) => {
+                const on = node === chip;
+                node.classList.toggle('is-active', on);
+                node.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+            renderBookings();
+        });
+
         function renderBookings() {
             const tbody = document.querySelector('#bookingsTable tbody');
-            const sortedBookings = sortNewestFirst(bookings);
+            const sortedBookings = sortNewestFirst(bookings).filter(matchesBookingFilter);
+
+            if (sortedBookings.length === 0 && bookings.length > 0) {
+                const emptyRow = document.createElement('tr');
+                const emptyCell = document.createElement('td');
+                emptyCell.colSpan = 11;
+                emptyCell.className = 'bookings-filter-empty';
+                emptyCell.textContent = 'No bookings match this filter.';
+                emptyRow.appendChild(emptyCell);
+                tbody.replaceChildren(emptyRow);
+                const cards = document.getElementById('bookingsCards');
+                if (cards) {
+                    const emptyNote = document.createElement('p');
+                    emptyNote.className = 'bookings-filter-empty';
+                    emptyNote.textContent = 'No bookings match this filter.';
+                    cards.replaceChildren(emptyNote);
+                }
+                return;
+            }
 
             if (sortedBookings.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="11">${emptyState({
@@ -7803,6 +7876,7 @@ function showLoginForm(options = {}) {
                     <td class="deposit-blue td-deposit sp-inline-editable" ${inlineEditAttrs('booking', booking.id, 'deposit', 'Deposit')}>${escapeHtml(formatInlineMoney(booking.deposit))}</td>
                     <td data-label="Balance Due" class="${booking.balance > 0 ? 'expense-red' : 'income-green'} td-balance">
                         ${escapeHtml(formatInlineMoney(booking.balance))}
+                        ${bookingPayPill(booking)}
                     </td>
                     <td class="td-contact sp-inline-editable" ${inlineEditAttrs('booking', booking.id, 'contact', 'Contact')}>${escapeHtml(booking.contact || '-')}</td>
                     <td data-label="Status" class="td-status">
@@ -7831,7 +7905,7 @@ function showLoginForm(options = {}) {
                             <div class="booking-field sp-inline-editable" ${inlineEditAttrs('booking', booking.id, 'location', 'Location')}><span>Location</span>${escapeHtml(booking.location || '-')} ${booking.locationType === 'abroad' ? '<i class="ph ph-globe" aria-hidden="true"></i>' : 'UG'} <span class="show-weather-slot" id="bookingWeatherCard-${weatherKey}"></span></div>
                             <div class="booking-field income-green sp-inline-editable" ${inlineEditAttrs('booking', booking.id, 'fee', 'Total Fee')}><span>Total Fee</span>${escapeHtml(formatInlineMoney(booking.fee))}</div>
                             <div class="booking-field deposit-blue sp-inline-editable" ${inlineEditAttrs('booking', booking.id, 'deposit', 'Deposit')}><span>Deposit</span>${escapeHtml(formatInlineMoney(booking.deposit))}</div>
-                            <div class="booking-field ${booking.balance > 0 ? 'expense-red' : 'income-green'}"><span>Balance Due</span>${escapeHtml(formatInlineMoney(booking.balance))}</div>
+                            <div class="booking-field ${booking.balance > 0 ? 'expense-red' : 'income-green'}"><span>Balance Due</span>${escapeHtml(formatInlineMoney(booking.balance))} ${bookingPayPill(booking)}</div>
                             <div class="booking-field sp-inline-editable" ${inlineEditAttrs('booking', booking.id, 'contact', 'Contact')}><span>Contact</span>${escapeHtml(booking.contact || '-')}</div>
                             <div class="booking-field sp-inline-editable" ${inlineEditAttrs('booking', booking.id, 'notes', 'Notes')}><span>Notes</span>${escapeHtml(booking.notes || '-')}</div>
                         </div>
@@ -8831,6 +8905,8 @@ function showLoginForm(options = {}) {
             window.SPMoneyPages?.render?.();
             window.SPInsights?.render?.();
             window.SPFinanceUI?.render?.();
+            window.SPArtistsPage?.render?.();
+            window.SPSchedulePage?.render?.();
 
             // Delay chart rendering to ensure DOM is ready
             setTimeout(() => {
