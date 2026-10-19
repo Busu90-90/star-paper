@@ -6,7 +6,7 @@
     <meta name="star-paper:public-root" content="app-shell">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:;">
     <title>Star Paper</title>
-    <script src="app.browser-assets.js?v=28"></script>
+    <script src="app.browser-assets.js?v=29"></script>
     <script src="app.public-pages.js?v=2"></script>
     <script src="app.boot-head.js?v=2"></script>
     <link rel="manifest" href="manifest.json?v=27">
@@ -32,7 +32,7 @@
     <link rel="stylesheet" href="sp-design-tokens.css?v=5">
     <link rel="stylesheet" href="styles.landing.css?v=14">
     <link rel="stylesheet" href="styles.brand.css?v=1">
-    <link rel="stylesheet" href="styles.app.css?v=13">
+    <link rel="stylesheet" href="styles.app.css?v=14">
     <link rel="preload" href="assets/vendor/fonts/font-29-fraunces-latin-opsz-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="assets/vendor/fonts/font-31-inter-tight-latin-wght-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <!-- Vendored Phosphor Icons 2.1.1 - unified icon system -->
@@ -1388,9 +1388,30 @@
                     <button class="back-btn" data-action="cancelAddArtist">Cancel</button>
                 </div>
 
+                <div class="ap-head">
+                    <div class="ap-seg" role="group" aria-label="Period">
+                        <button type="button" class="ap-seg__btn" data-ap-period="month" aria-pressed="false">This month</button>
+                        <button type="button" class="ap-seg__btn is-active" data-ap-period="year" aria-pressed="true">This year</button>
+                        <button type="button" class="ap-seg__btn" data-ap-period="all" aria-pressed="false">All time</button>
+                    </div>
+                    <button type="button" class="btn-primary ap-add" data-action="showAddArtistForm"><i class="ph ph-plus" aria-hidden="true"></i> Add artist</button>
+                </div>
+                <section class="card ap-card ap-spot" id="apSpot" aria-label="Top artist"></section>
+                <section class="card ap-card" aria-labelledby="apTableTitle">
+                    <div class="ap-card__head">
+                        <div>
+                            <h3 class="ap-title" id="apTableTitle">Profit and loss by artist</h3>
+                            <p class="ap-sub" id="apTableSub"></p>
+                        </div>
+                    </div>
+                    <div class="ap-scroll"><table class="ap-table" id="apTable"></table></div>
+                    <p class="ap-note" id="apNote"></p>
+                </section>
+                <section class="card ap-card ap-detail" id="apDetail" aria-live="polite" hidden></section>
+
                 <div class="card" id="artistsListCard">
                     <div class="card-header-row">
-                        <h3 class="section-title" data-icon="artists">All Artists</h3>
+                        <h3 class="section-title" data-icon="artists">Profiles</h3>
                         <button class="section-fab" aria-label="Add artist" data-action="showAddArtistForm">+</button>
                     </div>
                     <div class="artist-grid" id="artistGrid"></div>
@@ -1400,6 +1421,7 @@
 
             <!-- SCHEDULE SECTION -->
             <div class="section" id="schedule">
+                <div class="sc-strip" id="scStrip" aria-label="Booking numbers"></div>
                 <div class="sp-tabs" id="scheduleTabs">
                     <button class="sp-tab sp-tab--active" data-tab="global" data-action="switchScheduleTab"><i class="ph ph-globe-hemisphere-east" aria-hidden="true"></i> Global</button>
                     <button class="sp-tab" data-tab="bookings" data-action="switchScheduleTab"><i class="ph ph-calendar-check" aria-hidden="true"></i> Bookings</button>
@@ -1564,6 +1586,13 @@
                         <h3 class="section-title" data-icon="bookings">All Bookings</h3>
                         <button class="section-fab" aria-label="Add booking" data-action="showAddBooking">+</button>
                     </div>
+                    <div class="sp-chips" role="group" aria-label="Show bookings">
+                        <button type="button" class="sp-chip is-active" data-booking-filter="all" aria-pressed="true">All</button>
+                        <button type="button" class="sp-chip" data-booking-filter="upcoming" aria-pressed="false">Upcoming</button>
+                        <button type="button" class="sp-chip" data-booking-filter="pending" aria-pressed="false">Pending</button>
+                        <button type="button" class="sp-chip" data-booking-filter="unpaid" aria-pressed="false">Unpaid</button>
+                        <button type="button" class="sp-chip" data-booking-filter="overdue" aria-pressed="false">Overdue</button>
+                    </div>
                     <div class="table-wrap">
                         <table id="bookingsTable" class="bookings-table">
                         <thead>
@@ -1606,6 +1635,22 @@
                     </div>
                 </div>
 
+                <section class="card sc-card" aria-labelledby="scHeatTitle">
+                    <div class="sc-card__head">
+                        <div>
+                            <h3 class="sc-title" id="scHeatTitle">Busy times</h3>
+                            <p class="sc-sub">Shows by weekday and month. Darker means more shows.</p>
+                        </div>
+                        <div class="sc-yearnav">
+                            <button type="button" class="sc-yearnav__btn" data-sc-year="-1" aria-label="Previous year"><i class="ph ph-caret-left" aria-hidden="true"></i></button>
+                            <span class="sc-yearnav__year" id="scHeatYear"></span>
+                            <button type="button" class="sc-yearnav__btn" data-sc-year="1" aria-label="Next year"><i class="ph ph-caret-right" aria-hidden="true"></i></button>
+                        </div>
+                    </div>
+                    <div class="sc-heat__scroll"><div class="sc-heat" id="scHeat"></div></div>
+                    <p class="sc-note" id="scHeatSummary"></p>
+                    <div class="sc-open-wrap" id="scHeatOpen"></div>
+                </section>
                 <div class="card">
                     <h3 class="section-title" data-icon="calendar">Availability Checker</h3>
                     <div class="availability-checker sp-csp-style-29">
@@ -1630,26 +1675,29 @@
 
             <!-- TASKS SECTION -->
             <div class="section" id="tasks">
-                <div class="card">
-                    <div class="task-widget-header sp-csp-style-31">
-                        <div class="task-widget-title">
-                            <span>Task Board</span>
-                            <span class="task-badge" id="taskBadge" hidden>0</span>
+                <section class="card tk-card" aria-labelledby="tkTitle">
+                    <div class="tk-head">
+                        <div>
+                            <h3 class="tk-title" id="tkTitle">Task list <span class="task-badge" id="taskBadge" hidden>0</span></h3>
+                            <p class="tk-sub" id="taskSummary"></p>
                         </div>
-                        <button class="action-btn" type="button" data-action="clearCompletedTasks">Clear Completed</button>
+                        <button class="action-btn tk-clear" type="button" data-action="clearCompletedTasks">Clear done</button>
+                    </div>
+                    <div class="tk-add">
+                        <label class="sr-only" for="taskInput">New task</label>
+                        <input type="text" id="taskInput" class="task-input" placeholder="Add a task, then press Enter" />
+                        <label class="sr-only" for="taskDueDate">Due date</label>
+                        <input type="date" id="taskDueDate" class="task-date-input">
+                        <button class="btn-primary tk-add__btn" type="button" data-action="handleAddTask"><i class="ph ph-plus" aria-hidden="true"></i> Add</button>
+                    </div>
+                    <div class="sp-chips" role="group" aria-label="Show tasks">
+                        <button type="button" class="sp-chip is-active" data-task-filter="all" aria-pressed="true">All</button>
+                        <button type="button" class="sp-chip" data-task-filter="open" aria-pressed="false">Open</button>
+                        <button type="button" class="sp-chip" data-task-filter="overdue" aria-pressed="false">Overdue</button>
+                        <button type="button" class="sp-chip" data-task-filter="done" aria-pressed="false">Done</button>
                     </div>
                     <div class="task-list" id="taskList"></div>
-                </div>
-                <div class="card">
-                    <h3 class="section-title" data-icon="tasks">Add Task</h3>
-                    <div class="task-add-form sp-csp-style-32">
-                        <div class="task-input-group sp-csp-style-33">
-                            <input type="text" id="taskInput" class="task-input" placeholder="Add a task..." />
-                            <input type="date" id="taskDueDate" class="task-date-input">
-                            <button class="task-add-btn" type="button" data-action="handleAddTask">Add Task</button>
-                        </div>
-                    </div>
-                </div>
+                </section>
             </div>
 
             <!-- SETTINGS SECTION -->
@@ -1980,14 +2028,16 @@
         <script src="app.migrations.js?v=10"></script>
         <script src="app.actions.js?v=9"></script>
         <script src="app.todayboard.js?v=3"></script>
-        <script src="app.tasks.js?v=6"></script>
+        <script src="app.tasks.js?v=7"></script>
     <script src="app.reports.js?v=20"></script>
-<script src="app.js?v=156" defer></script>
+<script src="app.js?v=157" defer></script>
 <script src="app.charts.js?v=1" defer></script>
 <script src="app.home.js?v=3" defer></script>
 <script src="app.money.js?v=3" defer></script>
 <script src="app.insights.js?v=2" defer></script>
 <script src="app.finance-ui.js?v=1" defer></script>
+<script src="app.artists.js?v=1" defer></script>
+<script src="app.schedule.js?v=1" defer></script>
 <script src="app.landing.js?v=4" defer></script>
 <script src="app.chrome.js?v=1" defer></script>
 

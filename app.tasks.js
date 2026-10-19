@@ -156,6 +156,23 @@
         });
     }
 
+    // Filter chips above the list: all, open, overdue, done.
+    let taskFilter = "all";
+
+    function taskDueState(task, today) {
+        if (!task.dueDate) return { key: "none", text: "No due date" };
+        const due = new Date(task.dueDate);
+        if (Number.isNaN(due.getTime())) return { key: "none", text: "No due date" };
+        due.setHours(0, 0, 0, 0);
+        const label = formatTaskDate(task.dueDate);
+        if (!task.completed && due < today) {
+            const short = due.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+            return { key: "overdue", text: `Overdue · ${short}` };
+        }
+        if (label === "Today" || label === "Tomorrow") return { key: "soon", text: label };
+        return { key: "later", text: label };
+    }
+
     function renderTasks() {
         ensureLoadedForCurrentUser();
         const container = document.getElementById("taskList");
@@ -165,33 +182,61 @@
         updateBadges();
         const sorted = sortTasks(tasks);
 
-        if (sorted.length === 0) {
-            container.innerHTML = '<div class="task-empty">No tasks yet. Add one below.</div>';
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        const open = sorted.filter((task) => !task.completed);
+        const overdue = open.filter((task) => taskDueState(task, now).key === "overdue");
+        const summary = document.getElementById("taskSummary");
+        if (summary) {
+            summary.textContent = sorted.length
+                ? `${open.length} open${overdue.length ? `, ${overdue.length} overdue` : ""}, ${sorted.length - open.length} done`
+                : "Nothing on the list yet.";
+        }
+        document.querySelectorAll("[data-task-filter]").forEach((chip) => {
+            const on = chip.getAttribute("data-task-filter") === taskFilter;
+            chip.classList.toggle("is-active", on);
+            chip.setAttribute("aria-pressed", on ? "true" : "false");
+        });
+
+        const visible = sorted.filter((task) => {
+            if (taskFilter === "open") return !task.completed;
+            if (taskFilter === "done") return task.completed;
+            if (taskFilter === "overdue") return !task.completed && taskDueState(task, now).key === "overdue";
+            return true;
+        });
+        if (!visible.length) {
+            const empty = document.createElement("div");
+            empty.className = "task-empty";
+            empty.textContent = sorted.length ? "No tasks match this filter." : "No tasks yet. Add one above.";
+            container.replaceChildren(empty);
             return;
         }
 
-        const now = new Date();
-        now.setHours(0, 0, 0, 0);
-
-        container.innerHTML = sorted.map((task) => {
-            const due = task.dueDate ? new Date(task.dueDate) : null;
-            if (due) due.setHours(0, 0, 0, 0);
-            const isOverdue = Boolean(due && due < now && !task.completed);
+        container.innerHTML = visible.map((task) => {
+            const due = taskDueState(task, now);
+            const isOverdue = due.key === "overdue";
 
             return `
                 <div class="task-item ${task.completed ? "task-completed" : ""} ${isOverdue ? "task-overdue" : ""}">
                     <input type="checkbox" ${task.completed ? "checked" : ""} ${readOnly ? "disabled" : ""}
-                           data-task-action="toggle" data-task-id="${escapeHtml(task.id)}" class="task-checkbox" />
+                           data-task-action="toggle" data-task-id="${escapeHtml(task.id)}" class="task-checkbox" aria-label="Mark done: ${escapeHtml(task.text)}" />
                     <div class="task-content">
                         <div class="task-text sp-inline-editable" ${inlineEditAttrs(task.id, "text", "Task")}>${escapeHtml(task.text)}</div>
-                        <div class="task-due sp-inline-editable" ${inlineEditAttrs(task.id, "dueDate", "Due Date")}>${task.dueDate ? escapeHtml(formatTaskDate(task.dueDate)) : "No due date"}</div>
+                        <div class="task-due task-due--${due.key} sp-inline-editable" ${inlineEditAttrs(task.id, "dueDate", "Due Date")}>${escapeHtml(due.text)}</div>
                     </div>
-                    <button class="task-edit" ${readOnly ? "disabled" : ""} data-task-action="edit" data-task-id="${escapeHtml(task.id)}" aria-label="Edit task">Edit</button>
-                    <button class="task-delete" ${readOnly ? "disabled" : ""} data-task-action="delete" data-task-id="${escapeHtml(task.id)}" aria-label="Delete task">&times;</button>
+                    <button class="task-edit" ${readOnly ? "disabled" : ""} data-task-action="edit" data-task-id="${escapeHtml(task.id)}" aria-label="Edit task"><i class="ph ph-pencil-simple" aria-hidden="true"></i></button>
+                    <button class="task-delete" ${readOnly ? "disabled" : ""} data-task-action="delete" data-task-id="${escapeHtml(task.id)}" aria-label="Delete task"><i class="ph ph-trash" aria-hidden="true"></i></button>
                 </div>
             `;
         }).join("");
     }
+
+    document.addEventListener("click", (event) => {
+        const chip = event.target?.closest?.("[data-task-filter]");
+        if (!chip) return;
+        taskFilter = chip.getAttribute("data-task-filter") || "all";
+        renderTasks();
+    });
 
     function addTask(text, dueDate = "") {
         if (guardReadOnly("add tasks")) return null;
