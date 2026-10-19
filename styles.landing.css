@@ -887,7 +887,8 @@ body.light-theme .lp-art::before {
     var(--lp-brick) 0 0 / var(--lp-brick-size) repeat;
   background-blend-mode: multiply, normal;
   mix-blend-mode: screen;
-  opacity: 0.48;
+  --lp-wash-o: 0.48;
+  opacity: calc(var(--lp-wash-o) * var(--lp-lv, 1));
   -webkit-mask-image: var(--lp-wedge), var(--lp-throw);
   -webkit-mask-composite: source-in;
   mask-image: var(--lp-wedge), var(--lp-throw);
@@ -896,7 +897,7 @@ body.light-theme .lp-art::before {
 
 .lp-wall__wash--c {
   --lp-spread: 0.48;
-  opacity: 0.5;
+  --lp-wash-o: 0.5;
   animation: lp-aim-c 5s var(--sp-ease-in-out) -2s infinite alternate;
 }
 
@@ -904,7 +905,7 @@ body.light-theme .lp-art::before {
   --lp-aim: 16deg;
   --lp-x: var(--lp-lamp-l);
   --lp-tint: 95 211 160;
-  opacity: 0.46;
+  --lp-wash-o: 0.46;
   animation: lp-aim-l 4s var(--sp-ease-in-out) infinite alternate;
 }
 
@@ -912,7 +913,7 @@ body.light-theme .lp-art::before {
   --lp-aim: -16deg;
   --lp-x: var(--lp-lamp-r);
   --lp-tint: 110 150 230;
-  opacity: 0.5;
+  --lp-wash-o: 0.5;
   animation: lp-aim-r 4.5s var(--sp-ease-in-out) -4s infinite alternate;
 }
 
@@ -934,7 +935,7 @@ body.light-theme .lp-wall__wash {
     var(--lp-brick) 0 0 / var(--lp-brick-size) repeat;
   background-blend-mode: multiply, normal, normal;
   mix-blend-mode: multiply;
-  opacity: 0.6;
+  --lp-wash-o: 0.6;
 }
 
 body.light-theme .lp-wall__wash--c { --lp-tint: 236 206 140; }
@@ -943,7 +944,7 @@ body.light-theme .lp-wall__wash--r { --lp-tint: 150 166 214; }
 
 /* Phones stack the copy over the beams, so keep the small print readable. */
 @media (max-width: 599px) {
-  body.light-theme .lp-wall__wash { opacity: 0.45; }
+  body.light-theme .lp-wall__wash { --lp-wash-o: 0.45; }
 }
 
 /* The rig's truss sits on the header's bottom edge and its beams fall through
@@ -1184,6 +1185,270 @@ body.light-theme .lp-rig__pool { mix-blend-mode: multiply; opacity: 0.9; }
   50% { --lp-aim: 6deg; }
   100% { --lp-aim: 12deg; }
 }
+
+/* ── Light controller ──────────────────────────────────────────────────────
+   app.landing-lights.js drives the rig once it can (it sets data-lp-lights):
+   lamp angles (--lp-aim-*) and levels (--lp-lv-*) arrive as custom properties
+   from one adopted stylesheet, so the keyframe sweeps above step aside. It
+   runs the same sweep when idle, a follow spot under the cursor, a lighting
+   cue per slide, and the headline's shadow (--lp-sh-*). */
+.lp-show[data-lp-lights] :is(.lp-rig__lamp, .lp-rig__beam, .lp-rig__cone, .lp-wall__wash) {
+  animation: none;
+}
+
+.lp-show[data-lp-lights] :is(.lp-rig__lamp--l, .lp-rig__beam--l) { rotate: var(--lp-aim-l, 16deg); }
+.lp-show[data-lp-lights] :is(.lp-rig__lamp--c, .lp-rig__beam--c) { rotate: var(--lp-aim-c, 0deg); }
+.lp-show[data-lp-lights] :is(.lp-rig__lamp--r, .lp-rig__beam--r) { rotate: var(--lp-aim-r, -16deg); }
+
+.lp-show[data-lp-lights] .lp-wall__wash--l { --lp-aim: var(--lp-aim-l, 16deg); --lp-lv: var(--lp-lv-l, 1); }
+.lp-show[data-lp-lights] .lp-wall__wash--c { --lp-aim: var(--lp-aim-c, 0deg); --lp-lv: var(--lp-lv-c, 1); }
+.lp-show[data-lp-lights] .lp-wall__wash--r { --lp-aim: var(--lp-aim-r, -16deg); --lp-lv: var(--lp-lv-r, 1); }
+
+.lp-show[data-lp-lights] :is(.lp-rig__beam--l .lp-rig__cone, .lp-rig__beam--l::before, .lp-rig__beam--l::after) { opacity: var(--lp-lv-l, 1); }
+.lp-show[data-lp-lights] :is(.lp-rig__beam--c .lp-rig__cone, .lp-rig__beam--c::before, .lp-rig__beam--c::after) { opacity: var(--lp-lv-c, 1); }
+.lp-show[data-lp-lights] :is(.lp-rig__beam--r .lp-rig__cone, .lp-rig__beam--r::before, .lp-rig__beam--r::after) { opacity: var(--lp-lv-r, 1); }
+
+/* A lamp's lens dims with its level, so a dark lamp reads as off. */
+.lp-show[data-lp-lights] .lp-rig__lamp--l { filter: drop-shadow(0 8px 10px rgb(0 0 0 / 0.5)) brightness(calc(0.4 + 0.6 * var(--lp-lv-l, 1))); }
+.lp-show[data-lp-lights] .lp-rig__lamp--c { filter: drop-shadow(0 8px 10px rgb(0 0 0 / 0.5)) brightness(calc(0.4 + 0.6 * var(--lp-lv-c, 1))); }
+.lp-show[data-lp-lights] .lp-rig__lamp--r { filter: drop-shadow(0 8px 10px rgb(0 0 0 / 0.5)) brightness(calc(0.4 + 0.6 * var(--lp-lv-r, 1))); }
+
+/* Real shadows: the headline throws one onto the wall, away from the light. */
+.lp-show[data-lp-lights] .lp-slide[data-active] .lp-display {
+  --lp-sh-rgb: 0 0 0;
+  filter: drop-shadow(var(--lp-sh-x, 0px) var(--lp-sh-y, 0px) 9px rgb(var(--lp-sh-rgb) / var(--lp-sh-a, 0)));
+}
+
+body.light-theme .lp-show[data-lp-lights] .lp-slide[data-active] .lp-display {
+  --lp-sh-rgb: 24 52 36;
+  filter: drop-shadow(var(--lp-sh-x, 0px) var(--lp-sh-y, 0px) 9px rgb(var(--lp-sh-rgb) / calc(var(--lp-sh-a, 0) * 0.45)));
+}
+
+/* Cue: How it works. One spot walks the three moves like a narrator. */
+.lp-show[data-lp-cue='how'] .lp-moves li,
+.lp-show[data-lp-cue='how'] .lp-moves strong {
+  transition: color var(--sp-dur-4) var(--sp-ease-out);
+}
+
+.lp-show[data-lp-cue='how'] .lp-moves:has(.is-spot) li:not(.is-spot),
+.lp-show[data-lp-cue='how'] .lp-moves:has(.is-spot) li:not(.is-spot) strong { color: var(--sp-ink-3); }
+.lp-show[data-lp-cue='how'] .lp-moves li.is-spot .lp-moves__num { text-shadow: 0 0 14px rgb(217 180 90 / 0.8); }
+
+/* Cue: Proof. The numbers get press-photo flashes as the lamps snap on. */
+.lp-stat.is-flash { animation: lp-flash 900ms ease-out both; }
+.lp-stat.is-flash:nth-child(2) { animation-delay: 220ms; }
+.lp-stat.is-flash:nth-child(3) { animation-delay: 420ms; }
+
+@keyframes lp-flash {
+  0% { filter: brightness(1); }
+  6% { filter: brightness(2.1); }
+  22% { filter: brightness(1.15); }
+  30% { filter: brightness(1.6); }
+  100% { filter: brightness(1); }
+}
+
+/* House lights: switching theme plays a cue over the whole screen. */
+.lp-house {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.lp-house.is-down {
+  background: #040806;
+  animation: lp-house-down 1100ms ease-out both;
+}
+
+.lp-house.is-up {
+  background: radial-gradient(120% 90% at 50% 0%, #FFF9EA, #EFE8D6 70%);
+  animation: lp-house-up 1100ms ease-out both;
+}
+
+@keyframes lp-house-down {
+  0% { opacity: 0.92; }
+  30% { opacity: 0.8; }
+  100% { opacity: 0; }
+}
+
+@keyframes lp-house-up {
+  0% { opacity: 0; }
+  22% { opacity: 0.75; }
+  100% { opacity: 0; }
+}
+
+/* ── Finale ────────────────────────────────────────────────────────────────
+   The closing panel has its own three lamps. They hang wide and low until
+   the panel comes into view, then close in to one tight spot on Start free
+   while the rest of the panel falls back into the dark. Angles and the
+   button's position (--lp-fin-*) come from app.landing-lights.js. */
+.lp-cta__inner > :not(.lp-finale) {
+  position: relative;
+  z-index: 1;
+}
+
+.lp-finale {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+[data-lp-finale][data-lp-lights] .lp-finale { display: block; }
+
+.lp-finale__dim {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--lp-fin-x, 50%) var(--lp-fin-y, 85%), rgb(255 236 190 / 0.18) 0 70px, transparent 170px, rgb(3 7 5 / 0.62) 560px);
+  opacity: 0;
+  transition: opacity 1200ms var(--sp-ease-in-out);
+}
+
+.lp-finale__beam {
+  --lp-tint: 255 246 207;
+  --lp-wide: 0deg;
+  position: absolute;
+  top: -12px;
+  width: 64%;
+  height: calc(var(--lp-len, 480px) + 90px);
+  translate: -50% 0;
+  transform-origin: 50% 0;
+  rotate: var(--lp-wide);
+  clip-path: polygon(48.5% 0, 51.5% 0, 100% 100%, 0 100%);
+  background: linear-gradient(180deg, rgb(var(--lp-tint) / 0.55), rgb(var(--lp-tint) / 0.22) 70%, rgb(var(--lp-tint) / 0.08));
+  filter: blur(8px);
+  mix-blend-mode: screen;
+  opacity: 0.3;
+  transition: rotate 1400ms var(--sp-ease-in-out), width 1400ms var(--sp-ease-in-out), opacity 900ms var(--sp-ease-out);
+}
+
+.lp-finale__beam--l { left: 12%; --lp-wide: 34deg; --lp-tint: 95 211 160; --lp-len: var(--lp-fin-len-l); }
+.lp-finale__beam--c { left: 50%; --lp-len: var(--lp-fin-len-c); }
+.lp-finale__beam--r { left: 88%; --lp-wide: -34deg; --lp-tint: 110 150 230; --lp-len: var(--lp-fin-len-r); }
+
+[data-lp-finale].is-lit .lp-finale__dim { opacity: 1; }
+[data-lp-finale].is-lit .lp-finale__beam { width: 20%; opacity: 0.85; }
+[data-lp-finale].is-lit .lp-finale__beam--l { rotate: var(--lp-fin-l, 0deg); transition-delay: 0ms, 0ms, 0ms; }
+[data-lp-finale].is-lit .lp-finale__beam--c { rotate: var(--lp-fin-c, 0deg); width: 14%; opacity: 1; transition-delay: 200ms; }
+[data-lp-finale].is-lit .lp-finale__beam--r { rotate: var(--lp-fin-r, 0deg); transition-delay: 100ms; }
+
+.lp .lp-btn--gold[data-lp-finale-target] {
+  transition: background-position var(--sp-dur-4) var(--sp-ease-out), transform var(--sp-dur-2) var(--sp-ease-out), box-shadow 1200ms var(--sp-ease-in-out);
+}
+
+[data-lp-finale].is-lit .lp-btn--gold[data-lp-finale-target] {
+  box-shadow: 0 0 0 1px rgb(255 240 200 / 0.55), 0 0 46px 8px rgb(255 214 120 / 0.42), inset 0 1px 0 rgb(255 255 255 / 0.45);
+}
+
+body.light-theme .lp-finale__beam { mix-blend-mode: multiply; }
+body.light-theme .lp-finale__beam--c { --lp-tint: 200 160 70; }
+body.light-theme .lp-finale__beam--l { --lp-tint: 40 160 110; }
+body.light-theme .lp-finale__beam--r { --lp-tint: 40 64 140; }
+body.light-theme [data-lp-finale].is-lit .lp-finale__beam { opacity: 0.5; }
+body.light-theme .lp-finale__dim {
+  background: radial-gradient(circle at var(--lp-fin-x, 50%) var(--lp-fin-y, 85%), rgb(255 246 214 / 0.5) 0 70px, transparent 170px, rgb(24 52 36 / 0.16) 560px);
+}
+
+/* ── Name in lights ────────────────────────────────────────────────────────
+   A theatre marquee: a dark board framed in warm bulbs, with whatever artist
+   the visitor types. Save image draws the same sign to a PNG. */
+.lp-marquee {
+  display: grid;
+  gap: var(--sp-space-4);
+  justify-items: center;
+  width: 100%;
+  max-width: 600px;
+}
+
+.lp-marquee__sign {
+  --lp-bulb: radial-gradient(circle, #FFF1C6 0 2.6px, rgb(255 205 110 / 0.5) 3.4px, transparent 5.5px);
+  position: relative;
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  width: 100%;
+  padding: 38px 36px 34px;
+  border: 2px solid rgb(217 180 90 / 0.75);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #19140B, #0C0A06);
+  box-shadow: 0 22px 44px -22px rgb(0 0 0 / 0.75), inset 0 0 34px rgb(217 180 90 / 0.14);
+  text-align: center;
+}
+
+.lp-marquee__sign::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 12px;
+  background: var(--lp-bulb), var(--lp-bulb), var(--lp-bulb), var(--lp-bulb);
+  background-size: 18px 14px, 18px 14px, 14px 18px, 14px 18px;
+  background-position: 0 0, 0 100%, 0 0, 100% 0;
+  background-repeat: space no-repeat, space no-repeat, no-repeat space, no-repeat space;
+  pointer-events: none;
+  animation: lp-bulbs 1.4s steps(2, jump-none) infinite;
+}
+
+@keyframes lp-bulbs {
+  from { filter: brightness(1); }
+  to { filter: brightness(1.45) saturate(1.2); }
+}
+
+.lp-marquee__kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: #D9B45A;
+}
+
+.lp-marquee__kicker:last-child {
+  color: rgb(247 243 232 / 0.7);
+  letter-spacing: 0.24em;
+}
+
+.lp-marquee__name {
+  max-width: 100%;
+  font-family: var(--sp-font-display);
+  font-size: clamp(30px, 7vw, 60px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+  background: linear-gradient(180deg, #FFF3C9, #E9C46A 55%, #B8862B);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 16px rgb(255 200 90 / 0.45));
+}
+
+.lp-marquee:not(.has-name) .lp-marquee__name { opacity: 0.55; }
+.lp-marquee.is-flash .lp-marquee__sign { animation: lp-sign-flash 420ms ease-out; }
+
+@keyframes lp-sign-flash {
+  0% { box-shadow: 0 22px 44px -22px rgb(0 0 0 / 0.75), inset 0 0 34px rgb(217 180 90 / 0.14), 0 0 0 rgb(255 214 120 / 0); }
+  30% { box-shadow: 0 22px 44px -22px rgb(0 0 0 / 0.75), inset 0 0 50px rgb(217 180 90 / 0.3), 0 0 40px rgb(255 214 120 / 0.35); }
+  100% { box-shadow: 0 22px 44px -22px rgb(0 0 0 / 0.75), inset 0 0 34px rgb(217 180 90 / 0.14), 0 0 0 rgb(255 214 120 / 0); }
+}
+
+.lp-marquee__form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-space-3);
+  justify-content: center;
+  width: 100%;
+}
+
+.lp .lp-marquee__input {
+  flex: 1 1 220px;
+  width: auto;
+  height: 48px;
+  text-align: center;
+}
+
+.lp-marquee__save { flex: 0 0 auto; }
 
 /* Shared dark glass for every card that sits under the lights. */
 .lp-ledger,
