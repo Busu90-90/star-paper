@@ -60,14 +60,14 @@
     ]],
     ['1', ['app.offline-cache.js']],
     ['3', ['app.todayboard.js']],
-    ['31', ['app.browser-assets.js']],
+    ['37', ['app.browser-assets.js']],
     ['2', ['app.boot-head.js']],
     ['3', ['app.money.js']],
     ['3', ['app.home.js']],
     ['1', ['assets/fonts/checks.woff2', 'app.charts.js', 'app.finance-ui.js', 'app.artists.js', 'app.schedule.js', 'app.pickers.js']],
     ['2', ['app.crew.js', 'app.chrome.js']],
     ['2', ['app.insights.js']],
-    ['14', ['styles.landing.css']],
+    ['20', ['styles.landing.css']],
     ['2', ['assets/landing/brick-wall.webp']],
     ['1', ['styles.brand.css']],
     ['16', ['styles.app.css']],
@@ -77,6 +77,7 @@
     ['3', ['app.boot-body.js']],
     ['1', ['styles.utilities.css']],
     ['4', ['app.landing.js']],
+    ['4', ['app.landing-lights.js']],
     ['2', ['assets/vendor/fonts/star-paper-fonts.css']],
     ['5', ['sp-design-tokens.css']],
     ['2', [
@@ -107,7 +108,7 @@
     ['64', ['styles.css']],
     ['101', ['supabase.js']],
     ['159', ['app.js']],
-    ['211', ['sw.js']]
+    ['217', ['sw.js']]
   ];
 
   const assetVersions = {};
@@ -322,6 +323,7 @@
     url('./app.crew.js'),
     url('./app.pickers.js'),
     url('./app.landing.js'),
+    url('./app.landing-lights.js'),
     url('./app.chrome.js'),
     url('./app.globe.js'),
     url('./assets/world-atlas/land-50m.json'),
