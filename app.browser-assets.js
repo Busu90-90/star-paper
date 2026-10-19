@@ -61,12 +61,12 @@
     ]],
     ['1', ['app.offline-cache.js']],
     ['3', ['app.todayboard.js']],
-    ['22', ['app.browser-assets.js']],
+    ['23', ['app.browser-assets.js']],
     ['13', ['styles.landing.css']],
     ['1', ['assets/landing/brick-wall.webp']],
-    ['1', ['styles.brand.css', 'app.chrome.js']],
-    ['8', ['styles.app.css']],
-    ['6', ['app.root-shell.js']],
+    ['1', ['styles.brand.css', 'app.chrome.js', 'app.home.js']],
+    ['9', ['styles.app.css']],
+    ['7', ['app.root-shell.js']],
     ['2', ['app.public-pages.js']],
     ['4', ['app.boot-flags.js']],
     ['2', ['app.boot-body.js']],
@@ -94,15 +94,15 @@
       'star_paper_logo_pack/star_paper_white.png'
     ]],
     ['6', ['app.tasks.js']],
-    ['8', ['app.actions.js']],
+    ['9', ['app.actions.js']],
     ['10', ['app.migrations.js']],
     ['15', ['app.globe.js']],
     ['20', ['app.reports.js']],
     ['27', ['manifest.json']],
     ['64', ['styles.css']],
     ['98', ['supabase.js']],
-    ['152', ['app.js']],
-    ['202', ['sw.js']]
+    ['153', ['app.js']],
+    ['203', ['sw.js']]
   ];
 
   const assetVersions = {};
@@ -306,6 +306,7 @@
     url('./app.tasks.js'),
     url('./app.reports.js'),
     url('./app.js'),
+    url('./app.home.js'),
     url('./app.landing.js'),
     url('./app.chrome.js'),
     url('./app.globe.js'),

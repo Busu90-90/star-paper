@@ -1263,39 +1263,207 @@ body.sp-no-scroll { overflow: hidden; }
 #globalScheduleStage canvas { cursor: grab; }
 canvas.is-pin-hover { cursor: pointer; }
 
-/* ── 15. Home (B1) ──────────────────────────────────────────────────────────
-   Two independent columns on desktop (main: Today, This month, Activity;
-   side: Upcoming, Pulse, Global) so a tall card never leaves a hole beside
-   it. On phones the columns dissolve and `order` puts what's next first:
-   Today, Upcoming, This month, Pulse, Activity, Global. Every id the
-   renderers write to is unchanged.                                        */
-#appContainer #dashboard .home-b1 {
+/* ── 15. Home ───────────────────────────────────────────────────────────────
+   Reading order: greeting, then how we're doing (hero + goal ring, four
+   numbers), quick actions, then what needs you, then detail. One level of
+   card, three widths (full, 2/3 + 1/3, quarters). app.home.js draws the
+   sparklines, ring, trend, donut and aging; app.js still fills the ids it
+   always did.                                                              */
+#appContainer #dashboard .hv2 { display: grid; gap: var(--sp-space-4); }
+#appContainer #dashboard .hv2-card { grid-column: auto; margin: 0; min-width: 0; }
+#appContainer #dashboard :is(.hv2-top, .hv2-kpis) { display: grid; gap: var(--sp-space-4); min-width: 0; }
+/* Detail: two independent columns on desktop so a tall card never leaves a
+   hole beside it; on phones the columns dissolve and `order` interleaves
+   them (needs you, next shows, trend, artists, activity, aging). */
+#appContainer #dashboard .hv2-cols { display: flex; flex-direction: column; gap: var(--sp-space-4); min-width: 0; }
+#appContainer #dashboard .hv2-col { display: contents; }
+#appContainer #dashboard .hv2-col--main > :nth-child(1) { order: 1; }
+#appContainer #dashboard .hv2-col--side > :nth-child(1) { order: 2; }
+#appContainer #dashboard .hv2-col--main > :nth-child(2) { order: 3; }
+#appContainer #dashboard .hv2-col--side > :nth-child(2) { order: 4; }
+#appContainer #dashboard .hv2-col--main > :nth-child(3) { order: 5; }
+#appContainer #dashboard .hv2-col--side > :nth-child(3) { order: 6; }
+#appContainer #dashboard .hv2-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-space-3); }
+@media (min-width: 1024px) {
+  #appContainer #dashboard .hv2-top { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+  #appContainer #dashboard .hv2-cols { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; }
+  #appContainer #dashboard .hv2-col { display: flex; flex-direction: column; gap: var(--sp-space-4); min-width: 0; }
+  #appContainer #dashboard .hv2-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-space-4); }
+}
+
+/* Greeting */
+#appContainer #dashboard .hv2-greet__date { margin: 0; color: var(--sp-gold-text); font-size: 11px; font-weight: 700; letter-spacing: var(--sp-tracking-caps); text-transform: uppercase; }
+#appContainer #dashboard .hv2-greet__date span { color: inherit; font: inherit; letter-spacing: inherit; }
+#appContainer #dashboard .hv2-greet__title { margin: var(--sp-space-1) 0 0; font-size: var(--sp-text-2xl); line-height: var(--sp-leading-tight); }
+
+/* Shared bits: card head, quiet title, eyebrow label, change line */
+#appContainer #dashboard .hv2-card__head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-space-3); margin-bottom: var(--sp-space-3); }
+#appContainer #dashboard .card h3.hv2-title { margin: 0; font-family: var(--sp-font-ui); font-size: var(--sp-text-md); font-weight: 700; letter-spacing: 0; }
+#appContainer #dashboard .hv2-label { display: block; margin: 0; color: var(--sp-ink-3); font-size: 11px; font-weight: 600; letter-spacing: var(--sp-tracking-caps); text-transform: uppercase; }
+#appContainer #dashboard .hv2-delta { display: block; margin: var(--sp-space-1) 0 0; color: var(--sp-ink-3); font-size: var(--sp-text-xs); font-weight: 600; }
+#appContainer #dashboard .hv2-delta.is-good { color: var(--sp-in); }
+#appContainer #dashboard .hv2-delta.is-bad { color: var(--sp-out); }
+#appContainer #dashboard .hv2-empty { margin: 0; padding: var(--sp-space-6) var(--sp-space-3); border: 1px dashed var(--sp-line); border-radius: var(--sp-radius-md); color: var(--sp-ink-3); text-align: center; }
+
+/* Hero: the one big number, gold-edged, with its six-month line */
+#appContainer #dashboard .hv2-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 42%);
+  align-items: end;
+  gap: var(--sp-space-4);
+  border-color: var(--sp-line-strong);
+  background-image: radial-gradient(120% 140% at 0% 0%, var(--sp-gold-soft), transparent 60%), var(--sp-sheen);
+}
+#appContainer #dashboard .hv2-hero__value { margin: var(--sp-space-2) 0 0; color: var(--sp-ink); font-size: var(--sp-text-3xl); font-weight: 700; line-height: 1.05; white-space: nowrap; }
+#appContainer #dashboard .hv2-hero { container-type: inline-size; }
+@container (max-width: 520px) { #appContainer #dashboard .hv2-hero__value { font-size: var(--sp-text-2xl); } }
+#appContainer #dashboard .hv2-bbf {
+  display: block;
+  min-height: 0;
+  margin-top: var(--sp-space-3);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  font-weight: 400;
+  color: var(--sp-ink-3);
+  font-size: var(--sp-text-xs);
+  text-align: left;
+  cursor: pointer;
+}
+#appContainer #dashboard .hv2-bbf :is(.money, span) { color: var(--sp-ink-2); font-size: inherit; font-style: normal; }
+#appContainer #dashboard .hv2-bbf:hover { color: var(--sp-gold-text); }
+#appContainer #dashboard .hv2-spark { display: block; width: 100%; height: 32px; overflow: visible; }
+#appContainer #dashboard .hv2-spark--hero { height: 72px; }
+#appContainer #dashboard .hv2-spark__line { fill: none; stroke: var(--sp-gold); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+#appContainer #dashboard .hv2-spark__area { fill: var(--sp-gold-soft); stroke: none; }
+#appContainer #dashboard .hv2-spark__dot { fill: var(--sp-gold-hi); stroke: var(--sp-surface-2); stroke-width: 2; vector-effect: non-scaling-stroke; }
+
+/* Goal ring */
+#appContainer #dashboard .hv2-goal__body { position: relative; display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: center; gap: var(--sp-space-4); }
+#appContainer #dashboard .hv2-ring { grid-row: 1; grid-column: 1; width: 112px; height: 112px; transform: rotate(-90deg); }
+#appContainer #dashboard .hv2-ring circle { fill: none; stroke-width: 10; }
+#appContainer #dashboard .hv2-ring__track { stroke: var(--sp-surface-3); }
+#appContainer #dashboard .hv2-ring__fill { stroke: var(--sp-gold); stroke-linecap: round; transition: stroke-dasharray var(--sp-dur-4) var(--sp-ease-out); }
+#appContainer #dashboard .hv2-goal.is-met .hv2-ring__fill { stroke: var(--sp-in); }
+#appContainer #dashboard .hv2-goal__center { grid-row: 1; grid-column: 1; display: grid; place-items: center; }
+#appContainer #dashboard .hv2-goal__pct { color: var(--sp-ink); font-family: var(--sp-font-money); font-size: var(--sp-text-xl); font-weight: 700; }
+#appContainer #dashboard .hv2-goal__meta { grid-row: 1; grid-column: 2; min-width: 0; }
+#appContainer #dashboard .hv2-goal__line { display: flex; justify-content: space-between; gap: var(--sp-space-2); margin: 0 0 var(--sp-space-1); color: var(--sp-ink-3); font-size: var(--sp-text-xs); }
+#appContainer #dashboard .hv2-goal__line .money { color: var(--sp-ink-2); font-size: var(--sp-text-xs); white-space: nowrap; }
+#appContainer #dashboard .hv2-goal__togo { margin: var(--sp-space-2) 0 0; color: var(--sp-ink); font-weight: 600; }
+#appContainer #dashboard .hv2-goal.is-unset :is(.hv2-goal__line, .hv2-goal__pct) { opacity: 0.45; }
+#appContainer #dashboard .hv2-goal .monthly-goal-editor:not([hidden]) { display: flex; flex-wrap: wrap; gap: var(--sp-space-2); margin-top: var(--sp-space-3); }
+#appContainer #dashboard .hv2-goal .monthly-goal-editor input { flex: 1 1 140px; min-width: 0; }
+
+/* Key numbers: icon, label, number, change, mini line */
+#appContainer #dashboard .hv2-kpi {
   display: flex;
   flex-direction: column;
-  gap: var(--app-gap);
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0;
+  width: 100%;
+  padding: var(--sp-space-4);
+  font: inherit;
+  text-align: left;
+  container-type: inline-size;
 }
-#appContainer #dashboard .home-col { display: contents; }
-#appContainer #dashboard .home-b1 .dashboard-section-card { grid-column: auto; grid-row: auto; margin: 0; min-width: 0; }
-#appContainer #dashboard .home-b1 .today-board-card { order: 1; }
-#appContainer #dashboard .home-b1 .home-upcoming-card { order: 2; }
-#appContainer #dashboard .home-b1 .dashboard-at-glance-card { order: 3; }
-#appContainer #dashboard .home-b1 .home-pulse-card { order: 4; }
-#appContainer #dashboard .home-b1 .home-activity-card { order: 5; }
-#appContainer #dashboard .home-b1 .dashboard-global-card { order: 6; }
+#appContainer #dashboard button.hv2-kpi { cursor: pointer; }
+#appContainer #dashboard button.hv2-kpi:hover { border-color: var(--sp-line-strong); }
+#appContainer #dashboard .hv2-kpi__icon { display: grid; place-items: center; width: 32px; height: 32px; margin-bottom: var(--sp-space-3); border-radius: 10px; background: var(--sp-gold-soft); color: var(--sp-gold-text); font-size: 17px; }
+#appContainer #dashboard .hv2-kpi__value { display: block; margin: var(--sp-space-1) 0 0; color: var(--sp-ink); font-size: clamp(0.9375rem, 9cqi, var(--sp-text-xl)); font-weight: 700; line-height: 1.15; white-space: nowrap; }
+#appContainer #dashboard .hv2-kpi .hv2-spark { margin-top: auto; padding-top: var(--sp-space-3); }
 
-@media (min-width: 1280px) {
-  #appContainer #dashboard .home-b1 {
-    display: grid;
-    grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
-    align-items: start;
-  }
-  #appContainer #dashboard .home-col {
-    display: flex;
-    flex-direction: column;
-    gap: var(--app-gap);
-    min-width: 0;
-  }
-  #appContainer #dashboard .home-b1 .dashboard-section-card { order: 0; }
+/* Quick actions: one row of pills (scrolls sideways on phones) */
+#appContainer #dashboard .hv2-quick { display: flex; gap: var(--sp-space-2); overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+#appContainer #dashboard .hv2-quick::-webkit-scrollbar { display: none; }
+#appContainer #dashboard .hv2-quick__btn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--sp-space-2);
+  min-height: 40px;
+  padding: 0 var(--sp-space-4);
+  border: 1px solid var(--sp-line);
+  border-radius: var(--sp-radius-pill);
+  background: var(--sp-surface-2);
+  color: var(--sp-ink);
+  font-size: var(--sp-text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+#appContainer #dashboard .hv2-quick__btn .ph { color: var(--sp-gold-text); font-size: 17px; }
+#appContainer #dashboard .hv2-quick__btn:hover { border-color: var(--sp-line-strong); background: var(--sp-gold-soft); }
+
+/* Needs you: the alert list without its old date header */
+#appContainer #dashboard .today-board-card .today-board__status { padding: 2px 10px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+
+/* Money in vs out */
+#appContainer #dashboard .hv2-seg { display: inline-flex; padding: 3px; border: 1px solid var(--sp-line); border-radius: var(--sp-radius-pill); background: var(--sp-surface-1); }
+#appContainer #dashboard .hv2-seg__btn { min-height: 28px; padding: 0 var(--sp-space-3); border: 0; border-radius: var(--sp-radius-pill); background: transparent; color: var(--sp-ink-3); font-size: var(--sp-text-xs); font-weight: 600; cursor: pointer; }
+#appContainer #dashboard .hv2-seg__btn.is-active { background: var(--sp-gold-soft); color: var(--sp-gold-text); }
+#appContainer #dashboard .hv2-legend { display: flex; gap: var(--sp-space-4); margin-bottom: var(--sp-space-2); color: var(--sp-ink-3); font-size: var(--sp-text-xs); }
+#appContainer #dashboard .hv2-legend span::before { content: ''; display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 3px; vertical-align: -1px; }
+#appContainer #dashboard .hv2-legend__in::before { background: var(--sp-gold); }
+#appContainer #dashboard .hv2-legend__out::before { background: var(--sp-sage); }
+#appContainer #dashboard .hv2-legend__net::before { height: 2px !important; vertical-align: 3px !important; background: var(--sp-ink); }
+#appContainer #dashboard .hv2-trend { display: block; width: 100%; height: auto; }
+#appContainer #dashboard .hv2-trend__grid { stroke: var(--sp-line); stroke-dasharray: 3 4; }
+#appContainer #dashboard .hv2-trend__zero { stroke: var(--sp-line-strong); }
+#appContainer #dashboard .hv2-trend__axis { fill: var(--sp-ink-3); font-family: var(--sp-font-ui); font-size: 11px; }
+#appContainer #dashboard .hv2-trend__hit { fill: transparent; }
+#appContainer #dashboard .hv2-trend__month:hover .hv2-trend__hit { fill: var(--sp-gold-soft); }
+#appContainer #dashboard .hv2-trend__in { fill: var(--sp-gold); }
+#appContainer #dashboard .hv2-trend__out { fill: var(--sp-sage); }
+#appContainer #dashboard .hv2-trend__net { fill: none; stroke: var(--sp-ink); stroke-width: 2; stroke-linejoin: round; }
+#appContainer #dashboard .hv2-trend__netdot { fill: var(--sp-ink); }
+
+/* Revenue by artist: donut beside (or above) its legend */
+#appContainer #dashboard .hv2-donut { display: grid; grid-template-columns: 132px minmax(0, 1fr); align-items: center; gap: var(--sp-space-4); }
+#appContainer #dashboard .hv2-donut:has(.hv2-empty) { display: block; }
+#appContainer #dashboard .hv2-donut__figure { position: relative; width: 132px; height: 132px; }
+#appContainer #dashboard .hv2-donut__ring { width: 100%; height: 100%; transform: rotate(-90deg); }
+#appContainer #dashboard .hv2-donut__ring circle { fill: none; stroke-width: 14; }
+#appContainer #dashboard .hv2-donut__track { stroke: var(--sp-surface-3); }
+#appContainer #dashboard .hv2-donut__center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+#appContainer #dashboard .hv2-donut__total { color: var(--sp-ink); font-size: var(--sp-text-lg); font-weight: 700; }
+#appContainer #dashboard .hv2-donut__sub { color: var(--sp-ink-3); font-size: 11px; }
+#appContainer #dashboard .hv2-donut__legend { display: grid; gap: var(--sp-space-2); margin: 0; padding: 0; list-style: none; }
+#appContainer #dashboard .hv2-donut__item { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: 2px var(--sp-space-2); }
+#appContainer #dashboard .hv2-donut__swatch { width: 10px; height: 10px; border-radius: 3px; }
+#appContainer #dashboard .hv2-donut__name { overflow: hidden; color: var(--sp-ink); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+#appContainer #dashboard .hv2-donut__pct { color: var(--sp-ink-2); font-weight: 700; }
+#appContainer #dashboard .hv2-donut__amt { grid-column: 2 / 4; color: var(--sp-ink-3); font-size: var(--sp-text-xs); }
+#appContainer #dashboard .hv2-c1 { --c: var(--sp-gold); }
+#appContainer #dashboard .hv2-c2 { --c: var(--sp-sage); }
+#appContainer #dashboard .hv2-c3 { --c: var(--sp-in); }
+#appContainer #dashboard .hv2-c4 { --c: var(--sp-gold-deep); }
+#appContainer #dashboard .hv2-c5 { --c: var(--sp-ink-2); }
+#appContainer #dashboard .hv2-c6 { --c: var(--sp-ink-3); }
+#appContainer #dashboard .hv2-donut__seg { stroke: var(--c); }
+#appContainer #dashboard .hv2-donut__swatch { background: var(--c); }
+
+/* Unpaid balances by age */
+#appContainer #dashboard .hv2-aging__list { display: grid; gap: var(--sp-space-3); margin: 0; padding: 0; list-style: none; }
+#appContainer #dashboard .hv2-aging__row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px var(--sp-space-3); }
+#appContainer #dashboard .hv2-aging__label { color: var(--sp-ink-2); font-size: var(--sp-text-xs); }
+#appContainer #dashboard .hv2-aging__amt { grid-row: 1; grid-column: 2; color: var(--sp-ink); font-weight: 700; }
+#appContainer #dashboard .hv2-aging__bar { grid-column: 1; display: block; height: 8px; border-radius: var(--sp-radius-pill); background: var(--sp-surface-3); overflow: hidden; }
+#appContainer #dashboard .hv2-aging__fill { display: block; width: var(--w, 0%); height: 100%; border-radius: inherit; background: var(--sp-gold); }
+#appContainer #dashboard .hv2-aging__row:not(.hv2-aging__row--upcoming) .hv2-aging__fill { background: var(--sp-out); }
+#appContainer #dashboard .hv2-aging__row--d30 .hv2-aging__fill { background: color-mix(in srgb, var(--sp-out) 60%, var(--sp-gold)); }
+#appContainer #dashboard .hv2-aging__count { grid-column: 2; color: var(--sp-ink-3); font-size: 11px; text-align: right; }
+
+@media (max-width: 1023px) {
+  #appContainer #dashboard .hv2-hero { grid-template-columns: minmax(0, 1fr); }
+  #appContainer #dashboard .hv2-spark--hero { height: 56px; }
+}
+@media (max-width: 420px) {
+  #appContainer #dashboard .hv2-donut { grid-template-columns: minmax(0, 1fr); justify-items: center; }
+  #appContainer #dashboard .hv2-donut__legend { width: 100%; }
+  #appContainer #dashboard .hv2-kpi { padding: var(--sp-space-3); }
 }
 
 /* Card heads with a quiet link to the full section */
@@ -1356,69 +1524,6 @@ canvas.is-pin-hover { cursor: pointer; }
   white-space: nowrap;
 }
 #appContainer #dashboard .show-weather-slot:empty { display: none; }
-
-/* This month: goal, then the four key numbers (more on request) */
-#appContainer .monthly-goal-track__hint { display: none; margin: var(--sp-space-2) 0 0; color: var(--sp-ink-2); }
-#appContainer .monthly-goal-track--unset .monthly-goal-track__hint { display: block; }
-#appContainer .monthly-goal-track--unset :is(.monthly-goal-track__metrics, .monthly-goal-progress) { display: none; }
-#appContainer #dashboard .monthly-goal-track__metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-space-3); }
-#appContainer #dashboard .dashboard-glance-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--sp-space-3);
-  margin-top: var(--sp-space-3);
-}
-#appContainer #dashboard .dashboard-glance-grid .mainstage-kpi { min-width: 0; margin: 0; padding: var(--sp-space-3) var(--sp-space-4); border-radius: var(--sp-radius-md); }
-#appContainer #dashboard .dashboard-glance-grid .mainstage-kpi:hover { transform: none; box-shadow: none; }
-/* Tiles are half their card wide, so size money to the card (container
-   units) and "UGX 12,000,000" stays on one line at every width. */
-#appContainer #dashboard :is(.dashboard-at-glance-card, .home-pulse-card) { container-type: inline-size; }
-#appContainer #dashboard .dashboard-glance-grid .mainstage-kpi__value { font-size: clamp(0.8125rem, 5.4cqi - 6px, var(--sp-text-lg)); white-space: nowrap; }
-#appContainer #dashboard .glance-more-toggle { display: block; margin: var(--sp-space-3) auto 0; }
-
-/* Pulse: the gauge beside its numbers when there is room */
-#appContainer #dashboard .home-pulse-card .velocity-gauge-wrap { margin: 0 0 var(--sp-space-3); }
-#appContainer #dashboard .velocity-gauge__label { color: var(--sp-gold-text); }
-#appContainer #dashboard .vg-track { stroke: var(--sp-surface-3); }
-/* The arc carries the reading; the needle crossed the count, so it goes. */
-#appContainer #dashboard :is(.vg-needle, .vg-hub) { display: none; }
-#appContainer #dashboard .vg-stop-lo { stop-color: var(--sp-gold-deep); }
-#appContainer #dashboard .vg-stop-hi { stop-color: var(--sp-gold-hi); }
-#appContainer #dashboard .velocity-gauge__this { color: var(--sp-ink); font-family: var(--sp-font-money); }
-#appContainer #dashboard .velocity-gauge__unit { color: var(--sp-ink-3); }
-#appContainer #dashboard .mainstage-live-pulse { margin: 0; padding: 0; border: 0; background: none; }
-#appContainer #dashboard .mainstage-live-pulse__head { display: block; margin-bottom: var(--sp-space-3); }
-#appContainer #dashboard .mainstage-live-pulse__title { display: none; }
-#appContainer #dashboard .mainstage-live-pulse__chips {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--sp-space-2);
-  width: auto;
-}
-#appContainer #dashboard .mainstage-live-chip { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-space-2); min-height: 32px; padding: 0 var(--sp-space-3); font-size: var(--sp-text-xs); }
-#appContainer #dashboard .mainstage-pulse-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-space-2); }
-#appContainer #dashboard .pulse-item { min-width: 0; padding: var(--sp-space-3); border-radius: var(--sp-radius-md); }
-#appContainer #dashboard .pulse-item__value { font-size: clamp(0.8125rem, 5.4cqi - 6px, var(--sp-text-md)); white-space: nowrap; }
-#appContainer #dashboard .pulse-item__hint { color: var(--sp-ink-3); font-size: var(--sp-text-xs); }
-
-/* Global schedule: a slim banner, button beside the copy */
-#appContainer #dashboard .dashboard-global-card {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-space-3) var(--sp-space-4);
-  min-height: 0;
-}
-#appContainer #dashboard .dashboard-global-card__text { flex: 1 1 220px; min-width: 0; }
-#appContainer #dashboard .dashboard-global-card .section-title { margin-bottom: var(--sp-space-1); }
-#appContainer #dashboard .dashboard-global-card__copy { margin: 0; color: var(--sp-ink-2); }
-#appContainer #dashboard .dashboard-global-card__button { flex: none; margin: 0; }
-/* A narrow side column (small laptops) stacks the pulse numbers. */
-@container (max-width: 360px) {
-  #appContainer #dashboard .mainstage-pulse-grid { grid-template-columns: minmax(0, 1fr); }
-  #appContainer #dashboard .pulse-item__value { font-size: var(--sp-text-md); }
-}
 
 /* ── 16. Money (B2) ─────────────────────────────────────────────────────────
    Overview, Expenses, Other income and Reports. Markup and ids are the

@@ -6,7 +6,7 @@
     <meta name="star-paper:public-root" content="app-shell">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:;">
     <title>Star Paper</title>
-    <script src="app.browser-assets.js?v=22"></script>
+    <script src="app.browser-assets.js?v=23"></script>
     <script src="app.public-pages.js?v=2"></script>
     <script src="app.boot-head.js?v=1"></script>
     <link rel="manifest" href="manifest.json?v=27">
@@ -32,7 +32,7 @@
     <link rel="stylesheet" href="sp-design-tokens.css?v=4">
     <link rel="stylesheet" href="styles.landing.css?v=13">
     <link rel="stylesheet" href="styles.brand.css?v=1">
-    <link rel="stylesheet" href="styles.app.css?v=8">
+    <link rel="stylesheet" href="styles.app.css?v=9">
     <link rel="preload" href="assets/vendor/fonts/font-29-fraunces-latin-opsz-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="assets/vendor/fonts/font-31-inter-tight-latin-wght-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <!-- Vendored Phosphor Icons 2.1.1 - unified icon system -->
@@ -654,202 +654,141 @@
                     <button class="nudge-banner__dismiss" data-action="dismissNudge" aria-label="Dismiss"><i class="ph ph-x" aria-hidden="true"></i></button>
                 </div>
 
-                <div class="dashboard-home-layout home-b1">
-                    <div class="home-col home-col--main">
-                        <!-- Today Board - Dominant Command Center -->
-                        <div class="card dashboard-section-card today-board-card" data-sp-reveal>
-                            <div class="today-board__header">
-                                <div class="today-board__date">
-                                    <div class="today-board__day" id="todayBoardDay">Monday</div>
-                                    <div class="today-board__date-full" id="todayBoardDate">January 1, 2026</div>
-                                </div>
-                                <div class="today-board__status" id="todayBoardStatus">All clear</div>
-                            </div>
-
-                            <div class="today-board__alerts timeline-list" id="todayBoardAlerts">
-                                <!-- Dynamic alerts will be inserted here -->
-                            </div>
-
+                <!-- Home: how we're doing (hero, goal, four numbers), then what needs you, then detail.
+                     Every id the existing renderers write to is kept; app.home.js draws the rest. -->
+                <div class="hv2" id="homeV2">
+                    <header class="hv2-greet">
+                        <div>
+                            <p class="hv2-greet__date"><span id="todayBoardDay">Monday</span> · <span id="todayBoardDate">1 January 2026</span></p>
+                            <h2 class="hv2-greet__title"><span id="hv2GreetWord">Hello</span>, <span data-sp-profile-name>Manager</span></h2>
                         </div>
+                    </header>
 
-
-                        <!-- This month: goal + key numbers -->
-                        <div class="card dashboard-section-card dashboard-at-glance-card">
-                            <div class="mainstage-strip__head">
-                                <h3 class="section-title" data-icon="dashboard"><span class="section-title__text">This Month (<span id="glancePeriodLabel">Month Year</span>)</span></h3>
-                                <div class="mainstage-strip__updated" id="mainstageLiveDate">Updated now</div>
+                    <div class="hv2-top">
+                        <section class="card hv2-card hv2-hero" aria-labelledby="hv2HeroLabel">
+                            <div class="hv2-hero__text">
+                                <p class="hv2-label" id="hv2HeroLabel">Cash in · <span id="glancePeriodLabel">this month</span></p>
+                                <p class="hv2-hero__value money" id="totalIncome"><span class="sp-skeleton"></span></p>
+                                <p class="hv2-delta" id="hv2HeroDelta"></p>
+                                <button class="hv2-bbf" type="button" data-action="openBBFModal" title="Set balance brought forward">
+                                    Brought forward <span class="bbf-month-label" id="bbfMonthLabel"></span>: <span class="money" id="dashboardBBF">UGX 0</span>
+                                </button>
                             </div>
-                            <div class="monthly-goal-track">
-                                <div class="monthly-goal-track__top">
-                                    <div class="monthly-goal-track__title">Monthly Revenue Goal</div>
-                                    <button class="action-btn" type="button" data-action="toggleMonthlyGoalEditor">Set Goal</button>
-                                </div>
-                                <p class="monthly-goal-track__hint">No goal set for this month yet. Set one to see how close you are.</p>
-                                <div class="monthly-goal-track__metrics">
-                                    <div class="monthly-goal-metric">
-                                        <div class="monthly-goal-metric__label">Goal Amount</div>
-                                        <div class="monthly-goal-metric__value" id="monthlyGoalAmount"><span class="sp-skeleton"></span></div>
-                                    </div>
-                                    <div class="monthly-goal-metric">
-                                        <div class="monthly-goal-metric__label">Current Revenue</div>
-                                        <div class="monthly-goal-metric__value" id="monthlyGoalCurrentRevenue"><span class="sp-skeleton"></span></div>
-                                    </div>
-                                    <div class="monthly-goal-metric">
-                                        <div class="monthly-goal-metric__label">Completion</div>
-                                        <div class="monthly-goal-metric__value" id="monthlyGoalPercent">0%</div>
-                                    </div>
-                                </div>
-                                <svg class="monthly-goal-progress" viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true" focusable="false"><rect class="monthly-goal-progress__bar" id="monthlyGoalProgressBar" x="0" y="0" width="0" height="8"/></svg>
-                                <div class="monthly-goal-editor" id="monthlyGoalEditor" hidden>
-                                    <input type="number" id="monthlyGoalInput" min="0" step="1000" placeholder="Enter monthly goal (UGX)" />
-                                    <button class="action-btn" type="button" data-action="saveMonthlyRevenueGoal">Save Goal</button>
-                                    <button class="back-btn" type="button" data-action="toggleMonthlyGoalEditor">Cancel</button>
+                            <svg class="hv2-spark hv2-spark--hero" id="hv2HeroSpark" viewBox="0 0 240 72" preserveAspectRatio="none" aria-hidden="true" focusable="false"></svg>
+                        </section>
+
+                        <section class="card hv2-card hv2-goal" aria-labelledby="hv2GoalTitle">
+                            <div class="hv2-card__head">
+                                <h3 class="hv2-title" id="hv2GoalTitle">Monthly goal</h3>
+                                <button class="home-card__link" type="button" data-action="toggleMonthlyGoalEditor">Set goal</button>
+                            </div>
+                            <div class="hv2-goal__body">
+                                <svg class="hv2-ring" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+                                    <circle class="hv2-ring__track" cx="60" cy="60" r="50"></circle>
+                                    <circle class="hv2-ring__fill" id="hv2GoalRing" cx="60" cy="60" r="50" pathLength="100" stroke-dasharray="0 100"></circle>
+                                </svg>
+                                <div class="hv2-goal__center"><span class="hv2-goal__pct" id="monthlyGoalPercent">0%</span></div>
+                                <div class="hv2-goal__meta">
+                                    <p class="hv2-goal__line">Goal <span class="money" id="monthlyGoalAmount">UGX 0</span></p>
+                                    <p class="hv2-goal__line">Collected <span class="money" id="monthlyGoalCurrentRevenue">UGX 0</span></p>
+                                    <p class="hv2-goal__togo" id="hv2GoalToGo">Set a goal to track this month.</p>
                                 </div>
                             </div>
-                            <div class="dashboard-glance-grid" id="dashboardGlanceGrid">
-                                <div class="mainstage-kpi">
-                                    <div class="mainstage-kpi__label" id="dashboardRevenueLabel">Month Year Revenue</div>
-                                    <div class="mainstage-kpi__value income-green" id="totalIncome"><span class="sp-skeleton"></span></div>
-                                </div>
-                                <div class="mainstage-kpi mainstage-kpi--secondary">
-                                    <div class="mainstage-kpi__label">Deposits Received</div>
-                                    <div class="mainstage-kpi__value deposit-blue" id="dashboardDepositsReceived"><span class="sp-skeleton"></span></div>
-                                </div>
-                                <div class="mainstage-kpi mainstage-kpi--secondary">
-                                    <div class="mainstage-kpi__label" id="dashboardExpensesLabel">Expenses (Month Year)</div>
-                                    <div class="mainstage-kpi__value expense-red" id="dashboardExpenses"><span class="sp-skeleton"></span></div>
-                                </div>
-                                <div class="mainstage-kpi">
-                                    <div class="mainstage-kpi__label">Net Profit</div>
-                                    <div class="mainstage-kpi__value income-green" id="dashboardCashAtHand"><span class="sp-skeleton"></span></div>
-                                </div>
-                                <div class="mainstage-kpi">
-                                    <div class="mainstage-kpi__label">Balances Due</div>
-                                    <div class="mainstage-kpi__value expense-red" id="balancesOverdue"><span class="sp-skeleton"></span></div>
-                                </div>
-                                <div class="mainstage-kpi mainstage-kpi--bbf mainstage-kpi--secondary" role="button" tabindex="0" data-action="openBBFModal">
-                                    <div class="mainstage-kpi__label">Balance Brought Forward <span class="bbf-month-label" id="bbfMonthLabel">(prev. month)</span></div>
-                                    <div class="mainstage-kpi__value deposit-blue" id="dashboardBBF"><span class="sp-skeleton"></span></div>
-                                    <div class="mainstage-kpi__sub">
-                                        <button class="bbf-edit-btn action-btn" type="button" data-action="openBBFModal">Set BBF</button>
-                                    </div>
-                                </div>
-                                <div class="mainstage-kpi">
-                                    <div class="mainstage-kpi__label">Upcoming Shows</div>
-                                    <div class="mainstage-kpi__value deposit-blue" id="upcomingShows"><span class="sp-skeleton"></span></div>
-                                </div>
-                                <div class="mainstage-kpi mainstage-kpi--secondary">
-                                    <div class="mainstage-kpi__label">Active Artists</div>
-                                    <div class="mainstage-kpi__value deposit-blue" id="activeArtistsCount"><span class="sp-skeleton"></span></div>
-                                </div>
+                            <div class="monthly-goal-editor" id="monthlyGoalEditor" hidden>
+                                <input type="number" id="monthlyGoalInput" min="0" step="1000" placeholder="Monthly goal (UGX)" />
+                                <button class="action-btn" type="button" data-action="saveMonthlyRevenueGoal">Save</button>
+                                <button class="back-btn" type="button" data-action="toggleMonthlyGoalEditor">Cancel</button>
                             </div>
-                            <button class="glance-more-toggle" type="button" id="glanceMoreToggle" data-action="toggleGlanceKpis" aria-expanded="false" aria-controls="dashboardGlanceGrid">More metrics</button>
-                        </div>
-
-                        <div class="card dashboard-section-card home-activity-card">
-                            <div class="home-card__head">
-                                <h3 class="section-title" data-icon="reports">Recent Activity</h3>
-                                <button class="home-card__link" type="button" data-action="showSection" data-section="money">Money</button>
-                            </div>
-                            <div class="timeline-list" id="dashboardActivityFeed"></div>
-                        </div>
-
+                        </section>
                     </div>
 
-                    <div class="home-col home-col--side">
-                        <!-- Upcoming Shows: what's next, beside Today on desktop -->
-                        <div class="card dashboard-section-card home-upcoming-card">
-                            <div class="home-card__head">
-                                <h3 class="section-title" data-icon="calendar">Upcoming Shows</h3>
-                                <button class="home-card__link" type="button" data-action="showSection" data-section="schedule">Schedule</button>
-                            </div>
-                            <div class="timeline-list" id="dashboardUpcomingList"></div>
+                    <section class="hv2-kpis" aria-label="Key numbers this month">
+                        <div class="card hv2-card hv2-kpi">
+                            <span class="hv2-kpi__icon"><i class="ph ph-trend-up" aria-hidden="true"></i></span>
+                            <p class="hv2-label">Net profit</p>
+                            <p class="hv2-kpi__value money" id="dashboardCashAtHand"><span class="sp-skeleton"></span></p>
+                            <p class="hv2-delta" id="hv2ProfitDelta"></p>
+                            <svg class="hv2-spark" id="hv2ProfitSpark" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" focusable="false"></svg>
                         </div>
-
-                        <!-- Pulse: velocity + live pulse -->
-                        <div class="card dashboard-section-card home-pulse-card">
-                            <h3 class="section-title" data-icon="reports">Pulse</h3>
-                            <!-- Booking Velocity Gauge -->
-                            <div class="velocity-gauge-wrap">
-                                <div class="velocity-gauge__label">Booking Velocity</div>
-                                <div class="velocity-gauge__chart">
-                                    <svg class="velocity-gauge__svg" id="velocityGaugeSvg" viewBox="0 0 200 110" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                                        <!-- Track arc -->
-                                        <path class="vg-track" d="M 20 100 A 80 80 0 0 1 180 100" stroke="rgba(255,179,0,0.12)" stroke-width="14" stroke-linecap="round" fill="none"/>
-                                        <!-- Fill arc (JS-driven stroke-dasharray) -->
-                                        <path class="vg-fill sp-csp-style-14" id="velocityGaugeFill" d="M 20 100 A 80 80 0 0 1 180 100" stroke="url(#vgGrad)" stroke-width="14" stroke-linecap="round" fill="none"
-                                            stroke-dasharray="0 251"/>
-                                        <defs>
-                                            <linearGradient id="vgGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                                                <stop class="vg-stop-lo" offset="0%"   stop-color="#c9920a"/>
-                                                <stop class="vg-stop-hi" offset="100%" stop-color="#FFD700"/>
-                                            </linearGradient>
-                                        </defs>
-                                        <!-- Needle (JS-driven transform) -->
-                                        <line class="vg-needle" id="velocityGaugeNeedle" transform="rotate(-90 100 100)"
-                                            x1="100" y1="100" x2="100" y2="28"
-                                            stroke="#FFB300" stroke-width="2.5" stroke-linecap="round"
-                                           />
-                                        <circle class="vg-hub" cx="100" cy="100" r="5" fill="#FFB300"/>
-                                    </svg>
-                                    <div class="velocity-gauge__center">
-                                        <div class="velocity-gauge__this" id="velocityThisMonth">0</div>
-                                        <div class="velocity-gauge__unit">shows</div>
-                                    </div>
-                                </div>
-                                <div class="velocity-gauge__compare">
-                                    <span class="velocity-gauge__prev">Last month: <strong id="velocityLastMonth">0</strong></span>
-                                    <span class="velocity-gauge__delta" id="velocityDelta"></span>
-                                </div>
-                            </div>
-                            <div class="mainstage-live-pulse">
-                                <div class="mainstage-live-pulse__head">
-                                    <h4 class="mainstage-live-pulse__title">Live Pulse</h4>
-                                    <div class="mainstage-live-pulse__chips">
-                                        <div class="mainstage-live-chip">Next 7 Days <strong id="mainstageUpcomingCount">0</strong></div>
-                                        <div class="mainstage-live-chip">Pending Deposits <strong id="mainstageDepositPending">0</strong></div>
-                                        <div class="mainstage-live-chip">Balance Alerts <strong id="mainstageBalanceAlerts">0</strong></div>
-                                        <div class="mainstage-live-chip">Overdue <strong id="mainstageOverdueCount">0</strong></div>
-                                    </div>
-                                </div>
-                                <div class="mainstage-pulse-grid">
-                                    <div class="pulse-item">
-                                        <div class="pulse-item__label">Revenue Pace</div>
-                                        <div class="pulse-item__value income-green" id="mainstageRevenuePace"><span class="sp-skeleton"></span></div>
-                                        <div class="pulse-item__hint" id="mainstageRevenuePaceHint">No baseline yet.</div>
-                                    </div>
-                                    <div class="pulse-item">
-                                        <div class="pulse-item__label">Collections Health</div>
-                                        <div class="pulse-item__value deposit-blue" id="mainstageCollectionsHealth">0%</div>
-                                        <div class="pulse-item__hint" id="mainstageCollectionsHint">No collection data yet.</div>
-                                    </div>
-                                    <div class="pulse-item">
-                                        <div class="pulse-item__label">Burn Rate</div>
-                                        <div class="pulse-item__value expense-red" id="mainstageBurnRate">0%</div>
-                                        <div class="pulse-item__hint" id="mainstageBurnHint">No spend data yet.</div>
-                                    </div>
-                                    <div class="pulse-item">
-                                        <div class="pulse-item__label">Profit Trend</div>
-                                        <div class="pulse-item__value income-green" id="mainstageProfitTrend"><span class="sp-skeleton"></span></div>
-                                        <div class="pulse-item__hint" id="mainstageProfitHint">No trend data yet.</div>
-                                    </div>
-                                </div>
-                            </div>
-
+                        <button class="card hv2-card hv2-kpi" type="button" data-action="showSection" data-section="schedule">
+                            <span class="hv2-kpi__icon"><i class="ph ph-hand-coins" aria-hidden="true"></i></span>
+                            <span class="hv2-label">Owed to you</span>
+                            <span class="hv2-kpi__value money" id="hv2Owed">UGX 0</span>
+                            <span class="hv2-delta" id="hv2OwedLate"></span>
+                        </button>
+                        <button class="card hv2-card hv2-kpi" type="button" data-action="showSection" data-section="schedule">
+                            <span class="hv2-kpi__icon"><i class="ph ph-calendar-check" aria-hidden="true"></i></span>
+                            <span class="hv2-label">Booked, next 30 days</span>
+                            <span class="hv2-kpi__value money" id="hv2Booked30">UGX 0</span>
+                            <span class="hv2-delta" id="hv2Booked30Count"></span>
+                        </button>
+                        <div class="card hv2-card hv2-kpi">
+                            <span class="hv2-kpi__icon"><i class="ph ph-receipt" aria-hidden="true"></i></span>
+                            <p class="hv2-label">Expenses</p>
+                            <p class="hv2-kpi__value money" id="dashboardExpenses"><span class="sp-skeleton"></span></p>
+                            <p class="hv2-delta" id="hv2ExpenseDelta"></p>
+                            <svg class="hv2-spark" id="hv2ExpenseSpark" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" focusable="false"></svg>
                         </div>
+                    </section>
 
-                        <div class="card dashboard-section-card dashboard-performance-card dashboard-global-card">
-                            <div class="dashboard-global-card__text">
-                                <h3 class="section-title" data-icon="tour">Global Schedule</h3>
-                                <p class="dashboard-global-card__copy">Plan routes, revenue, and upcoming stops from the Schedule page.</p>
-                            </div>
-                            <button class="action-btn dashboard-global-card__button" type="button" data-action="showSection" data-section="schedule">
-                                <i class="ph ph-globe-hemisphere-east" aria-hidden="true"></i>
-                                Open Global View
-                            </button>
+                    <nav class="hv2-quick" aria-label="Quick actions">
+                        <button type="button" class="hv2-quick__btn" data-action="openQuickAdd" data-type="booking"><i class="ph ph-ticket" aria-hidden="true"></i>Booking</button>
+                        <button type="button" class="hv2-quick__btn" data-action="openQuickAdd" data-type="expense"><i class="ph ph-arrow-up-right" aria-hidden="true"></i>Expense</button>
+                        <button type="button" class="hv2-quick__btn" data-action="openQuickAdd" data-type="income"><i class="ph ph-arrow-down-left" aria-hidden="true"></i>Income</button>
+                        <button type="button" class="hv2-quick__btn" data-sp-quick="task"><i class="ph ph-check-square" aria-hidden="true"></i>Task</button>
+                        <button type="button" class="hv2-quick__btn" data-action="openPdfExportModal"><i class="ph ph-file-pdf" aria-hidden="true"></i>Report</button>
+                    </nav>
+
+                    <div class="hv2-cols">
+                        <div class="hv2-col hv2-col--main">
+                            <section class="card hv2-card today-board-card" aria-labelledby="hv2NeedsTitle">
+                                <div class="hv2-card__head">
+                                    <h3 class="hv2-title" id="hv2NeedsTitle">Needs you</h3>
+                                    <span class="today-board__status" id="todayBoardStatus">All clear</span>
+                                </div>
+                                <div class="today-board__alerts timeline-list" id="todayBoardAlerts"></div>
+                            </section>
+                            <section class="card hv2-card" aria-labelledby="hv2TrendTitle">
+                                <div class="hv2-card__head">
+                                    <h3 class="hv2-title" id="hv2TrendTitle">Money in vs out</h3>
+                                    <div class="hv2-seg" role="group" aria-label="Range">
+                                        <button type="button" class="hv2-seg__btn is-active" data-hv2-range="6" aria-pressed="true">6 months</button>
+                                        <button type="button" class="hv2-seg__btn" data-hv2-range="12" aria-pressed="false">12 months</button>
+                                    </div>
+                                </div>
+                                <div class="hv2-legend" aria-hidden="true"><span class="hv2-legend__in">In</span><span class="hv2-legend__out">Out</span><span class="hv2-legend__net">Net</span></div>
+                                <svg class="hv2-trend" id="hv2Trend" viewBox="0 0 640 220" role="img" aria-label="Money in and out by month"></svg>
+                            </section>
+                            <section class="card hv2-card home-activity-card" aria-labelledby="hv2ActivityTitle">
+                                <div class="hv2-card__head">
+                                    <h3 class="hv2-title" id="hv2ActivityTitle">Recent activity</h3>
+                                    <button class="home-card__link" type="button" data-action="showSection" data-section="money">Money</button>
+                                </div>
+                                <div class="timeline-list" id="dashboardActivityFeed"></div>
+                            </section>
+                        </div>
+                        <div class="hv2-col hv2-col--side">
+                            <section class="card hv2-card home-upcoming-card" aria-labelledby="hv2NextTitle">
+                                <div class="hv2-card__head">
+                                    <h3 class="hv2-title" id="hv2NextTitle">Next shows</h3>
+                                    <button class="home-card__link" type="button" data-action="showSection" data-section="schedule">Schedule</button>
+                                </div>
+                                <div class="timeline-list" id="dashboardUpcomingList"></div>
+                            </section>
+                            <section class="card hv2-card" aria-labelledby="hv2ArtistTitle">
+                                <div class="hv2-card__head">
+                                    <h3 class="hv2-title" id="hv2ArtistTitle">Revenue by artist</h3>
+                                </div>
+                                <div class="hv2-donut" id="hv2ArtistDonut"></div>
+                            </section>
+                            <section class="card hv2-card" aria-labelledby="hv2AgingTitle">
+                                <div class="hv2-card__head">
+                                    <h3 class="hv2-title" id="hv2AgingTitle">Unpaid balances by age</h3>
+                                </div>
+                                <div class="hv2-aging" id="hv2Aging"></div>
+                            </section>
                         </div>
                     </div>
-
                 </div>
             </div>
 
@@ -1776,15 +1715,16 @@
           loaded above, and these deferred scripts keep document order:
           Supabase boot wiring is installed before app.js initializes UI helpers.
         -->
-<script src="app.root-shell.js?v=6" defer></script>
+<script src="app.root-shell.js?v=7" defer></script>
 <script src="app.offline-cache.js?v=1"></script>
 <script src="supabase.js?v=98" defer></script>
         <script src="app.migrations.js?v=10"></script>
-        <script src="app.actions.js?v=8"></script>
+        <script src="app.actions.js?v=9"></script>
         <script src="app.todayboard.js?v=3"></script>
         <script src="app.tasks.js?v=6"></script>
     <script src="app.reports.js?v=20"></script>
-<script src="app.js?v=152" defer></script>
+<script src="app.js?v=153" defer></script>
+<script src="app.home.js?v=1" defer></script>
 <script src="app.landing.js?v=4" defer></script>
 <script src="app.chrome.js?v=1" defer></script>
 

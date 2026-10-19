@@ -7641,10 +7641,11 @@ function showLoginForm(options = {}) {
             }
             
             bookings.forEach(booking => {
+                if (!isEarningBooking(booking)) return;
                 const date = new Date(booking.date);
                 const monthsDiff = (today.getFullYear() - date.getFullYear()) * 12 + (today.getMonth() - date.getMonth());
                 if (monthsDiff >= 0 && monthsDiff < 12) {
-                    monthlyIncome[11 - monthsDiff] += Math.round(Number(booking.fee) || 0);
+                    monthlyIncome[11 - monthsDiff] += getBookingCollected(booking);
                 }
             });
 
@@ -7657,6 +7658,7 @@ function showLoginForm(options = {}) {
             });
 
             otherIncome.forEach(item => {
+                if (!isReceivedOtherIncome(item)) return;
                 const date = new Date(item.date);
                 const monthsDiff = (today.getFullYear() - date.getFullYear()) * 12 + (today.getMonth() - date.getMonth());
                 if (monthsDiff >= 0 && monthsDiff < 12) {
@@ -7992,6 +7994,33 @@ function showLoginForm(options = {}) {
             }
         }
 
+        // A booking earns money once it is confirmed or completed; pending and cancelled shows don't count.
+        function isEarningBooking(booking) {
+            const status = String(booking?.status || '').toLowerCase();
+            return status === 'confirmed' || status === 'completed';
+        }
+
+        // Money actually collected on a booking: the deposit plus any part of the balance already paid.
+        function getBookingCollected(booking) {
+            const fee = Math.round(Number(booking?.fee) || 0);
+            const deposit = Math.round(Number(booking?.deposit) || 0);
+            const balance = Math.round(Number(booking?.balance) || 0);
+            const balancePaid = Math.max(0, fee - deposit - balance);
+            return Math.max(0, deposit) + balancePaid;
+        }
+
+        function isReceivedOtherIncome(entry) {
+            return String(entry?.status || 'received').toLowerCase() === 'received';
+        }
+
+        // Home (app.home.js) draws its charts from these same rules.
+        window.SPMoney = {
+            isEarningBooking,
+            getBookingCollected,
+            isReceivedOtherIncome,
+            getMonthlyGoal: () => getCurrentMonthlyRevenueGoal()
+        };
+
         function getCurrentMonthData() {
             const now = new Date();
             const currentMonth = now.getMonth();
@@ -8014,7 +8043,7 @@ function showLoginForm(options = {}) {
                 return Number.isFinite(parsed) ? Math.round(parsed) : 0;
             };
 
-            const isConfirmedBooking = (booking) => String(booking?.status || '').toLowerCase() === 'confirmed';
+            const isConfirmedBooking = isEarningBooking;
             const isUpcomingStatus = (booking) => {
                 const status = String(booking?.status || '').toLowerCase();
                 return status === 'confirmed' || status === 'pending';
@@ -8081,17 +8110,16 @@ function showLoginForm(options = {}) {
                 if (Number.isNaN(date.getTime())) return false;
                 return date >= start && date < end;
             };
-            const isConfirmedBooking = (booking) => String(booking?.status || '').toLowerCase() === 'confirmed';
-
-            const rangeBookings = bookings.filter((booking) => isConfirmedBooking(booking) && inRange(booking.date));
-            const rangeOtherIncome = otherIncome.filter((entry) => inRange(entry.date));
+            const rangeBookings = bookings.filter((booking) => isEarningBooking(booking) && inRange(booking.date));
+            const rangeOtherIncome = otherIncome.filter((entry) => isReceivedOtherIncome(entry) && inRange(entry.date));
             const rangeExpenses = expenses.filter((entry) => inRange(entry.date));
 
+            // showIncome is what was booked; deposits is what has been collected so far.
             const showIncome = rangeBookings.reduce((sum, booking) => sum + asAmount(booking.fee), 0);
-            const deposits = rangeBookings.reduce((sum, booking) => sum + asAmount(booking.deposit), 0);
+            const deposits = rangeBookings.reduce((sum, booking) => sum + getBookingCollected(booking), 0);
             const other = rangeOtherIncome.reduce((sum, entry) => sum + asAmount(entry.amount), 0);
             const expenseTotal = rangeExpenses.reduce((sum, entry) => sum + asAmount(entry.amount), 0);
-            const totalIncome = showIncome + other;
+            const totalIncome = deposits + other;
             const net = totalIncome - expenseTotal;
 
             return {
@@ -8523,6 +8551,7 @@ function showLoginForm(options = {}) {
             if (typeof window.updateTodayBoard === 'function') window.updateTodayBoard();
             // Update velocity gauge
             updateVelocityGauge();
+            window.SPHome?.render?.();
 
             // Delay chart rendering to ensure DOM is ready
             setTimeout(() => {
@@ -8623,18 +8652,31 @@ function showLoginForm(options = {}) {
             const list = document.getElementById('cashFlowTimeline');
             if (!list) return;
 
+            const now = new Date();
+            const isThisMonth = (value) => {
+                const date = new Date(value);
+                return !Number.isNaN(date.getTime())
+                    && date.getMonth() === now.getMonth()
+                    && date.getFullYear() === now.getFullYear();
+            };
             const items = [];
             bookings.forEach(booking => {
+                if (!isEarningBooking(booking) || !isThisMonth(booking.date)) return;
+                const collected = getBookingCollected(booking);
+                if (collected <= 0) return;
+                const fee = Math.round(Number(booking.fee) || 0);
+                const paidLabel = collected >= fee ? 'Paid in full' : `Part paid of UGX ${fee.toLocaleString()}`;
                 items.push({
                     date: booking.date,
                     title: `${booking.event} (${booking.artist})`,
-                    sub: booking.location ? `Show income  -  ${booking.location}` : 'Show income',
-                    amount: Math.round(Number(booking.fee) || 0),
+                    sub: booking.location ? `${paidLabel}  -  ${booking.location}` : paidLabel,
+                    amount: collected,
                     type: 'income'
                 });
             });
 
             otherIncome.forEach(item => {
+                if (!isReceivedOtherIncome(item) || !isThisMonth(item.date)) return;
                 items.push({
                     date: item.date,
                     title: item.source,
@@ -8645,6 +8687,7 @@ function showLoginForm(options = {}) {
             });
 
             expenses.forEach(expense => {
+                if (!isThisMonth(expense.date)) return;
                 items.push({
                     date: expense.date,
                     title: expense.description,
@@ -9403,7 +9446,7 @@ function showLoginForm(options = {}) {
             }
 
             // ── Collection Nudge ──────────────────────────────────────────────
-            const unpaid = allBookings.filter(b => (Math.round(Number(b.balance) || 0)) > 0);
+            const unpaid = allBookings.filter(b => isEarningBooking(b) && (Math.round(Number(b.balance) || 0)) > 0);
             if (unpaid.length > 0) {
                 const total = unpaid.reduce((s, b) => s + (Math.round(Number(b.balance) || 0)), 0);
                 nudges.push({
