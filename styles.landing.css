@@ -815,17 +815,20 @@ body.light-theme .lp-art::before {
   --lp-lamp-c: 50%;
   --lp-lamp-r: 81%;
   --lp-pivot: 31px;
+  /* The truss straddles the header's bottom edge, so it reads as the band's divider. */
+  --lp-rig-lift: -16px;
   --lp-lens: calc(var(--lp-pivot) + 54px);
   position: absolute;
   inset: 0 calc(50% - 50vw);
+  top: var(--lp-rig-lift);
   z-index: 3;
   pointer-events: none;
 }
 
-/* The rig hangs right under the header and its beams fall through the whole
-   showcase, so the slides start below the lamps. */
+/* The rig's truss sits on the header's bottom edge and its beams fall through
+   the whole showcase, so the slides start below the lamps. */
 .lp-show {
-  padding-top: 116px;
+  padding-top: 100px;
 }
 
 .lp-rig__truss {
@@ -850,7 +853,7 @@ body.light-theme .lp-art::before {
 
 @media (max-width: 599px) {
   .lp-rig { --lp-lens: calc(var(--lp-pivot) + 42px); }
-  .lp-show { padding-top: 104px; }
+  .lp-show { padding-top: 88px; }
   .lp-rig__lamp { width: 52px; height: 57px; margin-left: -26px; }
 }
 

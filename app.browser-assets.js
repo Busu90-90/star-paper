@@ -62,7 +62,7 @@
     ['1', ['app.offline-cache.js']],
     ['3', ['app.todayboard.js']],
     ['21', ['app.browser-assets.js']],
-    ['11', ['styles.landing.css']],
+    ['12', ['styles.landing.css']],
     ['1', ['styles.brand.css', 'app.chrome.js']],
     ['8', ['styles.app.css']],
     ['6', ['app.root-shell.js']],
