@@ -647,6 +647,7 @@ function getSectionIconMarkup(iconKey) {
             calendar:   'ph-calendar-blank',
             reports:    'ph-clipboard-text',
             tasks:      'ph-clipboard-text',
+            crew:       'ph-chats-circle',
             settings:   'ph-gear-six',
         };
         const cls = phClass[iconKey] || phClass.dashboard;
@@ -4715,7 +4716,7 @@ function showLoginForm(options = {}) {
 
         const SP_MONEY_TAB_IDS = new Set(['financials', 'cashflow', 'receivables', 'expenses', 'otherIncome', 'reports']);
         const SP_SCHEDULE_TAB_IDS = new Set(['global', 'bookings', 'calendar']);
-        const SP_APP_SECTION_IDS = new Set(['dashboard', 'money', 'schedule', 'artists', 'tasks', 'settings', ...SP_MONEY_TAB_IDS, ...SP_SCHEDULE_TAB_IDS]);
+        const SP_APP_SECTION_IDS = new Set(['dashboard', 'money', 'schedule', 'artists', 'crew', 'tasks', 'settings', ...SP_MONEY_TAB_IDS, ...SP_SCHEDULE_TAB_IDS]);
 
         function isMoneyTabSection(section) {
             return SP_MONEY_TAB_IDS.has(section);
@@ -5289,6 +5290,7 @@ function showLoginForm(options = {}) {
                 'calendar':   'Schedule',
                 'reports':    'Money',
                 'tasks':      'Tasks',
+                'crew':       'Crew',
                 'settings':   'Settings',
             };
 
@@ -5341,6 +5343,8 @@ function showLoginForm(options = {}) {
                     if (typeof window.renderTasks === 'function') {
                         window.renderTasks();
                     }
+                } else if (section === 'crew') {
+                    window.SPCrew?.open?.();
                 } else if (section === 'settings') {
                     refreshProfileUI();
                 }
@@ -8906,7 +8910,7 @@ function showLoginForm(options = {}) {
             window.SPInsights?.render?.();
             window.SPFinanceUI?.render?.();
             window.SPArtistsPage?.render?.();
-            window.SPSchedulePage?.render?.();
+            window.SPSchedulePage?.render?.(); window.SPCrew?.sync?.();
 
             // Delay chart rendering to ensure DOM is ready
             setTimeout(() => {
