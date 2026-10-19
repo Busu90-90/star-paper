@@ -103,8 +103,8 @@
     ['24', ['star-paper-tokens.css']],
     ['27', ['manifest.json']],
     ['63', ['styles.css']],
-    ['97', ['supabase.js']],
-    ['151', ['app.js']],
+    ['98', ['supabase.js']],
+    ['152', ['app.js']],
     ['200', ['sw.js']]
   ];
 

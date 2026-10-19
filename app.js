@@ -4729,10 +4729,6 @@ function showLoginForm(options = {}) {
                 saveAudienceMetricsForScope(activeScopeKey, audienceMetrics);
             }
 
-            if (cloudData.theme && typeof applyTheme === 'function' && !window.__spAppBooted && !hasStoredThemePreference()) {
-                applyTheme(cloudData.theme, { persist: true, syncRemote: false });
-            }
-
             if (!options.provisional && hasCompleteCoreCloudSnapshot(cloudData)) {
                 markWorkspaceHydrated(activeScopeKey, true, {
                     source: options.source || 'cloud',

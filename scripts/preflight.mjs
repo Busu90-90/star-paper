@@ -792,7 +792,7 @@ assert(bootstrapSessionSource.includes("'bootstrap-session:app-ready-rebased'"),
 assert(bootstrapSessionSource.includes("'bootstrap-session:show-app-rebased'"), 'bootstrapFromSupabaseSession must rebase stale flow ids before showing the app shell');
 assert(!/if\s*\(!isBootTransitionCurrentSafe\(flowId\)\)\s*return\s+false;/.test(bootstrapSessionSource), 'bootstrapFromSupabaseSession must not return false solely because an auth boot flow id went stale');
 
-const sessionRestoreFallbackSource = sourceSlice(supabase, 'function scheduleLocalSessionRestoreFallback(options = {})', 'function hasLocalThemePreference()', 'supabase.js scheduleLocalSessionRestoreFallback');
+const sessionRestoreFallbackSource = sourceSlice(supabase, 'function scheduleLocalSessionRestoreFallback(options = {})', 'function resetCloudSaveFlagsSafe(', 'supabase.js scheduleLocalSessionRestoreFallback');
 assert(sessionRestoreFallbackSource.includes("'session-restore-fallback:rebased'"), 'session restore fallback must rebind stale flow ids while the boot loader is still blocking');
 assert(sessionRestoreFallbackSource.includes('isAuthBootBlockingState(state)'), 'session restore fallback must inspect blocking loader states before exiting on stale flow');
 assert(!/if\s*\(flowId\s*&&\s*!isBootTransitionCurrentSafe\(flowId\)\)\s*return;/.test(sessionRestoreFallbackSource), 'session restore fallback must not silently return on a stale flow while the loader is blocking');
