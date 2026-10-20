@@ -203,6 +203,26 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+// Tapping a Star Paper notification opens the app on the thing it is about.
+self.addEventListener("notificationclick", (event) => {
+  const data = event.notification.data || null;
+  event.notification.close();
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    let client = windows.find((c) => new URL(c.url).origin === self.location.origin) || null;
+    if (client) {
+      client = await client.focus().catch(() => client);
+    } else {
+      client = await self.clients.openWindow("./");
+      // A fresh window needs a moment to boot before it can act on the message.
+      if (client && data) await new Promise((resolve) => setTimeout(resolve, 4000));
+    }
+    if (client && data && data.action) {
+      client.postMessage({ type: "sp:notification-open", action: data.action, actionId: data.actionId || "" });
+    }
+  })());
+});
+
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 

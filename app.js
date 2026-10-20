@@ -4284,6 +4284,7 @@ function showLoginForm(options = {}) {
         window.renderBookings     ||= renderBookings;
         window.renderOtherIncome  ||= renderOtherIncome;
         window.renderArtists      ||= renderArtists;
+        window.populateArtistDropdown ||= populateArtistDropdown;
         window.SPArtistAvatar = resolveDisplayArtistAvatar;
         window.updateDashboard    ||= updateDashboard;
         window.renderCalendar     ||= renderCalendar;
@@ -7560,14 +7561,53 @@ function showLoginForm(options = {}) {
             }
             
             const artistList = getArtists();
+            // Keep the chosen artist across refreshes (cloud sync rebuilds this list).
+            const current = select.value;
             select.innerHTML = '<option value="">Select Artist</option>' + 
                 artistList.map(artist => {
                     const name = escapeHtml(artist?.name || 'Artist');
                     return `<option value="${name}">${name}</option>`;
                 }).join('');
+            if (current) select.value = current;
+            window.SPPickers?.syncArtist?.();
             populateAudienceArtistDropdown();
             populateFinanceArtistDropdowns();
         }
+
+        // Adds an artist by name only, from the booking form's artist picker.
+        function quickAddArtist(rawName) {
+            if (guardReadOnly('add artists')) return null;
+            const artistName = sanitizeTextInput(rawName);
+            if (!artistName) return null;
+            if (!currentManagerId) {
+                toastError('Please sign in first.');
+                return null;
+            }
+            const existing = artists.find((artist) => String(artist?.name || '').trim().toLowerCase() === artistName.toLowerCase());
+            if (existing) return existing.name;
+            artists.push({
+                id: createRuntimeId('artist', artistName),
+                name: artistName,
+                managerId: currentManagerId,
+                createdAt: new Date().toISOString(),
+                email: '',
+                phone: '',
+                specialty: '',
+                bio: '',
+                strategicGoal: '',
+                avatar: ''
+            });
+            window.artists = artists;
+            Storage.saveSync('starPaperArtists', artists);
+            markSearchIndexDirty();
+            renderArtists();
+            populateArtistDropdown();
+            saveUserData();
+            toastSuccess(`${artistName} added to your artists.`);
+            return artistName;
+        }
+
+        window.SPQuickAddArtist = quickAddArtist;
 
         // Bookings Functions
         // Payments logged against a booking after its deposit.
@@ -8918,24 +8958,45 @@ function showLoginForm(options = {}) {
             }, 100);
         }
 
-        function sendLocalNotification(title, body) {
+        // `target` ({ action, actionId }) is where tapping the notification goes.
+        function sendLocalNotification(title, body, target = null) {
             if (!('Notification' in window)) return;
             if (Notification.permission !== 'granted') return;
+            const data = target && target.action ? { action: target.action, actionId: String(target.actionId ?? '') } : null;
+            const plain = () => {
+                const note = new Notification(title, { body, data });
+                note.onclick = () => {
+                    window.focus();
+                    note.close();
+                    if (data) handleNudgeFollowUp(data.action, data.actionId);
+                };
+            };
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.getRegistration().then(reg => {
                     if (reg) {
                         reg.showNotification(title, {
                             body,
+                            data,
                             icon: './star_paper_logo_pack/star_paper_transparent.png?v=5',
                             badge: './star_paper_logo_pack/star_paper_transparent.png?v=5'
                         });
                     } else {
-                        new Notification(title, { body });
+                        plain();
                     }
                 });
             } else {
-                new Notification(title, { body });
+                plain();
             }
+        }
+
+        // sw.js posts here when a phone or desktop notification is tapped.
+        if ('serviceWorker' in navigator && !window.__spNotificationClickBound) {
+            window.__spNotificationClickBound = true;
+            navigator.serviceWorker.addEventListener('message', (event) => {
+                const msg = event.data;
+                if (!msg || msg.type !== 'sp:notification-open' || !msg.action) return;
+                handleNudgeFollowUp(String(msg.action), String(msg.actionId || ''));
+            });
         }
 
         function shouldSendReminder(key, intervalMs) {
@@ -8974,7 +9035,8 @@ function showLoginForm(options = {}) {
                     if (shouldSendReminder(key, twoDaysMs)) {
                         sendLocalNotification(
                             'Upcoming Show',
-                            `The King blesses her subjects in two days! at ${location}, ${dateStr}`
+                            `The King blesses her subjects in two days! at ${location}, ${dateStr}`,
+                            { action: 'openBooking', actionId: booking.id }
                         );
                     }
                 }
@@ -8984,7 +9046,8 @@ function showLoginForm(options = {}) {
                     if (shouldSendReminder(key, 24 * 60 * 60 * 1000)) {
                         sendLocalNotification(
                             'Show Today',
-                            `The King blesses her subjects today! at ${location}`
+                            `The King blesses her subjects today! at ${location}`,
+                            { action: 'openBooking', actionId: booking.id }
                         );
                     }
                 }
@@ -9001,7 +9064,8 @@ function showLoginForm(options = {}) {
                         const contact = booking.contact || booking.event || booking.artist || 'Contact';
                         sendLocalNotification(
                             'Pending Balance',
-                            `Towola ndongo! ${contact} owes UGX ${balanceValue.toLocaleString()}`
+                            `Towola ndongo! ${contact} owes UGX ${balanceValue.toLocaleString()}`,
+                            { action: 'openBooking', actionId: booking.id }
                         );
                     }
                 }
@@ -9798,6 +9862,7 @@ function showLoginForm(options = {}) {
                 const liveCount = allBookings.filter(b => b.status === 'confirmed' && b.date === todayStr).length;
                 nudges.push({
                     type: 'info', icon: 'ph-moon', id: 'nudge-midnight',
+                    action: 'showSection', actionId: 'schedule',
                     text: liveCount > 0
                         ? `The night is young. ${liveCount} artist${liveCount > 1 ? 's are' : ' is'} currently live.`
                         : `The night is young. Keep building.`
@@ -9840,6 +9905,7 @@ function showLoginForm(options = {}) {
                 const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
                 nudges.push({
                     type: 'success', icon: 'ph-fire', id: 'nudge-momentum',
+                    action: 'showSection', actionId: 'artists',
                     text: `${recent.length}-booking streak in 3 months! Your busiest artist: ${top[0]}.`
                 });
             }
@@ -9977,6 +10043,8 @@ function showLoginForm(options = {}) {
                 openBBFModal();
             }
         }
+
+        window.SPNudgeAction = handleNudgeFollowUp;
 
         if (!window.__spNudgeFollowUpBound) {
             window.__spNudgeFollowUpBound = true;

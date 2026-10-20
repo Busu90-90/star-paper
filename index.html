@@ -6,7 +6,7 @@
     <meta name="star-paper:public-root" content="app-shell">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:;">
     <title>Star Paper</title>
-    <script src="app.browser-assets.js?v=36"></script>
+    <script src="app.browser-assets.js?v=37"></script>
     <script src="app.public-pages.js?v=2"></script>
     <script src="app.boot-head.js?v=2"></script>
     <link rel="manifest" href="manifest.json?v=27">
@@ -32,7 +32,7 @@
     <link rel="stylesheet" href="sp-design-tokens.css?v=5">
     <link rel="stylesheet" href="styles.landing.css?v=20">
     <link rel="stylesheet" href="styles.brand.css?v=1">
-    <link rel="stylesheet" href="styles.app.css?v=15">
+    <link rel="stylesheet" href="styles.app.css?v=16">
     <link rel="preload" href="assets/vendor/fonts/font-29-fraunces-latin-opsz-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="assets/vendor/fonts/font-31-inter-tight-latin-wght-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <!-- Vendored Phosphor Icons 2.1.1 - unified icon system -->
@@ -551,8 +551,8 @@
             <button class="bottom-nav-item" type="button" data-action="showSection" data-section="money" aria-label="Money">
                 <i class="ph ph-wallet" aria-hidden="true"></i><span>Money</span>
             </button>
-            <button class="bottom-nav-item" type="button" data-action="showSection" data-section="artists" aria-label="Artists">
-                <i class="ph ph-microphone-stage" aria-hidden="true"></i><span>Artists</span>
+            <button class="bottom-nav-item" type="button" data-action="showSection" data-section="crew" aria-label="Chat">
+                <i class="ph ph-chats-circle" aria-hidden="true"></i><span>Chat</span><span class="nav-badge bottom-nav-badge" id="crewBadgeBottom" hidden>0</span>
             </button>
         </nav>
 
@@ -617,7 +617,7 @@
             <div class="acct-list">
                 <button type="button" class="acct-row" data-action="openProfileModal"><i class="ph ph-user-circle" aria-hidden="true"></i><span>Edit profile</span><i class="ph ph-caret-right acct-row__go" aria-hidden="true"></i></button>
                 <button type="button" class="acct-row" data-sp-team><i class="ph ph-users-three" aria-hidden="true"></i><span>Team</span><i class="ph ph-caret-right acct-row__go" aria-hidden="true"></i></button>
-                <button type="button" class="acct-row" data-action="showSection" data-section="crew"><i class="ph ph-chats-circle" aria-hidden="true"></i><span>Crew chat</span><span class="nav-badge" id="crewBadgeSheet" hidden>0</span><i class="ph ph-caret-right acct-row__go" aria-hidden="true"></i></button>
+                <button type="button" class="acct-row" data-action="showSection" data-section="artists"><i class="ph ph-microphone-stage" aria-hidden="true"></i><span>Artists</span><i class="ph ph-caret-right acct-row__go" aria-hidden="true"></i></button>
                 <button type="button" class="acct-row" data-action="showSection" data-section="tasks"><i class="ph ph-check-square" aria-hidden="true"></i><span>Tasks</span><i class="ph ph-caret-right acct-row__go" aria-hidden="true"></i></button>
                 <button type="button" class="acct-row" data-action="showSection" data-section="settings"><i class="ph ph-gear-six" aria-hidden="true"></i><span>Settings</span><i class="ph ph-caret-right acct-row__go" aria-hidden="true"></i></button>
                 <button type="button" class="acct-row" data-sp-theme-toggle><i class="ph ph-moon-stars" aria-hidden="true"></i><span>Light / dark theme</span><i class="ph ph-swap acct-row__go" aria-hidden="true"></i></button>
@@ -1511,7 +1511,7 @@
                         </div>
                         <div class="form-group">
                             <label>Artist</label>
-                            <select id="bookingArtist">
+                            <select id="bookingArtist" data-native="always">
                                 <option value="">Select Artist</option>
                             </select>
                         </div>
@@ -2052,13 +2052,13 @@
         -->
 <script src="app.root-shell.js?v=8" defer></script>
 <script src="app.offline-cache.js?v=1"></script>
-<script src="supabase.js?v=100" defer></script>
+<script src="supabase.js?v=101" defer></script>
         <script src="app.migrations.js?v=10"></script>
         <script src="app.actions.js?v=9"></script>
         <script src="app.todayboard.js?v=3"></script>
         <script src="app.tasks.js?v=7"></script>
     <script src="app.reports.js?v=20"></script>
-<script src="app.js?v=158" defer></script>
+<script src="app.js?v=159" defer></script>
 <script src="app.charts.js?v=1" defer></script>
 <script src="app.home.js?v=3" defer></script>
 <script src="app.money.js?v=3" defer></script>
@@ -2066,10 +2066,11 @@
 <script src="app.finance-ui.js?v=1" defer></script>
 <script src="app.artists.js?v=1" defer></script>
 <script src="app.schedule.js?v=1" defer></script>
-<script src="app.crew.js?v=1" defer></script>
+<script src="app.crew.js?v=2" defer></script>
+<script src="app.pickers.js?v=1" defer></script>
 <script src="app.landing.js?v=4" defer></script>
 <script src="app.landing-lights.js?v=4" defer></script>
-<script src="app.chrome.js?v=1" defer></script>
+<script src="app.chrome.js?v=2" defer></script>
 
     <!-- Premium toast stack -->
     <div class="sp-toast-stack" id="spToastStack" aria-live="polite" aria-atomic="false"></div>

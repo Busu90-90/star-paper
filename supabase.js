@@ -1676,6 +1676,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     try { if (typeof window.renderExpenses === 'function') window.renderExpenses(); } catch (err) { warn(`renderExpenses failed (${reason}):`, err); }
     try { if (typeof window.renderOtherIncome === 'function') window.renderOtherIncome(); } catch (err) { warn(`renderOtherIncome failed (${reason}):`, err); }
     try { if (typeof window.renderArtists === 'function') window.renderArtists(); } catch (err) { warn(`renderArtists failed (${reason}):`, err); }
+    // Artist pickers (bookings, expenses, income) are filled from the same list.
+    try { if (typeof window.populateArtistDropdown === 'function') window.populateArtistDropdown(); } catch (err) { warn(`populateArtistDropdown failed (${reason}):`, err); }
     try { if (typeof window.renderTasks === 'function') window.renderTasks(); } catch (err) { warn(`renderTasks failed (${reason}):`, err); }
     try { if (typeof window.renderAudienceMetrics === 'function') window.renderAudienceMetrics(); } catch (err) { warn(`renderAudienceMetrics failed (${reason}):`, err); }
     try { if (typeof window.updateDashboard === 'function') window.updateDashboard(); } catch (err) { warn(`updateDashboard failed (${reason}):`, err); }
