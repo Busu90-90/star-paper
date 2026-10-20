@@ -63,7 +63,7 @@
   }
 
   // ── Notifications: today's nudges + messages received this session ──────────
-  var feed = [];          // { id, kind, icon, text, at }
+  var feed = [];          // { id, kind, icon, text, action, actionId }
   var seen = {};
   try { seen = JSON.parse(sessionStorage.getItem('sp_seen_notifications') || '{}') || {}; } catch (_e) { seen = {}; }
 
@@ -87,7 +87,21 @@
       var tx = document.createElement('p');
       tx.className = 'nt-item__text';
       tx.textContent = item.text;
-      li.append(ic, tx);
+      if (item.action) {
+        // The whole card is the link to the page the notification is about.
+        var go = document.createElement('button');
+        go.type = 'button';
+        go.className = 'nt-item__go';
+        go.setAttribute('data-nt-open', String(feed.indexOf(item)));
+        var arrow = document.createElement('i');
+        arrow.className = 'ph ph-caret-right nt-item__arrow';
+        arrow.setAttribute('aria-hidden', 'true');
+        go.append(ic, tx, arrow);
+        li.classList.add('nt-item--link');
+        li.appendChild(go);
+      } else {
+        li.append(ic, tx);
+      }
       list.appendChild(li);
     });
     if (empty) empty.hidden = feed.length > 0;
@@ -110,7 +124,7 @@
     var nudges = (e.detail && e.detail.nudges) || [];
     var messages = feed.filter(function (f) { return f.kind === 'message'; });
     feed = messages.concat(nudges.map(function (n) {
-      return { id: n.id + ':' + n.text, kind: n.type || 'info', icon: n.icon, text: n.text };
+      return { id: n.id + ':' + n.text, kind: n.type || 'info', icon: n.icon, text: n.text, action: n.action || '', actionId: n.actionId || '' };
     }));
     renderFeed();
   });
@@ -118,15 +132,34 @@
   document.addEventListener('sp:notify', function (e) {
     var d = e.detail || {};
     if (!d.text) return;
-    feed.unshift({ id: 'msg:' + Date.now() + ':' + feed.length, kind: d.kind || 'info', text: d.text });
+    feed.unshift({ id: 'msg:' + Date.now() + ':' + feed.length, kind: d.kind || 'info', text: d.text, action: d.action || '', actionId: d.actionId || '' });
     renderFeed();
   });
+
+  function openNotification(item) {
+    if (!item || !item.action) return;
+    close(true);
+    if (item.action === 'openChat') {
+      if (window.SPCrew && typeof window.SPCrew.openConversation === 'function') window.SPCrew.openConversation(item.actionId);
+      else if (typeof window.showSection === 'function') window.showSection('crew');
+      return;
+    }
+    if (typeof window.SPNudgeAction === 'function') window.SPNudgeAction(item.action, item.actionId);
+    else if (item.action === 'showSection' && typeof window.showSection === 'function') window.showSection(item.actionId);
+  }
 
   // ── Clicks ────────────────────────────────────────────────────────────────
   // Capture phase: some app handlers stop propagation (the quick-add panel).
   document.addEventListener('click', function (e) {
     var t = e.target && e.target.closest ? e.target : null;
     if (!t) return;
+
+    var ntOpen = t.closest('[data-nt-open]');
+    if (ntOpen) {
+      e.preventDefault();
+      openNotification(feed[Number(ntOpen.getAttribute('data-nt-open'))]);
+      return;
+    }
 
     var opener = t.closest('[data-sp-sheet-open]');
     if (opener) {
@@ -196,5 +229,5 @@
   }
   window.addEventListener('scroll', onScroll, { passive: true });
 
-  window.SPChrome = { openSheet: open, closeSheets: function () { close(true); } };
+  window.SPChrome = { openSheet: open, closeSheets: function () { close(true); }, openNotification: openNotification };
 })();
