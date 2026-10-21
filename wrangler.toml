@@ -1,0 +1,6 @@
+# Cloudflare Pages settings, read when Cloudflare builds the site from GitHub.
+# Build command: npm run build:cloudflare   Output folder: dist
+# See CLOUDFLARE.md for the one-time setup.
+name = "star-paper"
+compatibility_date = "2026-10-01"
+pages_build_output_dir = "dist"
