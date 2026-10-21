@@ -2,8 +2,10 @@
 // - Follow spot: the centre lamp holds still until the visitor moves, then
 //   stays locked on their cursor or thumb anywhere on the page, throwing a
 //   pool of light on the wall where it points.
-// - Disco heads: the green and blue side lamps dance on their own side of
-//   the stage with a short throw, so they never wash over the follow spot.
+// - Bee Eye heads: the side lamps throw fans of mixed-colour beamlets, pan
+//   on their own side of the stage, tilt front and back (flaring when they
+//   face the audience), and have a short throw, so they never wash over the
+//   follow spot.
 // - Cues: every hero slide has its own lighting state, with a short blackout
 //   between them.
 // - Shadows: the active headline casts a soft shadow away from the lamps.
@@ -52,6 +54,18 @@
     l: { side: 1, phase: 0 },
     r: { side: -1, phase: 2.1 }
   };
+
+  // Tilt of a Bee Eye head in degrees: mostly hanging down and nodding a
+  // little, now and then swinging round to shoot straight out at the
+  // audience (positive) or back at the wall (negative).
+  function tiltAt(name, now) {
+    var d = DISCO[name];
+    var t = now / 1000;
+    var front = Math.pow(Math.max(0, Math.sin(t * 0.42 + d.phase)), 8);
+    var back = Math.pow(Math.max(0, Math.sin(t * 0.31 + d.phase * 2.3 + 1.2)), 10);
+    var nod = 14 * Math.sin(t * 1.25 + d.phase * 1.7);
+    return clamp(nod + 90 * front - 70 * back, -80, 90);
+  }
 
   function discoAt(name, now) {
     var d = DISCO[name];
@@ -138,6 +152,14 @@
           aim: function (deg) { aims.forEach(function (dial) { dial((deg + 70) * 10); }); },
           level: function (value) { levels.forEach(function (dial) { dial(value * 100); }); }
         };
+        // Bee Eye heads also tilt front and back: the beam fan shortens
+        // towards the lens and, facing the audience, the lens flares.
+        if (key !== 'c') {
+          var flare = rig.querySelector('.lp-rig__flare--' + key);
+          var reach = makeDial(beam, [{ scale: '1 0.04' }, { scale: '1 1' }], 100);
+          var burst = makeDial(flare, [{ opacity: 0, rotate: '0deg' }, { opacity: 1, rotate: '45deg' }], 100);
+          dials[key].tilt = function (length, glare) { reach(length * 100); burst(glare * 100); };
+        }
       });
     } catch (_err) {
       return null;
@@ -389,7 +411,16 @@
       placeSpot(piv, following, lamps.c.level);
       ['l', 'c', 'r'].forEach(function (key) {
         dials[key].aim(lamps[key].aim);
-        dials[key].level(lamps[key].level);
+        if (key === 'c') {
+          dials[key].level(lamps[key].level);
+          return;
+        }
+        // Tilted front or back, less of the fan reaches the wall.
+        var tilt = tiltAt(key, now);
+        var length = Math.abs(Math.cos(tilt * Math.PI / 180));
+        var glare = tilt > 0 ? smooth(clamp((tilt - 40) / 45, 0, 1)) : 0;
+        dials[key].level(lamps[key].level * (0.35 + 0.65 * length));
+        dials[key].tilt(Math.max(0.04, length), glare * lamps[key].level);
       });
       if (shadowEl) {
         setVars(shadowEl, {
