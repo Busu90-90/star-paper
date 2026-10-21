@@ -60,7 +60,7 @@
     ]],
     ['1', ['app.offline-cache.js']],
     ['3', ['app.todayboard.js']],
-    ['46', ['app.browser-assets.js']],
+    ['47', ['app.browser-assets.js']],
     ['2', ['app.boot-head.js']],
     ['3', ['app.money.js']],
     ['4', ['app.home.js']],
@@ -70,7 +70,7 @@
     ['3', ['app.crew.js']],
     ['3', ['app.chrome.js']],
     ['2', ['app.insights.js']],
-    ['23', ['styles.landing.css']],
+    ['24', ['styles.landing.css']],
     ['2', ['assets/landing/brick-wall.webp']],
     ['1', ['styles.brand.css']],
     ['21', ['styles.app.css']],
@@ -80,7 +80,7 @@
     ['3', ['app.boot-body.js']],
     ['2', ['styles.utilities.css']],
     ['4', ['app.landing.js']],
-    ['7', ['app.landing-lights.js']],
+    ['8', ['app.landing-lights.js']],
     ['2', ['assets/vendor/fonts/star-paper-fonts.css']],
     ['5', ['sp-design-tokens.css']],
     ['2', [
@@ -111,7 +111,7 @@
     ['65', ['styles.css']],
     ['102', ['supabase.js']],
     ['161', ['app.js']],
-    ['225', ['sw.js']]
+    ['226', ['sw.js']]
   ];
 
   const assetVersions = {};
