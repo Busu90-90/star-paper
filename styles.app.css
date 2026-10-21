@@ -2938,3 +2938,153 @@ body.light-theme #spCurrencyBadge { color: var(--sp-gold-text); }
   body.sidebar--collapsed #appContainer .sidebar:hover .nav-item { height: 38px; min-height: 38px; }
   body.sidebar--collapsed #appContainer .sidebar-nav--more { margin-top: var(--sp-space-2); padding-top: var(--sp-space-2); }
 }
+
+/* ==========================================================================
+   23. Documents vault: list with countdowns, a document and its file
+       versions, the add/edit form, and the small boxes on the artist profile
+       and the booking form (app.docs.js)
+   ========================================================================== */
+#appContainer .dv { color: var(--sp-ink); }
+#appContainer :is(.dv, .dv-mini, .dv-booking) button:not(.btn-primary, .back-btn), body.light-theme #appContainer :is(.dv, .dv-mini, .dv-booking) button:not(.btn-primary, .back-btn):hover { box-shadow: none; }
+#appContainer .dv-page { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-space-4); }
+#appContainer .dv-page > * { min-width: 0; }
+#appContainer .dv-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--sp-space-3); }
+#appContainer .dv :is(h2, h3).dv-title,
+#appContainer .dv-title { margin: 0; color: var(--sp-ink); font-family: var(--sp-font-ui); font-size: var(--sp-text-lg); font-weight: 700; letter-spacing: 0; line-height: var(--sp-leading-tight); }
+#appContainer .dv-sub { margin: var(--sp-space-1) 0 0; color: var(--sp-ink-3); font-size: var(--sp-text-sm); }
+#appContainer .dv-add { display: inline-flex; align-items: center; gap: var(--sp-space-2); width: auto; margin: 0; }
+
+#appContainer .dv-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-space-3); }
+#appContainer .dv-stat { display: grid; gap: 2px; justify-items: start; min-height: var(--sp-tap); padding: var(--sp-space-3) var(--sp-space-4); border: 1px solid var(--sp-line); border-radius: var(--sp-radius-md); background: var(--sp-surface-2); color: var(--sp-ink); text-align: left; cursor: pointer; transition: border-color var(--sp-dur-1) var(--sp-ease-out), background var(--sp-dur-1) var(--sp-ease-out); }
+#appContainer .dv-stat:hover { border-color: var(--sp-line-strong); }
+#appContainer .dv-stat.is-active { border-color: var(--sp-gold); background: var(--sp-gold-soft); }
+#appContainer .dv-stat__value { font-family: var(--sp-font-money); font-size: var(--sp-text-xl); font-weight: 700; line-height: 1.1; }
+#appContainer .dv-stat.is-warn .dv-stat__value { color: var(--sp-gold-text); }
+#appContainer .dv-stat.is-bad .dv-stat__value { color: var(--sp-out); }
+#appContainer .dv-stat__label { color: var(--sp-ink-3); font-size: var(--sp-text-xs); font-weight: 600; }
+
+#appContainer .dv-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-space-2) var(--sp-space-3); }
+#appContainer .dv-chips { flex: 1 1 420px; flex-wrap: nowrap; overflow-x: auto; margin: 0; padding-bottom: 2px; scrollbar-width: none; }
+#appContainer .dv-chips .sp-chip { flex: none; }
+#appContainer .dv input.dv-search { flex: 1 1 200px; max-width: 320px; min-height: 40px; margin: 0; }
+#appContainer .dv-toggle { display: inline-flex; align-items: center; gap: var(--sp-space-2); color: var(--sp-ink-2); font-size: var(--sp-text-sm); cursor: pointer; }
+#appContainer .dv-filterbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-space-2); padding: var(--sp-space-2) var(--sp-space-3); border-radius: var(--sp-radius-md); background: var(--sp-gold-soft); color: var(--sp-gold-text); font-size: var(--sp-text-sm); font-weight: 600; }
+
+#appContainer .dv-link { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0; border: 0; background: none; color: var(--sp-gold-text); font: inherit; font-size: var(--sp-text-sm); font-weight: 600; text-align: left; cursor: pointer; }
+#appContainer .dv-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+#appContainer .dv-list { display: grid; gap: var(--sp-space-2); margin: 0; padding: 0; list-style: none; }
+#appContainer .dv-row__btn { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--sp-space-3); width: 100%; min-height: 64px; padding: var(--sp-space-3) var(--sp-space-4); border: 1px solid var(--sp-line); border-radius: var(--sp-radius-md); background: var(--sp-surface-2); color: var(--sp-ink); font: inherit; text-align: left; cursor: pointer; transition: border-color var(--sp-dur-1) var(--sp-ease-out), transform var(--sp-dur-1) var(--sp-ease-out); }
+#appContainer .dv-row__btn:hover { border-color: var(--sp-line-strong); }
+#appContainer .dv-row__btn:active { transform: scale(0.995); }
+#appContainer .dv-row.is-archived .dv-row__btn { opacity: 0.65; }
+#appContainer .dv .sp-icon-tile { margin: 0; }
+#appContainer .dv-row__icon { width: 40px; height: 40px; }
+#appContainer .dv-row__text { display: grid; gap: 2px; min-width: 0; }
+#appContainer .dv-row__title { display: flex; align-items: center; gap: 6px; overflow: hidden; color: var(--sp-ink); font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+#appContainer .dv-row__lock { flex: none; color: var(--sp-ink-3); font-size: 14px; }
+#appContainer .dv-row__meta { overflow: hidden; color: var(--sp-ink-3); font-size: var(--sp-text-xs); text-overflow: ellipsis; white-space: nowrap; }
+#appContainer .dv-row__right { display: grid; justify-items: end; gap: 4px; }
+#appContainer .dv-row__files { color: var(--sp-ink-3); font-size: 11px; }
+
+#appContainer .dv-empty { display: grid; justify-items: center; gap: var(--sp-space-2); padding: var(--sp-space-6) var(--sp-space-4); border: 1px dashed var(--sp-line-strong); border-radius: var(--sp-radius-lg); text-align: center; }
+#appContainer .dv-empty__icon { width: 48px; height: 48px; font-size: 22px; }
+#appContainer .dv-empty__title { margin: var(--sp-space-1) 0 0; color: var(--sp-ink); font-weight: 700; }
+#appContainer .dv-empty__text { max-width: 44ch; margin: 0; color: var(--sp-ink-3); font-size: var(--sp-text-sm); }
+#appContainer .dv-empty .btn-primary { width: auto; margin-top: var(--sp-space-2); }
+
+#appContainer .dv-back { display: inline-flex; align-items: center; gap: 6px; justify-self: start; min-height: 36px; padding: 0; border: 0; background: none; color: var(--sp-ink-2); font: inherit; font-size: var(--sp-text-sm); font-weight: 600; cursor: pointer; }
+#appContainer .dv-back:hover { color: var(--sp-ink); }
+#appContainer .dv-card { display: grid; gap: var(--sp-space-4); margin: 0; }
+#appContainer .dv-detail__head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--sp-space-3); }
+#appContainer .dv-detail__icon { width: 52px; height: 52px; font-size: 24px; }
+#appContainer .dv-detail__names { min-width: 0; }
+#appContainer .dv-detail__names .dv-title { overflow-wrap: anywhere; }
+#appContainer .ap-pill.dv-detail__pill { min-height: 28px; padding: 0 12px; font-size: var(--sp-text-xs); }
+#appContainer .dv-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--sp-space-3) var(--sp-space-4); margin: 0; }
+#appContainer .dv-fact { min-width: 0; }
+#appContainer .dv-fact__label { color: var(--sp-ink-3); font-size: 11px; font-weight: 600; letter-spacing: var(--sp-tracking-caps); text-transform: uppercase; }
+#appContainer .dv-fact__value { margin: 2px 0 0; color: var(--sp-ink); font-weight: 600; overflow-wrap: anywhere; }
+#appContainer .dv-fact:has(.dv-notes), #appContainer .dv-fact:has(.dv-keydates) { grid-column: 1 / -1; }
+#appContainer .dv-notes { display: block; color: var(--sp-ink-2); font-weight: 400; white-space: pre-wrap; }
+#appContainer .dv-keydates { display: grid; gap: 4px; margin: 4px 0 0; padding: 0; list-style: none; }
+#appContainer .dv-keydates li { display: flex; justify-content: space-between; gap: var(--sp-space-3); max-width: 420px; padding: 6px 10px; border-radius: var(--sp-radius-md); background: var(--sp-surface-3); font-weight: 600; }
+#appContainer .dv-keydates li.is-past { color: var(--sp-ink-3); text-decoration: line-through; }
+#appContainer .dv-keydates__on { color: var(--sp-ink-2); font-family: var(--sp-font-money); font-size: var(--sp-text-sm); }
+#appContainer .dv-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-space-2); padding-top: var(--sp-space-3); border-top: 1px solid var(--sp-line); }
+#appContainer .dv-actions :is(.back-btn, .btn-primary) { display: inline-flex; align-items: center; gap: 6px; width: auto; margin: 0; }
+#appContainer .dv-delete { color: var(--sp-out); }
+#appContainer .dv-confirm { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--sp-space-2); color: var(--sp-out); font-size: var(--sp-text-sm); font-weight: 600; }
+#appContainer .dv-danger { min-height: 40px; padding: 0 var(--sp-space-4); border: 0; border-radius: var(--sp-radius-pill); background: var(--sp-out); color: var(--sp-ivory); font: inherit; font-weight: 700; cursor: pointer; }
+
+#appContainer .dv-files__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--sp-space-2); }
+#appContainer .dv .dv-files__title { margin: 0; color: var(--sp-ink); font-family: var(--sp-font-ui); font-size: var(--sp-text-md); font-weight: 700; letter-spacing: 0; }
+#appContainer .dv-filelist { display: grid; gap: var(--sp-space-2); margin: 0; padding: 0; list-style: none; }
+#appContainer .dv-file { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--sp-space-3); padding: var(--sp-space-2) var(--sp-space-3); border: 1px solid var(--sp-line); border-radius: var(--sp-radius-md); }
+#appContainer .dv-file.is-current { border-color: var(--sp-line-strong); background: var(--sp-surface-3); }
+#appContainer .dv-file--empty { display: block; color: var(--sp-ink-3); font-size: var(--sp-text-sm); }
+#appContainer .dv-file__icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--sp-gold-soft); color: var(--sp-gold-text); font-size: 18px; }
+#appContainer .dv-file__text { display: grid; gap: 2px; min-width: 0; }
+#appContainer .dv-file__name { overflow: hidden; color: var(--sp-ink); font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+#appContainer .dv-file__meta { overflow: hidden; color: var(--sp-ink-3); font-size: var(--sp-text-xs); text-overflow: ellipsis; white-space: nowrap; }
+#appContainer .dv-file__acts { display: flex; flex-wrap: wrap; grid-column: 2 / -1; gap: 6px; }
+#appContainer .dv-chipbtn { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 12px; border: 1px solid var(--sp-line-strong); border-radius: var(--sp-radius-pill); background: var(--sp-surface-1); color: var(--sp-ink); font: inherit; font-size: var(--sp-text-xs); font-weight: 600; cursor: pointer; }
+#appContainer .dv-chipbtn:hover { border-color: var(--sp-gold); color: var(--sp-gold-text); }
+#appContainer .dv-chipbtn .ph-whatsapp-logo { color: var(--sp-in); }
+#appContainer .dv-file__remove { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--sp-ink-3); cursor: pointer; }
+#appContainer .dv-file__remove:hover { background: var(--sp-out-soft); color: var(--sp-out); }
+
+#appContainer .dv-adder { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-space-2); }
+#appContainer .dv-adder__label { display: inline-flex; align-items: center; gap: var(--sp-space-2); color: var(--sp-ink-2); font-size: var(--sp-text-sm); }
+#appContainer .dv .dv-adder__label select { width: auto; min-height: 40px; margin: 0; }
+#appContainer .dv .dv-pick { position: relative; display: inline-flex; align-items: center; gap: 6px; width: auto; margin: 0; cursor: pointer; }
+#appContainer .dv .dv-pick:focus-within { outline: 2px solid var(--sp-focus); outline-offset: 2px; }
+#appContainer .dv-pick__input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); opacity: 0; }
+#appContainer .dv-adder__status { color: var(--sp-ink-3); font-size: var(--sp-text-xs); }
+
+#appContainer .dv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--sp-space-3) var(--sp-space-4); }
+#appContainer .dv .dv-field { display: grid; gap: 6px; margin: 0; }
+#appContainer .dv-field__label { color: var(--sp-ink-2); font-size: var(--sp-text-sm); font-weight: 600; }
+#appContainer .dv-field__hint { color: var(--sp-ink-3); font-size: var(--sp-text-xs); }
+#appContainer .dv .dv-field :is(input, select, textarea) { margin: 0; }
+#appContainer .dv :is(.dv-field, .dv-kd__row) :is(input, select) { height: 44px; min-height: 44px; padding-block: 0; }
+#appContainer .dv-kd > .dv-link, #appContainer .dv-mini__foot .dv-link { justify-self: start; }
+#appContainer .dv-adder__label { white-space: nowrap; }
+#appContainer .dv-kd { display: grid; gap: var(--sp-space-2); margin: 0; padding: 0; border: 0; }
+#appContainer .dv-kd__row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(130px, 170px) auto; align-items: center; gap: var(--sp-space-2); }
+#appContainer .dv .dv-kd__row input { margin: 0; }
+#appContainer .dv-sensitive { align-items: flex-start; padding: var(--sp-space-3); border: 1px solid var(--sp-line); border-radius: var(--sp-radius-md); background: var(--sp-surface-3); }
+#appContainer .dv-sensitive input { flex: none; margin-top: 2px; }
+#appContainer .dv-sensitive strong { color: var(--sp-ink); }
+#appContainer .dv-formfiles { display: grid; gap: var(--sp-space-2); }
+#appContainer .dv-pending { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--sp-space-3); padding: var(--sp-space-3); border: 1px solid var(--sp-line); border-radius: var(--sp-radius-md); }
+#appContainer .dv-pending__img { display: block; width: 72px; height: 96px; border-radius: 8px; background: var(--sp-surface-3); object-fit: cover; }
+#appContainer .dv-pending__text { display: grid; gap: 2px; min-width: 0; }
+#appContainer .dv-pending__actions { display: flex; flex-wrap: wrap; gap: var(--sp-space-3); }
+
+/* The artist profile and the booking form show a short list. */
+#appContainer .ap-detail__docs { grid-column: 1 / -1; }
+#appContainer .dv-mini__list { display: grid; gap: 4px; margin: var(--sp-space-2) 0 0; padding: 0; list-style: none; }
+#appContainer .dv-mini__btn { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--sp-space-2); width: 100%; min-height: 40px; padding: 6px var(--sp-space-3); border: 1px solid var(--sp-line); border-radius: var(--sp-radius-md); background: var(--sp-surface-1); color: var(--sp-ink); font: inherit; font-size: var(--sp-text-sm); text-align: left; cursor: pointer; }
+#appContainer .dv-mini__btn:hover { border-color: var(--sp-line-strong); }
+#appContainer .dv-mini__btn > .ph { color: var(--sp-gold-text); }
+#appContainer .dv-mini__title { display: flex; align-items: center; gap: 6px; overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+#appContainer .dv-mini__foot { display: flex; flex-wrap: wrap; gap: var(--sp-space-4); margin-top: var(--sp-space-1); }
+
+@media (max-width: 599px) {
+  #appContainer .dv-stats { gap: var(--sp-space-2); }
+  #appContainer .dv-stat { padding: var(--sp-space-2) var(--sp-space-3); }
+  #appContainer .dv-stat__value { font-size: var(--sp-text-lg); }
+  #appContainer .dv-stat__label { font-size: 11px; }
+  #appContainer .dv input.dv-search { max-width: none; }
+  #appContainer .dv-row__btn { grid-template-columns: auto minmax(0, 1fr); padding: var(--sp-space-3); }
+  #appContainer .dv-row__right { grid-column: 2; grid-auto-flow: column; justify-content: start; align-items: center; gap: var(--sp-space-2); }
+  #appContainer .dv-detail__head { grid-template-columns: auto minmax(0, 1fr); }
+  #appContainer .dv-detail__pill { grid-column: 1 / -1; justify-self: start; }
+  #appContainer .dv-file__acts { grid-column: 1 / -1; }
+  #appContainer .dv-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #appContainer .dv-kd__row { grid-template-columns: minmax(0, 1fr) auto; }
+  #appContainer .dv-kd__row input[type="date"] { grid-column: 1; }
+  #appContainer .dv-kd__row .dv-file__remove { grid-row: 1 / span 2; grid-column: 2; }
+  #appContainer .dv-add { width: 100%; justify-content: center; }
+}
