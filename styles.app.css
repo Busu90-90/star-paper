@@ -570,7 +570,7 @@ body.light-theme #appContainer .bottom-nav { background: color-mix(in srgb, var(
   transition: color var(--sp-dur-2), transform var(--sp-dur-1);
 }
 #appContainer .bottom-nav-item .ph { font-size: 22px; transition: transform var(--sp-dur-2) var(--sp-ease-out); }
-#appContainer .bottom-nav-item span { color: inherit; text-transform: none; letter-spacing: 0.01em; }
+#appContainer .bottom-nav-item span { color: inherit; font-size: 11px; text-transform: none; letter-spacing: 0.01em; }
 #appContainer .bottom-nav-item:active { transform: scale(0.94); }
 #appContainer .bottom-nav-item { position: relative; }
 #appContainer .bottom-nav-item .bottom-nav-badge { position: absolute; top: 4px; left: calc(50% + 6px); min-width: 16px; height: 16px; padding: 0 4px; color: var(--sp-ink-on-gold); font-size: 10px; letter-spacing: 0; }
@@ -1391,7 +1391,7 @@ canvas.is-pin-hover { cursor: pointer; }
 #appContainer #dashboard .hv2-goal__line { display: flex; justify-content: space-between; gap: var(--sp-space-2); margin: 0 0 var(--sp-space-1); color: var(--sp-ink-3); font-size: var(--sp-text-xs); }
 #appContainer #dashboard .hv2-goal__line .money { color: var(--sp-ink-2); font-size: var(--sp-text-xs); white-space: nowrap; }
 #appContainer #dashboard .hv2-goal__togo { margin: var(--sp-space-2) 0 0; color: var(--sp-ink); font-weight: 600; }
-#appContainer #dashboard .hv2-goal.is-unset :is(.hv2-goal__line, .hv2-goal__pct) { opacity: 0.45; }
+#appContainer #dashboard .hv2-goal.is-unset .hv2-goal__pct { opacity: 0.45; }
 #appContainer #dashboard .hv2-goal .monthly-goal-editor:not([hidden]) { display: flex; flex-wrap: wrap; gap: var(--sp-space-2); margin-top: var(--sp-space-3); }
 #appContainer #dashboard .hv2-goal .monthly-goal-editor input { flex: 1 1 140px; min-width: 0; }
 
@@ -1613,7 +1613,7 @@ canvas.is-pin-hover { cursor: pointer; }
 #appContainer #money .card h3.mv-title, #appContainer #money .mv-title { margin: 0; color: var(--sp-ink); font-family: var(--sp-font-ui); font-size: var(--sp-text-md); font-weight: 700; letter-spacing: 0; }
 #appContainer #money .mv-label { color: var(--sp-ink-3); font-size: 11px; font-weight: 600; letter-spacing: var(--sp-tracking-caps); text-transform: uppercase; }
 #appContainer #money .mv-sub { margin: var(--sp-space-1) 0 0; color: var(--sp-ink-3); font-size: var(--sp-text-xs); }
-#appContainer #money .mv-note { margin: var(--sp-space-3) 0 0; color: var(--sp-ink-2); font-size: var(--sp-text-sm); line-height: var(--sp-leading-snug); }
+#appContainer #money .mv-note { margin: var(--sp-space-3) 0 0; color: var(--sp-ink-2); font-size: var(--sp-text-sm); line-height: 1.45; }
 #appContainer #money .mv-note.is-bad { color: var(--sp-out); }
 #appContainer #money .mv-empty { margin: 0; padding: var(--sp-space-6) var(--sp-space-3); border: 1px dashed var(--sp-line); border-radius: var(--sp-radius-md); color: var(--sp-ink-3); text-align: center; list-style: none; }
 #appContainer #money :is(.mv-delta, .mv-tile__sub) { display: block; margin-top: var(--sp-space-1); color: var(--sp-ink-3); font-size: var(--sp-text-xs); font-weight: 600; }
@@ -1921,6 +1921,7 @@ canvas.is-pin-hover { cursor: pointer; }
   grid-area: goal;
   margin-top: var(--sp-space-1);
   color: var(--sp-ink-3);
+  opacity: 1;
 }
 #appContainer #artists .artist-contact {
   grid-area: contact;
@@ -2351,7 +2352,7 @@ body.light-theme #appContainer .spc-grad--area .spc-s0 { stop-opacity: 0.24; }
 #appContainer .card :is(h3.ap-title, h3.sc-title, h3.tk-title), #appContainer :is(.ap-title, .sc-title, .tk-title) { display: inline-flex; align-items: center; gap: var(--sp-space-2); margin: 0; color: var(--sp-ink); font-family: var(--sp-font-ui); font-size: var(--sp-text-md); font-weight: 700; letter-spacing: 0; }
 #appContainer :is(.ap-sub, .sc-sub, .tk-sub) { margin: var(--sp-space-1) 0 0; color: var(--sp-ink-3); font-size: var(--sp-text-xs); }
 #appContainer :is(.ap-label, .sc-label) { display: block; color: var(--sp-ink-3); font-size: 11px; font-weight: 600; letter-spacing: var(--sp-tracking-caps); text-transform: uppercase; }
-#appContainer :is(.ap-note, .sc-note) { margin: var(--sp-space-3) 0 0; color: var(--sp-ink-2); font-size: var(--sp-text-sm); line-height: var(--sp-leading-snug); }
+#appContainer :is(.ap-note, .sc-note) { margin: var(--sp-space-3) 0 0; color: var(--sp-ink-2); font-size: var(--sp-text-sm); line-height: 1.45; }
 #appContainer .ap-empty { margin: 0; padding: var(--sp-space-5) var(--sp-space-3); color: var(--sp-ink-3); text-align: center; }
 
 /* Filter chips above lists (bookings, tasks) */
@@ -2550,7 +2551,7 @@ body.light-theme #appContainer .cr :is(.cr-side, .cr-main) { background-color: v
 #appContainer .cr-convo__date { display: grid; flex: none; place-items: center; align-content: center; width: 32px; height: 36px; border-radius: var(--sp-radius-md); background: var(--sp-gold-soft); color: var(--sp-gold-text); line-height: 1; }
 #appContainer .cr-convo__date.is-past { background: var(--sp-surface-3); color: var(--sp-ink-3); }
 #appContainer .cr-convo__day { font-size: 14px; font-weight: 700; }
-#appContainer .cr-convo__mon { font-size: 9px; font-weight: 600; letter-spacing: var(--sp-tracking-caps); text-transform: uppercase; }
+#appContainer .cr-convo__mon { font-size: 11px; font-weight: 600; letter-spacing: var(--sp-tracking-caps); text-transform: uppercase; }
 #appContainer .cr-convo__text { display: grid; flex: 1; gap: 2px; min-width: 0; }
 #appContainer :is(.cr-convo__top, .cr-convo__bottom) { display: flex; align-items: center; gap: var(--sp-space-2); min-width: 0; }
 #appContainer .cr-convo__name { overflow: hidden; flex: 1; color: var(--sp-ink); font-size: var(--sp-text-sm); font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
@@ -2754,3 +2755,16 @@ body.light-theme .sp-emoji__search { background: var(--sp-surface-2); }
 .sp-emoji .sp-emoji__ch:hover, .sp-emoji .sp-emoji__ch:focus-visible { box-shadow: none; background: var(--sp-gold-soft); transform: scale(1.12); outline: none; }
 .sp-emoji__none { margin: var(--sp-space-4) 0; color: var(--sp-ink-3); font-size: var(--sp-text-sm); text-align: center; }
 @media (prefers-reduced-motion: reduce) { .sp-emoji, .sp-emoji__ch, .ap__caret { transition: none; } }
+
+/* Readability pass (Impeccable check, Oct 2026).
+   Gold-tinted surfaces dim --sp-ink-3 below 4.5:1, so hints on them use ink-2. */
+#appContainer :is(.ap-spot, .cr-convo.is-active, .cr-msg.is-mention) { --sp-ink-3: var(--sp-ink-2); }
+/* Red count badges: dark ink only reads on the light coral of the night theme. */
+body.light-theme #appContainer :is(.nav-badge, .bottom-nav-item .bottom-nav-badge) { color: var(--sp-ivory); }
+body.light-theme #spCurrencyBadge { color: var(--sp-gold-text); }
+/* The globe is always a night stage, so its panels keep light ink in the Sage theme too. */
+#appContainer .sp-global-schedule__detail h3 { color: var(--sp-ivory); }
+#appContainer .sp-global-schedule__detail .sp-global-detail__sub { color: color-mix(in srgb, var(--sp-ivory) 84%, transparent); }
+#appContainer .sp-global-money small { color: color-mix(in srgb, var(--sp-ivory) 66%, transparent); }
+/* Globe labels were 10px; 11px is the floor for text people act on. */
+#appContainer :is(.sp-global-stop__date, .sp-global-stop__sub, .sp-global-approx, .sp-global-money small, .sp-global-money > span, .sp-global-sheet__kicker, .sp-global-sheet__chip, .sp-global-tool span, .sp-global-detail__kicker) { font-size: 11px; }
