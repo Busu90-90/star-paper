@@ -1388,7 +1388,7 @@ canvas.is-pin-hover { cursor: pointer; }
 #appContainer #dashboard .hv2-goal__center { grid-row: 1; grid-column: 1; display: grid; place-items: center; }
 #appContainer #dashboard .hv2-goal__pct { color: var(--sp-ink); font-family: var(--sp-font-money); font-size: var(--sp-text-xl); font-weight: 700; }
 #appContainer #dashboard .hv2-goal__meta { grid-row: 1; grid-column: 2; min-width: 0; }
-#appContainer #dashboard .hv2-goal__line { display: flex; justify-content: space-between; gap: var(--sp-space-2); margin: 0 0 var(--sp-space-1); color: var(--sp-ink-3); font-size: var(--sp-text-xs); }
+#appContainer #dashboard .hv2-goal__line { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--sp-space-2); margin: 0 0 var(--sp-space-1); color: var(--sp-ink-3); font-size: var(--sp-text-xs); }
 #appContainer #dashboard .hv2-goal__line .money { color: var(--sp-ink-2); font-size: var(--sp-text-xs); white-space: nowrap; }
 #appContainer #dashboard .hv2-goal__togo { margin: var(--sp-space-2) 0 0; color: var(--sp-ink); font-weight: 600; }
 #appContainer #dashboard .hv2-goal.is-unset .hv2-goal__pct { opacity: 0.45; }
@@ -2768,3 +2768,5 @@ body.light-theme #spCurrencyBadge { color: var(--sp-gold-text); }
 #appContainer .sp-global-money small { color: color-mix(in srgb, var(--sp-ivory) 66%, transparent); }
 /* Globe labels were 10px; 11px is the floor for text people act on. */
 #appContainer :is(.sp-global-stop__date, .sp-global-stop__sub, .sp-global-approx, .sp-global-money small, .sp-global-money > span, .sp-global-sheet__kicker, .sp-global-sheet__chip, .sp-global-tool span, .sp-global-detail__kicker) { font-size: 11px; }
+/* Home's hero already greets by name, so the top bar line would repeat it. */
+#appContainer:has(#dashboard.active) .topbar__greet { display: none; }

@@ -1324,7 +1324,7 @@ function getSectionIconMarkup(iconKey) {
             }
             const hour = new Date().getHours();
             const part = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-            userNameEl.textContent = `${part}, ${displayName.split(/\s+/)[0]}`;
+            userNameEl.textContent = `${part}, ${displayName}`;
             userNameEl.hidden = false;
         }
 
