@@ -826,11 +826,14 @@ assert(!/if\s*\(!isBootTransitionCurrentSafe\(flowId\)\s*\|\|\s*window\.__spAppB
 const logoutSource = sourceSlice(supabase, 'window.logout = async function supabaseLogout()', '    // Lightweight fallback', 'supabase.js logout');
 assertOrderedSnippets(logoutSource, [
   'localStorage.setItem(\'sp_logged_out\', \'1\');',
-  'await withTimeout(() => db.auth.signOut({ scope: \'local\' }), 800, \'logout-signOut\');',
+  'const localSignOut = db.auth.signOut({ scope: \'local\' }).catch(() => null);',
+  'await withTimeout(() => localSignOut, 800, \'logout-signOut\');',
   'clearSupabaseAuthArtifacts({ clearAppSession: false });',
   'localStorage.setItem(\'sp_logged_out\', \'1\');',
   'showLandingScreen({ keepLoader: true, flowId, reason: \'logout-complete\', minDelayMs: 350 });',
 ], 'supabaseLogout explicit-logout sequence');
+assert(logoutSource.includes('_pendingSignOut = pending;') && logoutSource.includes('Promise.allSettled(signOutCalls).then(() => releaseSignOut());'), 'supabaseLogout must expose its in-flight sign-out calls so a quick re-login does not lose its PKCE verifier');
+assert((supabase.match(/await settlePendingSignOut\(\);/g) || []).length >= 3, 'Google, password and sign-up sign-ins must wait for a running logout before starting');
 
 const initialSessionSource = sourceSlice(supabase, 'async function bootstrapInitialSession(options = {})', 'async function bootstrapFromStoredSession()', 'supabase.js bootstrapInitialSession');
 assertOrderedSnippets(initialSessionSource, [

@@ -60,7 +60,7 @@
     ]],
     ['1', ['app.offline-cache.js']],
     ['3', ['app.todayboard.js']],
-    ['41', ['app.browser-assets.js']],
+    ['42', ['app.browser-assets.js']],
     ['2', ['app.boot-head.js']],
     ['3', ['app.money.js']],
     ['4', ['app.home.js']],
@@ -108,9 +108,9 @@
     ['21', ['app.reports.js']],
     ['27', ['manifest.json']],
     ['65', ['styles.css']],
-    ['101', ['supabase.js']],
+    ['102', ['supabase.js']],
     ['161', ['app.js']],
-    ['220', ['sw.js']]
+    ['221', ['sw.js']]
   ];
 
   const assetVersions = {};
