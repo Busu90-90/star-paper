@@ -60,7 +60,7 @@
     ]],
     ['1', ['app.offline-cache.js']],
     ['3', ['app.todayboard.js']],
-    ['52', ['app.browser-assets.js']],
+    ['53', ['app.browser-assets.js']],
     ['2', ['app.boot-head.js']],
     ['3', ['app.money.js']],
     ['4', ['app.home.js']],
@@ -82,7 +82,7 @@
     ['3', ['app.boot-body.js']],
     ['2', ['styles.utilities.css']],
     ['4', ['app.landing.js']],
-    ['10', ['app.landing-lights.js']],
+    ['11', ['app.landing-lights.js']],
     ['2', ['assets/vendor/fonts/star-paper-fonts.css']],
     ['5', ['sp-design-tokens.css']],
     ['2', [
@@ -113,7 +113,7 @@
     ['65', ['styles.css']],
     ['102', ['supabase.js']],
     ['163', ['app.js']],
-    ['231', ['sw.js']]
+    ['232', ['sw.js']]
   ];
 
   const assetVersions = {};
