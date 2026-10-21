@@ -2770,3 +2770,21 @@ body.light-theme #spCurrencyBadge { color: var(--sp-gold-text); }
 #appContainer :is(.sp-global-stop__date, .sp-global-stop__sub, .sp-global-approx, .sp-global-money small, .sp-global-money > span, .sp-global-sheet__kicker, .sp-global-sheet__chip, .sp-global-tool span, .sp-global-detail__kicker) { font-size: 11px; }
 /* Home's hero already greets by name, so the top bar line would repeat it. */
 #appContainer:has(#dashboard.active) .topbar__greet { display: none; }
+
+/* Short desktop windows (a laptop at 150% zoom is ~560px tall): tighten the
+   sidebar so the account card stays inside it, and let the links scroll as a
+   last resort instead of pushing the card off the bottom. */
+@media (min-width: 1024px) and (max-height: 760px) {
+  #appContainer .sidebar { padding-block: var(--sp-space-3); }
+  #appContainer .sb-brand { padding-bottom: var(--sp-space-2); margin-bottom: var(--sp-space-1); }
+  #appContainer .sidebar .nav-item { min-height: 36px; }
+  #appContainer .sb-group-label { margin-top: var(--sp-space-2); margin-bottom: var(--sp-space-1); }
+  #appContainer .sb-foot { flex-shrink: 0; padding-top: var(--sp-space-2); }
+  body:not(.sidebar--collapsed) #appContainer .sidebar { overflow-y: auto; scrollbar-width: none; }
+  body.sidebar--collapsed #appContainer .sidebar,
+  body.sidebar--collapsed #appContainer .sidebar:hover { padding-block: var(--sp-space-3); }
+  body.sidebar--collapsed #appContainer .sb-brand { gap: var(--sp-space-2); }
+  body.sidebar--collapsed #appContainer .nav-item,
+  body.sidebar--collapsed #appContainer .sidebar:hover .nav-item { height: 38px; min-height: 38px; }
+  body.sidebar--collapsed #appContainer .sidebar-nav--more { margin-top: var(--sp-space-2); padding-top: var(--sp-space-2); }
+}

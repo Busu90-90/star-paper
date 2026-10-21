@@ -70,7 +70,7 @@
     ['20', ['styles.landing.css']],
     ['2', ['assets/landing/brick-wall.webp']],
     ['1', ['styles.brand.css']],
-    ['18', ['styles.app.css']],
+    ['19', ['styles.app.css']],
     ['8', ['app.root-shell.js']],
     ['2', ['app.public-pages.js']],
     ['4', ['app.boot-flags.js']],
