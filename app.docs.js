@@ -704,6 +704,20 @@
         return { x: Math.round(x0), y: Math.round(y0), w: Math.round(x1 - x0), h: Math.round(y1 - y0) };
     }
 
+    // The camera app can take a while; if the page redraws meanwhile the
+    // input is detached and a document-level listener never hears it, so
+    // each picker listens for itself.
+    function watchPick(input) {
+        input.addEventListener('change', () => {
+            const file = input.files && input.files[0];
+            if (!file) return;
+            const target = input.getAttribute('data-dv-pick');
+            if (target === 'form' && document.getElementById('dvTitle')) readForm();
+            pickFile(file, target);
+            input.value = '';
+        });
+    }
+
     function clearPending() {
         if (state.pending?.url) URL.revokeObjectURL(state.pending.url);
         state.pending = null;
@@ -712,12 +726,13 @@
     async function pickFile(file, target) {
         if (!file) return;
         clearPending();
-        const isImage = /^image\//.test(file.type);
-        const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+        // Some phone cameras hand back a photo with no type, so the name counts too.
+        const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
+        const isImage = !isPdf && (/^image\//.test(file.type) || /\.(jpe?g|png|webp|hei[cf])$/i.test(file.name || '') || !file.type || file.type === 'application/octet-stream');
         if (!isImage && !isPdf) { toast('warn', 'Only PDFs and photos can be stored.'); return; }
-        state.pending = { file, name: file.name || 'document', mime: isPdf ? 'application/pdf' : file.type, blob: file, crop: true, cropped: false, target, working: isImage };
+        state.pending = { file, name: file.name || (isPdf ? 'document.pdf' : 'photo.jpg'), mime: isPdf ? 'application/pdf' : (/^image\//.test(file.type) ? file.type : ''), blob: file, crop: true, cropped: false, target, working: isImage };
         render();
-        if (isImage && !/hei[cf]/i.test(file.type)) await reprocess();
+        if (isImage) await reprocess();
         if (target === 'detail') {
             const doc = docById(state.openId);
             if (doc && state.pending?.blob) {
@@ -734,9 +749,16 @@
         if (!p?.file) return;
         p.working = true;
         render();
-        const out = await preparePhoto(p.file, p.crop);
+        let out = null;
+        try { out = await preparePhoto(p.file, p.crop); } catch (_) { out = null; }
         if (state.pending !== p) return;
         p.working = false;
+        if (!out && !/^image\/(jpeg|png|webp|heic|heif)$/.test(p.mime)) {
+            clearPending();
+            toast('warn', 'That photo could not be read. Try again or choose it from your gallery.');
+            render();
+            return;
+        }
         if (out) {
             p.blob = out.blob;
             p.cropped = out.cropped;
@@ -760,6 +782,13 @@
         if (root && document.getElementById('documents')?.classList.contains('active')) {
             root.scrollIntoView({ block: 'start' });
         }
+    }
+
+    // Quick add: straight to a blank form, or the list when this role can't add.
+    function newDocument() {
+        sync();
+        if (!canEdit()) { go('list'); toast('warn', 'Your role can view documents but not add them.'); return; }
+        startForm(null, {});
     }
 
     function startForm(doc, preset) {
@@ -1107,6 +1136,7 @@
         camInput.setAttribute('capture', 'environment');
         camInput.setAttribute('data-dv-pick', target);
         camInput.disabled = busy;
+        watchPick(camInput);
         camera.appendChild(camInput);
         const choose = el('label', 'back-btn dv-pick');
         choose.appendChild(icon('ph-paperclip'));
@@ -1116,6 +1146,7 @@
         fileInput.accept = FILE_TYPES;
         fileInput.setAttribute('data-dv-pick', target);
         fileInput.disabled = busy;
+        watchPick(fileInput);
         choose.appendChild(fileInput);
         box.append(camera, choose);
         if (busy) box.appendChild(el('span', 'dv-adder__status', state.busy === 'upload' ? 'Uploading…' : 'Preparing photo…'));
@@ -1476,13 +1507,6 @@
             $('dvKind')?.focus();
             return;
         }
-        const pick = t.closest?.('[data-dv-pick]');
-        if (pick && t.files && t.files[0]) {
-            const target = pick.getAttribute('data-dv-pick');
-            if (target === 'form') readForm();
-            pickFile(t.files[0], target);
-            t.value = '';
-        }
     });
 
     // ── Public API ───────────────────────────────────────────────────────
@@ -1521,6 +1545,7 @@
         alerts,
         openDocument,
         openForArtist,
+        newDocument,
         artistBlock,
         showForBooking,
         hideForBooking,
