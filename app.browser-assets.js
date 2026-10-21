@@ -60,10 +60,11 @@
     ]],
     ['1', ['app.offline-cache.js']],
     ['3', ['app.todayboard.js']],
-    ['39', ['app.browser-assets.js']],
+    ['40', ['app.browser-assets.js']],
     ['2', ['app.boot-head.js']],
     ['3', ['app.money.js']],
     ['4', ['app.home.js']],
+    ['1', ['assets/fonts/pdf/checks.ttf', 'assets/fonts/pdf/inter-400.ttf', 'assets/fonts/pdf/inter-600.ttf', 'assets/fonts/pdf/mono-500.ttf', 'assets/fonts/pdf/mono-700.ttf']],
     ['1', ['assets/fonts/checks.woff2', 'app.charts.js', 'app.finance-ui.js', 'app.artists.js', 'app.schedule.js', 'app.pickers.js']],
     ['2', ['app.crew.js', 'app.chrome.js']],
     ['2', ['app.insights.js']],
@@ -103,11 +104,11 @@
     ['9', ['app.actions.js']],
     ['10', ['app.migrations.js']],
     ['15', ['app.globe.js']],
-    ['20', ['app.reports.js']],
+    ['21', ['app.reports.js']],
     ['27', ['manifest.json']],
     ['65', ['styles.css']],
     ['101', ['supabase.js']],
-    ['160', ['app.js']],
+    ['161', ['app.js']],
     ['219', ['sw.js']]
   ];
 
