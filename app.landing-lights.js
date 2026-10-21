@@ -447,6 +447,9 @@
         var stagger = strikeAt((now - started - i * gap) / 900);
         var level = lamp.want * Math.min(m, stagger);
         lamp.level += (level - lamp.level) * (1 - Math.exp(-dt * 14));
+        // The torch at the viewer ignores slide cues that dim the side fans.
+        var lit = Math.min(m, stagger);
+        lamp.lit = (lamp.lit || 0) + (lit - (lamp.lit || 0)) * (1 - Math.exp(-dt * 14));
       });
       castShadow(piv, dt);
       slideWashes();
@@ -475,7 +478,7 @@
           1 - swap,
           toFront,
           toRear,
-          smoother(clamp((front - 0.82) / 0.17, 0, 1)) * lv,
+          smoother(clamp((front - 0.82) / 0.17, 0, 1)) * lamps[key].lit,
           smoother(clamp((rear - 0.82) / 0.17, 0, 1)) * lv * 0.85
         ]);
       });
