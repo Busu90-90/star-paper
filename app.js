@@ -5936,12 +5936,14 @@ function showLoginForm(options = {}) {
             filteredExpenses = maybeSort(filterDateRange(ensureFinanceArtistRefs(filteredExpenses), 'date'));
             filteredOtherIncome = maybeSort(filterDateRange(ensureFinanceArtistRefs(filteredOtherIncome), 'date'));
 
-            const totalBookings = filteredBookings.length;
-            const totalIncome = filteredBookings.reduce((sum, b) => sum + (Math.round(Number(b.fee) || 0)), 0);
+            // Cancelled shows earn nothing, so they stay out of every money total.
+            const liveBookings = filteredBookings.filter((b) => String(b?.status || '').toLowerCase() !== 'cancelled');
+            const totalBookings = liveBookings.length;
+            const totalIncome = liveBookings.reduce((sum, b) => sum + (Math.round(Number(b.fee) || 0)), 0);
             const totalExpenses = filteredExpenses.reduce((sum, e) => sum + (Math.round(Number(e.amount) || 0)), 0);
             const totalOtherIncome = filteredOtherIncome.reduce((sum, i) => sum + (Math.round(Number(i.amount) || 0)), 0);
             const periodNetProfit = (totalIncome + totalOtherIncome) - totalExpenses;
-            const balancesDue = filteredBookings.reduce((sum, b) => sum + (Math.round(Number(b.balance) || 0)), 0);
+            const balancesDue = liveBookings.reduce((sum, b) => sum + (Math.round(Number(b.balance) || 0)), 0);
             const reportStartPeriod = typeof window.getReportStartPeriodKey === 'function'
                 ? window.getReportStartPeriodKey(period, normalizedDateStart, {
                     filteredBookings,
