@@ -222,6 +222,23 @@
     if (first) first.focus({ preventScroll: true });
   });
 
+  // Phones: the bottom bar steps aside while the keyboard is up, so it never
+  // sits over the field being typed in.
+  function isTypingField(node) {
+    if (!node || !node.tagName) return false;
+    if (node.isContentEditable || node.tagName === 'TEXTAREA') return true;
+    if (node.tagName !== 'INPUT') return false;
+    return /^(text|search|email|tel|number|url|password)$/.test(node.type || 'text');
+  }
+  document.addEventListener('focusin', function (e) {
+    if (isTypingField(e.target)) document.body.classList.add('sp-typing');
+  });
+  document.addEventListener('focusout', function () {
+    setTimeout(function () {
+      if (!isTypingField(document.activeElement)) document.body.classList.remove('sp-typing');
+    }, 120);
+  });
+
   // Top bar gains a hairline + blur once content scrolls under it.
   function onScroll() {
     var y = window.scrollY || document.documentElement.scrollTop || 0;

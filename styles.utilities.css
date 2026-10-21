@@ -218,7 +218,7 @@
 .sp-csp-style-43.sp-csp-style-43 { max-width:460px; }
 .sp-csp-style-44.sp-csp-style-44 { max-width:420px; }
 .sp-csp-style-45.sp-csp-style-45 { display:flex;gap:8px;align-items:center; }
-.sp-csp-style-46.sp-csp-style-46 { flex:1; }
+.sp-csp-style-46.sp-csp-style-46 { flex:1 1 0; min-width:0; }
 .sp-csp-style-47.sp-csp-style-47 { font-size:12px;color:#888;margin-top:8px; }
 .sp-csp-style-48.sp-csp-style-48 { font-size:28px;color:#FFB300; }
 .sp-csp-style-49.sp-csp-style-49 { margin:0; font-size:13px; color:var(--text-muted); }

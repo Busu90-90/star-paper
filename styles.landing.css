@@ -956,8 +956,14 @@ body.light-theme .lp-wall__spot::after {
   animation: lp-aim-c 5s var(--sp-ease-in-out) -2s infinite alternate;
 }
 
+/* The side washes only light the brick near their lamp (short throw). */
+:is(.lp-wall__wash--l, .lp-wall__wash--r) {
+  --lp-spread: 0.3;
+  --lp-throw: radial-gradient(34cqw 46cqh at var(--lp-x) var(--lp-py), #000 0%, rgb(0 0 0 / 0.5) 45%, transparent 100%);
+}
+
 .lp-wall__wash--l {
-  --lp-aim: 16deg;
+  --lp-aim: 34deg;
   --lp-x: var(--lp-lamp-l);
   --lp-tint: 95 211 160;
   --lp-wash-o: 0.46;
@@ -965,7 +971,7 @@ body.light-theme .lp-wall__spot::after {
 }
 
 .lp-wall__wash--r {
-  --lp-aim: -16deg;
+  --lp-aim: -34deg;
   --lp-x: var(--lp-lamp-r);
   --lp-tint: 110 150 230;
   --lp-wash-o: 0.5;
@@ -1159,9 +1165,9 @@ body.light-theme .lp-rig__glints::after {
    always sweep together. Colours: emerald stage-left, warm white centre,
    sapphire stage-right, so no two lights read as the same gold. */
 .lp-rig__lamp { transform-origin: 50% 2px; }
-.lp-rig__lamp--l { left: var(--lp-lamp-l); rotate: 16deg; color: #5FD3A0; animation: lp-head-l 4s var(--sp-ease-in-out) infinite alternate; }
+.lp-rig__lamp--l { left: var(--lp-lamp-l); rotate: 34deg; color: #5FD3A0; animation: lp-head-l 4s var(--sp-ease-in-out) infinite alternate; }
 .lp-rig__lamp--c { left: var(--lp-lamp-c); color: #FFFDF4; animation: lp-head-c 5s var(--sp-ease-in-out) -2s infinite alternate; }
-.lp-rig__lamp--r { left: var(--lp-lamp-r); rotate: -16deg; color: #A9C2F5; animation: lp-head-r 4.5s var(--sp-ease-in-out) -4s infinite alternate; }
+.lp-rig__lamp--r { left: var(--lp-lamp-r); rotate: -34deg; color: #A9C2F5; animation: lp-head-r 4.5s var(--sp-ease-in-out) -4s infinite alternate; }
 
 /* A beam is a wrapper around a cone whose soft edges come from a fixed
    conic mask (no blur filter: blurring a page-tall beam every frame is
@@ -1246,6 +1252,10 @@ body.light-theme .lp-rig__pool { mix-blend-mode: multiply; opacity: 0.9; }
 .lp-rig__beam--r {
   width: 78%;
   opacity: 0.8;
+  /* Disco heads have a short throw: their light pools around the lamp and
+     is gone by mid-stage, so it never mixes into the follow spot. */
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, rgb(0 0 0 / 0.55) 16%, rgb(0 0 0 / 0.18) 32%, transparent 46%);
+  mask-image: linear-gradient(180deg, #000 0%, rgb(0 0 0 / 0.55) 16%, rgb(0 0 0 / 0.18) 32%, transparent 46%);
 }
 
 /* Stage left: emerald wash. */
@@ -1253,7 +1263,7 @@ body.light-theme .lp-rig__pool { mix-blend-mode: multiply; opacity: 0.9; }
   --lp-beam-core: 214 255 234;
   --lp-beam-tint: 95 211 160;
   left: var(--lp-lamp-l);
-  rotate: 16deg;
+  rotate: 34deg;
   animation: lp-head-l 4s var(--sp-ease-in-out) infinite alternate;
 }
 
@@ -1262,7 +1272,7 @@ body.light-theme .lp-rig__pool { mix-blend-mode: multiply; opacity: 0.9; }
   --lp-beam-core: 214 228 255;
   --lp-beam-tint: 110 150 230;
   left: var(--lp-lamp-r);
-  rotate: -16deg;
+  rotate: -34deg;
   animation: lp-head-r 4.5s var(--sp-ease-in-out) -4s infinite alternate;
 }
 
@@ -1330,20 +1340,22 @@ body.light-theme .lp-rig__pool { mix-blend-mode: multiply; opacity: 0.9; }
   to { translate: 0 -460px; }
 }
 
-/* The side heads sweep out wide, cross over the centre, hold, then return;
-   the key light drifts between them. */
+/* Without the light controller the side heads still dance on their own
+   side of the stage (never crossing the centre); the key light drifts. */
 @keyframes lp-head-l {
-  0% { rotate: 30deg; }
-  45% { rotate: -16deg; }
-  60% { rotate: -16deg; }
-  100% { rotate: 8deg; }
+  0% { rotate: 58deg; }
+  30% { rotate: 12deg; }
+  55% { rotate: 44deg; }
+  80% { rotate: 8deg; }
+  100% { rotate: 30deg; }
 }
 
 @keyframes lp-head-r {
-  0% { rotate: -30deg; }
-  45% { rotate: 16deg; }
-  60% { rotate: 16deg; }
-  100% { rotate: -8deg; }
+  0% { rotate: -58deg; }
+  30% { rotate: -12deg; }
+  55% { rotate: -44deg; }
+  80% { rotate: -8deg; }
+  100% { rotate: -30deg; }
 }
 
 @keyframes lp-head-c {
@@ -1354,17 +1366,19 @@ body.light-theme .lp-rig__pool { mix-blend-mode: multiply; opacity: 0.9; }
 
 /* The wall washes track their lamps: same stops as lp-head-*. */
 @keyframes lp-aim-l {
-  0% { --lp-aim: 30deg; }
-  45% { --lp-aim: -16deg; }
-  60% { --lp-aim: -16deg; }
-  100% { --lp-aim: 8deg; }
+  0% { --lp-aim: 58deg; }
+  30% { --lp-aim: 12deg; }
+  55% { --lp-aim: 44deg; }
+  80% { --lp-aim: 8deg; }
+  100% { --lp-aim: 30deg; }
 }
 
 @keyframes lp-aim-r {
-  0% { --lp-aim: -30deg; }
-  45% { --lp-aim: 16deg; }
-  60% { --lp-aim: 16deg; }
-  100% { --lp-aim: -8deg; }
+  0% { --lp-aim: -58deg; }
+  30% { --lp-aim: -12deg; }
+  55% { --lp-aim: -44deg; }
+  80% { --lp-aim: -8deg; }
+  100% { --lp-aim: -30deg; }
 }
 
 @keyframes lp-aim-c {
@@ -1400,6 +1414,31 @@ body.light-theme .lp-rig__pool { mix-blend-mode: multiply; opacity: 0.9; }
   bottom: auto;
   height: 100lvh;
   translate: 0 var(--lp-off, 0px);
+}
+
+/* Text caught in the follow spot (app.landing-lights.js) lights up: warm
+   white-gold with a glow on the black stage, deep emerald with a gold halo
+   on the pale one. Gradient headline words switch their fill too. */
+.lp :is(h1, h2, h3, h4, p, li, a, button, em, strong, span, blockquote, figcaption, small, label, dt, dd) {
+  transition: color 260ms ease, -webkit-text-fill-color 260ms ease, text-shadow 260ms ease;
+}
+
+body .lp .is-beamlit,
+body .lp .is-beamlit :is(em, strong, span) {
+  color: #FFF1C4;
+  -webkit-text-fill-color: #FFF1C4;
+  text-shadow: 0 0 6px rgb(255 236 180 / 0.9), 0 0 18px rgb(255 204 102 / 0.75), 0 0 36px rgb(255 180 60 / 0.45);
+}
+
+body.light-theme .lp .is-beamlit,
+body.light-theme .lp .is-beamlit :is(em, strong, span) {
+  color: #0B5A3A;
+  -webkit-text-fill-color: #0B5A3A;
+  text-shadow: 0 0 4px rgb(255 255 255 / 0.95), 0 0 14px rgb(236 190 90 / 0.9), 0 0 30px rgb(236 190 90 / 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp :is(h1, h2, h3, h4, p, li, a, button, em, strong, span, blockquote, figcaption, small, label, dt, dd) { transition: none; }
 }
 
 /* Real shadows: the headline throws one onto the wall, away from the light. */

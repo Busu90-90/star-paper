@@ -2,6 +2,8 @@
 // - Follow spot: the centre lamp holds still until the visitor moves, then
 //   stays locked on their cursor or thumb anywhere on the page, throwing a
 //   pool of light on the wall where it points.
+// - Disco heads: the green and blue side lamps dance on their own side of
+//   the stage with a short throw, so they never wash over the follow spot.
 // - Cues: every hero slide has its own lighting state, with a short blackout
 //   between them.
 // - Shadows: the active headline casts a soft shadow away from the lamps.
@@ -43,29 +45,18 @@
     });
   }
 
-  // The idle sweep of the side lamps, matching lp-head-* keyframes
-  // (alternate, eased per stop).
-  var SWEEPS = {
-    l: { ms: 4000, delay: 0, stops: [[0, 30], [0.45, -16], [0.6, -16], [1, 8]] },
-    r: { ms: 4500, delay: -4000, stops: [[0, -30], [0.45, 16], [0.6, 16], [1, -8]] }
+  // The side lamps dance like disco heads: two waves at odd speeds so the
+  // pattern never quite repeats, and always on their own side of the stage
+  // (6 to 62 degrees outwards), so they never cross the follow spot.
+  var DISCO = {
+    l: { side: 1, phase: 0 },
+    r: { side: -1, phase: 2.1 }
   };
 
-  function sweepAt(name, now) {
-    var sweep = SWEEPS[name];
-    var cycles = (now - sweep.delay) / sweep.ms;
-    var whole = Math.floor(cycles);
-    var p = cycles - whole;
-    if (whole % 2) p = 1 - p;
-    var stops = sweep.stops;
-    for (var i = 1; i < stops.length; i += 1) {
-      if (p <= stops[i][0]) {
-        var a = stops[i - 1];
-        var b = stops[i];
-        var t = b[0] === a[0] ? 1 : (p - a[0]) / (b[0] - a[0]);
-        return a[1] + (b[1] - a[1]) * smooth(t);
-      }
-    }
-    return stops[stops.length - 1][1];
+  function discoAt(name, now) {
+    var d = DISCO[name];
+    var t = now / 1000;
+    return d.side * (34 + 20 * Math.sin(t * 1.7 + d.phase) + 8 * Math.sin(t * 3.1 + d.phase * 1.6));
   }
 
   // A lamp striking up: a flicker, then full.
@@ -155,9 +146,9 @@
     var PCT = { l: 0.19, c: 0.5, r: 0.81 };
     var PIVOT = 31;
     var lamps = {
-      l: { aim: 16, level: 0, target: 16, want: 1, rate: 3 },
+      l: { aim: 34, level: 0, target: 34, want: 1, rate: 6 },
       c: { aim: 0, level: 0, target: 0, want: 1, rate: 3 },
-      r: { aim: -16, level: 0, target: -16, want: 1, rate: 3 }
+      r: { aim: -34, level: 0, target: -34, want: 1, rate: 6 }
     };
     var started = performance.now();
     var cue = { name: 'mainstage', since: started, changed: -1 };
@@ -238,9 +229,11 @@
       // finale it joins the others on Start free until they move again.
       var following = pointer.at > 0 && !(closing && pointer.at < finaleSince);
       var slide = slides[activeSlide()];
-      lamps.l.rate = lamps.c.rate = lamps.r.rate = 3;
+      lamps.c.rate = 3;
+      lamps.l.rate = lamps.r.rate = 6;
       lamps.l.want = lamps.c.want = lamps.r.want = 1;
-      lamps.l.target = sweepAt('l', now);
+      lamps.l.target = discoAt('l', now);
+      lamps.r.target = discoAt('r', now);
       // The centre lamp never sways on its own: it rests straight down.
       lamps.c.target = 0;
 
@@ -254,40 +247,30 @@
             lamps.c.target = aimAt(piv.c, centreOf(moves[index]));
           }
         }
-        lamps.l.target = 34; lamps.r.target = -34;
         lamps.l.want = lamps.r.want = 0.35;
       } else if (name === 'proof') {
         var stats = slide ? slide.querySelectorAll('.lp-stat') : [];
         if (stats[0]) lamps.c.target = aimAt(piv.c, centreOf(stats[0]));
-        if (stats[1]) lamps.l.target = aimAt(piv.l, centreOf(stats[1]));
-        if (stats[2]) lamps.r.target = aimAt(piv.r, centreOf(stats[2]));
-        lamps.l.rate = lamps.c.rate = lamps.r.rate = 9;
+        lamps.c.rate = 9;
       } else if (name === 'voices') {
         var front = slide ? slide.querySelector('[data-lp-quote][data-pos="front"]') : null;
         if (front) lamps.c.target = aimAt(piv.c, centreOf(front));
-        lamps.l.target = 36; lamps.r.target = -36;
         lamps.l.want = lamps.r.want = 0.14;
         lamps.c.want = 0.9;
       }
 
-      // Finale: every lamp swings onto Start free.
+      // Finale: the follow spot swings onto Start free; the side heads keep dancing.
       if (closing) {
-        var button = centreOf(finaleTarget);
-        ['l', 'c', 'r'].forEach(function (key) {
-          lamps[key].target = aimAt(piv[key], button);
-          lamps[key].want = 1;
-          lamps[key].rate = 2.4;
-        });
+        lamps.c.target = aimAt(piv.c, centreOf(finaleTarget));
+        lamps.c.want = 1;
+        lamps.c.rate = 2.4;
       }
 
       // The follow spot wins over any cue while the visitor is steering it.
-      // The side heads lean a little towards the cursor too.
       if (following) {
         lamps.c.target = aimAt(piv.c, pointer);
         lamps.c.want = 1;
         lamps.c.rate = 12;
-        lamps.l.target += (aimAt(piv.l, pointer) - lamps.l.target) * 0.2;
-        lamps.r.target += (aimAt(piv.r, pointer) - lamps.r.target) * 0.2;
       }
       return following;
     }
@@ -300,6 +283,7 @@
       if (!spot) return;
       if (!following || level < 0.05) {
         if (spotShown) { spot.classList.remove('is-on'); spotShown = false; }
+        lightText(null);
         return;
       }
       var dx = pointer.x - piv.c.x;
@@ -311,6 +295,43 @@
       var y = piv.c.y + dist * Math.cos(rad) - box.top - SPOT / 2;
       setVars(spot, { '--lp-sx': Math.round(x) + 'px', '--lp-sy': Math.round(y) + 'px' });
       if (!spotShown) { spot.classList.add('is-on'); spotShown = true; }
+      lightText({ x: piv.c.x - dist * Math.sin(rad), y: piv.c.y + dist * Math.cos(rad) });
+    }
+
+    // Text caught in the follow spot (or under the visitor's thumb) lights up
+    // and glows. Looked up a few times a second, not every frame.
+    var litEl = null;
+    var litAt = 0;
+    var TEXT_TAGS = /^(H1|H2|H3|H4|P|LI|A|BUTTON|EM|STRONG|SPAN|BLOCKQUOTE|FIGCAPTION|SMALL|LABEL|DT|DD)$/;
+    function ownText(node) {
+      for (var c = node.firstChild; c; c = c.nextSibling) {
+        if (c.nodeType === 3 && c.nodeValue.trim()) return true;
+      }
+      return false;
+    }
+    function textAt(x, y) {
+      var hits = document.elementsFromPoint ? document.elementsFromPoint(x, y) : [];
+      for (var i = 0; i < hits.length; i += 1) {
+        var el = hits[i];
+        if (!root.contains(el) || el.closest('.lp-rig, .lp-wall, .lp-header')) continue;
+        // Filled buttons keep their own colours.
+        if (el.closest('.lp-btn--gold, .lp-btn--foil')) return null;
+        for (var up = 0; el && up < 4 && el !== root; up += 1, el = el.parentElement) {
+          if (TEXT_TAGS.test(el.tagName) && ownText(el)) return el;
+        }
+        return null;
+      }
+      return null;
+    }
+    function lightText(point) {
+      var now = performance.now();
+      if (point && now - litAt < 90) return;
+      litAt = now;
+      var next = point ? textAt(point.x, point.y) : null;
+      if (next === litEl) return;
+      if (litEl) litEl.classList.remove('is-beamlit');
+      litEl = next;
+      if (litEl) litEl.classList.add('is-beamlit');
     }
 
     function castShadow(piv, dt) {
