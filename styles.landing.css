@@ -1111,7 +1111,32 @@ body:not(.light-theme) .lp-rig__truss {
   to { opacity: 1; }
 }
 
-body.light-theme :is(.lp-rig__spill, .lp-rig__glints) { display: none; }
+/* On the pale stage the same idea runs the other way: the steel is lifted
+   and tinted toward the sage wall so it reads as painted metal rather than
+   a grey cut-out, its ends fade into the wall, its shadow is a soft green
+   rather than black, each lamp warms the steel around its head, and the
+   glints become small white highlights. */
+body.light-theme .lp-rig__truss {
+  filter: saturate(0.6) brightness(1.22) contrast(0.92) sepia(0.1) drop-shadow(0 6px 10px rgb(24 52 36 / 0.22));
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
+}
+
+body.light-theme .lp-rig__lamp { filter: brightness(1.12) saturate(0.8) drop-shadow(0 8px 10px rgb(24 52 36 / 0.2)); }
+
+body.light-theme .lp-rig__spill {
+  background:
+    radial-gradient(9% 60% at var(--lp-lamp-l) 55%, rgb(120 200 160 / 0.32), transparent),
+    radial-gradient(11% 70% at var(--lp-lamp-c) 55%, rgb(236 196 112 / 0.38), transparent),
+    radial-gradient(9% 60% at var(--lp-lamp-r) 55%, rgb(140 160 220 / 0.32), transparent);
+  mix-blend-mode: multiply;
+}
+
+body.light-theme .lp-rig__glints::before,
+body.light-theme .lp-rig__glints::after {
+  mix-blend-mode: normal;
+  filter: drop-shadow(0 0 2px rgb(255 255 255 / 0.9));
+}
 
 .lp-rig__lamp {
   position: absolute;
