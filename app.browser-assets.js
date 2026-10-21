@@ -80,7 +80,7 @@
     ['3', ['app.boot-body.js']],
     ['2', ['styles.utilities.css']],
     ['4', ['app.landing.js']],
-    ['5', ['app.landing-lights.js']],
+    ['6', ['app.landing-lights.js']],
     ['2', ['assets/vendor/fonts/star-paper-fonts.css']],
     ['5', ['sp-design-tokens.css']],
     ['2', [
