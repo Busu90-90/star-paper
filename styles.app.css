@@ -548,6 +548,11 @@ body.sp-scrolled #appContainer .topbar {
   box-shadow: var(--sp-shadow-3), inset 0 1px 0 rgb(255 255 255 / 0.05);
 }
 body.light-theme #appContainer .bottom-nav { background: color-mix(in srgb, var(--sp-surface-1) 90%, transparent); }
+/* The keyboard is up (app.chrome.js): the bar steps aside so it never covers the field. */
+@media (max-width: 1024px) {
+  body.sp-typing #appContainer .bottom-nav { visibility: hidden; opacity: 0; transform: translateX(-50%) translateY(16px); }
+  body.sp-typing #appContainer .scroll-top-fab { visibility: hidden; }
+}
 #appContainer .bottom-nav-item {
   display: flex;
   flex-direction: column;
@@ -1142,6 +1147,8 @@ body.light-theme #appContainer input[type="date"] { color-scheme: light; }
   -webkit-backdrop-filter: none;
 }
 :is(#spBbfModal, #spPdfExportModal, #spAboutModal, #spAdminModal) :is(.sp-modal-header, .sp-modal-footer) { border-color: var(--sp-line); }
+/* Footer buttons keep their own height; a tall footer (phone safe area) no longer stretches Cancel into a circle. */
+:is(#spBbfModal, #spPdfExportModal, #spAboutModal, #spAdminModal, #spTeamModal, #profileModal, #confirmDeleteModal) .sp-modal-footer { align-items: center; flex-wrap: wrap; }
 :is(#spBbfModal, #spPdfExportModal, #spAboutModal, #spAdminModal) .sp-modal-header h3 { color: var(--sp-ink); font-family: var(--sp-font-display); font-size: var(--sp-text-lg); }
 :is(#spBbfModal, #spPdfExportModal, #spAboutModal, #spAdminModal, #profileModal, #receiptModal) :is(.sp-modal-close, .close-receipt) {
   display: grid;
@@ -2830,9 +2837,15 @@ body.light-theme #appContainer .cr-online { box-shadow: 0 0 0 2px var(--sp-surfa
   #appContainer .cr-voice { min-width: 0; }
 }
 
+/* File pickers (receipt, proof, artist photo): a real button instead of the browser's grey one. */
+#appContainer input[type="file"], body.light-theme #appContainer input[type="file"] { width: 100%; max-width: 100%; min-width: 0; min-height: 0; padding: 0; border: 0; background: transparent; box-shadow: none; color: var(--sp-ink-3); font-family: var(--sp-font-ui); font-size: var(--sp-text-sm); }
+#appContainer input[type="file"]::file-selector-button { margin-right: var(--sp-space-3); min-height: 40px; padding: 0 var(--sp-space-4); border: 1px solid var(--sp-line-strong); border-radius: var(--sp-radius-pill); background: var(--sp-surface-3); color: var(--sp-ink); font: inherit; font-weight: 600; cursor: pointer; }
+#appContainer input[type="file"]::file-selector-button:hover { background: var(--sp-gold-soft); border-color: var(--sp-gold); }
+#appContainer :is(.artist-photo-actions, .receipt-upload) { min-width: 0; flex: 1; }
+
 /* Booking artist picker (app.pickers.js) */
 #appContainer #bookingArtist[hidden] { display: none; }
-#appContainer .ap { position: relative; }
+#appContainer .ap { position: relative; scroll-margin-top: 96px; }
 #appContainer .ap__field { position: relative; display: flex; align-items: center; }
 #appContainer .ap__field > .ap__lead { position: absolute; left: 14px; z-index: 1; color: var(--sp-ink-3); font-size: 17px; pointer-events: none; }
 #appContainer .ap.has-value .ap__field > .ap__lead { color: var(--sp-gold-text); }
@@ -2843,7 +2856,7 @@ body.light-theme #appContainer .cr-online { box-shadow: 0 0 0 2px var(--sp-surfa
 #appContainer .ap__caret { right: 6px; transition: transform 160ms ease; }
 #appContainer .ap__clear:hover, #appContainer .ap__caret:hover { background: var(--sp-surface-3); color: var(--sp-ink); }
 #appContainer .ap.is-open .ap__caret { transform: rotate(180deg); }
-#appContainer .ap__list { position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 30; display: grid; gap: 2px; max-height: min(320px, 50vh); margin: 0; padding: 4px; overflow-y: auto; list-style: none; border: 1px solid var(--sp-line); border-radius: var(--sp-radius-md); background: var(--sp-surface-2); box-shadow: var(--sp-shadow-3); overscroll-behavior: contain; }
+#appContainer .ap__list { position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 30; display: grid; gap: 2px; max-height: min(320px, 50vh, var(--ap-room, 320px)); margin: 0; padding: 4px; overflow-y: auto; list-style: none; border: 1px solid var(--sp-line); border-radius: var(--sp-radius-md); background: var(--sp-surface-2); box-shadow: var(--sp-shadow-3); overscroll-behavior: contain; }
 body.light-theme #appContainer .ap__list { background: var(--sp-surface-1); }
 #appContainer .ap__list[hidden] { display: none; }
 #appContainer .ap__opt { display: flex; align-items: center; gap: var(--sp-space-3); min-height: 48px; padding: 6px var(--sp-space-2); border-radius: var(--sp-radius-md); color: var(--sp-ink); cursor: pointer; }

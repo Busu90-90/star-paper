@@ -6,7 +6,7 @@
     <meta name="star-paper:public-root" content="app-shell">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:;">
     <title>Star Paper</title>
-    <script src="app.browser-assets.js?v=43"></script>
+    <script src="app.browser-assets.js?v=44"></script>
     <script src="app.public-pages.js?v=2"></script>
     <script src="app.boot-head.js?v=2"></script>
     <link rel="manifest" href="manifest.json?v=27">
@@ -27,12 +27,12 @@
     <script src="app.boot-flags.js?v=4"></script>
 
     <link rel="stylesheet" href="styles.css?v=65">
-    <link rel="stylesheet" href="styles.utilities.css?v=1">
+    <link rel="stylesheet" href="styles.utilities.css?v=2">
     <!-- Design system: tokens + signed-out pages (landing, auth). Loaded last so it owns those screens. -->
     <link rel="stylesheet" href="sp-design-tokens.css?v=5">
-    <link rel="stylesheet" href="styles.landing.css?v=20">
+    <link rel="stylesheet" href="styles.landing.css?v=21">
     <link rel="stylesheet" href="styles.brand.css?v=1">
-    <link rel="stylesheet" href="styles.app.css?v=20">
+    <link rel="stylesheet" href="styles.app.css?v=21">
     <link rel="preload" href="assets/vendor/fonts/font-29-fraunces-latin-opsz-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="assets/vendor/fonts/font-31-inter-tight-latin-wght-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <!-- Vendored Phosphor Icons 2.1.1 - unified icon system -->
@@ -1016,54 +1016,11 @@
                 </div>
                 </div>
                 <div class="sp-tab-panel" id="moneyPanel-expenses">
-                <!-- Spending analysis (app.insights.js); the form and list follow. -->
-                <div class="mv-strip">
-                    <div class="card mv-tile mv-tile--key"><span class="sp-icon-tile sp-icon-tile--foil" aria-hidden="true"><i class="ph ph-receipt"></i></span><span class="mv-label">Spent this month</span><span class="mv-tile__value money" id="mvExTotal">UGX 0</span><span class="mv-delta" id="mvExTotalDelta"></span><svg class="mv-spark" id="mvExTotalSpark" aria-hidden="true" focusable="false"></svg></div>
-                    <div class="card mv-tile" title="Spending as a share of money in this month"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-percent"></i></span><span class="mv-label">Share of money in</span><span class="mv-tile__value money" id="mvExShare">—</span><span class="mv-tile__sub" id="mvExShareSub"></span></div>
-                    <div class="card mv-tile"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-crown-simple"></i></span><span class="mv-label">Biggest cost</span><span class="mv-tile__value" id="mvExTop">—</span><span class="mv-tile__sub" id="mvExTopSub"></span></div>
-                    <div class="card mv-tile"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-calendar-blank"></i></span><span class="mv-label">Per day</span><span class="mv-tile__value money" id="mvExDaily">UGX 0</span><span class="mv-tile__sub" id="mvExDailySub"></span></div>
-                </div>
-                <div class="mv-row">
-                    <div class="card mv-card mv-card--wide">
-                        <div class="mv-card__head">
-                            <div>
-                                <h3 class="mv-title">Spending by category</h3>
-                                <p class="mv-sub" id="mvExBarsSub">The marker on each bar is your usual month (average of the three before).</p>
-                            </div>
-                            <span class="mv-label" id="mvExPeriod"></span>
-                        </div>
-                        <div class="mv-excat">
-                            <div id="mvExDonut"></div>
-                            <ul class="mv-cbars" id="mvExBars"></ul>
-                        </div>
-                    </div>
-                    <div class="card mv-card">
-                        <div class="mv-card__head">
-                            <h3 class="mv-title">Flags</h3>
-                            <span class="mv-label" id="mvExFlagCount"></span>
-                        </div>
-                        <ul class="mv-flags" id="mvExFlags"></ul>
-                    </div>
-                </div>
-                <div class="mv-row">
-                    <div class="card mv-card mv-card--wide">
-                        <div class="mv-card__head">
-                            <h3 class="mv-title">Last 6 months</h3>
-                            <div class="mv-legend"><span class="mv-legend__out">Spent</span><span class="mv-legend__inline">Money in</span></div>
-                        </div>
-                        <svg class="mv-chart" id="mvExTrend" role="img" aria-label="Spending over the last six months" focusable="false"></svg>
-                    </div>
-                    <div class="card mv-card">
-                        <div class="mv-card__head">
-                            <h3 class="mv-title">By artist</h3>
-                            <span class="mv-label">This month</span>
-                        </div>
-                        <ul class="mv-abars" id="mvExArtists"></ul>
-                    </div>
-                </div>
-
                 <div class="card" id="addExpenseForm" hidden>
-                    <h3 class="section-title" data-icon="expenses">New Expense</h3>
+                    <div class="form-header-row">
+                        <h3 class="section-title" data-icon="expenses">New Expense</h3>
+                        <button class="back-to-list" type="button" data-action="cancelExpense">Back to Expenses</button>
+                    </div>
                     <div class="form-grid">
                         <div class="form-group">
                             <label>Description</label>
@@ -1134,6 +1091,52 @@
                     <button id="saveExpenseBtn" class="btn-primary" data-action="saveExpense">Save Expense</button>
                     <button class="back-btn" data-action="cancelExpense">Cancel</button>
                 </div>
+                <!-- Spending analysis (app.insights.js); the expense list follows. -->
+                <div class="mv-strip">
+                    <div class="card mv-tile mv-tile--key"><span class="sp-icon-tile sp-icon-tile--foil" aria-hidden="true"><i class="ph ph-receipt"></i></span><span class="mv-label">Spent this month</span><span class="mv-tile__value money" id="mvExTotal">UGX 0</span><span class="mv-delta" id="mvExTotalDelta"></span><svg class="mv-spark" id="mvExTotalSpark" aria-hidden="true" focusable="false"></svg></div>
+                    <div class="card mv-tile" title="Spending as a share of money in this month"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-percent"></i></span><span class="mv-label">Share of money in</span><span class="mv-tile__value money" id="mvExShare">—</span><span class="mv-tile__sub" id="mvExShareSub"></span></div>
+                    <div class="card mv-tile"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-crown-simple"></i></span><span class="mv-label">Biggest cost</span><span class="mv-tile__value" id="mvExTop">—</span><span class="mv-tile__sub" id="mvExTopSub"></span></div>
+                    <div class="card mv-tile"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-calendar-blank"></i></span><span class="mv-label">Per day</span><span class="mv-tile__value money" id="mvExDaily">UGX 0</span><span class="mv-tile__sub" id="mvExDailySub"></span></div>
+                </div>
+                <div class="mv-row">
+                    <div class="card mv-card mv-card--wide">
+                        <div class="mv-card__head">
+                            <div>
+                                <h3 class="mv-title">Spending by category</h3>
+                                <p class="mv-sub" id="mvExBarsSub">The marker on each bar is your usual month (average of the three before).</p>
+                            </div>
+                            <span class="mv-label" id="mvExPeriod"></span>
+                        </div>
+                        <div class="mv-excat">
+                            <div id="mvExDonut"></div>
+                            <ul class="mv-cbars" id="mvExBars"></ul>
+                        </div>
+                    </div>
+                    <div class="card mv-card">
+                        <div class="mv-card__head">
+                            <h3 class="mv-title">Flags</h3>
+                            <span class="mv-label" id="mvExFlagCount"></span>
+                        </div>
+                        <ul class="mv-flags" id="mvExFlags"></ul>
+                    </div>
+                </div>
+                <div class="mv-row">
+                    <div class="card mv-card mv-card--wide">
+                        <div class="mv-card__head">
+                            <h3 class="mv-title">Last 6 months</h3>
+                            <div class="mv-legend"><span class="mv-legend__out">Spent</span><span class="mv-legend__inline">Money in</span></div>
+                        </div>
+                        <svg class="mv-chart" id="mvExTrend" role="img" aria-label="Spending over the last six months" focusable="false"></svg>
+                    </div>
+                    <div class="card mv-card">
+                        <div class="mv-card__head">
+                            <h3 class="mv-title">By artist</h3>
+                            <span class="mv-label">This month</span>
+                        </div>
+                        <ul class="mv-abars" id="mvExArtists"></ul>
+                    </div>
+                </div>
+
 
                 <div class="card" id="expensesListCard">
                     <div class="card-header-row">
@@ -1163,9 +1166,9 @@
                 <!-- Removed: FAB button handles this -->
 
                 <div class="card" id="addOtherIncomeForm" hidden>
-                    <div class="sp-csp-style-18">
-                        <button class="back-btn sp-csp-style-19" data-action="cancelOtherIncome">Back to All Other Income</button>
-                        <h3 class="section-title sp-csp-style-19" data-icon="otherIncome">New Other Income</h3>
+                    <div class="form-header-row">
+                        <h3 class="section-title" data-icon="otherIncome">New Income</h3>
+                        <button class="back-to-list" type="button" data-action="cancelOtherIncome">Back to Income</button>
                     </div>
                     <div class="form-grid">
                         <div class="form-group">
@@ -2057,7 +2060,7 @@
         <script src="app.actions.js?v=9"></script>
         <script src="app.todayboard.js?v=3"></script>
         <script src="app.tasks.js?v=7"></script>
-    <script src="app.reports.js?v=21"></script>
+    <script src="app.reports.js?v=22"></script>
 <script src="app.js?v=161" defer></script>
 <script src="app.charts.js?v=1" defer></script>
 <script src="app.home.js?v=4" defer></script>
@@ -2067,10 +2070,10 @@
 <script src="app.artists.js?v=1" defer></script>
 <script src="app.schedule.js?v=1" defer></script>
 <script src="app.crew.js?v=3" defer></script>
-<script src="app.pickers.js?v=1" defer></script>
+<script src="app.pickers.js?v=2" defer></script>
 <script src="app.landing.js?v=4" defer></script>
-<script src="app.landing-lights.js?v=4" defer></script>
-<script src="app.chrome.js?v=2" defer></script>
+<script src="app.landing-lights.js?v=5" defer></script>
+<script src="app.chrome.js?v=3" defer></script>
 
     <!-- Premium toast stack -->
     <div class="sp-toast-stack" id="spToastStack" aria-live="polite" aria-atomic="false"></div>

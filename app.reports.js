@@ -19,7 +19,7 @@
   const RED = '#ef4444';
   const GLASS_BG = 'rgba(255,255,255,0.06)';
   const CHART_COLORS = [GOLD, '#60a5fa', GREEN, '#f97316', '#a78bfa', '#ec4899', '#14b8a6', '#f43f5e'];
-  const REPORT_RUNTIME_VERSION = 'report-runtime-v18';
+  const REPORT_RUNTIME_VERSION = 'report-runtime-v19';
   window.SP_REPORT_RUNTIME_VERSION = REPORT_RUNTIME_VERSION;
 
   function buildStarPaperChartTheme(mode = 'dark') {
@@ -1161,6 +1161,22 @@
 
   // ── AVATAR LOADING ─────────────────────────────────────────────────────────
 
+  // Real uploaded photo only; symbol or emoji avatars fall back to initials.
+  function reportArtistPhotoSource(artist) {
+    const raw = String(artist?.avatar || '').trim();
+    if (!raw) return '';
+    if (/^data:image\/(png|jpe?g|webp|gif)[;,]/i.test(raw)) return raw;
+    if (/^(https?:)?\/\//i.test(raw) || raw.startsWith('./') || raw.startsWith('/')) return raw;
+    return '';
+  }
+
+  function reportInitials(name) {
+    const words = String(name || '').trim().split(/\s+/).filter(Boolean);
+    if (!words.length) return '?';
+    const letters = words.length === 1 ? words[0][0] : words[0][0] + words[words.length - 1][0];
+    return letters.toUpperCase();
+  }
+
   async function loadAvatarDataUrl(src) {
     if (!src) return '';
     // Already a data URI
@@ -1670,8 +1686,14 @@
       stroke(P.gold);
       pdf.setLineWidth(0.5);
       pdf.circle(W - mg - 11, y - 2, 11, 'S');
+    } else if (d.subjectInitials) {
+      fill(P.gold);
+      stroke(P.gold);
+      pdf.setLineWidth(0.5);
+      pdf.circle(W - mg - 11, y - 2, 11, 'FD');
+      put(d.subjectInitials, W - mg - 11, y + 1.6, 'display', d.subjectInitials.length > 1 ? 13 : 15, P.onGold, { align: 'center' });
     } else {
-      // Highlight chip instead of an avatar: how many shows this report covers.
+      // Roster reports: a highlight chip with how many shows this report covers.
       const chip = `${m.activeShows} show${m.activeShows === 1 ? '' : 's'}  ·  ${compact(m.totalIncome)} booked`;
       pill(chip, W - mg, y - 1, P.onGold, P.gold, { align: 'right', size: 7.4 });
     }
@@ -2323,13 +2345,11 @@
         try { logoDataUrl = await window.getReportLogoDataUrl({ themeMode: reportThemeMode }); } catch (_e) { /* skip */ }
       }
 
+      // Artist reports show the artist's current photo, or their initials when they have none.
       let avatarDataUrl = '';
-      if (artistObj && artistObj.avatar) {
-        const resolvedSrc = typeof window.resolveDisplayAvatar === 'function'
-          ? window.resolveDisplayAvatar(artistObj)
-          : artistObj.avatar;
-        avatarDataUrl = await loadAvatarDataUrl(resolvedSrc);
-      }
+      const artistPhoto = reportArtistPhotoSource(artistObj);
+      if (artistPhoto) avatarDataUrl = await loadAvatarDataUrl(artistPhoto);
+      const subjectInitials = artistObj ? reportInitials(artistObj.name) : '';
       const logoHeaderAsset = await prepareReportHeaderAsset(logoDataUrl, { mode: 'contain', circular: false });
       const avatarHeaderAsset = avatarDataUrl
         ? await prepareReportHeaderAsset(avatarDataUrl, { mode: 'cover', circular: true })
@@ -2408,6 +2428,7 @@
         logo: logoHeaderAsset,
         avatar: avatarHeaderAsset,
         subjectName: artistObj ? artistName : 'Full roster',
+        subjectInitials,
         periodLabel: actualPeriodLabel,
         generatedBy: window.currentUser || 'Manager',
         metrics: {
