@@ -192,6 +192,13 @@
       setTimeout(function () { var input = $('taskInput'); if (input) input.focus(); }, 120);
       return;
     }
+    if (t.closest('[data-sp-quick="document"]')) {
+      e.preventDefault();
+      close(true);
+      if (typeof window.showSection === 'function') window.showSection('documents');
+      if (window.SPDocs && typeof window.SPDocs.newDocument === 'function') window.SPDocs.newDocument();
+      return;
+    }
     // Any action inside an open sheet closes it after the action runs.
     if (openSheet && openSheet.contains(t) && t.closest('button[data-action]')) {
       setTimeout(function () { close(true); }, 0);
