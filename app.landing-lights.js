@@ -55,16 +55,30 @@
     r: { side: -1, phase: 2.1 }
   };
 
-  // Tilt of a Bee Eye head in degrees: mostly hanging down and nodding a
-  // little, now and then swinging round to shoot straight out at the
-  // audience (positive) or back at the wall (negative).
+  // Tilt of a Bee Eye head in degrees, keyframed like the reference
+  // videos: hang and sweep, roll right round to the wall (negative), hold,
+  // come back, then roll round to face the audience (positive) and torch
+  // them, hold, and drop back. The heads run the routine out of step.
+  var TILT_KEYS = [
+    [0, 0], [2.2, 0], [3.0, -86], [4.6, -86], [5.4, 0],
+    [7.4, 0], [8.2, 88], [9.8, 88], [10.6, 0], [14, 0]
+  ];
+  var TILT_RUN = { l: { period: 14, offset: 0 }, r: { period: 15.4, offset: 4.7 } };
+
   function tiltAt(name, now) {
-    var d = DISCO[name];
-    var t = now / 1000;
-    var front = Math.pow(Math.max(0, Math.sin(t * 0.42 + d.phase)), 8);
-    var back = Math.pow(Math.max(0, Math.sin(t * 0.31 + d.phase * 2.3 + 1.2)), 10);
-    var nod = 14 * Math.sin(t * 1.25 + d.phase * 1.7);
-    return clamp(nod + 90 * front - 70 * back, -80, 90);
+    var run = TILT_RUN[name];
+    var t = ((now / 1000 + run.offset) % run.period) * (14 / run.period);
+    var tilt = 0;
+    for (var i = 1; i < TILT_KEYS.length; i += 1) {
+      if (t <= TILT_KEYS[i][0]) {
+        var a = TILT_KEYS[i - 1];
+        var b = TILT_KEYS[i];
+        tilt = a[1] + (b[1] - a[1]) * smooth((t - a[0]) / (b[0] - a[0]));
+        break;
+      }
+    }
+    var nod = 10 * Math.sin(now / 1000 * 1.25 + DISCO[name].phase * 1.7);
+    return clamp(tilt + nod * (1 - Math.abs(tilt) / 90), -90, 90);
   }
 
   function discoAt(name, now) {
@@ -129,7 +143,7 @@
     if (!stage || !show || !rig || !wall) return null;
     if (typeof rig.animate !== 'function') return null;
     var LAMP_SHADOW = 'drop-shadow(0 8px 10px rgb(0 0 0 / 0.5)) ';
-    var SWING = [{ rotate: '-70deg' }, { rotate: '70deg' }];
+    var SWING = [{ rotate: '-90deg' }, { rotate: '90deg' }];
     var dials = {};
     try {
       ['l', 'c', 'r'].forEach(function (key) {
@@ -138,9 +152,9 @@
         var wash = wall.querySelector('.lp-wall__wash--' + key);
         var cone = beam && beam.querySelector('.lp-rig__cone');
         var aims = [
-          makeDial(lamp, SWING, 1400),
-          makeDial(beam, SWING, 1400),
-          makeDial(wash, [{ '--lp-aim': '-70deg' }, { '--lp-aim': '70deg' }], 1400)
+          makeDial(lamp, SWING, 1800),
+          makeDial(beam, SWING, 1800),
+          makeDial(wash, [{ '--lp-aim': '-90deg' }, { '--lp-aim': '90deg' }], 1800)
         ];
         var levels = [
           makeDial(lamp, [{ filter: LAMP_SHADOW + 'brightness(0.4)' }, { filter: LAMP_SHADOW + 'brightness(1)' }], 100),
@@ -149,16 +163,32 @@
           makeDial(beam, [{ opacity: 0 }, { opacity: 1 }], 100, '::before')
         ];
         dials[key] = {
-          aim: function (deg) { aims.forEach(function (dial) { dial((deg + 70) * 10); }); },
+          aim: function (deg) { aims.forEach(function (dial) { dial((deg + 90) * 10); }); },
           level: function (value) { levels.forEach(function (dial) { dial(value * 100); }); }
         };
-        // Bee Eye heads also tilt front and back: the beams shorten towards
-        // the lens and, facing the audience, the lens torches the viewer.
+        // Bee Eye heads also roll front and back on their yoke: the beams
+        // shorten towards the lens, the hanging lamp gives way to the LED
+        // face or the fan-grilled back, and the lens torches the viewer (or
+        // splashes the wall) from wherever the head is pointing.
         if (key !== 'c') {
+          var face = rig.querySelector('.lp-rig__alt--face.lp-rig__alt--' + key);
+          var back = rig.querySelector('.lp-rig__alt--back.lp-rig__alt--' + key);
           var torch = rig.querySelector('.lp-rig__torch--' + key);
-          var reach = makeDial(beam, [{ scale: '1 0.04' }, { scale: '1 1' }], 100);
-          var burst = makeDial(torch, [{ opacity: 0, scale: '0.35' }, { opacity: 1, scale: '1' }], 100);
-          dials[key].tilt = function (length, glare) { reach(length * 100); burst(glare * 100); };
+          var hit = rig.querySelector('.lp-rig__hit--' + key);
+          [face, back, torch, hit].forEach(function (el) { aims.push(makeDial(el, SWING, 1800)); });
+          var VIEW = [{ opacity: 0, scale: '1 0.2' }, { opacity: 1, scale: '1 1' }];
+          var BLOOM = [{ opacity: 0, scale: '0.35' }, { opacity: 1, scale: '1' }];
+          var turns = [
+            makeDial(beam, [{ scale: '1 0.04' }, { scale: '1 1' }], 100),
+            makeDial(lamp, VIEW, 100),
+            makeDial(face, VIEW, 100),
+            makeDial(back, VIEW, 100),
+            makeDial(torch && torch.firstElementChild, BLOOM, 100),
+            makeDial(hit && hit.firstElementChild, BLOOM, 100)
+          ];
+          dials[key].tilt = function (t) {
+            turns.forEach(function (dial, i) { dial(t[i] * 100); });
+          };
         }
       });
     } catch (_err) {
@@ -397,8 +427,14 @@
       setCue(cuesBySlide[activeSlide()] || 'mainstage', now);
       var following = plan(now, piv);
       var m = master(now) * dip(now - dipAt);
+      var tilts = { l: tiltAt('l', now), r: tiltAt('r', now) };
       ['l', 'c', 'r'].forEach(function (key, i) {
         var lamp = lamps[key];
+        // Turned to the audience, a head swings in to point its lens at them.
+        if (key !== 'c') {
+          var facing = smooth(clamp(Math.sin(tilts[key] * Math.PI / 180) * 1.4, 0, 1));
+          lamp.target += (DISCO[key].side * 22 - lamp.target) * facing;
+        }
         var k = 1 - Math.exp(-dt * lamp.rate);
         lamp.aim += (lamp.target - lamp.aim) * k;
         // Lamps strike one after another on first light.
@@ -415,12 +451,23 @@
           dials[key].level(lamps[key].level);
           return;
         }
-        // Tilted front or back, less of the fan reaches the wall.
-        var tilt = tiltAt(key, now);
-        var length = Math.abs(Math.cos(tilt * Math.PI / 180));
-        var glare = tilt > 0 ? smooth(clamp((tilt - 40) / 45, 0, 1)) : 0;
-        dials[key].level(lamps[key].level * (0.35 + 0.65 * length));
-        dials[key].tilt(Math.max(0.04, length), glare * lamps[key].level);
+        // Tilted front or back, less of the fan reaches the wall, and the
+        // view of the head turns from lamp to LED face or grilled back.
+        var tilt = tilts[key] * Math.PI / 180;
+        var lv = lamps[key].level;
+        var length = Math.abs(Math.cos(tilt));
+        var front = Math.max(0, Math.sin(tilt));
+        var rear = Math.max(0, -Math.sin(tilt));
+        var view = function (x) { return smooth(clamp((x - 0.25) / 0.6, 0, 1)); };
+        dials[key].level(lv * (0.35 + 0.65 * length));
+        dials[key].tilt([
+          Math.max(0.04, length),
+          view(length),
+          view(front),
+          view(rear),
+          smooth(clamp((front - 0.75) / 0.23, 0, 1)) * lv,
+          smooth(clamp((rear - 0.75) / 0.23, 0, 1)) * lv * 0.85
+        ]);
       });
       if (shadowEl) {
         setVars(shadowEl, {

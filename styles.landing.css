@@ -1363,17 +1363,50 @@ body.light-theme .lp-rig__cone--bee i {
   filter: saturate(1.6) brightness(0.62);
 }
 
-/* Torch: when a Bee Eye head swings round to face the audience it shines
-   straight at whoever is holding the phone: a soft, mixed-colour bloom from
-   the lens that swells and fades. app.landing-lights.js sets its level. */
-.lp-rig__torch {
+/* Bee Eye heads turn round on their yoke, so besides the hanging lamp each
+   head has two more views: its LED face (turned to the audience) and its
+   fan-grilled back (turned to the wall). app.landing-lights.js swings them
+   with the lamp and cross-fades the three views as the head tilts; the
+   squash is about the yoke bolt, so the disk reads as turning on it. */
+.lp-rig__alt {
   position: absolute;
-  top: var(--lp-lens);
+  top: calc(var(--lp-pivot) - 2px);
+  width: 68px;
+  height: 75px;
+  margin-left: -34px;
+  overflow: visible;
+  transform-origin: 50% 2px;
+  opacity: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 8px 10px rgb(0 0 0 / 0.5));
+}
+
+.lp-rig__alt--l { left: var(--lp-lamp-l); }
+.lp-rig__alt--r { left: var(--lp-lamp-r); }
+.lp-rig__alt--face { filter: drop-shadow(0 0 6px rgb(255 240 250 / 0.7)) drop-shadow(0 8px 10px rgb(0 0 0 / 0.5)); }
+
+/* Torch: an arm hung from the yoke bolt that swings with the head, holding a
+   bloom over the centre of the lens. When the head turns to face the
+   audience the lens shines straight at whoever is holding the phone; turned
+   to the wall, a smaller mixed-colour splash hits the bricks behind it.
+   app.landing-lights.js swings the arm and sets each bloom's level. */
+.lp-rig__torch {
+  --lp-lens-c: 32px;
+  position: absolute;
+  top: var(--lp-pivot);
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.lp-rig__torch i {
+  position: absolute;
+  left: 0;
+  top: var(--lp-lens-c);
   width: min(110vmin, 900px);
   aspect-ratio: 1;
   translate: -50% -50%;
   border-radius: 50%;
-  pointer-events: none;
   opacity: 0;
   mix-blend-mode: screen;
   background:
@@ -1381,9 +1414,24 @@ body.light-theme .lp-rig__cone--bee i {
   will-change: opacity, scale;
 }
 
-.lp-rig__torch--l { left: var(--lp-lamp-l); }
-.lp-rig__torch--r { left: var(--lp-lamp-r); }
-body.light-theme .lp-rig__torch { mix-blend-mode: normal; }
+.lp-rig__torch--hit i {
+  width: min(46vmin, 380px);
+  background:
+    radial-gradient(circle at 42% 44%, rgb(255 80 140 / 0.55), transparent 34%),
+    radial-gradient(circle at 60% 46%, rgb(70 210 255 / 0.5), transparent 34%),
+    radial-gradient(circle at 50% 62%, rgb(255 190 70 / 0.5), transparent 34%),
+    radial-gradient(circle, rgb(255 255 255 / 0.85) 0 6%, rgb(240 225 255 / 0.35) 20%, transparent 58%);
+}
+
+.lp-rig__torch--l, .lp-rig__hit--l { left: var(--lp-lamp-l); }
+.lp-rig__torch--r, .lp-rig__hit--r { left: var(--lp-lamp-r); }
+body.light-theme .lp-rig__torch i { mix-blend-mode: normal; }
+body.light-theme .lp-rig__torch--hit i { mix-blend-mode: multiply; }
+
+@media (max-width: 599px) {
+  .lp-rig__alt { width: 52px; height: 57px; margin-left: -26px; }
+  .lp-rig__torch { --lp-lens-c: 24px; }
+}
 
 /* Star glints: a few cross-shaped sparkles that wink on and off along the
    truss and in the footer, one at a time, never more than a couple lit. */
@@ -1566,7 +1614,7 @@ body.light-theme .lp-twinkles i {
 }
 
 /* Turning heads stay on their own layers, so a new angle never repaints them. */
-.lp-main[data-lp-lights] :is(.lp-rig__lamp, .lp-rig__beam) { will-change: rotate; }
+.lp-main[data-lp-lights] :is(.lp-rig__lamp, .lp-rig__beam, .lp-rig__alt, .lp-rig__torch) { will-change: rotate; }
 
 /* The wall runs the length of the page, but repainting its masked washes
    that tall every frame is heavy. So each wash is one screen tall and rides
