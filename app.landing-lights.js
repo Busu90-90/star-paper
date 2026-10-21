@@ -34,6 +34,7 @@
 
   function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }
   function smooth(t) { return t * t * (3 - 2 * t); }
+  function smoother(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
   function deg(rad) { return rad * 180 / Math.PI; }
 
   // Writes custom properties onto one element, skipping values that have not
@@ -60,8 +61,8 @@
   // come back, then roll round to face the audience (positive) and torch
   // them, hold, and drop back. The heads run the routine out of step.
   var TILT_KEYS = [
-    [0, 0], [2.2, 0], [3.0, -86], [4.6, -86], [5.4, 0],
-    [7.4, 0], [8.2, 88], [9.8, 88], [10.6, 0], [14, 0]
+    [0, 0], [2.0, 0], [3.1, -86], [4.5, -86], [5.7, 0],
+    [7.0, 0], [8.2, 88], [9.6, 88], [11.4, 0], [14, 0]
   ];
   var TILT_RUN = { l: { period: 14, offset: 0 }, r: { period: 15.4, offset: 4.7 } };
 
@@ -73,12 +74,14 @@
       if (t <= TILT_KEYS[i][0]) {
         var a = TILT_KEYS[i - 1];
         var b = TILT_KEYS[i];
-        tilt = a[1] + (b[1] - a[1]) * smooth((t - a[0]) / (b[0] - a[0]));
+        tilt = a[1] + (b[1] - a[1]) * smoother((t - a[0]) / (b[0] - a[0]));
         break;
       }
     }
-    var nod = 10 * Math.sin(now / 1000 * 1.25 + DISCO[name].phase * 1.7);
-    return clamp(tilt + nod * (1 - Math.abs(tilt) / 90), -90, 90);
+    // A small nod while hanging, faded out well before a turn so the roll
+    // itself stays one clean move.
+    var nod = 6 * Math.sin(now / 1000 * 1.25 + DISCO[name].phase * 1.7);
+    return clamp(tilt + nod * (1 - smooth(clamp(Math.abs(tilt) / 25, 0, 1))), -90, 90);
   }
 
   function discoAt(name, now) {
@@ -432,10 +435,13 @@
         var lamp = lamps[key];
         // Turned to the audience, a head swings in to point its lens at them.
         if (key !== 'c') {
-          var facing = smooth(clamp(Math.sin(tilts[key] * Math.PI / 180) * 1.4, 0, 1));
+          var facing = smoother(clamp(tilts[key] / 80, 0, 1));
           lamp.target += (DISCO[key].side * 22 - lamp.target) * facing;
         }
-        var k = 1 - Math.exp(-dt * lamp.rate);
+        // Mid-roll the pan eases rather than chasing, so turning in and
+        // back out reads as one smooth move.
+        var rate = key === 'c' ? lamp.rate : lamp.rate * (1 - 0.6 * smooth(clamp(Math.abs(tilts[key]) / 30, 0, 1)));
+        var k = 1 - Math.exp(-dt * rate);
         lamp.aim += (lamp.target - lamp.aim) * k;
         // Lamps strike one after another on first light.
         var stagger = strikeAt((now - started - i * gap) / 900);
@@ -458,15 +464,19 @@
         var length = Math.abs(Math.cos(tilt));
         var front = Math.max(0, Math.sin(tilt));
         var rear = Math.max(0, -Math.sin(tilt));
-        var view = function (x) { return smooth(clamp((x - 0.25) / 0.6, 0, 1)); };
+        // One view hands over to the other between 28 and 68 degrees, so the head
+        // never shows as a double image mid-roll.
+        var swap = smooth(clamp((Math.abs(tilts[key]) - 28) / 40, 0, 1));
+        var toFront = tilts[key] > 0 ? swap : 0;
+        var toRear = tilts[key] < 0 ? swap : 0;
         dials[key].level(lv * (0.35 + 0.65 * length));
         dials[key].tilt([
           Math.max(0.04, length),
-          view(length),
-          view(front),
-          view(rear),
-          smooth(clamp((front - 0.75) / 0.23, 0, 1)) * lv,
-          smooth(clamp((rear - 0.75) / 0.23, 0, 1)) * lv * 0.85
+          1 - swap,
+          toFront,
+          toRear,
+          smoother(clamp((front - 0.82) / 0.17, 0, 1)) * lv,
+          smoother(clamp((rear - 0.82) / 0.17, 0, 1)) * lv * 0.85
         ]);
       });
       if (shadowEl) {
