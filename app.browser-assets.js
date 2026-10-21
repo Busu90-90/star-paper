@@ -108,7 +108,7 @@
     ['21', ['app.reports.js']],
     ['27', ['manifest.json']],
     ['65', ['styles.css']],
-    ['101', ['supabase.js']],
+    ['102', ['supabase.js']],
     ['161', ['app.js']],
     ['221', ['sw.js']]
   ];
