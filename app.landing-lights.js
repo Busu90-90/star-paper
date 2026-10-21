@@ -2,10 +2,10 @@
 // - Follow spot: the centre lamp holds still until the visitor moves, then
 //   stays locked on their cursor or thumb anywhere on the page, throwing a
 //   pool of light on the wall where it points.
-// - Bee Eye heads: the side lamps throw fans of mixed-colour beamlets, pan
-//   on their own side of the stage, tilt front and back (flaring when they
-//   face the audience), and have a short throw, so they never wash over the
-//   follow spot.
+// - Bee Eye heads: the side lamps throw tight mixed-colour beams from the
+//   lens, pan on their own side of the stage (8 to 80 degrees out), tilt
+//   front and back (torching the viewer when they face the audience), and
+//   have a short throw, so they never wash over the follow spot.
 // - Cues: every hero slide has its own lighting state, with a short blackout
 //   between them.
 // - Shadows: the active headline casts a soft shadow away from the lamps.
@@ -49,7 +49,7 @@
 
   // The side lamps dance like disco heads: two waves at odd speeds so the
   // pattern never quite repeats, and always on their own side of the stage
-  // (6 to 62 degrees outwards), so they never cross the follow spot.
+  // (8 to 80 degrees outwards), so they never cross the follow spot.
   var DISCO = {
     l: { side: 1, phase: 0 },
     r: { side: -1, phase: 2.1 }
@@ -70,7 +70,7 @@
   function discoAt(name, now) {
     var d = DISCO[name];
     var t = now / 1000;
-    return d.side * (34 + 20 * Math.sin(t * 1.7 + d.phase) + 8 * Math.sin(t * 3.1 + d.phase * 1.6));
+    return d.side * (44 + 26 * Math.sin(t * 1.5 + d.phase) + 10 * Math.sin(t * 2.9 + d.phase * 1.6));
   }
 
   // A lamp striking up: a flicker, then full.
@@ -152,12 +152,12 @@
           aim: function (deg) { aims.forEach(function (dial) { dial((deg + 70) * 10); }); },
           level: function (value) { levels.forEach(function (dial) { dial(value * 100); }); }
         };
-        // Bee Eye heads also tilt front and back: the beam fan shortens
-        // towards the lens and, facing the audience, the lens flares.
+        // Bee Eye heads also tilt front and back: the beams shorten towards
+        // the lens and, facing the audience, the lens torches the viewer.
         if (key !== 'c') {
-          var flare = rig.querySelector('.lp-rig__flare--' + key);
+          var torch = rig.querySelector('.lp-rig__torch--' + key);
           var reach = makeDial(beam, [{ scale: '1 0.04' }, { scale: '1 1' }], 100);
-          var burst = makeDial(flare, [{ opacity: 0, rotate: '0deg' }, { opacity: 1, rotate: '45deg' }], 100);
+          var burst = makeDial(torch, [{ opacity: 0, scale: '0.35' }, { opacity: 1, scale: '1' }], 100);
           dials[key].tilt = function (length, glare) { reach(length * 100); burst(glare * 100); };
         }
       });
