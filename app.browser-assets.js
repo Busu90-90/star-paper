@@ -60,7 +60,7 @@
     ]],
     ['1', ['app.offline-cache.js']],
     ['3', ['app.todayboard.js']],
-    ['56', ['app.browser-assets.js']],
+    ['58', ['app.browser-assets.js']],
     ['2', ['app.boot-head.js']],
     ['3', ['app.money.js']],
     ['4', ['app.home.js']],
@@ -69,7 +69,7 @@
     ['2', ['app.artists.js']],
     ['2', ['app.pickers.js']],
     ['3', ['app.crew.js']],
-    ['3', ['app.docs.js']],
+    ['4', ['app.docs.js']],
     ['4', ['app.chrome.js']],
     ['2', ['app.insights.js']],
     ['40', ['styles.landing.css']],
@@ -113,7 +113,7 @@
     ['65', ['styles.css']],
     ['102', ['supabase.js']],
     ['163', ['app.js']],
-    ['235', ['sw.js']]
+    ['237', ['sw.js']]
   ];
 
   const assetVersions = {};
