@@ -1779,6 +1779,20 @@ body.light-theme .lp .is-beamlit :is(em, strong, span) {
     0 0 34px rgb(30 190 120 / 0.35);
 }
 
+/* The slide cards stay smoked glass in light mode, so words lit on them
+   keep the night-stage treatment. */
+body.light-theme .lp :is(.lp-art, .lp-stats) .is-beamlit,
+body.light-theme .lp :is(.lp-art, .lp-stats) .is-beamlit :is(em, strong, span) {
+  color: #FFFFFF;
+  -webkit-text-fill-color: #FFFFFF;
+  text-shadow:
+    0 0 1px rgb(0 0 0 / 0.95),
+    0 1px 3px rgb(0 0 0 / 0.9),
+    0 0 10px rgb(4 30 18 / 0.85),
+    0 0 22px rgb(46 230 150 / 0.7),
+    0 0 44px rgb(46 230 150 / 0.4);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lp :is(h1, h2, h3, h4, p, li, a, button, em, strong, span, blockquote, figcaption, small, label, dt, dd) { transition: none; }
 }
@@ -3093,6 +3107,202 @@ body.light-theme .lp-auth__loading {
 
 .lp-cta__toggle {
   justify-self: center;
+}
+
+/* ── 8b. Glass under the lights ───────────────────────────────────────────
+   Every card under the rig is a pane of smoked glass hung in front of the
+   bricks. app.landing-lights.js works out, per card, where each lamp is and
+   writes onto the card's stand-in in .lp-shades: one wall shadow per lamp
+   (--lp-g1 centre, --lp-g2 left, --lp-g3 right), how brightly the glass is
+   lit (--lp-gl) and which way the light comes from (--lp-grx/--lp-gry, a unit
+   vector) for the bright rim. The cards themselves only ever see the initial
+   values: a quiet top-lit pane, which is also the look without the rig (no
+   JS, reduced motion). */
+
+@property --lp-g1x { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --lp-g1y { syntax: '<length>'; inherits: false; initial-value: 14px; }
+@property --lp-g1a { syntax: '<number>'; inherits: false; initial-value: 0.3; }
+@property --lp-g2x { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --lp-g2y { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --lp-g2a { syntax: '<number>'; inherits: false; initial-value: 0; }
+@property --lp-g3x { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --lp-g3y { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --lp-g3a { syntax: '<number>'; inherits: false; initial-value: 0; }
+@property --lp-gl { syntax: '<number>'; inherits: false; initial-value: 0.3; }
+@property --lp-grx { syntax: '<number>'; inherits: false; initial-value: 0; }
+@property --lp-gry { syntax: '<number>'; inherits: false; initial-value: -1; }
+
+.lp :is(.lp-ledger, .lp-chip, .lp-runsheet, .lp-stat, .lp-qcard, .lp-cta__jobs li, .lp-cta__inner) {
+  box-shadow:
+    inset calc(var(--lp-grx) * -1.5px) calc(var(--lp-gry) * -1.5px) 0 rgb(255 238 200 / calc(0.1 + 0.45 * var(--lp-gl))),
+    inset 0 0 32px rgb(255 226 160 / calc(0.1 * var(--lp-gl))),
+    var(--lp-glass-amb, 0 2px 6px rgb(0 0 0 / 0.22), 0 14px 26px -12px rgb(0 0 0 / 0.5));
+  transition:
+    translate var(--sp-dur-4) var(--sp-ease-out),
+    rotate var(--sp-dur-4) var(--sp-ease-out),
+    scale var(--sp-dur-4) var(--sp-ease-out),
+    opacity var(--sp-dur-3) var(--sp-ease-out),
+    filter var(--sp-dur-3) var(--sp-ease-out);
+}
+
+.lp :where(.lp-runsheet, .lp-stat, .lp-qcard, .lp-cta__jobs li) { position: relative; }
+
+/* The wall shadows are drawn by stand-ins in a layer above the beams (the
+   beams pass over the cards, so a card's own shadow would be washed out by
+   the haze). An outer box-shadow is never painted inside its box, so each
+   stand-in darkens only the wall around its card, one shadow per lamp. */
+.lp-shades {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+
+.lp-shade {
+  --lp-shade-rgb: 0 0 0;
+  --lp-shade-k: 1;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--lp-pw, 0px);
+  height: var(--lp-ph, 0px);
+  translate: var(--lp-px, 0px) var(--lp-py, 0px);
+  box-shadow:
+    inset calc(var(--lp-grx) * -1.5px) calc(var(--lp-gry) * -1.5px) 0 rgb(255 238 200 / calc(0.5 * var(--lp-gl))),
+    inset 0 0 32px rgb(255 226 160 / calc(0.12 * var(--lp-gl))),
+    var(--lp-g1x) var(--lp-g1y) var(--lp-gb, 14px) rgb(var(--lp-shade-rgb) / calc(var(--lp-g1a) * var(--lp-shade-k))),
+    var(--lp-g2x) var(--lp-g2y) calc(var(--lp-gb, 14px) + 4px) rgb(var(--lp-shade-rgb) / calc(var(--lp-g2a) * var(--lp-shade-k))),
+    var(--lp-g3x) var(--lp-g3y) calc(var(--lp-gb, 14px) + 4px) rgb(var(--lp-shade-rgb) / calc(var(--lp-g3a) * var(--lp-shade-k)));
+}
+
+.lp-shade[hidden] { display: none; }
+
+@supports (mask-clip: no-clip) and (mask-composite: exclude) {
+  .lp-shade[data-holes] {
+    mask:
+      linear-gradient(#000 0 0),
+      linear-gradient(#000 0 0) no-repeat var(--lp-k1, 0 0 / 0 0),
+      linear-gradient(#000 0 0) no-repeat var(--lp-k2, 0 0 / 0 0);
+    mask-clip: no-clip;
+    mask-composite: exclude;
+  }
+}
+
+body.light-theme .lp-shade {
+  --lp-shade-rgb: 48 36 14;
+  --lp-shade-k: 0.5;
+}
+
+/* The panes themselves: thin smoked glass that brightens in the beam. The
+   closing panel keeps its own see-through fill. */
+.lp :is(.lp-ledger, .lp-chip, .lp-runsheet, .lp-stat, .lp-qcard, .lp-cta__jobs li) {
+  border: 1px solid rgb(255 240 205 / calc(0.1 + 0.22 * var(--lp-gl)));
+  background:
+    linear-gradient(160deg, rgb(255 255 255 / calc(0.04 + 0.1 * var(--lp-gl))), rgb(255 255 255 / 0) 45%),
+    linear-gradient(160deg, rgb(22 32 20 / 0.66), rgb(6 10 9 / 0.78));
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  backdrop-filter: blur(14px) saturate(150%);
+  color: #F7F3E8;
+}
+
+/* Small print on the chips and pass cards needs a denser pane. */
+.lp .lp-chip {
+  background:
+    linear-gradient(160deg, rgb(255 255 255 / calc(0.05 + 0.1 * var(--lp-gl))), rgb(255 255 255 / 0) 45%),
+    linear-gradient(160deg, rgb(22 32 20 / 0.8), rgb(6 10 9 / 0.86));
+}
+
+.lp .lp-cta__jobs li { color: #DCE1D6; }
+.lp .lp-cta__jobs strong { color: #F7F3E8; }
+
+.lp .lp-stat--lead {
+  border-color: rgb(217 180 90 / calc(0.3 + 0.25 * var(--lp-gl)));
+  background:
+    radial-gradient(100% 90% at 100% 0%, rgb(217 180 90 / 0.24), transparent 60%),
+    linear-gradient(160deg, rgb(255 255 255 / calc(0.04 + 0.1 * var(--lp-gl))), rgb(255 255 255 / 0) 45%),
+    linear-gradient(160deg, rgb(28 40 24 / 0.7), rgb(6 10 9 / 0.8));
+}
+
+/* Sheen: a glint rolls across a pane when the beam first lands on it, or
+   when it is hovered. Painted inside the pane, so nothing needs clipping. */
+.lp :is(.lp-ledger, .lp-chip, .lp-runsheet, .lp-stat, .lp-qcard, .lp-cta__jobs li)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  background: linear-gradient(105deg, transparent 38%, rgb(255 246 222 / 0.2) 47%, rgb(255 255 255 / 0.34) 50%, rgb(255 246 222 / 0.2) 53%, transparent 62%) no-repeat;
+  background-size: 250% 100%;
+  background-position: 100% 0;
+  opacity: 0;
+  mix-blend-mode: plus-lighter;
+  pointer-events: none;
+}
+
+.lp :is(.lp-ledger, .lp-chip, .lp-runsheet, .lp-stat, .lp-qcard, .lp-cta__jobs li).is-sheen::after {
+  animation: lp-sheen 1100ms var(--sp-ease-out) both;
+}
+
+@media (hover: hover) {
+  .lp :is(.lp-ledger, .lp-chip, .lp-runsheet, .lp-stat, .lp-qcard[data-pos='front'], .lp-cta__jobs li):hover::after {
+    animation: lp-sheen 1100ms var(--sp-ease-out) both;
+  }
+
+  /* Lift off the wall: the pane comes forward, its shadow drops further
+     away and softens, and the rim brightens. */
+  .lp :is(.lp-ledger, .lp-chip, .lp-runsheet, .lp-stat, .lp-qcard[data-pos='front'], .lp-cta__jobs li):hover {
+    translate: 0 -4px;
+    scale: 1.015;
+  }
+}
+
+/* Phones: a press lifts the pane for as long as the thumb is on it. */
+@media (hover: none) {
+  .lp :is(.lp-ledger, .lp-runsheet, .lp-stat, .lp-qcard[data-pos='front'], .lp-cta__jobs li):active {
+    scale: 1.01;
+  }
+}
+
+@keyframes lp-sheen {
+  0% { opacity: 1; background-position: 100% 0; }
+  80% { opacity: 1; }
+  100% { opacity: 0; background-position: 0% 0; }
+}
+
+/* Light theme: the panes hang straight on the pale wall (no night panel
+   behind them), so they are darker smoked glass and the room light gives
+   every card a soft shadow even outside the beams. Shadows are warm, not
+   black, so they sit on the bricks rather than on top of them. */
+body.light-theme .lp-art::before { display: none; }
+
+body.light-theme .lp :is(.lp-ledger, .lp-chip, .lp-runsheet, .lp-stat, .lp-qcard, .lp-cta__jobs li, .lp-cta__inner) {
+  --lp-glass-amb: 0 2px 6px rgb(48 36 14 / 0.16), 0 22px 40px -16px rgb(48 36 14 / 0.32);
+}
+
+body.light-theme .lp :is(.lp-ledger, .lp-chip, .lp-runsheet, .lp-stat, .lp-qcard, .lp-cta__jobs li) {
+  background:
+    linear-gradient(160deg, rgb(255 255 255 / calc(0.06 + 0.1 * var(--lp-gl))), rgb(255 255 255 / 0) 45%),
+    linear-gradient(160deg, rgb(26 38 24 / 0.84), rgb(8 14 12 / 0.9));
+  border-color: rgb(255 240 205 / calc(0.16 + 0.22 * var(--lp-gl)));
+}
+
+/* The closing panel is pale in light mode, so its three cards are clear
+   frosted glass with ink text rather than smoked glass. */
+body.light-theme .lp .lp-cta__jobs li {
+  border-color: rgb(255 255 255 / calc(0.6 + 0.3 * var(--lp-gl)));
+  background:
+    linear-gradient(160deg, rgb(255 255 255 / calc(0.5 + 0.2 * var(--lp-gl))), rgb(255 255 255 / 0.3));
+  color: var(--sp-ink-2);
+}
+
+body.light-theme .lp .lp-cta__jobs strong { color: var(--sp-ink); }
+
+body.light-theme .lp .lp-cta__inner {
+  box-shadow:
+    inset calc(var(--lp-grx) * -1.5px) calc(var(--lp-gry) * -1.5px) 0 rgb(255 255 255 / calc(0.5 + 0.4 * var(--lp-gl))),
+    0 24px 48px -20px rgb(48 36 14 / 0.25);
 }
 
 /* ── 9. Footer, reveal, motion, theme ──────────────────────────────────── */

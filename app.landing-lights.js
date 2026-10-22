@@ -422,6 +422,158 @@
       shadow.a += (goal.a - shadow.a) * k;
     }
 
+    // Glass under the lights: every card on the stage throws one shadow per
+    // lamp onto the wall (away from that lamp, only while its beam is on the
+    // card), brightens while lit and catches a rim on the side facing the
+    // light. Values are eased and only written when they change.
+    var GLASS = '.lp-ledger, .lp-chip, .lp-runsheet, .lp-stat, .lp-qcard, .lp-cta__jobs li, .lp-cta__inner';
+    // The shadows themselves are drawn by stand-ins above the beams (see
+    // .lp-shades in styles.landing.css).
+    var shades = document.createElement('div');
+    shades.className = 'lp-shades';
+    shades.setAttribute('aria-hidden', 'true');
+    stage.appendChild(shades);
+    var panes = Array.prototype.map.call(root.querySelectorAll(GLASS), function (el) {
+      var ghost = document.createElement('div');
+      ghost.className = 'lp-shade';
+      ghost.hidden = true;
+      shades.appendChild(ghost);
+      return {
+        el: el,
+        ghost: ghost,
+        shown: false,
+        lift: 0,
+        slide: el.closest('[data-lp-slide]'),
+        // How far the pane hangs off the wall: floating chips sit furthest out.
+        depth: el.classList.contains('lp-chip') ? 34 : el.classList.contains('lp-cta__inner') ? 30 : 26,
+        s: { c: { x: 0, y: 14, a: 0 }, l: { x: 0, y: 0, a: 0 }, r: { x: 0, y: 0, a: 0 } },
+        lit: 0,
+        rx: 0,
+        ry: -1,
+        lit0: 0,
+        sheenAt: -1e9
+      };
+    });
+    var PANE_VARS = { c: '--lp-g1', l: '--lp-g2', r: '--lp-g3' };
+    panes.forEach(function (pane) {
+      pane.el.addEventListener('animationend', function (event) {
+        if (event.animationName === 'lp-sheen') pane.el.classList.remove('is-sheen');
+      });
+    });
+
+    function sheen(pane, now) {
+      if (now - pane.sheenAt < 2600) return;
+      pane.sheenAt = now;
+      // The class comes off when the glint finishes (see animationend).
+      pane.el.classList.add('is-sheen');
+    }
+
+    function showGhost(pane, on) {
+      if (pane.shown === on) return;
+      pane.shown = on;
+      pane.ghost.hidden = !on;
+    }
+
+    // Every card is measured while the frame is still clean (before any
+    // writes), and written at the end, so the browser works out styles and
+    // layout once per frame rather than once per card.
+    var base = null;
+    function measureGlass() {
+      var vh = window.innerHeight;
+      base = shades.getBoundingClientRect();
+      panes.forEach(function (pane) {
+        pane.box = null;
+        // Cards on other slides, and the testimonial cards stacked behind the
+        // front one, throw no shadow.
+        if ((pane.slide && !pane.slide.hasAttribute('data-active')) || /^back/.test(pane.el.getAttribute('data-pos') || '')) return;
+        var box = pane.el.getBoundingClientRect();
+        if (!box.width || box.bottom < -60 || box.top > vh + 60) return;
+        pane.box = box;
+        if (!pane.radius) pane.radius = getComputedStyle(pane.el).borderRadius;
+        // Cards that hang further out (the chips on the revenue card) are not
+        // shaded by the card behind them: they are cut out of its shadow.
+        if (!pane.holes) pane.holes = Array.prototype.slice.call(pane.el.querySelectorAll('.lp-chip'));
+        pane.holeBoxes = pane.holes.map(function (chip) { return chip.getBoundingClientRect(); });
+        pane.hover = pane.el.matches(':hover');
+      });
+    }
+
+    function castGlass(piv, dt, now) {
+      var k = 1 - Math.exp(-dt * 8);
+      panes.forEach(function (pane) {
+        var box = pane.box;
+        if (!box) {
+          pane.lit0 = 0;
+          showGhost(pane, false);
+          return;
+        }
+        if (!pane.dressed) {
+          pane.dressed = true;
+          pane.ghost.style.borderRadius = pane.radius;
+          if (pane.holes.length) pane.ghost.setAttribute('data-holes', '');
+        }
+        showGhost(pane, true);
+        // Lifted off the wall (hovered), the shadow falls further and softer.
+        pane.lift += ((pane.hover ? 1 : 0) - pane.lift) * (1 - Math.exp(-dt * 10));
+        var p = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+        var lit = 0;
+        var rx = 0;
+        var ry = 0;
+        ['l', 'c', 'r'].forEach(function (key) {
+          var lamp = lamps[key];
+          var dx = p.x - piv[key].x;
+          var dy = p.y - piv[key].y;
+          var len = Math.hypot(dx, dy) || 1;
+          // A wide card catches the beam over more of the lamp's swing.
+          var half = deg(Math.atan2(box.width / 2, len));
+          var off = Math.max(0, Math.abs(lamp.aim - aimAt(piv[key], p)) - half);
+          var hit = clamp(1 - off / 24, 0, 1) * (lamp.reach || 0);
+          var weight = key === 'c' ? 1 : 0.6;
+          lit += hit * weight;
+          rx -= (dx / len) * hit * weight;
+          ry -= (dy / len) * hit * weight;
+          var reach = pane.depth * (0.6 + 0.4 * hit) * (1 + 0.8 * pane.lift);
+          var s = pane.s[key];
+          s.x += ((dx / len) * reach - s.x) * k;
+          s.y += ((dy / len) * reach - s.y) * k;
+          s.a += (hit * (key === 'c' ? 0.85 : 0.5) * (1 - 0.3 * pane.lift) - s.a) * k;
+        });
+        lit = Math.min(1, lit);
+        pane.lit += (lit - pane.lit) * k;
+        var norm = Math.hypot(rx, ry);
+        if (norm > 0.05) {
+          pane.rx += (rx / norm - pane.rx) * k;
+          pane.ry += (ry / norm - pane.ry) * k;
+        }
+        // The first time the beam properly lands on a pane, a glint rolls across.
+        if (lit > 0.55 && pane.lit0 <= 0.55) sheen(pane, now);
+        pane.lit0 = lit;
+        var shade = {
+          '--lp-px': Math.round(box.left - base.left) + 'px',
+          '--lp-py': Math.round(box.top - base.top) + 'px',
+          '--lp-pw': Math.round(box.width) + 'px',
+          '--lp-ph': Math.round(box.height) + 'px',
+          '--lp-gb': Math.round(14 + 18 * pane.lift) + 'px'
+        };
+        ['c', 'l', 'r'].forEach(function (key) {
+          var s = pane.s[key];
+          shade[PANE_VARS[key] + 'x'] = Math.round(s.x) + 'px';
+          shade[PANE_VARS[key] + 'y'] = Math.round(s.y) + 'px';
+          shade[PANE_VARS[key] + 'a'] = (Math.round(s.a * 50) / 50).toFixed(2);
+        });
+        pane.holeBoxes.forEach(function (c, i) {
+          shade['--lp-k' + (i + 1)] = Math.round(c.left - box.left) + 'px ' + Math.round(c.top - box.top) + 'px / ' +
+            Math.round(c.width) + 'px ' + Math.round(c.height) + 'px';
+        });
+        // The rim and glow go on the stand-in too: writing them on the card
+        // would restyle everything inside it every frame.
+        shade['--lp-gl'] = (Math.round(pane.lit * 50) / 50).toFixed(2);
+        shade['--lp-grx'] = (Math.round(pane.rx * 20) / 20).toFixed(2);
+        shade['--lp-gry'] = (Math.round(pane.ry * 20) / 20).toFixed(2);
+        setVars(pane.ghost, shade);
+      });
+    }
+
     function frame(now) {
       if (!running) return;
       var dt = Math.min(0.05, (now - (last || now)) / 1000);
@@ -450,10 +602,15 @@
         // The torch at the viewer ignores slide cues that dim the side fans.
         var lit = Math.min(m, stagger);
         lamp.lit = (lamp.lit || 0) + (lit - (lamp.lit || 0)) * (1 - Math.exp(-dt * 14));
+        // How much of the beam actually reaches the wall: the side heads only
+        // throw it there while hanging, not when rolled to face the audience.
+        lamp.reach = key === 'c' ? lamp.level : lamp.lit * Math.abs(Math.cos(tilts[key] * Math.PI / 180));
       });
       castShadow(piv, dt);
+      measureGlass();
       slideWashes();
       placeSpot(piv, following, lamps.c.level);
+      castGlass(piv, dt, now);
       ['l', 'c', 'r'].forEach(function (key) {
         dials[key].aim(lamps[key].aim);
         if (key === 'c') {
