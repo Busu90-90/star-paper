@@ -718,6 +718,83 @@
         });
     }
 
+    // Laptops ignore the capture attribute and open the file chooser, so
+    // without a touch screen "Take photo" opens the webcam in the page.
+    function wantsLiveCamera() {
+        const touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+        return !touch && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    }
+
+    function cameraError(err) {
+        const name = err && err.name;
+        if (name === 'NotAllowedError' || name === 'SecurityError') return 'Camera access is blocked. Allow the camera for this site in your browser, or use Choose file.';
+        if (name === 'NotFoundError' || name === 'OverconstrainedError') return 'No camera was found on this device. Use Choose file instead.';
+        if (name === 'NotReadableError') return 'The camera is busy in another app. Close it and try again.';
+        return 'The camera could not start. Use Choose file instead.';
+    }
+
+    async function openLiveCamera(target) {
+        if (document.querySelector('.dv-cam')) return;
+        const shade = el('div', 'dv-cam');
+        shade.setAttribute('role', 'dialog');
+        shade.setAttribute('aria-modal', 'true');
+        shade.setAttribute('aria-label', 'Take a photo');
+        const panel = el('div', 'dv-cam__panel');
+        const video = el('video', 'dv-cam__video');
+        video.autoplay = true;
+        video.muted = true;
+        video.playsInline = true;
+        const status = el('p', 'dv-cam__status', 'Starting the camera…');
+        const actions = el('div', 'dv-cam__actions');
+        const cancel = button('back-btn', 'Cancel', null, 'ph-x');
+        const snap = button('btn-primary', 'Take photo', null, 'ph-camera');
+        snap.disabled = true;
+        actions.append(cancel, snap);
+        panel.append(video, status, actions);
+        shade.appendChild(panel);
+        document.body.appendChild(shade);
+        let stream = null;
+        const close = () => {
+            if (stream) stream.getTracks().forEach((t) => t.stop());
+            stream = null;
+            document.removeEventListener('keydown', onKey, true);
+            shade.remove();
+        };
+        const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+        document.addEventListener('keydown', onKey, true);
+        cancel.addEventListener('click', close);
+        shade.addEventListener('click', (e) => { if (e.target === shade) close(); });
+        snap.addEventListener('click', () => {
+            const w = video.videoWidth, h = video.videoHeight;
+            if (!w || !h) return;
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            canvas.getContext('2d').drawImage(video, 0, 0, w, h);
+            snap.disabled = true;
+            canvas.toBlob((blob) => {
+                close();
+                if (!blob) { toast('warn', 'That photo could not be taken. Try again.'); return; }
+                const file = new File([blob], `photo-${Date.now()}.jpg`, { type: 'image/jpeg' });
+                if (target === 'form' && document.getElementById('dvTitle')) readForm();
+                pickFile(file, target);
+            }, 'image/jpeg', 0.92);
+        });
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+        } catch (err) {
+            close();
+            toast('warn', cameraError(err));
+            return;
+        }
+        if (!shade.isConnected) { stream.getTracks().forEach((t) => t.stop()); return; }
+        video.srcObject = stream;
+        try { await video.play(); } catch (_) { /* autoplay covers it */ }
+        status.textContent = 'Hold the document flat and fill the frame.';
+        snap.disabled = false;
+        snap.focus();
+    }
+
     function clearPending() {
         if (state.pending?.url) URL.revokeObjectURL(state.pending.url);
         state.pending = null;
@@ -1137,6 +1214,11 @@
         camInput.setAttribute('data-dv-pick', target);
         camInput.disabled = busy;
         watchPick(camInput);
+        camInput.addEventListener('click', (e) => {
+            if (!wantsLiveCamera()) return;
+            e.preventDefault();
+            openLiveCamera(target);
+        });
         camera.appendChild(camInput);
         const choose = el('label', 'back-btn dv-pick');
         choose.appendChild(icon('ph-paperclip'));

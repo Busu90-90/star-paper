@@ -3088,3 +3088,11 @@ body.light-theme #spCurrencyBadge { color: var(--sp-gold-text); }
   #appContainer .dv-kd__row .dv-file__remove { grid-row: 1 / span 2; grid-column: 2; }
   #appContainer .dv-add { width: 100%; justify-content: center; }
 }
+
+/* Laptop webcam for "Take photo" in Documents (phones use their camera app). */
+.dv-cam { position: fixed; inset: 0; z-index: 1300; display: grid; place-items: center; padding: var(--sp-space-4); background: color-mix(in srgb, var(--sp-surface-1) 82%, transparent); backdrop-filter: blur(6px); }
+.dv-cam__panel { display: grid; gap: var(--sp-space-3); width: min(720px, 100%); padding: var(--sp-space-4); border: 1px solid var(--sp-line); border-radius: var(--sp-radius-lg); background: var(--sp-surface-2); box-shadow: var(--sp-shadow-3); color: var(--sp-ink); }
+.dv-cam__video { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: var(--sp-radius-md); background: var(--sp-surface-3); }
+.dv-cam__status { margin: 0; color: var(--sp-ink-2); font-size: var(--sp-text-sm); }
+.dv-cam__actions { display: flex; justify-content: flex-end; gap: var(--sp-space-2); }
+.dv-cam__actions .back-btn, .dv-cam__actions .btn-primary { display: inline-flex; align-items: center; gap: 6px; width: auto; margin: 0; }
