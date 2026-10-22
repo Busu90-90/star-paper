@@ -4241,6 +4241,14 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
     const sig = computeCloudSignature(payload);
 
+    // Read-only team roles (viewer, reports) cannot write team records; the
+    // database refuses them, so only their own theme is saved.
+    const teamAccess = workspaceMeta.teamId
+      ? (_teamContextCache.find((team) => team.id === workspaceMeta.teamId) || null)
+      : null;
+    const readOnlyTeam = Boolean(teamAccess?.myPermissions && !teamAccess.myPermissions.edit && !teamAccess.myPermissions.admin);
+    const savePayload = readOnlyTeam ? { theme: payload?.theme } : payload;
+
     updateSyncIndicator('syncing');
     let didSave = false;
     const {
@@ -4256,7 +4264,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       financeSettings,
       categoryBudgets,
       theme,
-    } = payload || {};
+    } = savePayload || {};
 
     let failedStep = 'saveAllData';
     beginCloudSaveOperation();

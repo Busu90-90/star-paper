@@ -164,6 +164,15 @@ body.light-theme .lp {
 
 /* ── 2. Type ───────────────────────────────────────────────────────────── */
 
+/* The landing shares the app's Checks display face (headings only). */
+:is(#landingScreen, #loginScreen) {
+  --sp-font-display: 'Checks', 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+}
+/* Checks sets wide, so the big lines step down a little and close up the
+   word gaps to keep their two-line shape. */
+:is(#landingScreen, #loginScreen) :is(.lp-display, .lp-h2) { letter-spacing: 0; word-spacing: -0.14em; }
+#landingScreen .lp-display { font-size: calc(var(--sp-text-4xl) * 0.84); }
+
 .lp-display,
 .lp-h2,
 .lp-auth__title {
@@ -760,8 +769,9 @@ body.light-theme .lp-header.is-scrolled {
   animation: lp-progress var(--lp-slide-ms) linear forwards;
 }
 
-.lp-show[data-autoplay='on']:is(:hover, :focus-within) .lp-tab__bar::after,
-.lp-show[data-paused] .lp-tab__bar::after {
+/* Same weight as the rule above (plus the state), so pausing wins. */
+.lp-show[data-autoplay='on']:is(:hover, :focus-within) .lp-tab[aria-current='true'] .lp-tab__bar::after,
+.lp-show[data-autoplay='on'][data-paused] .lp-tab[aria-current='true'] .lp-tab__bar::after {
   animation-play-state: paused;
 }
 
@@ -974,8 +984,8 @@ body.light-theme .lp-wall__spot::after {
 body.light-theme .lp-wall :is(.lp-wall__wash--l, .lp-wall__wash--r) {
   background:
     conic-gradient(from calc(180deg + var(--lp-aim) - var(--lp-half)) at var(--lp-x) var(--lp-py),
-      rgb(255 170 195) 0deg, rgb(255 220 170) calc(var(--lp-half) * 0.6), rgb(255 255 255) var(--lp-half),
-      rgb(170 230 255) calc(var(--lp-half) * 1.4), rgb(225 185 255) calc(var(--lp-half) * 2), rgb(225 185 255) 360deg),
+      rgb(235 95 140) 0deg, rgb(245 170 80) calc(var(--lp-half) * 0.6), rgb(255 250 235) var(--lp-half),
+      rgb(70 175 235) calc(var(--lp-half) * 1.4), rgb(165 105 235) calc(var(--lp-half) * 2), rgb(165 105 235) 360deg),
     linear-gradient(rgb(255 255 255 / 0.12), rgb(255 255 255 / 0.12)),
     var(--lp-brick) 0 calc(-1 * var(--lp-off, 0px)) / var(--lp-brick-size) repeat;
   background-blend-mode: multiply, normal, normal;
@@ -1022,11 +1032,11 @@ body.light-theme .lp-wall :is(.lp-wall__wash--l, .lp-wall__wash--r) {
 
 body.light-theme .lp-wall .lp-wall__pool {
   background:
-    conic-gradient(from 20deg at var(--lp-x) var(--lp-cy), rgb(255 170 195), rgb(255 220 170), rgb(255 255 255), rgb(170 230 255), rgb(225 185 255), rgb(255 170 195)),
+    conic-gradient(from 20deg at var(--lp-x) var(--lp-cy), rgb(235 95 140), rgb(245 170 80), rgb(255 250 235), rgb(70 175 235), rgb(165 105 235), rgb(235 95 140)),
     linear-gradient(rgb(255 255 255 / 0.12), rgb(255 255 255 / 0.12)),
     var(--lp-brick) 0 calc(-1 * var(--lp-off, 0px)) / var(--lp-brick-size) repeat;
   background-blend-mode: multiply, normal, normal;
-  --lp-wash-o: 0.8;
+  --lp-wash-o: 0.9;
 }
 
 /* Light mode: a whitewashed wall. Each wash is the lamp's colour laid over a
@@ -1053,6 +1063,7 @@ body.light-theme .lp-wall__wash {
 body.light-theme .lp-wall__wash--c { --lp-tint: 236 206 140; }
 body.light-theme .lp-wall__wash--l { --lp-tint: 150 214 180; }
 body.light-theme .lp-wall__wash--r { --lp-tint: 150 166 214; }
+body.light-theme .lp-wall :is(.lp-wall__wash--l, .lp-wall__wash--r) { --lp-wash-o: 0.85; }
 
 /* Black stage (dark theme): the house is dark, so the page is pitch black and
    the brick exists only where a beam lands on it. The washes come up a touch
@@ -1244,8 +1255,8 @@ body.light-theme .lp-rig__glints::after {
 body.light-theme .lp-rig { z-index: 0; }
 body.light-theme .lp-rig__beam { mix-blend-mode: multiply; opacity: 0.95; }
 body.light-theme .lp-rig__beam--c { --lp-beam-core: 200 160 70; --lp-beam-tint: 190 150 60; }
-body.light-theme .lp-rig__beam--l { --lp-beam-core: 40 160 110; --lp-beam-tint: 30 140 95; opacity: 0.85; }
-body.light-theme .lp-rig__beam--r { --lp-beam-core: 28 48 118; --lp-beam-tint: 22 40 104; opacity: 0.85; }
+body.light-theme .lp-rig__beam--l { --lp-beam-core: 40 160 110; --lp-beam-tint: 30 140 95; opacity: 1; }
+body.light-theme .lp-rig__beam--r { --lp-beam-core: 28 48 118; --lp-beam-tint: 22 40 104; opacity: 1; }
 body.light-theme .lp-rig__pool { mix-blend-mode: multiply; opacity: 0.9; }
 
 .lp-rig__cone {
@@ -1389,7 +1400,7 @@ body.light-theme .lp-rig__pool { mix-blend-mode: multiply; opacity: 0.9; }
 
 /* On the pale stage the beams are deeper and multiplied in. */
 body.light-theme .lp-rig__cone--bee i {
-  filter: saturate(1.6) brightness(0.62);
+  filter: saturate(2) brightness(0.5);
 }
 
 /* Bee Eye heads are built in 3D: a flat yoke hung from the truss clamp, and
