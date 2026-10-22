@@ -47,7 +47,7 @@
   } catch (_err) {
     decodedHash = hash.replace(/^#/, '').trim();
   }
-  var appHashPattern = /^(artists|bookings|calendar|cashflow|dashboard|expenses|financials|global|money|otherIncome|receivables|reports|schedule|settings|tasks)(?:[?&/].*)?$/i;
+  var appHashPattern = /^(artists|bookings|calendar|cashflow|crew|dashboard|documents|expenses|financials|global|money|otherIncome|receivables|reports|schedule|settings|tasks)(?:[?&/].*)?$/i;
   var targetHash = appHashPattern.test(decodedHash) ? '' : hash;
   var target = canonicalPath + (window.location.search || '') + targetHash;
   var current = window.location.pathname + (window.location.search || '') + hash;
