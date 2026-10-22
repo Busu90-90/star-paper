@@ -14,22 +14,21 @@
       notify, account)        money semantics
    ========================================================================== */
 
-/* Checks: the in-app display face (page titles, section headings, brand
-   word). Body text, card titles and money stay in Inter Tight / JetBrains
-   Mono so small text stays readable; Fraunces is the fallback. */
+/* Roschild: the display face for the app and the landing (page titles,
+   section headings, brand word). Body text, card titles and money stay in
+   Inter Tight / JetBrains Mono so small text stays readable; Fraunces is the
+   fallback. */
 @font-face {
-  font-family: 'Checks';
+  font-family: 'Roschild';
   font-style: normal;
-  font-weight: 400 700;
+  font-weight: 400;
   font-display: swap;
-  src: url(./assets/fonts/checks.woff2?v=1) format('woff2');
+  src: url(./assets/fonts/roschild.woff2?v=1) format('woff2');
 }
 #appContainer,
 :is(#confirmDeleteModal, #receiptModal, #profileModal, #spBbfModal, #spPdfExportModal, #spAboutModal, #spAdminModal, #spTeamModal) {
-  --sp-font-display: 'Checks', 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  --sp-font-display: 'Roschild', 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
 }
-/* Checks sets wide: let the brand word fit the rail. */
-body #appContainer .sb-brand__word { letter-spacing: 0.04em; }
 
 /* ── 1. Page + scope ─────────────────────────────────────────────────────── */
 [hidden] { display: none !important; }

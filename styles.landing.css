@@ -164,14 +164,12 @@ body.light-theme .lp {
 
 /* ── 2. Type ───────────────────────────────────────────────────────────── */
 
-/* The landing shares the app's Checks display face (headings only). */
+/* The landing shares the app's Roschild display face (headings only; the
+   @font-face lives in styles.app.css). */
 :is(#landingScreen, #loginScreen) {
-  --sp-font-display: 'Checks', 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  --sp-font-display: 'Roschild', 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
 }
-/* Checks sets wide, so the big lines step down a little and close up the
-   word gaps to keep their two-line shape. */
-:is(#landingScreen, #loginScreen) :is(.lp-display, .lp-h2) { letter-spacing: 0; word-spacing: -0.14em; }
-#landingScreen .lp-display { font-size: calc(var(--sp-text-4xl) * 0.84); }
+:is(#landingScreen, #loginScreen) :is(.lp-display, .lp-h2) { letter-spacing: 0; word-spacing: normal; }
 
 .lp-display,
 .lp-h2,

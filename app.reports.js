@@ -1438,10 +1438,10 @@
 
   // ── PDF RENDERER ─────────────────────────────────────────────────────────────
   // Draws the Money Moves report with jsPDF vector primitives so the PDF matches
-  // the app: Sage palette, Checks headings, Inter Tight text and JetBrains Mono
+  // the app: Sage palette, Roschild headings, Inter Tight text and JetBrains Mono
   // figures. Charts are drawn as shapes, not screenshots, so they stay sharp.
   const PDF_FONT_FILES = Object.freeze({
-    display: 'checks.ttf',
+    display: 'roschild.ttf',
     ui: 'inter-400.ttf',
     uiBold: 'inter-600.ttf',
     mono: 'mono-500.ttf',
