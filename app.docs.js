@@ -720,9 +720,14 @@
 
     // Laptops ignore the capture attribute and open the file chooser, so
     // without a touch screen "Take photo" opens the webcam in the page.
+    // Decided by the device, not the pointer: touch-screen laptops report
+    // a coarse pointer but still open the file chooser.
     function wantsLiveCamera() {
-        const touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-        return !touch && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+        if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) return false;
+        const ua = navigator.userAgent || '';
+        const ipad = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
+        const phone = (navigator.userAgentData && navigator.userAgentData.mobile) || /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || ipad;
+        return !phone;
     }
 
     function cameraError(err) {
@@ -1204,22 +1209,24 @@
             label.appendChild(select);
             box.appendChild(label);
         }
-        const camera = el('label', 'back-btn dv-pick');
-        camera.appendChild(icon('ph-camera'));
-        camera.appendChild(document.createTextNode('Take photo'));
-        const camInput = el('input', 'dv-pick__input');
-        camInput.type = 'file';
-        camInput.accept = 'image/*';
-        camInput.setAttribute('capture', 'environment');
-        camInput.setAttribute('data-dv-pick', target);
-        camInput.disabled = busy;
-        watchPick(camInput);
-        camInput.addEventListener('click', (e) => {
-            if (!wantsLiveCamera()) return;
-            e.preventDefault();
-            openLiveCamera(target);
-        });
-        camera.appendChild(camInput);
+        let camera;
+        if (wantsLiveCamera()) {
+            camera = button('back-btn dv-pick', 'Take photo', null, 'ph-camera');
+            camera.disabled = busy;
+            camera.addEventListener('click', () => openLiveCamera(target));
+        } else {
+            camera = el('label', 'back-btn dv-pick');
+            camera.appendChild(icon('ph-camera'));
+            camera.appendChild(document.createTextNode('Take photo'));
+            const camInput = el('input', 'dv-pick__input');
+            camInput.type = 'file';
+            camInput.accept = 'image/*';
+            camInput.setAttribute('capture', 'environment');
+            camInput.setAttribute('data-dv-pick', target);
+            camInput.disabled = busy;
+            watchPick(camInput);
+            camera.appendChild(camInput);
+        }
         const choose = el('label', 'back-btn dv-pick');
         choose.appendChild(icon('ph-paperclip'));
         choose.appendChild(document.createTextNode(target === 'detail' ? 'Add a version' : 'Choose file'));
