@@ -61,7 +61,7 @@
     ['1', ['app.offline-cache.js']],
     ['3', ['app.todayboard.js']],
     ['60', ['app.browser-assets.js']],
-    ['2', ['app.boot-head.js']],
+    ['3', ['app.boot-head.js']],
     ['3', ['app.money.js']],
     ['4', ['app.home.js']],
     ['1', ['assets/fonts/pdf/checks.ttf', 'assets/fonts/pdf/inter-400.ttf', 'assets/fonts/pdf/inter-600.ttf', 'assets/fonts/pdf/mono-500.ttf', 'assets/fonts/pdf/mono-700.ttf']],
