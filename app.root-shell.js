@@ -216,7 +216,7 @@
     var routePath = (url.pathname || '/').replace(/\/+$/, '') || '/';
     var hashToken = publicHash.trim().split(/[?&/]/)[0];
     hasAppHash = (routePath === '/' || routePath === '/index.html') &&
-      /^(artists|bookings|calendar|cashflow|dashboard|expenses|financials|global|money|otherincome|receivables|reports|schedule|settings|tasks)$/.test(hashToken);
+      /^(artists|bookings|calendar|cashflow|crew|dashboard|documents|expenses|financials|global|money|otherincome|receivables|reports|schedule|settings|tasks)$/.test(hashToken);
   } catch (_err) {}
   if (
     window.__spAppBooted ||

@@ -399,6 +399,7 @@ for (const path of [
   'app.artists.js',
   'app.schedule.js',
   'app.crew.js',
+  'app.docs.js',
   'supabase.js',
   'sw.js',
   'manifest.json',
@@ -665,7 +666,7 @@ assert(!/--sp-violet|124 92 255|#7C5CFF/i.test(designTokensCss + landingCss), 'F
 assert(!/lp-menu-btn|id="lpMenu"|lp-sheet/.test(index), 'The landing has no hamburger menu; the story slides carry the sections');
 assert(index.includes('class="lp-auth__medallion"') && index.includes('class="lp-auth__steps"'), 'Sign-in card must carry the step medallion and the sign-up stepper');
 assert(index.includes('id="authSuccessPanel"'), 'Sign-up must end on a success moment (peak-end)');
-assert(index.includes('id="lpRigLamp"') && index.includes('id="lpRigFresnel"') && (index.match(/href="#lpRig(Lamp|Fresnel)"/g) || []).length === 3 && (index.match(/href="#lpRigClamp"/g) || []).length === 3 && (index.match(/class="lp-rig"/g) || []).length === 1, 'One stage rig with three clamped lamps hangs over the whole showcase');
+assert(index.includes('id="lpRigFresnel"') && (index.match(/href="#lpRigFresnel"/g) || []).length === 1 && (index.match(/class="lp-bee lp-bee--[lr]"/g) || []).length === 2 && (index.match(/href="#lpBeeYoke"/g) || []).length === 2 && (index.match(/href="#lpRigClamp"/g) || []).length === 3 && (index.match(/class="lp-rig"/g) || []).length === 1, 'One stage rig with three clamped lamps hangs over the whole showcase');
 assert(landingCss.includes('.lp-rig {') && /\.lp-rig \{[^}]*z-index: 3/.test(landingCss), 'Stage beams must sit above the cards so the light falls through them');
 assert((index.match(/data-lp-quote /g) || []).length === 3 && landing.includes('function setupQuotes(root)'), 'Testimonials must rotate through all three quotes');
 assert(!/class="lp-trust"|lpJobsTitle/.test(index), 'The landing keeps one closing band; the trust strip and jobs section are merged into it');
@@ -826,11 +827,14 @@ assert(!/if\s*\(!isBootTransitionCurrentSafe\(flowId\)\s*\|\|\s*window\.__spAppB
 const logoutSource = sourceSlice(supabase, 'window.logout = async function supabaseLogout()', '    // Lightweight fallback', 'supabase.js logout');
 assertOrderedSnippets(logoutSource, [
   'localStorage.setItem(\'sp_logged_out\', \'1\');',
-  'await withTimeout(() => db.auth.signOut({ scope: \'local\' }), 800, \'logout-signOut\');',
+  'const localSignOut = db.auth.signOut({ scope: \'local\' }).catch(() => null);',
+  'await withTimeout(() => localSignOut, 800, \'logout-signOut\');',
   'clearSupabaseAuthArtifacts({ clearAppSession: false });',
   'localStorage.setItem(\'sp_logged_out\', \'1\');',
   'showLandingScreen({ keepLoader: true, flowId, reason: \'logout-complete\', minDelayMs: 350 });',
 ], 'supabaseLogout explicit-logout sequence');
+assert(logoutSource.includes('_pendingSignOut = pending;') && logoutSource.includes('Promise.allSettled(signOutCalls).then(() => releaseSignOut());'), 'supabaseLogout must expose its in-flight sign-out calls so a quick re-login does not lose its PKCE verifier');
+assert((supabase.match(/await settlePendingSignOut\(\);/g) || []).length >= 3, 'Google, password and sign-up sign-ins must wait for a running logout before starting');
 
 const initialSessionSource = sourceSlice(supabase, 'async function bootstrapInitialSession(options = {})', 'async function bootstrapFromStoredSession()', 'supabase.js bootstrapInitialSession');
 assertOrderedSnippets(initialSessionSource, [
@@ -1389,6 +1393,7 @@ for (const [fileName, text, budget] of [
   ['app.artists.js', read('app.artists.js'), { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
   ['app.schedule.js', read('app.schedule.js'), { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
   ['app.crew.js', read('app.crew.js'), { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
+  ['app.docs.js', read('app.docs.js'), { innerHTML: 0, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
   ['app.tasks.js', tasks, { innerHTML: 2, insertAdjacentHTML: 0, inlineOnclick: 0, inlineOnkeydown: 0 }],
 ]) {
   assertCountAtMost(text, /\.innerHTML\s*(?:=|\+=)/g, budget.innerHTML, `${fileName} audited innerHTML sink budget`);

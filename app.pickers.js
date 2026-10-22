@@ -212,11 +212,37 @@
       }
       ap.list.appendChild(li);
     });
+    var opening = !ap.open;
     ap.list.hidden = false;
     ap.open = true;
     ap.input.setAttribute('aria-expanded', 'true');
     ap.wrap.classList.add('is-open');
+    if (opening) roomForList(true);
     highlight();
+  }
+
+  // Phones: the list opens below the field, so lift the field up the screen
+  // and keep the list clear of the keyboard and the bottom bar.
+  var phone = window.matchMedia ? window.matchMedia('(max-width: 899px)') : { matches: false };
+  function roomForList(lift) {
+    if (!ap || !ap.open) return;
+    if (!phone.matches) { ap.list.style.removeProperty('--ap-room'); return; }
+    var vv = window.visualViewport;
+    var bottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
+    var nav = $('bottomNav');
+    if (nav && nav.offsetParent !== null) {
+      var navTop = nav.getBoundingClientRect().top;
+      if (navTop > 0) bottom = Math.min(bottom, navTop);
+    }
+    var top = ap.input.getBoundingClientRect().bottom + 6;
+    if (lift && bottom - top < 260) {
+      ap.wrap.scrollIntoView({ block: 'start' });
+      top = ap.input.getBoundingClientRect().bottom + 6;
+    }
+    ap.list.style.setProperty('--ap-room', Math.max(150, Math.floor(bottom - top - 10)) + 'px');
+  }
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', function () { roomForList(true); });
   }
 
   function highlight() {

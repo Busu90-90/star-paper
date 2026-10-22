@@ -6,9 +6,9 @@
     <meta name="star-paper:public-root" content="app-shell">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:;">
     <title>Star Paper</title>
-    <script src="app.browser-assets.js?v=37"></script>
+    <script src="app.browser-assets.js?v=59"></script>
     <script src="app.public-pages.js?v=2"></script>
-    <script src="app.boot-head.js?v=2"></script>
+    <script src="app.boot-head.js?v=3"></script>
     <link rel="manifest" href="manifest.json?v=27">
     <meta name="theme-color" content="#0A1210">
     <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2">
@@ -26,13 +26,13 @@
     <script src="assets/vendor/supabase/supabase.min.js?v=1" integrity="sha384-dzQgxMPp/h+N0t5qDf6Bp516wKZr3pXgGMpA7/ZM6tiWkqYo90N060L03dxnZ8Tf"></script>
     <script src="app.boot-flags.js?v=4"></script>
 
-    <link rel="stylesheet" href="styles.css?v=64">
-    <link rel="stylesheet" href="styles.utilities.css?v=1">
+    <link rel="stylesheet" href="styles.css?v=65">
+    <link rel="stylesheet" href="styles.utilities.css?v=2">
     <!-- Design system: tokens + signed-out pages (landing, auth). Loaded last so it owns those screens. -->
     <link rel="stylesheet" href="sp-design-tokens.css?v=5">
-    <link rel="stylesheet" href="styles.landing.css?v=20">
+    <link rel="stylesheet" href="styles.landing.css?v=25">
     <link rel="stylesheet" href="styles.brand.css?v=1">
-    <link rel="stylesheet" href="styles.app.css?v=16">
+    <link rel="stylesheet" href="styles.app.css?v=23">
     <link rel="preload" href="assets/vendor/fonts/font-29-fraunces-latin-opsz-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="assets/vendor/fonts/font-31-inter-tight-latin-wght-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <!-- Vendored Phosphor Icons 2.1.1 - unified icon system -->
@@ -40,7 +40,7 @@
     <!-- Fill + duotone icon sheets load with the app shell (app.root-shell.js). -->
 </head>
 <body>
-    <script src="app.boot-body.js?v=3"></script>
+    <script src="app.boot-body.js?v=4"></script>
     <div class="app-boot-loader hidden" id="appBootLoader" aria-live="polite" aria-hidden="true" data-state="loading-session">
         <div class="app-boot-loader__inner">
             <img src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="Star Paper" class="app-boot-loader__logo sp-spin-mark" />
@@ -59,7 +59,7 @@
         <a class="lp-skip" href="#lpMain">Skip to content</a>
         <!-- House lights: a full-screen wash that plays when the theme switches. -->
         <div class="lp-house" aria-hidden="true" data-lp-house></div>
-        <!-- Stage rig, drawn once: a steel box truss, two LED PARs and a Fresnel key light with barn doors. -->
+        <!-- Stage rig, drawn once: a steel box truss, two Bee Eye heads and a Fresnel key light with barn doors. -->
         <svg class="lp-sprite" aria-hidden="true" focusable="false">
             <defs>
                 <linearGradient id="lpSteel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9BA79E"/><stop offset=".35" stop-color="#4C5A50"/><stop offset=".6" stop-color="#1E2822"/><stop offset="1" stop-color="#5E6C62"/></linearGradient>
@@ -81,22 +81,9 @@
                     <circle cx="0" cy="18.5" r="1.7" fill="#9BA79E"/>
                     <path d="M-5.5 16 H-8 M5.5 16 H8" stroke="#6E7C72" stroke-width="1.6" stroke-linecap="round"/>
                 </g>
-                <!-- LED PAR: yoke, finned can, flared bezel and a face of coloured diodes. -->
-                <symbol id="lpRigLamp" viewBox="-30 -8 60 66">
-                    <path d="M-21 -6 V13 M21 -6 V13 M-21 -6 H21" fill="none" stroke="url(#lpSteel)" stroke-width="3.6" stroke-linecap="round"/>
-                    <circle cx="0" cy="-6" r="2.4" fill="#2A342D" stroke="#9BA79E" stroke-width=".8"/>
-                    <rect x="-18" y="0" width="36" height="33" rx="6" fill="url(#lpCan)" stroke="#6E7C72" stroke-width=".8"/>
-                    <path d="M-16 5 H16 M-16 9 H16 M-16 13 H16 M-16 17 H16 M-16 21 H16 M-16 25 H16" stroke="#070B08" stroke-width="1.3" opacity=".75"/>
-                    <path d="M-16 6.2 H16 M-16 10.2 H16 M-16 14.2 H16 M-16 18.2 H16 M-16 22.2 H16 M-16 26.2 H16" stroke="#8A978D" stroke-width=".5" opacity=".45"/>
-                    <circle cx="-21" cy="13" r="3.8" fill="#1A221C" stroke="#7D8A80" stroke-width="1"/><circle cx="-21" cy="13" r="1.3" fill="#9BA79E"/>
-                    <circle cx="21" cy="13" r="3.8" fill="#1A221C" stroke="#7D8A80" stroke-width="1"/><circle cx="21" cy="13" r="1.3" fill="#9BA79E"/>
-                    <path d="M-19 31 H19 L23 39 H-23 Z" fill="#141B16" stroke="#58665A" stroke-width=".8"/>
-                    <ellipse cx="0" cy="42" rx="21.5" ry="7" fill="#0A0E0B" stroke="#4C5A50" stroke-width="1"/>
-                    <ellipse cx="0" cy="42.2" rx="18" ry="5.4" fill="currentColor" fill-opacity=".28"/>
-                    <g fill="currentColor"><circle cx="-9.2" cy="39.6" r="1.45"/><circle cx="-4.6" cy="39.6" r="1.45"/><circle cx="0.0" cy="39.6" r="1.45"/><circle cx="4.6" cy="39.6" r="1.45"/><circle cx="9.2" cy="39.6" r="1.45"/><circle cx="-13.8" cy="42.2" r="1.45"/><circle cx="-9.2" cy="42.2" r="1.45"/><circle cx="-4.6" cy="42.2" r="1.45"/><circle cx="0.0" cy="42.2" r="1.45"/><circle cx="4.6" cy="42.2" r="1.45"/><circle cx="9.2" cy="42.2" r="1.45"/><circle cx="13.8" cy="42.2" r="1.45"/><circle cx="-9.2" cy="44.8" r="1.45"/><circle cx="-4.6" cy="44.8" r="1.45"/><circle cx="0.0" cy="44.8" r="1.45"/><circle cx="4.6" cy="44.8" r="1.45"/><circle cx="9.2" cy="44.8" r="1.45"/></g>
-                    <g fill="#FFFFFF" fill-opacity=".85"><circle cx="-9.2" cy="39.6" r=".55"/><circle cx="-4.6" cy="39.6" r=".55"/><circle cx="0.0" cy="39.6" r=".55"/><circle cx="4.6" cy="39.6" r=".55"/><circle cx="9.2" cy="39.6" r=".55"/><circle cx="-13.8" cy="42.2" r=".55"/><circle cx="-9.2" cy="42.2" r=".55"/><circle cx="-4.6" cy="42.2" r=".55"/><circle cx="0.0" cy="42.2" r=".55"/><circle cx="4.6" cy="42.2" r=".55"/><circle cx="9.2" cy="42.2" r=".55"/><circle cx="13.8" cy="42.2" r=".55"/><circle cx="-9.2" cy="44.8" r=".55"/><circle cx="-4.6" cy="44.8" r=".55"/><circle cx="0.0" cy="44.8" r=".55"/><circle cx="4.6" cy="44.8" r=".55"/><circle cx="9.2" cy="44.8" r=".55"/></g>
-                    <ellipse cx="0" cy="47" rx="27" ry="11" fill="url(#lpBloom)" opacity=".55"/>
-                </symbol>
+                <!-- Bee Eye head, built in 3D by the page: the yoke stays flat, and the can
+                     rolls between its bolts (styles.landing.css draws its LED face and fan grille). -->
+                <symbol id="lpBeeYoke" viewBox="-30 -8 60 66"><path d="M-21 -6 V13 M21 -6 V13 M-21 -6 H21" fill="none" stroke="url(#lpSteel)" stroke-width="3.6" stroke-linecap="round"/><circle cx="0" cy="-6" r="2.4" fill="#2A342D" stroke="#9BA79E" stroke-width=".8"/><circle cx="-21" cy="13" r="3.8" fill="#1A221C" stroke="#7D8A80" stroke-width="1"/><circle cx="-21" cy="13" r="1.3" fill="#9BA79E"/><circle cx="21" cy="13" r="3.8" fill="#1A221C" stroke="#7D8A80" stroke-width="1"/><circle cx="21" cy="13" r="1.3" fill="#9BA79E"/></symbol>
                 <!-- Fresnel key light: yoke, vented body, glass lens and four-leaf barn doors. -->
                 <symbol id="lpRigFresnel" viewBox="-30 -8 60 66">
                     <path d="M-21 -6 V13 M21 -6 V13 M-21 -6 H21" fill="none" stroke="url(#lpSteel)" stroke-width="3.6" stroke-linecap="round"/>
@@ -143,8 +130,8 @@
         <main class="lp-main" id="lpMain">
             <!-- One stage rig hangs under the header and lights the whole page, down to the closing panel.
                  The back wall is brick that only shows where its beams land. -->
-            <div class="lp-wall" aria-hidden="true"><span class="lp-wall__wash lp-wall__wash--l"></span><span class="lp-wall__wash lp-wall__wash--c"></span><span class="lp-wall__wash lp-wall__wash--r"></span><span class="lp-wall__spot"></span></div>
-            <div class="lp-rig" aria-hidden="true"><svg class="lp-rig__truss" focusable="false"><rect x="0" y="0" width="100%" height="28.6" fill="url(#lpTrussBay)"/><use href="#lpRigClamp" x="19%" y="8"/><use href="#lpRigClamp" x="50%" y="8"/><use href="#lpRigClamp" x="81%" y="8"/></svg><span class="lp-rig__spill"></span><span class="lp-rig__glints"></span><span class="lp-rig__beam lp-rig__beam--l"><span class="lp-rig__cone"></span></span><span class="lp-rig__beam lp-rig__beam--c"><span class="lp-rig__cone"></span><span class="lp-rig__dust"></span></span><span class="lp-rig__beam lp-rig__beam--r"><span class="lp-rig__cone"></span></span><svg class="lp-rig__lamp lp-rig__lamp--l" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp" x="-30" y="-8" width="60" height="66"/></svg><svg class="lp-rig__lamp lp-rig__lamp--c" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigFresnel" x="-30" y="-8" width="60" height="66"/></svg><svg class="lp-rig__lamp lp-rig__lamp--r" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigLamp" x="-30" y="-8" width="60" height="66"/></svg><span class="lp-rig__pool"></span></div>
+            <div class="lp-wall" aria-hidden="true"><span class="lp-wall__wash lp-wall__wash--l"></span><span class="lp-wall__wash lp-wall__wash--c"></span><span class="lp-wall__wash lp-wall__wash--r"></span><span class="lp-wall__wash lp-wall__pool lp-wall__pool--l"></span><span class="lp-wall__wash lp-wall__pool lp-wall__pool--r"></span><span class="lp-wall__spot"></span></div>
+            <div class="lp-rig" aria-hidden="true"><svg class="lp-rig__truss" focusable="false"><rect x="0" y="0" width="100%" height="28.6" fill="url(#lpTrussBay)"/><use href="#lpRigClamp" x="19%" y="8"/><use href="#lpRigClamp" x="50%" y="8"/><use href="#lpRigClamp" x="81%" y="8"/></svg><span class="lp-rig__spill"></span><span class="lp-rig__glints"></span><span class="lp-rig__beam lp-rig__beam--l"><span class="lp-rig__cone lp-rig__cone--bee"><i></i><i></i><i></i></span></span><span class="lp-rig__beam lp-rig__beam--c"><span class="lp-rig__cone"></span><span class="lp-rig__dust"></span></span><span class="lp-rig__beam lp-rig__beam--r"><span class="lp-rig__cone lp-rig__cone--bee"><i></i><i></i><i></i></span></span><span class="lp-rig__torch lp-rig__torch--hit lp-rig__hit--l"><i></i></span><span class="lp-rig__torch lp-rig__torch--hit lp-rig__hit--r"><i></i></span><span class="lp-bee lp-bee--l"><span class="lp-bee__can"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><span class="lp-bee__back"></span><span class="lp-bee__face"></span></span><svg class="lp-bee__yoke" focusable="false"><use href="#lpBeeYoke" width="100%" height="100%"/></svg></span><svg class="lp-rig__lamp lp-rig__lamp--c" viewBox="-30 -8 60 66" focusable="false"><use href="#lpRigFresnel" x="-30" y="-8" width="60" height="66"/></svg><span class="lp-bee lp-bee--r"><span class="lp-bee__can"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><span class="lp-bee__back"></span><span class="lp-bee__face"></span></span><svg class="lp-bee__yoke" focusable="false"><use href="#lpBeeYoke" width="100%" height="100%"/></svg></span><span class="lp-rig__torch lp-rig__torch--l"><i></i></span><span class="lp-rig__torch lp-rig__torch--r"><i></i></span><span class="lp-twinkles lp-twinkles--rig"><i></i><i></i><i></i><i></i></span><span class="lp-rig__pool"></span></div>
             <!-- lp:show: the hero is a four-slide showcase. Each slide is copy + art; the art blocks are swappable. -->
             <section class="lp-show" id="lpShow" aria-roledescription="carousel" aria-label="Star Paper at a glance" data-lp-show>
                 <div class="lp-show__track" data-lp-track>
@@ -312,6 +299,7 @@
         </main>
 
         <footer class="lp-footer">
+            <span class="lp-twinkles lp-twinkles--foot" aria-hidden="true"><i></i><i></i><i></i></span>
             <div class="lp-footer__top">
                 <div class="lp-brand">
                     <img class="lp-brand__mark sp-spin-mark" src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="" width="36" height="36">
@@ -450,7 +438,7 @@
             <div class="confirm-delete-icon" aria-hidden="true">
                 <i class="ph ph-trash sp-csp-style-3" aria-hidden="true"></i>
             </div>
-            <h3 id="confirmDeleteTitle" class="confirm-delete-title">Delete this entry?</h3>
+            <h2 id="confirmDeleteTitle" class="confirm-delete-title">Delete this entry?</h2>
             <p class="confirm-delete-body" id="confirmDeleteBody">This action cannot be undone.</p>
             <div class="confirm-delete-actions">
                 <button class="btn-primary confirm-delete-confirm" id="confirmDeleteYes" type="button">Delete</button>
@@ -496,6 +484,10 @@
                 <button type="button" class="nav-item" data-action="showSection" data-section="artists" data-tooltip="Artists">
                     <i class="ph ph-microphone-stage nav-icon" aria-hidden="true"></i>
                     <span class="nav-label">Artists</span>
+                </button>
+                <button type="button" class="nav-item" data-action="showSection" data-section="documents" data-tooltip="Documents">
+                    <i class="ph ph-folder-simple-lock nav-icon" aria-hidden="true"></i>
+                    <span class="nav-label">Documents</span>
                 </button>
                 <button type="button" class="nav-item" data-action="showSection" data-section="crew" data-tooltip="Crew">
                     <i class="ph ph-chats-circle nav-icon" aria-hidden="true"></i>
@@ -591,6 +583,10 @@
                     <span class="qa-tile__icon"><i class="ph ph-check-square" aria-hidden="true"></i></span>
                     <span class="qa-tile__label">Task</span><span class="qa-tile__hint">A to-do</span>
                 </button>
+                <button type="button" class="qa-tile" data-sp-quick="document">
+                    <span class="qa-tile__icon qa-tile__icon--gold"><i class="ph ph-folder-simple-lock" aria-hidden="true"></i></span>
+                    <span class="qa-tile__label">Document</span><span class="qa-tile__hint">Contracts, IDs</span>
+                </button>
             </div>
         </section>
 
@@ -618,6 +614,7 @@
                 <button type="button" class="acct-row" data-action="openProfileModal"><i class="ph ph-user-circle" aria-hidden="true"></i><span>Edit profile</span><i class="ph ph-caret-right acct-row__go" aria-hidden="true"></i></button>
                 <button type="button" class="acct-row" data-sp-team><i class="ph ph-users-three" aria-hidden="true"></i><span>Team</span><i class="ph ph-caret-right acct-row__go" aria-hidden="true"></i></button>
                 <button type="button" class="acct-row" data-action="showSection" data-section="artists"><i class="ph ph-microphone-stage" aria-hidden="true"></i><span>Artists</span><i class="ph ph-caret-right acct-row__go" aria-hidden="true"></i></button>
+                <button type="button" class="acct-row" data-action="showSection" data-section="documents"><i class="ph ph-folder-simple-lock" aria-hidden="true"></i><span>Documents</span><i class="ph ph-caret-right acct-row__go" aria-hidden="true"></i></button>
                 <button type="button" class="acct-row" data-action="showSection" data-section="tasks"><i class="ph ph-check-square" aria-hidden="true"></i><span>Tasks</span><i class="ph ph-caret-right acct-row__go" aria-hidden="true"></i></button>
                 <button type="button" class="acct-row" data-action="showSection" data-section="settings"><i class="ph ph-gear-six" aria-hidden="true"></i><span>Settings</span><i class="ph ph-caret-right acct-row__go" aria-hidden="true"></i></button>
                 <button type="button" class="acct-row" data-sp-theme-toggle><i class="ph ph-moon-stars" aria-hidden="true"></i><span>Light / dark theme</span><i class="ph ph-swap acct-row__go" aria-hidden="true"></i></button>
@@ -762,6 +759,7 @@
                         <button type="button" class="hv2-quick__btn" data-action="openQuickAdd" data-type="expense"><i class="ph ph-arrow-up-right" aria-hidden="true"></i>Expense</button>
                         <button type="button" class="hv2-quick__btn" data-action="openQuickAdd" data-type="income"><i class="ph ph-arrow-down-left" aria-hidden="true"></i>Income</button>
                         <button type="button" class="hv2-quick__btn" data-sp-quick="task"><i class="ph ph-check-square" aria-hidden="true"></i>Task</button>
+                        <button type="button" class="hv2-quick__btn" data-sp-quick="document"><i class="ph ph-folder-simple-lock" aria-hidden="true"></i>Document</button>
                         <button type="button" class="hv2-quick__btn" data-action="openPdfExportModal"><i class="ph ph-file-pdf" aria-hidden="true"></i>Report</button>
                     </nav>
 
@@ -1016,54 +1014,11 @@
                 </div>
                 </div>
                 <div class="sp-tab-panel" id="moneyPanel-expenses">
-                <!-- Spending analysis (app.insights.js); the form and list follow. -->
-                <div class="mv-strip">
-                    <div class="card mv-tile mv-tile--key"><span class="sp-icon-tile sp-icon-tile--foil" aria-hidden="true"><i class="ph ph-receipt"></i></span><span class="mv-label">Spent this month</span><span class="mv-tile__value money" id="mvExTotal">UGX 0</span><span class="mv-delta" id="mvExTotalDelta"></span><svg class="mv-spark" id="mvExTotalSpark" aria-hidden="true" focusable="false"></svg></div>
-                    <div class="card mv-tile" title="Spending as a share of money in this month"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-percent"></i></span><span class="mv-label">Share of money in</span><span class="mv-tile__value money" id="mvExShare">—</span><span class="mv-tile__sub" id="mvExShareSub"></span></div>
-                    <div class="card mv-tile"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-crown-simple"></i></span><span class="mv-label">Biggest cost</span><span class="mv-tile__value" id="mvExTop">—</span><span class="mv-tile__sub" id="mvExTopSub"></span></div>
-                    <div class="card mv-tile"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-calendar-blank"></i></span><span class="mv-label">Per day</span><span class="mv-tile__value money" id="mvExDaily">UGX 0</span><span class="mv-tile__sub" id="mvExDailySub"></span></div>
-                </div>
-                <div class="mv-row">
-                    <div class="card mv-card mv-card--wide">
-                        <div class="mv-card__head">
-                            <div>
-                                <h3 class="mv-title">Spending by category</h3>
-                                <p class="mv-sub" id="mvExBarsSub">The marker on each bar is your usual month (average of the three before).</p>
-                            </div>
-                            <span class="mv-label" id="mvExPeriod"></span>
-                        </div>
-                        <div class="mv-excat">
-                            <div id="mvExDonut"></div>
-                            <ul class="mv-cbars" id="mvExBars"></ul>
-                        </div>
-                    </div>
-                    <div class="card mv-card">
-                        <div class="mv-card__head">
-                            <h3 class="mv-title">Flags</h3>
-                            <span class="mv-label" id="mvExFlagCount"></span>
-                        </div>
-                        <ul class="mv-flags" id="mvExFlags"></ul>
-                    </div>
-                </div>
-                <div class="mv-row">
-                    <div class="card mv-card mv-card--wide">
-                        <div class="mv-card__head">
-                            <h3 class="mv-title">Last 6 months</h3>
-                            <div class="mv-legend"><span class="mv-legend__out">Spent</span><span class="mv-legend__inline">Money in</span></div>
-                        </div>
-                        <svg class="mv-chart" id="mvExTrend" role="img" aria-label="Spending over the last six months" focusable="false"></svg>
-                    </div>
-                    <div class="card mv-card">
-                        <div class="mv-card__head">
-                            <h3 class="mv-title">By artist</h3>
-                            <span class="mv-label">This month</span>
-                        </div>
-                        <ul class="mv-abars" id="mvExArtists"></ul>
-                    </div>
-                </div>
-
                 <div class="card" id="addExpenseForm" hidden>
-                    <h3 class="section-title" data-icon="expenses">New Expense</h3>
+                    <div class="form-header-row">
+                        <h3 class="section-title" data-icon="expenses">New Expense</h3>
+                        <button class="back-to-list" type="button" data-action="cancelExpense">Back to Expenses</button>
+                    </div>
                     <div class="form-grid">
                         <div class="form-group">
                             <label>Description</label>
@@ -1134,6 +1089,52 @@
                     <button id="saveExpenseBtn" class="btn-primary" data-action="saveExpense">Save Expense</button>
                     <button class="back-btn" data-action="cancelExpense">Cancel</button>
                 </div>
+                <!-- Spending analysis (app.insights.js); the expense list follows. -->
+                <div class="mv-strip">
+                    <div class="card mv-tile mv-tile--key"><span class="sp-icon-tile sp-icon-tile--foil" aria-hidden="true"><i class="ph ph-receipt"></i></span><span class="mv-label">Spent this month</span><span class="mv-tile__value money" id="mvExTotal">UGX 0</span><span class="mv-delta" id="mvExTotalDelta"></span><svg class="mv-spark" id="mvExTotalSpark" aria-hidden="true" focusable="false"></svg></div>
+                    <div class="card mv-tile" title="Spending as a share of money in this month"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-percent"></i></span><span class="mv-label">Share of money in</span><span class="mv-tile__value money" id="mvExShare">—</span><span class="mv-tile__sub" id="mvExShareSub"></span></div>
+                    <div class="card mv-tile"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-crown-simple"></i></span><span class="mv-label">Biggest cost</span><span class="mv-tile__value" id="mvExTop">—</span><span class="mv-tile__sub" id="mvExTopSub"></span></div>
+                    <div class="card mv-tile"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-calendar-blank"></i></span><span class="mv-label">Per day</span><span class="mv-tile__value money" id="mvExDaily">UGX 0</span><span class="mv-tile__sub" id="mvExDailySub"></span></div>
+                </div>
+                <div class="mv-row">
+                    <div class="card mv-card mv-card--wide">
+                        <div class="mv-card__head">
+                            <div>
+                                <h3 class="mv-title">Spending by category</h3>
+                                <p class="mv-sub" id="mvExBarsSub">The marker on each bar is your usual month (average of the three before).</p>
+                            </div>
+                            <span class="mv-label" id="mvExPeriod"></span>
+                        </div>
+                        <div class="mv-excat">
+                            <div id="mvExDonut"></div>
+                            <ul class="mv-cbars" id="mvExBars"></ul>
+                        </div>
+                    </div>
+                    <div class="card mv-card">
+                        <div class="mv-card__head">
+                            <h3 class="mv-title">Flags</h3>
+                            <span class="mv-label" id="mvExFlagCount"></span>
+                        </div>
+                        <ul class="mv-flags" id="mvExFlags"></ul>
+                    </div>
+                </div>
+                <div class="mv-row">
+                    <div class="card mv-card mv-card--wide">
+                        <div class="mv-card__head">
+                            <h3 class="mv-title">Last 6 months</h3>
+                            <div class="mv-legend"><span class="mv-legend__out">Spent</span><span class="mv-legend__inline">Money in</span></div>
+                        </div>
+                        <svg class="mv-chart" id="mvExTrend" role="img" aria-label="Spending over the last six months" focusable="false"></svg>
+                    </div>
+                    <div class="card mv-card">
+                        <div class="mv-card__head">
+                            <h3 class="mv-title">By artist</h3>
+                            <span class="mv-label">This month</span>
+                        </div>
+                        <ul class="mv-abars" id="mvExArtists"></ul>
+                    </div>
+                </div>
+
 
                 <div class="card" id="expensesListCard">
                     <div class="card-header-row">
@@ -1163,9 +1164,9 @@
                 <!-- Removed: FAB button handles this -->
 
                 <div class="card" id="addOtherIncomeForm" hidden>
-                    <div class="sp-csp-style-18">
-                        <button class="back-btn sp-csp-style-19" data-action="cancelOtherIncome">Back to All Other Income</button>
-                        <h3 class="section-title sp-csp-style-19" data-icon="otherIncome">New Other Income</h3>
+                    <div class="form-header-row">
+                        <h3 class="section-title" data-icon="otherIncome">New Income</h3>
+                        <button class="back-to-list" type="button" data-action="cancelOtherIncome">Back to Income</button>
                     </div>
                     <div class="form-grid">
                         <div class="form-group">
@@ -1596,6 +1597,7 @@
                             <button type="submit" class="btn-primary sp-payments__add">Record payment</button>
                         </form>
                     </div>
+                    <div class="sp-payments dv-booking" id="spBookingDocs" hidden></div>
                     <div class="form-group sp-csp-style-16">
                         <label>Notes</label>
                         <textarea id="bookingNotes"></textarea>
@@ -1721,6 +1723,11 @@
                     </div>
                     <div class="task-list" id="taskList"></div>
                 </section>
+            </div>
+
+            <!-- DOCUMENTS SECTION: built by app.docs.js -->
+            <div class="section" id="documents">
+                <div class="dv" id="docsRoot"></div>
             </div>
 
             <!-- CREW SECTION: built by app.crew.js -->
@@ -2050,27 +2057,28 @@
           loaded above, and these deferred scripts keep document order:
           Supabase boot wiring is installed before app.js initializes UI helpers.
         -->
-<script src="app.root-shell.js?v=8" defer></script>
+<script src="app.root-shell.js?v=9" defer></script>
 <script src="app.offline-cache.js?v=1"></script>
-<script src="supabase.js?v=101" defer></script>
+<script src="supabase.js?v=102" defer></script>
         <script src="app.migrations.js?v=10"></script>
         <script src="app.actions.js?v=9"></script>
         <script src="app.todayboard.js?v=3"></script>
         <script src="app.tasks.js?v=7"></script>
-    <script src="app.reports.js?v=20"></script>
-<script src="app.js?v=159" defer></script>
+    <script src="app.reports.js?v=22"></script>
+<script src="app.js?v=162" defer></script>
 <script src="app.charts.js?v=1" defer></script>
-<script src="app.home.js?v=3" defer></script>
+<script src="app.home.js?v=4" defer></script>
 <script src="app.money.js?v=3" defer></script>
 <script src="app.insights.js?v=2" defer></script>
 <script src="app.finance-ui.js?v=1" defer></script>
-<script src="app.artists.js?v=1" defer></script>
+<script src="app.artists.js?v=2" defer></script>
 <script src="app.schedule.js?v=1" defer></script>
-<script src="app.crew.js?v=2" defer></script>
-<script src="app.pickers.js?v=1" defer></script>
+<script src="app.crew.js?v=3" defer></script>
+<script src="app.docs.js?v=4" defer></script>
+<script src="app.pickers.js?v=2" defer></script>
 <script src="app.landing.js?v=4" defer></script>
-<script src="app.landing-lights.js?v=4" defer></script>
-<script src="app.chrome.js?v=2" defer></script>
+<script src="app.landing-lights.js?v=11" defer></script>
+<script src="app.chrome.js?v=4" defer></script>
 
     <!-- Premium toast stack -->
     <div class="sp-toast-stack" id="spToastStack" aria-live="polite" aria-atomic="false"></div>

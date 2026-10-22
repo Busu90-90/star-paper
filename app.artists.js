@@ -393,6 +393,8 @@
         shows.appendChild(showList);
 
         grid.append(chartBox, costs, shows);
+        const docs = window.SPDocs?.artistBlock?.(row.artist);
+        if (docs) grid.appendChild(docs);
         host.append(head, stats, grid);
 
         if (window.SPCharts) {

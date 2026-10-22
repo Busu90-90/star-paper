@@ -41,7 +41,56 @@
         channel: null,
         mention: null,
         listOpenOnPhone: true,
+        // Channel boards: which post has its reply box open, and which reply it answers.
+        thread: null,
+        threadReplyTo: null,
+        expanded: new Set(),
+        // Direct messages: how far the other person has read, who is online, who is typing.
+        partnerRead: {},
+        online: new Set(),
+        typing: {},
+        // Voice notes: the recording in progress, and the shared player.
+        rec: null,
+        speed: 1,
     };
+
+    const VOICE_BUCKET = 'crew-voice';
+    const VOICE_MAX_MS = 5 * 60 * 1000;
+    const VOICE_BARS = 40;
+    const isDm = (key) => String(key || '').startsWith('dm:');
+    const isVoice = (m) => m?.attachment_meta?.kind === 'audio' && !!m.attachment_path;
+
+    function fmtDuration(seconds) {
+        const s = Math.max(0, Math.round(Number(seconds) || 0));
+        return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    }
+
+    // One-line stand-in for a message in lists, quotes and notifications.
+    function previewText(m) {
+        if (!m) return '';
+        if (isVoice(m)) return `Voice message (${fmtDuration(m.attachment_meta.duration)})`;
+        return String(m.content || '');
+    }
+
+    // The post a reply belongs to: walk up reply_to until a message with no parent.
+    function rootOf(m) {
+        let cur = m;
+        for (let i = 0; i < 25 && cur?.reply_to; i += 1) {
+            const parent = state.messages.get(cur.reply_to);
+            if (!parent) break;
+            cur = parent;
+        }
+        return cur;
+    }
+
+    function timeAgo(t) {
+        const s = Math.max(0, (Date.now() - t) / 1000);
+        if (s < 60) return 'Just now';
+        if (s < 3600) return `${Math.floor(s / 60)}m`;
+        if (s < 86400) return `${Math.floor(s / 3600)}h`;
+        if (s < 7 * 86400) return `${Math.floor(s / 86400)}d`;
+        return new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    }
 
     // ── Small DOM helpers ────────────────────────────────────────────────
     function el(tag, className, text) {
@@ -230,11 +279,13 @@
         state.error = '';
         render();
         try {
-            const [msgRes, readRes, members, teams] = await Promise.all([
+            const [msgRes, readRes, members, teams, partnerRes] = await Promise.all([
                 client.from('messages').select('*').eq('team_id', state.teamId).order('created_at', { ascending: false }).limit(PAGE),
                 client.from('message_reads').select('channel_key,last_read_at').eq('team_id', state.teamId).eq('user_id', state.me),
                 sp().getTeamMembers ? sp().getTeamMembers(state.teamId) : Promise.resolve([]),
                 sp().getMyTeams ? sp().getMyTeams({ nullOnError: true }).catch(() => null) : Promise.resolve(null),
+                // How far each person has read their direct messages with me (blue ticks).
+                Promise.resolve(client.from('message_reads').select('user_id,last_read_at').eq('team_id', state.teamId).eq('channel_key', `dm:${state.me}`)).catch(() => ({ data: [] })),
             ]);
             state.teamName = (Array.isArray(teams) ? teams : []).find((t) => t.id === state.teamId)?.name || '';
             if (msgRes.error) throw msgRes.error;
@@ -246,6 +297,8 @@
                 const t = new Date(r.last_read_at).getTime() || 0;
                 if (t > (state.reads[r.channel_key] || 0)) state.reads[r.channel_key] = t;
             });
+            state.partnerRead = {};
+            (partnerRes?.data || []).forEach((r) => notePartnerRead(r));
             state.members = Array.isArray(members) ? members : [];
             state.loaded = true;
         } catch (err) {
@@ -320,29 +373,61 @@
         return ids;
     }
 
-    async function send(text) {
+    // Sends to the open conversation. opts.replyTo answers a post or message;
+    // opts.attachment carries a voice note that is already uploaded.
+    async function send(text, opts = {}) {
         const client = db();
         const key = state.active;
         if (!client || !state.teamId || !key || !text) return false;
+        const replyTo = opts.replyTo !== undefined ? opts.replyTo : (state.replyTo || null);
         const row = {
             team_id: state.teamId,
             user_id: state.me,
             username: myName(),
             content: text,
             msg_type: 'text',
-            channel: key.startsWith('dm:') ? 'dm' : key,
-            recipient_id: key.startsWith('dm:') ? key.slice(3) : null,
-            reply_to: state.replyTo || null,
-            mentions: mentionsIn(text),
+            channel: isDm(key) ? 'dm' : key,
+            recipient_id: isDm(key) ? key.slice(3) : null,
+            reply_to: replyTo || null,
+            mentions: opts.attachment ? [] : mentionsIn(text),
         };
+        if (opts.attachment) {
+            row.attachment_path = opts.attachment.path;
+            row.attachment_meta = opts.attachment.meta;
+        }
         const { data, error } = await client.from('messages').insert(row).select();
         if (error) { toast('Error', 'Message not sent. Try again.'); return false; }
         ingest(Array.isArray(data) && data.length ? data : [{ ...row, id: `local-${Date.now()}` }]);
-        state.replyTo = null;
+        if (opts.replyTo === undefined) state.replyTo = null;
         state.reads[key] = Date.now();
-        render({ toBottom: true });
+        if (isDm(key)) render({ toBottom: true });
+        else render({ keepScroll: !!replyTo, toTop: !replyTo });
         markRead(key);
         return true;
+    }
+
+    // Storage folder for a conversation; direct messages carry both ids so only
+    // those two people pass the bucket policy.
+    function voiceFolder(key) {
+        if (isDm(key)) return `dm-${[state.me, key.slice(3)].sort().join('_')}`;
+        if (key.startsWith('show:')) return `show-${key.slice(5)}`;
+        return key;
+    }
+
+    async function sendVoice(blob, meta, replyTo) {
+        const client = db();
+        const key = state.active;
+        if (!client?.storage || !state.teamId || !key) return false;
+        const mime = String(meta.mime || blob.type || 'audio/webm').split(';')[0];
+        const ext = mime.includes('mp4') || mime.includes('aac') ? 'm4a' : mime.includes('ogg') ? 'ogg' : mime.includes('mpeg') ? 'mp3' : 'webm';
+        const id = (window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+        const path = `${state.teamId}/${voiceFolder(key)}/${id}.${ext}`;
+        toast('Info', 'Sending voice note…');
+        const { error } = await client.storage.from(VOICE_BUCKET).upload(path, blob, { contentType: mime, upsert: false });
+        if (error) { toast('Error', 'Voice note not sent. Check your connection and try again.'); return false; }
+        const ok = await send('Voice message', { replyTo: replyTo || null, attachment: { path, meta: { ...meta, mime } } });
+        if (!ok) client.storage.from(VOICE_BUCKET).remove([path]).catch(() => null);
+        return ok;
     }
 
     async function saveEdit(id, text) {
@@ -359,8 +444,11 @@
     async function remove(id) {
         const client = db();
         if (!client) return;
+        const msg = state.messages.get(id);
         const { error } = await client.from('messages').delete().eq('id', id);
         if (error) { toast('Error', 'Message not deleted. Try again.'); return; }
+        if (isVoice(msg) && client.storage) client.storage.from(VOICE_BUCKET).remove([msg.attachment_path]).catch(() => null);
+        if (player.id === id) stopPlayback();
         state.messages.delete(id);
         state.confirmDelete = null;
         render({ keepScroll: true });
@@ -382,9 +470,20 @@
         unsubscribe();
         if (!client || !state.teamId || typeof client.channel !== 'function') return;
         try {
-            state.channel = client.channel(`sp-crew-${state.teamId}`)
+            const ch = client.channel(`sp-crew-${state.teamId}`, { config: { presence: { key: state.me }, broadcast: { self: false } } });
+            state.channel = ch
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `team_id=eq.${state.teamId}` }, onChange)
-                .subscribe();
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'message_reads', filter: `channel_key=eq.dm:${state.me}` }, (payload) => {
+                    if (payload?.new && notePartnerRead(payload.new)) render({ keepScroll: true });
+                })
+                .on('broadcast', { event: 'typing' }, ({ payload }) => onTyping(payload))
+                .on('presence', { event: 'sync' }, () => {
+                    try { state.online = new Set(Object.keys(ch.presenceState() || {})); } catch (_e) { state.online = new Set(); }
+                    updateLiveStatus();
+                })
+                .subscribe((status) => {
+                    if (status === 'SUBSCRIBED') ch.track({ user_id: state.me, at: Date.now() }).catch?.(() => null);
+                });
         } catch (err) {
             console.warn('[crew] live updates unavailable', err);
         }
@@ -395,6 +494,75 @@
             try { db().removeChannel(state.channel); } catch (_e) { /* already gone */ }
         }
         state.channel = null;
+    }
+
+    function notePartnerRead(row) {
+        if (!row?.user_id || row.channel_key !== `dm:${state.me}` || (row.team_id && row.team_id !== state.teamId)) return false;
+        const t = new Date(row.last_read_at).getTime() || 0;
+        const key = `dm:${row.user_id}`;
+        if (t <= (state.partnerRead[key] || 0)) return false;
+        state.partnerRead[key] = t;
+        return true;
+    }
+
+    // ── Typing and online status (realtime broadcast and presence; nothing is stored) ──
+    let typingSentAt = 0;
+    function sendTyping() {
+        const key = state.active;
+        if (!isDm(key) || !state.channel || Date.now() - typingSentAt < 2500) return;
+        typingSentAt = Date.now();
+        try { state.channel.send({ type: 'broadcast', event: 'typing', payload: { from: state.me, to: key.slice(3) } }); } catch (_e) { /* offline */ }
+    }
+
+    function onTyping(p) {
+        if (!p || p.to !== state.me || !p.from) return;
+        const key = `dm:${p.from}`;
+        state.typing[key] = Date.now() + 4000;
+        updateLiveStatus();
+        setTimeout(updateLiveStatus, 4200);
+    }
+
+    const isTyping = (key) => (state.typing[key] || 0) > Date.now();
+
+    function liveStatus(key) {
+        if (!isDm(key)) return '';
+        if (isTyping(key)) return 'typing…';
+        return state.online.has(key.slice(3)) ? 'online' : '';
+    }
+
+    // Updates the header line and the typing bubble without redrawing the chat.
+    function updateLiveStatus() {
+        const key = state.active;
+        const sub = $('crMainSub');
+        if (sub && isDm(key)) {
+            const live = liveStatus(key);
+            sub.textContent = live || sub.dataset.base || '';
+            sub.classList.toggle('is-live', !!live);
+        }
+        const list = $('crMessages');
+        const bubble = $('crTyping');
+        if (list && isDm(key)) {
+            if (isTyping(key) && !bubble) {
+                const atBottom = nearBottom();
+                list.appendChild(typingBubble());
+                if (atBottom) list.scrollTop = list.scrollHeight;
+            } else if (!isTyping(key) && bubble) {
+                bubble.remove();
+            }
+        }
+        document.querySelectorAll('[data-cr-online]').forEach((dot) => {
+            dot.hidden = !state.online.has(dot.getAttribute('data-cr-online'));
+        });
+    }
+
+    function typingBubble() {
+        const row = el('div', 'cr-b cr-b--typing');
+        row.id = 'crTyping';
+        const b = el('div', 'cr-bubble has-tail');
+        b.setAttribute('aria-label', `${conversationTitle(state.active)} is typing`);
+        for (let i = 0; i < 3; i += 1) b.appendChild(el('span', 'cr-dot'));
+        row.appendChild(b);
+        return row;
     }
 
     function onChange(payload) {
@@ -412,7 +580,7 @@
         const key = keyOf(m);
         const viewing = isOpen() && !document.hidden && state.active === key;
         if (viewing) {
-            const atBottom = nearBottom();
+            const atBottom = isDm(key) && nearBottom();
             const at = noteRead(key);
             render({ keepScroll: !atBottom });
             if (at) markRead(key, at);
@@ -427,7 +595,7 @@
         const where = key.startsWith('dm:') ? 'sent you a message' : `in ${conversationTitle(key)}`;
         const mentioned = Array.isArray(m.mentions) && m.mentions.includes(state.me);
         const text = mentioned ? `${who} mentioned you ${key.startsWith('dm:') ? '' : `in ${conversationTitle(key)}`}`.trim() : `${who} ${where}`;
-        toast('Info', `${text}: ${String(m.content || '').slice(0, 80)}`);
+        toast('Info', `${text}: ${previewText(m).slice(0, 80)}`);
         document.dispatchEvent(new CustomEvent('sp:notify', { detail: { kind: 'message', text, action: 'openChat', actionId: key } }));
     }
 
@@ -469,7 +637,7 @@
         let preview = sub;
         if (s?.last) {
             const who = s.last.user_id === state.me ? 'You' : (s.last.username || memberName(s.last.user_id)).split(' ')[0];
-            preview = key.startsWith('dm:') && s.last.user_id !== state.me ? s.last.content : `${who}: ${s.last.content}`;
+            preview = key.startsWith('dm:') && s.last.user_id !== state.me ? previewText(s.last) : `${who}: ${previewText(s.last)}`;
         }
         bottom.appendChild(el('span', 'cr-convo__preview', preview || ''));
         if (s?.mention) bottom.appendChild(el('span', 'cr-convo__at', '@'));
@@ -610,79 +778,539 @@
             box.disabled = true;
             return box;
         }
-        box.append(el('span', 'cr-quote__who', q.user_id === state.me ? 'You' : (q.username || memberName(q.user_id))), el('span', 'cr-quote__text', q.content));
+        const text = el('span', 'cr-quote__text');
+        if (isVoice(q)) text.appendChild(icon('ph ph-microphone'));
+        text.appendChild(document.createTextNode(previewText(q)));
+        box.append(el('span', 'cr-quote__who', q.user_id === state.me ? 'You' : (q.username || memberName(q.user_id))), text);
         return box;
     }
 
-    function renderMessage(m, grouped) {
-        const own = m.user_id === state.me;
-        const row = el('article', `cr-msg${own ? ' is-own' : ''}${grouped ? ' is-grouped' : ''}${m.pinned ? ' is-pinned' : ''}${Array.isArray(m.mentions) && m.mentions.includes(state.me) ? ' is-mention' : ''}`);
-        row.id = `cr-msg-${m.id}`;
-        row.setAttribute('data-cr-msg', m.id);
-        row.tabIndex = -1;
-        if (!grouped) row.appendChild(avatar(own ? myName() : (m.username || memberName(m.user_id)), m.user_id, 'md'));
-        else row.appendChild(el('span', 'cr-msg__gutter', clock(ts(m))));
-        const body = el('div', 'cr-msg__body');
-        if (!grouped) {
-            const head = el('div', 'cr-msg__head');
-            head.append(el('span', 'cr-msg__who', own ? 'You' : (m.username || memberName(m.user_id))), el('time', 'cr-msg__time', clock(ts(m))));
-            head.lastChild.setAttribute('datetime', m.created_at);
-            if (m.pinned) {
-                const pin = el('span', 'cr-msg__pinned');
-                pin.append(icon('ph ph-push-pin'), el('span', '', 'Pinned'));
-                head.appendChild(pin);
-            }
-            body.appendChild(head);
-        }
-        if (m.reply_to) body.appendChild(quote(m.reply_to));
+    // ── Voice notes: player ──────────────────────────────────────────────
+    const player = { audio: null, id: null, urls: new Map() };
 
-        if (state.editing === m.id) {
-            const form = el('form', 'cr-edit');
-            form.setAttribute('data-cr-edit-form', m.id);
-            const ta = el('textarea', 'cr-input cr-edit__input');
-            ta.value = m.content || '';
-            ta.rows = Math.min(8, String(m.content || '').split('\n').length + 1);
-            ta.setAttribute('aria-label', 'Edit message');
-            ta.id = 'crEditInput';
-            const actions = el('div', 'cr-edit__actions');
-            actions.append(emojiButton('crEditInput'), el('span', 'cr-hint', 'Enter to save, Esc to cancel'), button('cr-btn cr-btn--ghost', 'Cancel', { data: { 'cr-cancel-edit': '1' } }));
-            const save = el('button', 'cr-btn cr-btn--primary', 'Save');
-            save.type = 'submit';
-            actions.appendChild(save);
-            form.append(ta, actions);
-            body.appendChild(form);
+    function voicePlayer(m) {
+        const meta = m.attachment_meta || {};
+        const box = el('div', `cr-voice${player.id === m.id && player.audio && !player.audio.paused ? ' is-playing' : ''}`);
+        box.setAttribute('data-cr-voice', m.id);
+        const play = button('cr-voice__play', '', { icon: player.id === m.id && player.audio && !player.audio.paused ? 'ph ph-pause' : 'ph ph-play', title: 'Play voice message', data: { 'cr-play': m.id } });
+        const wave = el('div', 'cr-voice__wave');
+        wave.setAttribute('data-cr-seek', m.id);
+        wave.setAttribute('role', 'slider');
+        wave.setAttribute('aria-label', 'Voice message position');
+        wave.setAttribute('aria-valuemin', '0');
+        wave.setAttribute('aria-valuemax', String(Math.round(meta.duration || 0)));
+        wave.tabIndex = 0;
+        const peaks = Array.isArray(meta.peaks) && meta.peaks.length ? meta.peaks : Array.from({ length: VOICE_BARS }, () => 0.3);
+        const layers = [el('div', 'cr-voice__bars'), el('div', 'cr-voice__bars cr-voice__bars--done')];
+        layers.forEach((layer) => {
+            peaks.forEach((p) => {
+                const bar = el('span', 'cr-voice__bar');
+                bar.style.setProperty('--h', String(Math.max(0.12, Math.min(1, Number(p) || 0))));
+                layer.appendChild(bar);
+            });
+            wave.appendChild(layer);
+        });
+        const progress = player.id === m.id && player.audio ? (player.audio.currentTime / (meta.duration || player.audio.duration || 1)) : 0;
+        box.style.setProperty('--p', String(Math.max(0, Math.min(1, progress || 0))));
+        const time = el('span', 'cr-voice__time', fmtDuration(player.id === m.id && player.audio && player.audio.currentTime ? player.audio.currentTime : meta.duration));
+        const speed = button('cr-voice__speed', `${state.speed}×`, { title: 'Playback speed', data: { 'cr-speed': '1' } });
+        box.append(play, wave, time, speed);
+        return box;
+    }
+
+    async function voiceUrl(m) {
+        const cached = player.urls.get(m.attachment_path);
+        if (cached && cached.until > Date.now()) return cached.url;
+        const { data, error } = await db().storage.from(VOICE_BUCKET).createSignedUrl(m.attachment_path, 3600);
+        if (error || !data?.signedUrl) throw error || new Error('No voice URL');
+        player.urls.set(m.attachment_path, { url: data.signedUrl, until: Date.now() + 50 * 60 * 1000 });
+        return data.signedUrl;
+    }
+
+    function paintPlayer(id) {
+        const box = document.querySelector(`[data-cr-voice="${id}"]`);
+        const m = state.messages.get(id);
+        if (!box || !m) return;
+        const a = player.audio;
+        const playing = player.id === id && a && !a.paused;
+        const dur = Number(m.attachment_meta?.duration) || (a && Number.isFinite(a.duration) ? a.duration : 0) || 1;
+        const t = player.id === id && a ? a.currentTime : 0;
+        box.style.setProperty('--p', String(Math.max(0, Math.min(1, t / dur))));
+        box.classList.toggle('is-playing', playing);
+        const ic = box.querySelector('.cr-voice__play .ph');
+        if (ic) ic.className = `ph ${playing ? 'ph-pause' : 'ph-play'}`;
+        const time = box.querySelector('.cr-voice__time');
+        if (time) time.textContent = fmtDuration(t > 0 ? t : m.attachment_meta?.duration);
+    }
+
+    function stopPlayback() {
+        const prev = player.id;
+        if (player.audio) player.audio.pause();
+        player.id = null;
+        if (prev) paintPlayer(prev);
+    }
+
+    async function togglePlay(id, seekTo) {
+        const m = state.messages.get(id);
+        if (!isVoice(m)) return;
+        if (!player.audio) {
+            player.audio = new Audio();
+            player.audio.preload = 'auto';
+            player.audio.addEventListener('timeupdate', () => player.id && paintPlayer(player.id));
+            player.audio.addEventListener('pause', () => player.id && paintPlayer(player.id));
+            player.audio.addEventListener('play', () => player.id && paintPlayer(player.id));
+            player.audio.addEventListener('ended', () => {
+                const done = player.id;
+                player.audio.currentTime = 0;
+                player.id = null;
+                if (done) paintPlayer(done);
+                playNextVoice(done);
+            });
+        }
+        const a = player.audio;
+        if (player.id === id && seekTo === undefined) {
+            if (a.paused) a.play().catch(() => null); else a.pause();
+            return;
+        }
+        const prev = player.id;
+        a.pause();
+        player.id = id;
+        if (prev && prev !== id) paintPlayer(prev);
+        try {
+            const url = await voiceUrl(m);
+            if (a.src !== url) a.src = url;
+            a.playbackRate = state.speed;
+            if (seekTo !== undefined) {
+                const dur = Number(m.attachment_meta?.duration) || 0;
+                const apply = () => { try { a.currentTime = Math.max(0, Math.min(dur, seekTo * dur)); } catch (_e) { /* not seekable yet */ } };
+                if (a.readyState >= 1) apply(); else a.addEventListener('loadedmetadata', apply, { once: true });
+            }
+            await a.play();
+        } catch (_err) {
+            player.id = null;
+            paintPlayer(id);
+            toast('Error', 'Voice message could not play. Check your connection.');
+        }
+    }
+
+    // Like WhatsApp: when a voice note ends, the next one in the chat plays.
+    function playNextVoice(id) {
+        const m = state.messages.get(id);
+        if (!m) return;
+        const next = messagesIn(keyOf(m)).find((x) => ts(x) > ts(m) && isVoice(x) && x.user_id === m.user_id);
+        if (next && ts(next) - ts(m) < 10 * 60 * 1000) togglePlay(next.id);
+    }
+
+    // ── Voice notes: recorder ────────────────────────────────────────────
+    async function startRecording(target) {
+        if (state.rec) return;
+        if (!navigator.mediaDevices?.getUserMedia || typeof window.MediaRecorder === 'undefined') {
+            toast('Error', 'This browser cannot record voice notes.');
+            return;
+        }
+        let stream;
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+        } catch (_err) {
+            toast('Error', 'Allow microphone access to record a voice note.');
+            return;
+        }
+        const mime = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg;codecs=opus', 'audio/webm']
+            .find((t) => window.MediaRecorder.isTypeSupported?.(t)) || '';
+        let recorder;
+        try {
+            recorder = new MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: 32000 } : undefined);
+        } catch (_err) {
+            stream.getTracks().forEach((t) => t.stop());
+            toast('Error', 'This browser cannot record voice notes.');
+            return;
+        }
+        const rec = { target, recorder, stream, chunks: [], levels: [], started: Date.now(), mime: recorder.mimeType || mime || 'audio/webm' };
+        recorder.ondataavailable = (e) => { if (e.data && e.data.size) rec.chunks.push(e.data); };
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) {
+            try {
+                rec.ctx = new AC();
+                const src = rec.ctx.createMediaStreamSource(stream);
+                rec.analyser = rec.ctx.createAnalyser();
+                rec.analyser.fftSize = 512;
+                src.connect(rec.analyser);
+                rec.buf = new Uint8Array(rec.analyser.fftSize);
+            } catch (_e) { rec.ctx = null; }
+        }
+        rec.timer = setInterval(() => tickRecording(rec), 100);
+        state.rec = rec;
+        stopPlayback();
+        recorder.start(250);
+        render({ keepScroll: true });
+    }
+
+    function tickRecording(rec) {
+        let level = 0.2 + Math.random() * 0.2;
+        if (rec.analyser) {
+            rec.analyser.getByteTimeDomainData(rec.buf);
+            let sum = 0;
+            for (let i = 0; i < rec.buf.length; i += 1) { const v = (rec.buf[i] - 128) / 128; sum += v * v; }
+            level = Math.min(1, Math.sqrt(sum / rec.buf.length) * 4);
+        }
+        rec.levels.push(level);
+        const elapsed = Date.now() - rec.started;
+        const time = $('crRecTime');
+        if (time) time.textContent = fmtDuration(elapsed / 1000);
+        const wave = $('crRecWave');
+        if (wave) {
+            const bar = el('span', 'cr-rec__bar');
+            bar.style.setProperty('--h', String(Math.max(0.1, level)));
+            wave.appendChild(bar);
+            while (wave.childElementCount > 60) wave.firstElementChild.remove();
+        }
+        if (elapsed >= VOICE_MAX_MS) finishRecording(true);
+    }
+
+    function finishRecording(sendIt) {
+        const rec = state.rec;
+        if (!rec) return;
+        state.rec = null;
+        clearInterval(rec.timer);
+        const seconds = (Date.now() - rec.started) / 1000;
+        const done = () => {
+            rec.stream.getTracks().forEach((t) => t.stop());
+            if (rec.ctx) rec.ctx.close().catch(() => null);
+            if (!sendIt) return;
+            if (seconds < 1) { toast('Info', 'Voice note too short. Hold on a little longer.'); return; }
+            const blob = new Blob(rec.chunks, { type: rec.mime });
+            const step = rec.levels.length / VOICE_BARS;
+            const raw = Array.from({ length: VOICE_BARS }, (_, i) => {
+                const slice = rec.levels.slice(Math.floor(i * step), Math.max(Math.floor(i * step) + 1, Math.floor((i + 1) * step)));
+                return slice.length ? Math.max(...slice) : 0;
+            });
+            const top = Math.max(0.05, ...raw);
+            const peaks = raw.map((v) => Math.round((v / top) * 100) / 100);
+            const replyTo = rec.target === 'main' ? (isDm(state.active) ? state.replyTo : null) : (state.threadReplyTo || rec.target);
+            sendVoice(blob, { kind: 'audio', duration: Math.round(seconds * 10) / 10, peaks, mime: rec.mime }, replyTo).then((ok) => {
+                if (ok && rec.target === 'main') state.replyTo = null;
+                if (ok && rec.target !== 'main') state.expanded.add(rec.target);
+                render({ keepScroll: !isDm(state.active) || rec.target !== 'main', toBottom: isDm(state.active) });
+            });
+        };
+        if (rec.recorder.state !== 'inactive') {
+            rec.recorder.addEventListener('stop', done, { once: true });
+            try { rec.recorder.stop(); } catch (_e) { done(); }
         } else {
-            const text = el('div', 'cr-msg__text');
-            linkify(text, String(m.content || ''));
-            if (m.edited_at) text.appendChild(el('span', 'cr-msg__edited', ' (edited)'));
-            body.appendChild(text);
+            done();
         }
+        render({ keepScroll: true });
+    }
 
-        if (state.confirmDelete === m.id) {
-            const c = el('div', 'cr-confirm');
-            c.append(el('span', '', 'Delete this message for everyone?'), button('cr-btn cr-btn--ghost', 'Keep', { data: { 'cr-cancel-delete': '1' } }), button('cr-btn cr-btn--danger', 'Delete', { data: { 'cr-delete-yes': m.id } }));
-            body.appendChild(c);
+    function recordingBar() {
+        const bar = el('div', 'cr-rec');
+        bar.setAttribute('role', 'status');
+        bar.append(
+            button('cr-tool cr-tool--danger cr-rec__cancel', '', { icon: 'ph ph-trash', title: 'Discard voice note', data: { 'cr-rec-cancel': '1' } }),
+            el('span', 'cr-rec__dot'),
+        );
+        const time = el('span', 'cr-rec__time', fmtDuration((Date.now() - (state.rec?.started || Date.now())) / 1000));
+        time.id = 'crRecTime';
+        const wave = el('span', 'cr-rec__wave');
+        wave.id = 'crRecWave';
+        (state.rec?.levels || []).slice(-60).forEach((level) => {
+            const b = el('span', 'cr-rec__bar');
+            b.style.setProperty('--h', String(Math.max(0.1, level)));
+            wave.appendChild(b);
+        });
+        const send = button('cr-send', '', { icon: 'ph ph-paper-plane-right', title: 'Send voice note', data: { 'cr-rec-send': '1' } });
+        bar.append(time, wave, send);
+        return bar;
+    }
+
+    // Mic when the box is empty, send arrow once there is text (WhatsApp style).
+    function sendOrMic(target, hasText) {
+        const wrap = el('span', `cr-sendwrap${hasText ? ' has-text' : ''}`);
+        const sendBtn = el('button', 'cr-send cr-send--text');
+        sendBtn.type = 'submit';
+        sendBtn.setAttribute('aria-label', 'Send');
+        sendBtn.appendChild(icon('ph ph-paper-plane-right'));
+        const mic = button('cr-send cr-send--mic', '', { icon: 'ph ph-microphone', title: 'Record a voice note', data: { 'cr-mic': target } });
+        wrap.append(sendBtn, mic);
+        return wrap;
+    }
+
+    // ── Shared message pieces ────────────────────────────────────────────
+    function messageText(m) {
+        if (isVoice(m)) return voicePlayer(m);
+        const text = el('div', 'cr-msg__text');
+        linkify(text, String(m.content || ''));
+        if (m.edited_at) text.appendChild(el('span', 'cr-msg__edited', ' (edited)'));
+        return text;
+    }
+
+    function editForm(m) {
+        const form = el('form', 'cr-edit');
+        form.setAttribute('data-cr-edit-form', m.id);
+        const ta = el('textarea', 'cr-input cr-edit__input');
+        ta.value = m.content || '';
+        ta.rows = Math.min(8, String(m.content || '').split('\n').length + 1);
+        ta.setAttribute('aria-label', 'Edit message');
+        ta.id = 'crEditInput';
+        const actions = el('div', 'cr-edit__actions');
+        actions.append(emojiButton('crEditInput'), el('span', 'cr-hint', 'Enter to save, Esc to cancel'), button('cr-btn cr-btn--ghost', 'Cancel', { data: { 'cr-cancel-edit': '1' } }));
+        const save = el('button', 'cr-btn cr-btn--primary', 'Save');
+        save.type = 'submit';
+        actions.appendChild(save);
+        form.append(ta, actions);
+        return form;
+    }
+
+    function deleteConfirm(m) {
+        const c = el('div', 'cr-confirm');
+        c.append(el('span', '', 'Delete this message for everyone?'), button('cr-btn cr-btn--ghost', 'Keep', { data: { 'cr-cancel-delete': '1' } }), button('cr-btn cr-btn--danger', 'Delete', { data: { 'cr-delete-yes': m.id } }));
+        return c;
+    }
+
+    function toolsFor(m, withReply) {
+        const own = m.user_id === state.me;
+        const tools = el('div', 'cr-msg__tools');
+        tools.setAttribute('role', 'toolbar');
+        tools.setAttribute('aria-label', 'Message actions');
+        if (withReply) tools.appendChild(button('cr-tool', '', { icon: 'ph ph-arrow-bend-up-left', title: 'Reply', data: { 'cr-reply': m.id } }));
+        tools.appendChild(button('cr-tool', '', { icon: m.pinned ? 'ph ph-push-pin-slash' : 'ph ph-push-pin', title: m.pinned ? 'Unpin' : 'Pin', data: { 'cr-pin': m.id } }));
+        if (own && !isVoice(m)) tools.appendChild(button('cr-tool', '', { icon: 'ph ph-pencil-simple', title: 'Edit', data: { 'cr-edit': m.id } }));
+        if (own) tools.appendChild(button('cr-tool cr-tool--danger', '', { icon: 'ph ph-trash', title: 'Delete', data: { 'cr-delete': m.id } }));
+        return tools;
+    }
+
+    const whoOf = (m) => (m.user_id === state.me ? 'You' : (m.username || memberName(m.user_id)));
+    const isMention = (m) => Array.isArray(m.mentions) && m.mentions.includes(state.me);
+
+    // ── Channel boards: posts with threaded replies (Facebook / Quora style) ──
+    function renderBoard(key, msgs, newSince) {
+        const list = el('div', 'cr-messages cr-board');
+        list.id = 'crMessages';
+        list.setAttribute('aria-label', `Posts in ${conversationTitle(key)}`);
+        const repliesBy = new Map();
+        const roots = [];
+        msgs.forEach((m) => {
+            const root = rootOf(m);
+            if (root.id === m.id) { roots.push(m); return; }
+            if (!repliesBy.has(root.id)) repliesBy.set(root.id, []);
+            repliesBy.get(root.id).push(m);
+        });
+        // Freshest conversation first: a new reply lifts its post to the top.
+        const activity = (r) => Math.max(ts(r), ...(repliesBy.get(r.id) || []).map(ts));
+        roots.sort((a, b) => activity(b) - activity(a));
+        if (!roots.length) {
+            const empty = el('div', 'cr-empty');
+            empty.appendChild(icon('ph ph-chats-circle'));
+            empty.appendChild(el('p', 'cr-empty__title', `No posts in ${conversationTitle(key)} yet`));
+            empty.appendChild(el('p', 'cr-empty__sub', key.startsWith('show:') ? 'Share the rider, set times, travel plans and anything the crew needs for this show.' : 'Start a post above. Replies stay together under each post.'));
+            list.appendChild(empty);
         }
-        row.appendChild(body);
+        roots.forEach((r) => list.appendChild(renderPost(r, repliesBy.get(r.id) || [], newSince)));
+        if (state.hasOlder) list.appendChild(button('cr-older', 'Load older posts', { data: { 'cr-older': '1' } }));
+        return list;
+    }
 
-        if (state.editing !== m.id) {
-            const tools = el('div', 'cr-msg__tools');
-            tools.setAttribute('role', 'toolbar');
-            tools.setAttribute('aria-label', 'Message actions');
-            tools.appendChild(button('cr-tool', '', { icon: 'ph ph-arrow-bend-up-left', title: 'Reply', data: { 'cr-reply': m.id } }));
-            tools.appendChild(button('cr-tool', '', { icon: m.pinned ? 'ph ph-push-pin-slash' : 'ph ph-push-pin', title: m.pinned ? 'Unpin' : 'Pin', data: { 'cr-pin': m.id } }));
-            if (own) {
-                tools.appendChild(button('cr-tool', '', { icon: 'ph ph-pencil-simple', title: 'Edit', data: { 'cr-edit': m.id } }));
-                tools.appendChild(button('cr-tool cr-tool--danger', '', { icon: 'ph ph-trash', title: 'Delete', data: { 'cr-delete': m.id } }));
+    function renderPost(m, replies, newSince) {
+        const own = m.user_id === state.me;
+        const fresh = newSince && ts(m) > newSince && !own;
+        const post = el('article', `cr-post${m.pinned ? ' is-pinned' : ''}${isMention(m) ? ' is-mention' : ''}${fresh ? ' is-new' : ''}`);
+        post.id = `cr-msg-${m.id}`;
+        post.setAttribute('data-cr-msg', m.id);
+        post.tabIndex = -1;
+        const head = el('header', 'cr-post__head');
+        head.appendChild(avatar(own ? myName() : (m.username || memberName(m.user_id)), m.user_id, 'md'));
+        const who = el('div', 'cr-post__who');
+        who.appendChild(el('span', 'cr-post__name', whoOf(m)));
+        const meta = el('span', 'cr-post__meta');
+        const time = el('time', '', timeAgo(ts(m)));
+        time.setAttribute('datetime', m.created_at);
+        time.title = new Date(ts(m)).toLocaleString('en-GB');
+        meta.appendChild(time);
+        if (m.edited_at) meta.appendChild(el('span', '', ' · edited'));
+        if (m.pinned) { const pin = el('span', 'cr-msg__pinned'); pin.append(icon('ph ph-push-pin'), el('span', '', 'Pinned')); meta.appendChild(pin); }
+        if (fresh) meta.appendChild(el('span', 'cr-new', 'New'));
+        who.appendChild(meta);
+        head.appendChild(who);
+        if (state.editing !== m.id) head.appendChild(toolsFor(m, false));
+        post.appendChild(head);
+
+        const body = el('div', 'cr-post__body');
+        body.appendChild(state.editing === m.id ? editForm(m) : messageText(m));
+        if (state.confirmDelete === m.id) body.appendChild(deleteConfirm(m));
+        post.appendChild(body);
+
+        const bar = el('div', 'cr-post__bar');
+        const replyBtn = button('cr-post__act', 'Reply', { icon: 'ph ph-chat-circle', data: { 'cr-reply': m.id } });
+        bar.appendChild(replyBtn);
+        if (replies.length) {
+            const people = [...new Set(replies.map((x) => x.user_id))].slice(0, 3);
+            const faces = el('span', 'cr-post__faces');
+            people.forEach((uid) => faces.appendChild(avatar(uid === state.me ? myName() : memberName(uid), uid, 'xs')));
+            const toggle = button('cr-post__count', `${replies.length} ${replies.length === 1 ? 'reply' : 'replies'}`, { data: { 'cr-expand': m.id } });
+            toggle.prepend(faces);
+            bar.appendChild(toggle);
+        }
+        post.appendChild(bar);
+
+        const hasThreadUi = replies.length || state.thread === m.id;
+        if (hasThreadUi) {
+            const thread = el('div', 'cr-thread');
+            const expanded = state.expanded.has(m.id) || replies.length <= 2;
+            const shown = expanded ? replies : replies.slice(-2);
+            if (!expanded) thread.appendChild(button('cr-thread__more', `View ${replies.length - 2} earlier ${replies.length - 2 === 1 ? 'reply' : 'replies'}`, { icon: 'ph ph-arrow-elbow-down-right', data: { 'cr-expand': m.id } }));
+            shown.forEach((c) => thread.appendChild(renderComment(c, m, newSince)));
+            if (state.thread === m.id) thread.appendChild(replyBox(m));
+            post.appendChild(thread);
+        }
+        return post;
+    }
+
+    function renderComment(c, root, newSince) {
+        const own = c.user_id === state.me;
+        const fresh = newSince && ts(c) > newSince && !own;
+        const row = el('div', `cr-comment${isMention(c) ? ' is-mention' : ''}${fresh ? ' is-new' : ''}`);
+        row.id = `cr-msg-${c.id}`;
+        row.setAttribute('data-cr-msg', c.id);
+        row.tabIndex = -1;
+        row.appendChild(avatar(own ? myName() : (c.username || memberName(c.user_id)), c.user_id, 'sm'));
+        const main = el('div', 'cr-comment__main');
+        if (state.editing === c.id) {
+            main.appendChild(editForm(c));
+        } else {
+            const bubble = el('div', 'cr-comment__bubble');
+            const name = el('span', 'cr-comment__name', whoOf(c));
+            bubble.appendChild(name);
+            if (c.reply_to && c.reply_to !== root.id) {
+                const parent = state.messages.get(c.reply_to);
+                if (parent) {
+                    const to = el('button', 'cr-comment__to');
+                    to.type = 'button';
+                    to.setAttribute('data-cr-jump', parent.id);
+                    to.append(icon('ph ph-arrow-bend-up-left'), el('span', '', whoOf(parent)));
+                    bubble.appendChild(to);
+                }
             }
-            row.appendChild(tools);
+            bubble.appendChild(messageText(c));
+            main.appendChild(bubble);
+            const meta = el('div', 'cr-comment__meta');
+            const time = el('time', '', timeAgo(ts(c)));
+            time.setAttribute('datetime', c.created_at);
+            time.title = new Date(ts(c)).toLocaleString('en-GB');
+            meta.appendChild(time);
+            if (c.pinned) meta.appendChild(el('span', 'cr-msg__pinned', 'Pinned'));
+            meta.appendChild(button('cr-comment__act', 'Reply', { data: { 'cr-reply': c.id } }));
+            meta.appendChild(button('cr-comment__act', c.pinned ? 'Unpin' : 'Pin', { data: { 'cr-pin': c.id } }));
+            if (own && !isVoice(c)) meta.appendChild(button('cr-comment__act', 'Edit', { data: { 'cr-edit': c.id } }));
+            if (own) meta.appendChild(button('cr-comment__act cr-comment__act--danger', 'Delete', { data: { 'cr-delete': c.id } }));
+            if (fresh) meta.appendChild(el('span', 'cr-new', 'New'));
+            main.appendChild(meta);
         }
+        if (state.confirmDelete === c.id) main.appendChild(deleteConfirm(c));
+        row.appendChild(main);
         return row;
     }
 
-    function renderConversation(sum) {
+    function replyBox(root) {
+        const form = el('form', 'cr-replybox');
+        form.setAttribute('data-cr-reply-form', root.id);
+        form.appendChild(avatar(myName(), state.me, 'sm'));
+        if (state.rec && state.rec.target === root.id) {
+            form.appendChild(recordingBar());
+            return form;
+        }
+        const field = el('div', 'cr-replybox__field');
+        const ta = el('textarea', 'cr-input cr-replybox__input');
+        ta.id = 'crReplyInput';
+        ta.rows = 1;
+        ta.maxLength = 4000;
+        const target = state.threadReplyTo ? state.messages.get(state.threadReplyTo) : null;
+        ta.placeholder = target && target.id !== root.id ? `Reply to ${whoOf(target)}…` : 'Write a reply…';
+        ta.setAttribute('aria-label', 'Reply');
+        ta.value = state.replyDraft || '';
+        field.append(ta, emojiButton('crReplyInput'));
+        form.append(field, sendOrMic(root.id, !!ta.value.trim()));
+        return form;
+    }
+
+    // ── Direct messages: chat bubbles (WhatsApp style) ───────────────────
+    function ticks(m, key) {
+        const span = el('span', 'cr-ticks');
+        if (String(m.id).startsWith('local-')) { span.appendChild(icon('ph ph-clock')); span.title = 'Sending'; return span; }
+        const read = (state.partnerRead[key] || 0) >= ts(m);
+        span.appendChild(icon(read ? 'ph ph-checks' : 'ph ph-check'));
+        span.classList.toggle('is-read', read);
+        span.title = read ? 'Read' : 'Sent';
+        span.setAttribute('aria-label', span.title);
+        return span;
+    }
+
+    function renderDm(key, msgs, newSince) {
+        const list = el('div', 'cr-messages cr-dm');
+        list.id = 'crMessages';
+        list.setAttribute('role', 'log');
+        list.setAttribute('aria-live', 'polite');
+        list.setAttribute('aria-label', `Messages with ${conversationTitle(key)}`);
+        if (state.hasOlder) list.appendChild(button('cr-older', 'Load older messages', { data: { 'cr-older': '1' } }));
+        if (!msgs.length) {
+            const empty = el('div', 'cr-empty');
+            empty.appendChild(icon('ph ph-lock-simple'));
+            empty.appendChild(el('p', 'cr-empty__title', `Start a conversation with ${memberName(key.slice(3))}`));
+            empty.appendChild(el('p', 'cr-empty__sub', 'Only the two of you can see these messages. Send a text or hold the mic for a voice note.'));
+            list.appendChild(empty);
+        }
+        const unread = newSince ? msgs.filter((m) => ts(m) > newSince && m.user_id !== state.me).length : 0;
+        let prev = null;
+        let bannerShown = false;
+        msgs.forEach((m, i) => {
+            const t = ts(m);
+            if (!prev || dayKey(ts(prev)) !== dayKey(t)) {
+                const sep = el('div', 'cr-daypill');
+                sep.appendChild(el('span', '', dayLabel(t)));
+                list.appendChild(sep);
+                prev = null;
+            }
+            if (!bannerShown && unread && t > newSince && m.user_id !== state.me) {
+                list.appendChild(el('div', 'cr-unreadbar', `${unread} unread message${unread === 1 ? '' : 's'}`));
+                bannerShown = true;
+                prev = null;
+            }
+            const own = m.user_id === state.me;
+            const next = msgs[i + 1];
+            const first = !prev || prev.user_id !== m.user_id || t - ts(prev) > GROUP_GAP_MS;
+            const last = !next || next.user_id !== m.user_id || ts(next) - t > GROUP_GAP_MS || dayKey(ts(next)) !== dayKey(t);
+            const row = el('div', `cr-b${own ? ' is-own' : ''}${first ? ' is-first' : ''}${last ? ' is-last' : ''}${m.pinned ? ' is-pinned' : ''}`);
+            row.id = `cr-msg-${m.id}`;
+            row.setAttribute('data-cr-msg', m.id);
+            row.tabIndex = -1;
+            const bubble = el('div', `cr-bubble${first ? ' has-tail' : ''}${isVoice(m) ? ' is-voice' : ''}`);
+            bubble.setAttribute('data-cr-swipe', m.id);
+            if (m.reply_to) bubble.appendChild(quote(m.reply_to, 'cr-quote cr-quote--bubble'));
+            if (state.editing === m.id) {
+                bubble.appendChild(editForm(m));
+            } else {
+                bubble.appendChild(messageText(m));
+                const meta = el('span', 'cr-bubble__meta');
+                if (m.pinned) meta.appendChild(icon('ph ph-push-pin'));
+                const time = el('time', '', clock(t));
+                time.setAttribute('datetime', m.created_at);
+                meta.appendChild(time);
+                if (own) meta.appendChild(ticks(m, key));
+                bubble.appendChild(meta);
+            }
+            if (state.confirmDelete === m.id) bubble.appendChild(deleteConfirm(m));
+            row.appendChild(bubble);
+            if (state.editing !== m.id) row.appendChild(toolsFor(m, true));
+            list.appendChild(row);
+            prev = m;
+        });
+        if (isTyping(key)) list.appendChild(typingBubble());
+        return list;
+    }
+
+    function renderConversation() {
         const key = state.active;
-        const main = el('section', 'cr-main');
+        const dm = isDm(key);
+        const main = el('section', `cr-main${dm ? ' is-dm' : ' is-board'}`);
         main.setAttribute('aria-label', conversationTitle(key));
 
         const head = el('header', 'cr-main__head');
@@ -690,17 +1318,27 @@
         const ch = CHANNELS.find((c) => c.key === key);
         let lead;
         if (ch) { lead = el('span', 'cr-convo__icon cr-convo__icon--lg'); lead.appendChild(icon(`ph ${ch.icon}`)); }
-        else if (key.startsWith('dm:')) lead = avatar(memberName(key.slice(3)), key.slice(3), 'md');
-        else { lead = el('span', 'cr-convo__icon cr-convo__icon--lg'); lead.appendChild(icon('ph ph-microphone-stage')); }
+        else if (dm) {
+            lead = el('span', 'cr-avatarwrap');
+            lead.appendChild(avatar(memberName(key.slice(3)), key.slice(3), 'md'));
+            const dot = el('span', 'cr-online');
+            dot.setAttribute('data-cr-online', key.slice(3));
+            dot.hidden = !state.online.has(key.slice(3));
+            lead.appendChild(dot);
+        } else { lead = el('span', 'cr-convo__icon cr-convo__icon--lg'); lead.appendChild(icon('ph ph-microphone-stage')); }
         const titles = el('div', 'cr-main__titles');
         titles.appendChild(el('h3', 'cr-main__title', conversationTitle(key)));
         let sub = '';
         if (ch) sub = ch.blurb;
-        else if (key.startsWith('dm:')) {
+        else if (dm) {
             const m = state.members.find((x) => x.userId === key.slice(3));
             sub = `Private between you and ${memberName(key.slice(3))}${m?.roleLabel ? ` · ${m.roleLabel}` : ''}`;
         } else sub = 'Show discussion for the whole crew';
-        titles.appendChild(el('p', 'cr-main__sub', sub));
+        const subEl = el('p', 'cr-main__sub', liveStatus(key) || sub);
+        subEl.id = 'crMainSub';
+        subEl.dataset.base = sub;
+        if (liveStatus(key)) subEl.classList.add('is-live');
+        titles.appendChild(subEl);
         head.append(lead, titles);
         const pins = messagesIn(key).filter((m) => m.pinned);
         const pinBtn = button(`cr-btn cr-btn--ghost cr-pins-btn${state.showPins ? ' is-on' : ''}`, pins.length ? `Pinned ${pins.length}` : 'Pinned', { icon: 'ph ph-push-pin', data: { 'cr-toggle-pins': '1' } });
@@ -717,78 +1355,53 @@
             main.appendChild(panel);
         }
 
-        const list = el('div', 'cr-messages');
-        list.id = 'crMessages';
-        list.setAttribute('role', 'log');
-        list.setAttribute('aria-live', 'polite');
-        list.setAttribute('aria-label', `Messages in ${conversationTitle(key)}`);
         const msgs = messagesIn(key);
-        if (state.hasOlder) list.appendChild(button('cr-older', 'Load older messages', { data: { 'cr-older': '1' } }));
-        if (!msgs.length) {
-            const empty = el('div', 'cr-empty');
-            empty.appendChild(icon('ph ph-chats-circle'));
-            empty.appendChild(el('p', 'cr-empty__title', key.startsWith('dm:') ? `Start a conversation with ${memberName(key.slice(3))}` : `No messages in ${conversationTitle(key)} yet`));
-            empty.appendChild(el('p', 'cr-empty__sub', key.startsWith('show:') ? 'Share the rider, set times, travel plans and anything the crew needs for this show.' : key.startsWith('dm:') ? 'Only the two of you can see this conversation.' : 'Say hello, share an update or ask the crew a question.'));
-            list.appendChild(empty);
-        }
         const newSince = state.newMark?.key === key ? state.newMark.at : 0;
-        let prev = null;
-        let newLineShown = false;
-        msgs.forEach((m) => {
-            const t = ts(m);
-            if (!prev || dayKey(ts(prev)) !== dayKey(t)) {
-                const sep = el('div', 'cr-day');
-                sep.appendChild(el('span', '', dayLabel(t)));
-                list.appendChild(sep);
-                prev = null;
-            }
-            if (!newLineShown && newSince && t > newSince && m.user_id !== state.me) {
-                const sep = el('div', 'cr-day cr-day--new');
-                sep.appendChild(el('span', '', 'New'));
-                list.appendChild(sep);
-                newLineShown = true;
-                prev = null;
-            }
-            const grouped = prev && prev.user_id === m.user_id && t - ts(prev) < GROUP_GAP_MS && !m.reply_to;
-            list.appendChild(renderMessage(m, grouped));
-            prev = m;
-        });
-        main.appendChild(list);
-        main.appendChild(renderComposer(key));
+        if (dm) {
+            main.appendChild(renderDm(key, msgs, newSince));
+            main.appendChild(renderComposer(key));
+        } else {
+            main.appendChild(renderComposer(key));
+            main.appendChild(renderBoard(key, msgs, newSince));
+        }
         return main;
     }
 
     function renderComposer(key) {
-        const form = el('form', 'cr-compose');
+        const dm = isDm(key);
+        const form = el('form', `cr-compose${dm ? '' : ' cr-compose--post'}`);
         form.id = 'crCompose';
-        if (state.replyTo) {
+        if (dm && state.replyTo) {
             const bar = el('div', 'cr-compose__reply');
             const q = state.messages.get(state.replyTo);
             const label = el('span', 'cr-compose__reply-text');
-            label.append(icon('ph ph-arrow-bend-up-left'), el('span', '', `Replying to ${q ? (q.user_id === state.me ? 'yourself' : (q.username || memberName(q.user_id))) : 'a message'}: `), el('span', 'cr-compose__reply-quote', q?.content || ''));
+            label.append(icon('ph ph-arrow-bend-up-left'), el('span', '', `Replying to ${q ? (q.user_id === state.me ? 'yourself' : (q.username || memberName(q.user_id))) : 'a message'}: `), el('span', 'cr-compose__reply-quote', previewText(q)));
             bar.append(label, button('cr-tool', '', { icon: 'ph ph-x', title: 'Cancel reply', data: { 'cr-cancel-reply': '1' } }));
             form.appendChild(bar);
+        }
+        if (state.rec && state.rec.target === 'main') {
+            form.appendChild(recordingBar());
+            return form;
         }
         const row = el('div', 'cr-compose__row');
         const ta = el('textarea', 'cr-input');
         ta.id = 'crInput';
         ta.rows = 1;
         ta.maxLength = 4000;
-        ta.placeholder = key.startsWith('dm:') ? `Message ${memberName(key.slice(3))}` : `Message ${conversationTitle(key)}`;
-        ta.setAttribute('aria-label', 'Message');
+        ta.placeholder = dm ? `Message ${memberName(key.slice(3))}` : `Start a post in ${conversationTitle(key)}…`;
+        ta.setAttribute('aria-label', dm ? 'Message' : 'New post');
         ta.value = state.drafts?.[key] || '';
-        const sendBtn = el('button', 'cr-send');
-        sendBtn.type = 'submit';
-        sendBtn.setAttribute('aria-label', 'Send');
-        sendBtn.appendChild(icon('ph ph-paper-plane-right'));
-        row.append(emojiButton('crInput'), ta, sendBtn);
+        if (!dm) row.appendChild(avatar(myName(), state.me, 'md'));
+        row.append(emojiButton('crInput'), ta, sendOrMic('main', !!ta.value.trim()));
         form.appendChild(row);
         const pop = el('div', 'cr-mentions');
         pop.id = 'crMentions';
         pop.hidden = true;
         pop.setAttribute('role', 'listbox');
         form.appendChild(pop);
-        form.appendChild(el('p', 'cr-hint cr-compose__hint', others().length ? 'Enter to send, Shift+Enter for a new line, @ to mention someone' : 'Enter to send, Shift+Enter for a new line'));
+        form.appendChild(el('p', 'cr-hint cr-compose__hint', dm
+            ? 'Enter to send, Shift+Enter for a new line. Tap the mic for a voice note.'
+            : (others().length ? 'Posts go to the whole crew. Replies stay under each post. @ to mention someone.' : 'Posts go to the whole crew. Replies stay under each post.')));
         return form;
     }
 
@@ -820,6 +1433,9 @@
             state.drafts[state.active] = input.value;
         }
         const selStart = input?.selectionStart;
+        const replyInput = $('crReplyInput');
+        if (replyInput && !opts.focusReply) state.replyDraft = replyInput.value;
+        const replySel = replyInput?.selectionStart;
 
         if (!state.teamId) {
             root.replaceChildren(renderNoTeam());
@@ -839,12 +1455,16 @@
         }
         root.classList.add('is-ready');
         root.classList.toggle('is-list', state.listOpenOnPhone);
-        root.replaceChildren(renderSidebar(sum), renderConversation(sum));
+        root.replaceChildren(renderSidebar(sum), renderConversation());
 
+        // Chats read bottom-up like WhatsApp; boards read top-down with the
+        // freshest post first.
         const list = $('crMessages');
         if (list) {
-            if (opts.keepScroll && prevList) list.scrollTop = prevScroll + (opts.prepend ? list.scrollHeight - prevHeight : 0);
-            else list.scrollTop = list.scrollHeight;
+            const dm = isDm(state.active);
+            if (opts.keepScroll && prevList && !opts.toBottom && !opts.toTop) list.scrollTop = prevScroll + (opts.prepend && dm ? list.scrollHeight - prevHeight : 0);
+            else if (dm) list.scrollTop = list.scrollHeight;
+            else list.scrollTop = 0;
         }
         const nextInput = $('crInput');
         if (nextInput) {
@@ -854,11 +1474,21 @@
                 if (typeof selStart === 'number') nextInput.setSelectionRange(selStart, selStart);
             }
         }
+        const nextReply = $('crReplyInput');
+        if (nextReply) {
+            autosize(nextReply);
+            if (focusId === 'crReplyInput' || opts.focusReply) {
+                nextReply.focus({ preventScroll: true });
+                const at = typeof replySel === 'number' && !opts.focusReply ? replySel : nextReply.value.length;
+                nextReply.setSelectionRange(at, at);
+                if (opts.focusReply) nextReply.closest('.cr-replybox')?.scrollIntoView({ block: 'nearest' });
+            }
+        }
         const edit = $('crEditInput');
         if (edit) {
             edit.focus({ preventScroll: true });
             edit.setSelectionRange(edit.value.length, edit.value.length);
-            edit.closest('.cr-msg')?.scrollIntoView({ block: 'nearest' });
+            edit.closest('[data-cr-msg]')?.scrollIntoView({ block: 'nearest' });
         }
         root.querySelector('.cr-confirm')?.scrollIntoView({ block: 'nearest' });
     }
@@ -881,6 +1511,11 @@
         state.confirmDelete = null;
         state.showPins = false;
         state.listOpenOnPhone = false;
+        state.thread = null;
+        state.threadReplyTo = null;
+        state.replyDraft = '';
+        state.expanded = new Set();
+        if (state.rec) finishRecording(false);
         try { localStorage.setItem(`${ACTIVE_KEY}:${state.teamId}`, key); } catch (_e) { /* storage blocked */ }
         const at = noteRead(key);
         render();
@@ -934,16 +1569,83 @@
         autosize(ta);
     }
 
+    // Direct messages quote the message in the composer (WhatsApp). Boards open
+    // a reply box under the post; replying to a comment tags its author.
+    function startReply(id) {
+        const m = state.messages.get(id);
+        state.editing = null;
+        if (isDm(state.active) || !m) {
+            state.replyTo = id;
+            render({ keepScroll: true });
+            $('crInput')?.focus();
+            return;
+        }
+        const root = rootOf(m);
+        const fresh = state.thread !== root.id;
+        state.thread = root.id;
+        state.threadReplyTo = m.id !== root.id ? m.id : null;
+        if (fresh) state.replyDraft = '';
+        const tag = m.id !== root.id && m.user_id !== state.me ? `@${m.username || memberName(m.user_id)} ` : '';
+        if (tag && !String(state.replyDraft || '').includes(tag.trim())) state.replyDraft = `${tag}${state.replyDraft || ''}`;
+        state.expanded.add(root.id);
+        render({ keepScroll: true, focusReply: true });
+    }
+
+    function closeThreadBox() {
+        state.thread = null;
+        state.threadReplyTo = null;
+        state.replyDraft = '';
+        render({ keepScroll: true });
+    }
+
+    // Swipe a chat bubble right to reply, like WhatsApp on a phone.
+    let swipe = null;
+    document.addEventListener('pointerdown', (event) => {
+        if (event.pointerType === 'mouse') return;
+        const b = event.target.closest?.('[data-cr-swipe]');
+        if (!b || event.target.closest('button, a, textarea, [data-cr-seek]')) return;
+        swipe = { el: b, id: b.dataset.crSwipe, x: event.clientX, y: event.clientY, dx: 0, live: false };
+    }, { passive: true });
+    document.addEventListener('pointermove', (event) => {
+        if (!swipe) return;
+        const dx = event.clientX - swipe.x;
+        const dy = event.clientY - swipe.y;
+        if (!swipe.live) {
+            if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) { swipe = null; return; }
+            if (dx < 10) return;
+            swipe.live = true;
+        }
+        swipe.dx = Math.max(0, Math.min(96, dx));
+        swipe.el.style.setProperty('--dx', `${swipe.dx}px`);
+        swipe.el.classList.add('is-swiping');
+        swipe.el.classList.toggle('is-armed', swipe.dx >= 64);
+    }, { passive: true });
+    const endSwipe = () => {
+        if (!swipe) return;
+        const s = swipe;
+        swipe = null;
+        s.el.classList.remove('is-swiping', 'is-armed');
+        s.el.style.removeProperty('--dx');
+        if (s.dx >= 64) startReply(s.id);
+    };
+    document.addEventListener('pointerup', endSwipe);
+    document.addEventListener('pointercancel', endSwipe);
+
     // ── Events ───────────────────────────────────────────────────────────
     document.addEventListener('click', (event) => {
         const root = $('crewRoot');
         if (!root || !root.contains(event.target)) return;
+        const seek = event.target.closest('[data-cr-seek]');
+        if (seek) {
+            const r = seek.getBoundingClientRect();
+            return togglePlay(seek.dataset.crSeek, Math.max(0, Math.min(1, (event.clientX - r.left) / (r.width || 1))));
+        }
         const t = event.target.closest('button');
         if (!t) {
             // Tapping a message on touch screens shows its actions.
             const msg = event.target.closest('[data-cr-msg]');
-            if (msg) {
-                root.querySelectorAll('.cr-msg.is-touched').forEach((n) => { if (n !== msg) n.classList.remove('is-touched'); });
+            if (msg && !event.target.closest('a, textarea, form')) {
+                root.querySelectorAll('[data-cr-msg].is-touched').forEach((n) => { if (n !== msg) n.classList.remove('is-touched'); });
                 msg.classList.toggle('is-touched');
             }
             return;
@@ -951,11 +1653,19 @@
         const d = t.dataset;
         if (d.crOpen) return openConversation(d.crOpen);
         if (d.crBack) { state.listOpenOnPhone = true; return render(); }
-        if (d.crReply) {
-            state.replyTo = d.crReply;
-            state.editing = null;
-            render({ keepScroll: true });
-            $('crInput')?.focus();
+        if (d.crReply) return startReply(d.crReply);
+        if (d.crExpand) {
+            if (state.expanded.has(d.crExpand)) state.expanded.delete(d.crExpand); else state.expanded.add(d.crExpand);
+            return render({ keepScroll: true });
+        }
+        if (d.crMic) return startRecording(d.crMic);
+        if (d.crRecCancel) return finishRecording(false);
+        if (d.crRecSend) return finishRecording(true);
+        if (d.crPlay) return togglePlay(d.crPlay);
+        if (d.crSpeed) {
+            state.speed = state.speed === 1 ? 1.5 : state.speed === 1.5 ? 2 : 1;
+            if (player.audio) player.audio.playbackRate = state.speed;
+            root.querySelectorAll('.cr-voice__speed').forEach((b) => { b.textContent = `${state.speed}×`; });
             return;
         }
         if (d.crCancelReply) { state.replyTo = null; render({ keepScroll: true }); $('crInput')?.focus(); return; }
@@ -993,9 +1703,25 @@
             ta.value = '';
             if (state.drafts) state.drafts[state.active] = '';
             autosize(ta);
-            const ok = await send(text);
+            const ok = await send(text, isDm(state.active) ? {} : { replyTo: null });
             if (!ok && ta) ta.value = text;
             $('crInput')?.focus();
+            return;
+        }
+        const rootId = form.getAttribute?.('data-cr-reply-form');
+        if (rootId) {
+            event.preventDefault();
+            const ta = $('crReplyInput');
+            const text = String(ta?.value || '').trim();
+            if (!text) return;
+            const replyTo = state.threadReplyTo || rootId;
+            state.replyDraft = '';
+            if (ta) ta.value = '';
+            state.expanded.add(rootId);
+            const ok = await send(text, { replyTo });
+            if (!ok) { state.replyDraft = text; render({ keepScroll: true, focusReply: true }); return; }
+            state.threadReplyTo = null;
+            render({ keepScroll: true, focusReply: true });
             return;
         }
         const editId = form.getAttribute?.('data-cr-edit-form');
@@ -1040,6 +1766,15 @@
             }
             return;
         }
+        if (t?.id === 'crReplyInput') {
+            if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+                event.preventDefault();
+                t.form?.requestSubmit();
+                return;
+            }
+            if (event.key === 'Escape') { event.preventDefault(); closeThreadBox(); }
+            return;
+        }
         if (t?.id === 'crEditInput') {
             if (event.key === 'Escape') { event.preventDefault(); state.editing = null; render({ keepScroll: true }); $('crInput')?.focus(); return; }
             if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
@@ -1050,10 +1785,18 @@
     });
 
     document.addEventListener('input', (event) => {
-        if (event.target?.id === 'crInput') {
+        const id = event.target?.id;
+        if (id === 'crInput' || id === 'crReplyInput') {
+            event.target.closest('form')?.querySelector('.cr-sendwrap')?.classList.toggle('has-text', !!event.target.value.trim());
+        }
+        if (id === 'crInput') {
             autosize(event.target);
             updateMentionPopup(event.target);
-        } else if (event.target?.id === 'crEditInput') {
+            if (isDm(state.active) && event.target.value) sendTyping();
+        } else if (id === 'crReplyInput') {
+            autosize(event.target);
+            state.replyDraft = event.target.value;
+        } else if (id === 'crEditInput') {
             autosize(event.target);
         }
     });

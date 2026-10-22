@@ -648,6 +648,7 @@ function getSectionIconMarkup(iconKey) {
             reports:    'ph-clipboard-text',
             tasks:      'ph-clipboard-text',
             crew:       'ph-chats-circle',
+            documents:  'ph-folder-simple-lock',
             settings:   'ph-gear-six',
         };
         const cls = phClass[iconKey] || phClass.dashboard;
@@ -1324,7 +1325,7 @@ function getSectionIconMarkup(iconKey) {
             }
             const hour = new Date().getHours();
             const part = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-            userNameEl.textContent = `${part}, ${displayName.split(/\s+/)[0]}`;
+            userNameEl.textContent = `${part}, ${displayName}`;
             userNameEl.hidden = false;
         }
 
@@ -4717,7 +4718,7 @@ function showLoginForm(options = {}) {
 
         const SP_MONEY_TAB_IDS = new Set(['financials', 'cashflow', 'receivables', 'expenses', 'otherIncome', 'reports']);
         const SP_SCHEDULE_TAB_IDS = new Set(['global', 'bookings', 'calendar']);
-        const SP_APP_SECTION_IDS = new Set(['dashboard', 'money', 'schedule', 'artists', 'crew', 'tasks', 'settings', ...SP_MONEY_TAB_IDS, ...SP_SCHEDULE_TAB_IDS]);
+        const SP_APP_SECTION_IDS = new Set(['dashboard', 'money', 'schedule', 'artists', 'crew', 'documents', 'tasks', 'settings', ...SP_MONEY_TAB_IDS, ...SP_SCHEDULE_TAB_IDS]);
 
         function isMoneyTabSection(section) {
             return SP_MONEY_TAB_IDS.has(section);
@@ -5292,6 +5293,7 @@ function showLoginForm(options = {}) {
                 'reports':    'Money',
                 'tasks':      'Tasks',
                 'crew':       'Crew',
+                'documents':  'Documents',
                 'settings':   'Settings',
             };
 
@@ -5346,6 +5348,8 @@ function showLoginForm(options = {}) {
                     }
                 } else if (section === 'crew') {
                     window.SPCrew?.open?.();
+                } else if (section === 'documents') {
+                    window.SPDocs?.open?.();
                 } else if (section === 'settings') {
                     refreshProfileUI();
                 }
@@ -5936,12 +5940,14 @@ function showLoginForm(options = {}) {
             filteredExpenses = maybeSort(filterDateRange(ensureFinanceArtistRefs(filteredExpenses), 'date'));
             filteredOtherIncome = maybeSort(filterDateRange(ensureFinanceArtistRefs(filteredOtherIncome), 'date'));
 
-            const totalBookings = filteredBookings.length;
-            const totalIncome = filteredBookings.reduce((sum, b) => sum + (Math.round(Number(b.fee) || 0)), 0);
+            // Cancelled shows earn nothing, so they stay out of every money total.
+            const liveBookings = filteredBookings.filter((b) => String(b?.status || '').toLowerCase() !== 'cancelled');
+            const totalBookings = liveBookings.length;
+            const totalIncome = liveBookings.reduce((sum, b) => sum + (Math.round(Number(b.fee) || 0)), 0);
             const totalExpenses = filteredExpenses.reduce((sum, e) => sum + (Math.round(Number(e.amount) || 0)), 0);
             const totalOtherIncome = filteredOtherIncome.reduce((sum, i) => sum + (Math.round(Number(i.amount) || 0)), 0);
             const periodNetProfit = (totalIncome + totalOtherIncome) - totalExpenses;
-            const balancesDue = filteredBookings.reduce((sum, b) => sum + (Math.round(Number(b.balance) || 0)), 0);
+            const balancesDue = liveBookings.reduce((sum, b) => sum + (Math.round(Number(b.balance) || 0)), 0);
             const reportStartPeriod = typeof window.getReportStartPeriodKey === 'function'
                 ? window.getReportStartPeriodKey(period, normalizedDateStart, {
                     filteredBookings,
@@ -7665,6 +7671,7 @@ function showLoginForm(options = {}) {
             const clearPromoter = document.getElementById('bookingPromoter');
             if (clearPromoter) clearPromoter.value = '';
             window.SPFinanceUI?.hidePayments?.();
+            window.SPDocs?.hideForBooking?.();
             document.getElementById('bookingStatus').value = 'confirmed';
             document.getElementById('bookingNotes').value = '';
             document.getElementById('bookingLocationType').value = 'uganda';
@@ -8334,6 +8341,7 @@ function showLoginForm(options = {}) {
 
             showAddBooking();
             window.SPFinanceUI?.showPayments?.(booking.id);
+            window.SPDocs?.showForBooking?.(booking.id);
         }
 
         // Custom delete confirmation — avoids browser confirm() dialog
@@ -8950,7 +8958,7 @@ function showLoginForm(options = {}) {
             window.SPInsights?.render?.();
             window.SPFinanceUI?.render?.();
             window.SPArtistsPage?.render?.();
-            window.SPSchedulePage?.render?.(); window.SPCrew?.sync?.();
+            window.SPSchedulePage?.render?.(); window.SPCrew?.sync?.(); window.SPDocs?.sync?.();
 
             // Delay chart rendering to ensure DOM is ready
             setTimeout(() => {
@@ -9913,6 +9921,9 @@ function showLoginForm(options = {}) {
             // ── Money alerts (app.insights.js): margin, drops, spikes, runway ──
             const moneyAlerts = typeof window.SPInsights?.alerts === 'function' ? window.SPInsights.alerts(now) : [];
             moneyAlerts.forEach((alert) => nudges.push(alert));
+            // ── Documents (app.docs.js): expiries, renewals, deliverables ──
+            const docAlerts = typeof window.SPDocs?.alerts === 'function' ? window.SPDocs.alerts(now) : [];
+            docAlerts.forEach((alert) => nudges.push(alert));
             const nudgeRank = { alert: 0, warning: 1, info: 2, success: 3 };
             nudges.sort((a, b) => (nudgeRank[a.type] ?? 2) - (nudgeRank[b.type] ?? 2));
 
@@ -10037,6 +10048,10 @@ function showLoginForm(options = {}) {
             }
             if (action === 'showSection' && actionId) {
                 showSection(actionId);
+                return;
+            }
+            if (action === 'openDocument') {
+                window.SPDocs?.openDocument?.(actionId);
                 return;
             }
             if (action === 'openBBFModal' && typeof openBBFModal === 'function') {
