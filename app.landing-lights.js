@@ -441,6 +441,7 @@
       return {
         el: el,
         ghost: ghost,
+        sways: el.classList.contains('lp-cta__inner'),
         shown: false,
         lift: 0,
         slide: el.closest('[data-lp-slide]'),
@@ -468,10 +469,41 @@
       pane.el.classList.add('is-sheen');
     }
 
+    // A pill-shaped mask layer the exact size of a chip, so the hole cut in
+    // the card's shadow has the chip's round ends rather than square corners.
+    var pills = {};
+    function pillHole(w, h) {
+      w = Math.round(w);
+      h = Math.round(h);
+      var id = w + 'x' + h;
+      if (!pills[id]) {
+        pills[id] = 'url("data:image/svg+xml,' + encodeURIComponent(
+          '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '"><rect width="' + w +
+          '" height="' + h + '" rx="' + (h / 2) + '"/></svg>') + '")';
+      }
+      return pills[id];
+    }
+
     function showGhost(pane, on) {
       if (pane.shown === on) return;
       pane.shown = on;
       pane.ghost.hidden = !on;
+    }
+
+    // The closing panel hangs from the rig: scrolling sets it swinging like
+    // a pendulum, and it settles again on a damped spring.
+    var hang = root.querySelector('.lp-cta__hang');
+    var swingDial = makeDial(hang, [{ rotate: '-2deg' }, { rotate: '2deg' }], 400);
+    var sway = { a: 0, w: 0, v: 0, y: window.scrollY };
+    function swing(dt) {
+      if (!hang || !dt) return;
+      var y = window.scrollY;
+      sway.v += ((y - sway.y) / dt - sway.v) * (1 - Math.exp(-dt * 10));
+      sway.y = y;
+      var target = clamp(-sway.v * 0.0005, -1.4, 1.4);
+      sway.w += (36 * (target - sway.a) - 3 * sway.w) * dt;
+      sway.a = clamp(sway.a + sway.w * dt, -1.9, 1.9);
+      swingDial((sway.a + 2) * 100);
     }
 
     // Every card is measured while the frame is still clean (before any
@@ -488,6 +520,15 @@
         if ((pane.slide && !pane.slide.hasAttribute('data-active')) || /^back/.test(pane.el.getAttribute('data-pos') || '')) return;
         var box = pane.el.getBoundingClientRect();
         if (!box.width || box.bottom < -60 || box.top > vh + 60) return;
+        // The hanging panel is turned a little as it swings, so its stand-in
+        // takes the panel's own size and is turned to match.
+        if (pane.sways) {
+          var w = pane.el.offsetWidth;
+          var h = pane.el.offsetHeight;
+          var cx = box.left + box.width / 2;
+          var cy = box.top + box.height / 2;
+          box = { left: cx - w / 2, top: cy - h / 2, width: w, height: h, right: cx + w / 2, bottom: cy + h / 2 };
+        }
         pane.box = box;
         if (!pane.radius) pane.radius = getComputedStyle(pane.el).borderRadius;
         // Cards that hang further out (the chips on the revenue card) are not
@@ -511,6 +552,9 @@
           pane.dressed = true;
           pane.ghost.style.borderRadius = pane.radius;
           if (pane.holes.length) pane.ghost.setAttribute('data-holes', '');
+          if (!pane.el.matches('.lp-chip, .lp-cta__inner')) {
+            pane.ghost.setAttribute('data-mark', pane.el.matches('.lp-cta__jobs li') ? 'pale' : 'glass');
+          }
         }
         showGhost(pane, true);
         // Lifted off the wall (hovered), the shadow falls further and softer.
@@ -555,6 +599,7 @@
           '--lp-ph': Math.round(box.height) + 'px',
           '--lp-gb': Math.round(14 + 18 * pane.lift) + 'px'
         };
+        if (pane.sways) shade['--lp-pr'] = (Math.round(sway.a * 100) / 100) + 'deg';
         ['c', 'l', 'r'].forEach(function (key) {
           var s = pane.s[key];
           shade[PANE_VARS[key] + 'x'] = Math.round(s.x) + 'px';
@@ -562,7 +607,8 @@
           shade[PANE_VARS[key] + 'a'] = (Math.round(s.a * 50) / 50).toFixed(2);
         });
         pane.holeBoxes.forEach(function (c, i) {
-          shade['--lp-k' + (i + 1)] = Math.round(c.left - box.left) + 'px ' + Math.round(c.top - box.top) + 'px / ' +
+          shade['--lp-k' + (i + 1)] = pillHole(c.width, c.height) + ' no-repeat ' +
+            Math.round(c.left - box.left) + 'px ' + Math.round(c.top - box.top) + 'px / ' +
             Math.round(c.width) + 'px ' + Math.round(c.height) + 'px';
         });
         // The rim and glow go on the stand-in too: writing them on the card
@@ -610,6 +656,7 @@
       measureGlass();
       slideWashes();
       placeSpot(piv, following, lamps.c.level);
+      swing(dt);
       castGlass(piv, dt, now);
       ['l', 'c', 'r'].forEach(function (key) {
         dials[key].aim(lamps[key].aim);

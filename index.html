@@ -6,7 +6,7 @@
     <meta name="star-paper:public-root" content="app-shell">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:;">
     <title>Star Paper</title>
-    <script src="app.browser-assets.js?v=62"></script>
+    <script src="app.browser-assets.js?v=63"></script>
     <script src="app.public-pages.js?v=2"></script>
     <script src="app.boot-head.js?v=3"></script>
     <link rel="manifest" href="manifest.json?v=27">
@@ -30,7 +30,7 @@
     <link rel="stylesheet" href="styles.utilities.css?v=2">
     <!-- Design system: tokens + signed-out pages (landing, auth). Loaded last so it owns those screens. -->
     <link rel="stylesheet" href="sp-design-tokens.css?v=5">
-    <link rel="stylesheet" href="styles.landing.css?v=42">
+    <link rel="stylesheet" href="styles.landing.css?v=43">
     <link rel="stylesheet" href="styles.brand.css?v=1">
     <link rel="stylesheet" href="styles.app.css?v=23">
     <link rel="preload" href="assets/vendor/fonts/font-29-fraunces-latin-opsz-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
@@ -241,9 +241,9 @@
                         <!-- lp:art voices: a fanned stack of review cards -->
                         <figure class="lp-art lp-art--voices">
                             <div class="lp-quotes-stack" data-lp-quotes aria-live="polite">
-                                <blockquote class="lp-qcard" data-lp-quote data-pos="front"><p class="lp-stars" aria-label="5 out of 5 stars"><span aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span></p><p class="lp-qcard__text">&ldquo;Finally a tool that keeps my artists, bookings, and money in one place. I stopped using spreadsheets on day one.&rdquo;</p><footer><span class="lp-avatar" aria-hidden="true">AB</span><span><strong>Aggie Best</strong> &middot; Artist manager, Kampala</span></footer></blockquote>
-                                <blockquote class="lp-qcard" data-lp-quote data-pos="back1"><p class="lp-stars" aria-label="5 out of 5 stars"><span aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span></p><p class="lp-qcard__text">&ldquo;Star Paper gives our team one clean view for bookings, balances, and artist updates without the usual back-and-forth.&rdquo;</p><footer><span class="lp-avatar lp-avatar--sage" aria-hidden="true">LO</span><span><strong>Label operations lead</strong> &middot; East Africa</span></footer></blockquote>
-                                <blockquote class="lp-qcard" data-lp-quote data-pos="back2"><p class="lp-stars" aria-label="5 out of 5 stars"><span aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span></p><p class="lp-qcard__text">&ldquo;The dashboard makes revenue, schedules, and outstanding balances feel coordinated instead of scattered.&rdquo;</p><footer><span class="lp-avatar lp-avatar--green" aria-hidden="true">TC</span><span><strong>Talent coordinator</strong> &middot; Live events, Kampala</span></footer></blockquote>
+                                <blockquote class="lp-qcard" data-lp-quote data-pos="front"><span class="lp-pass__clip" aria-hidden="true"></span><span class="lp-pass__foil" aria-hidden="true"><span>All access &middot; Backstage</span></span><p class="lp-stars" aria-label="5 out of 5 stars"><span aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span></p><p class="lp-qcard__text">&ldquo;Finally a tool that keeps my artists, bookings, and money in one place. I stopped using spreadsheets on day one.&rdquo;</p><footer><span class="lp-avatar" aria-hidden="true">AB</span><span><strong>Aggie Best</strong> &middot; Artist manager, Kampala</span></footer></blockquote>
+                                <blockquote class="lp-qcard" data-lp-quote data-pos="back1"><span class="lp-pass__clip" aria-hidden="true"></span><span class="lp-pass__foil" aria-hidden="true"><span>All access &middot; Backstage</span></span><p class="lp-stars" aria-label="5 out of 5 stars"><span aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span></p><p class="lp-qcard__text">&ldquo;Star Paper gives our team one clean view for bookings, balances, and artist updates without the usual back-and-forth.&rdquo;</p><footer><span class="lp-avatar lp-avatar--sage" aria-hidden="true">LO</span><span><strong>Label operations lead</strong> &middot; East Africa</span></footer></blockquote>
+                                <blockquote class="lp-qcard" data-lp-quote data-pos="back2"><span class="lp-pass__clip" aria-hidden="true"></span><span class="lp-pass__foil" aria-hidden="true"><span>All access &middot; Backstage</span></span><p class="lp-stars" aria-label="5 out of 5 stars"><span aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span></p><p class="lp-qcard__text">&ldquo;The dashboard makes revenue, schedules, and outstanding balances feel coordinated instead of scattered.&rdquo;</p><footer><span class="lp-avatar lp-avatar--green" aria-hidden="true">TC</span><span><strong>Talent coordinator</strong> &middot; Live events, Kampala</span></footer></blockquote>
                             </div>
                         </figure>
                     </article>
@@ -264,35 +264,38 @@
             <!-- /lp:show -->
 
             <section class="lp-cta" aria-labelledby="lpCtaTitle">
-                <div class="lp-cta__inner" data-lp-reveal data-lp-finale>
-                    <!-- The finale: the rig closes in on Start free and the rest of the panel falls into the dark. -->
-                    <div class="lp-finale" aria-hidden="true"><span class="lp-finale__dim"></span></div>
-                    <button class="sp-spin-toggle lp-cta__toggle" type="button" aria-pressed="true" aria-label="Pause the spinning logo">
-                        <img class="lp-cta__mark sp-spin-mark" src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="" width="72" height="72">
-                    </button>
-                    <h2 class="lp-h2" id="lpCtaTitle">Your next show deserves <em>a cleaner ledger.</em></h2>
-                    <p class="lp-lede">Free to start. Bring your first artist on board today.</p>
-                    <!-- Name in lights: a marquee sign that shows whatever artist the visitor types, saved as a shareable image. -->
-                    <div class="lp-marquee" data-lp-marquee>
-                        <div class="lp-marquee__sign" aria-hidden="true">
-                            <span class="lp-marquee__kicker">Now showing</span>
-                            <span class="lp-marquee__name" data-lp-marquee-name>Your artist</span>
-                            <span class="lp-marquee__kicker">Managed on Star Paper</span>
+                <!-- The closing panel hangs from the rig on two cables (app.landing-lights.js sways it on scroll). -->
+                <div class="lp-cta__hang">
+                    <div class="lp-cta__inner" data-lp-reveal data-lp-finale>
+                        <!-- The finale: the rig closes in on Start free and the rest of the panel falls into the dark. -->
+                        <div class="lp-finale" aria-hidden="true"><span class="lp-finale__dim"></span></div>
+                        <button class="sp-spin-toggle lp-cta__toggle" type="button" aria-pressed="true" aria-label="Pause the spinning logo">
+                            <img class="lp-cta__mark sp-spin-mark" src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="" width="72" height="72">
+                        </button>
+                        <h2 class="lp-h2" id="lpCtaTitle">Your next show deserves <em>a cleaner ledger.</em></h2>
+                        <p class="lp-lede">Free to start. Bring your first artist on board today.</p>
+                        <!-- Name in lights: a marquee sign that shows whatever artist the visitor types, saved as a shareable image. -->
+                        <div class="lp-marquee" data-lp-marquee>
+                            <div class="lp-marquee__sign" aria-hidden="true">
+                                <span class="lp-marquee__kicker">Now showing</span>
+                                <span class="lp-marquee__name" data-lp-marquee-name>Your artist</span>
+                                <span class="lp-marquee__kicker">Managed on Star Paper</span>
+                            </div>
+                            <form class="lp-marquee__form" data-lp-marquee-form>
+                                <label class="lp-sr" for="lpMarqueeInput">Whose show is it? Type an artist&rsquo;s name to put it in lights</label>
+                                <input class="lp-input lp-marquee__input" id="lpMarqueeInput" type="text" maxlength="28" autocomplete="off" spellcheck="false" placeholder="Whose show is it?" data-lp-marquee-input>
+                                <button class="lp-btn lp-btn--ghost lp-marquee__save" type="submit"><i class="ph ph-download-simple" aria-hidden="true"></i> Save image</button>
+                            </form>
                         </div>
-                        <form class="lp-marquee__form" data-lp-marquee-form>
-                            <label class="lp-sr" for="lpMarqueeInput">Whose show is it? Type an artist&rsquo;s name to put it in lights</label>
-                            <input class="lp-input lp-marquee__input" id="lpMarqueeInput" type="text" maxlength="28" autocomplete="off" spellcheck="false" placeholder="Whose show is it?" data-lp-marquee-input>
-                            <button class="lp-btn lp-btn--ghost lp-marquee__save" type="submit"><i class="ph ph-download-simple" aria-hidden="true"></i> Save image</button>
-                        </form>
-                    </div>
-                    <ul class="lp-cta__jobs" aria-label="What Star Paper keeps in one ledger">
-                        <li><i class="ph ph-calendar-check" aria-hidden="true"></i><span><strong>Bookings</strong> Dates, fees and deposits</span></li>
-                        <li><i class="ph ph-currency-circle-dollar" aria-hidden="true"></i><span><strong>Money</strong> Every shilling in and out</span></li>
-                        <li><i class="ph ph-users-three" aria-hidden="true"></i><span><strong>Team</strong> One schedule, one task list</span></li>
-                    </ul>
-                    <div class="lp-cta-row lp-cta-row--center">
-                        <button class="lp-btn lp-btn--gold lp-btn--lg" type="button" data-action="showSignupForm" data-lp-finale-target>Start free <i class="ph ph-arrow-right" aria-hidden="true"></i></button>
-                        <button class="lp-btn lp-btn--ghost lp-btn--lg" type="button" data-action="showLoginForm">I have an account</button>
+                        <ul class="lp-cta__jobs" aria-label="What Star Paper keeps in one ledger">
+                            <li><i class="ph ph-calendar-check" aria-hidden="true"></i><span><strong>Bookings</strong> Dates, fees and deposits</span></li>
+                            <li><i class="ph ph-currency-circle-dollar" aria-hidden="true"></i><span><strong>Money</strong> Every shilling in and out</span></li>
+                            <li><i class="ph ph-users-three" aria-hidden="true"></i><span><strong>Team</strong> One schedule, one task list</span></li>
+                        </ul>
+                        <div class="lp-cta-row lp-cta-row--center">
+                            <button class="lp-btn lp-btn--gold lp-btn--lg" type="button" data-action="showSignupForm" data-lp-finale-target>Start free <i class="ph ph-arrow-right" aria-hidden="true"></i></button>
+                            <button class="lp-btn lp-btn--ghost lp-btn--lg" type="button" data-action="showLoginForm">I have an account</button>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -2077,7 +2080,7 @@
 <script src="app.docs.js?v=4" defer></script>
 <script src="app.pickers.js?v=2" defer></script>
 <script src="app.landing.js?v=4" defer></script>
-<script src="app.landing-lights.js?v=12" defer></script>
+<script src="app.landing-lights.js?v=13" defer></script>
 <script src="app.chrome.js?v=4" defer></script>
 
     <!-- Premium toast stack -->

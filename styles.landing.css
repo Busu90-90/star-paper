@@ -3169,6 +3169,7 @@ body.light-theme .lp-auth__loading {
   width: var(--lp-pw, 0px);
   height: var(--lp-ph, 0px);
   translate: var(--lp-px, 0px) var(--lp-py, 0px);
+  rotate: var(--lp-pr, 0deg);
   box-shadow:
     inset calc(var(--lp-grx) * -1.5px) calc(var(--lp-gry) * -1.5px) 0 rgb(255 238 200 / calc(0.5 * var(--lp-gl))),
     inset 0 0 32px rgb(255 226 160 / calc(0.12 * var(--lp-gl))),
@@ -3183,8 +3184,8 @@ body.light-theme .lp-auth__loading {
   .lp-shade[data-holes] {
     mask:
       linear-gradient(#000 0 0),
-      linear-gradient(#000 0 0) no-repeat var(--lp-k1, 0 0 / 0 0),
-      linear-gradient(#000 0 0) no-repeat var(--lp-k2, 0 0 / 0 0);
+      var(--lp-k1, linear-gradient(transparent 0 0)),
+      var(--lp-k2, linear-gradient(transparent 0 0));
     mask-clip: no-clip;
     mask-composite: exclude;
   }
@@ -3269,6 +3270,185 @@ body.light-theme .lp-shade {
   0% { opacity: 1; background-position: 100% 0; }
   80% { opacity: 1; }
   100% { opacity: 0; background-position: 0% 0; }
+}
+
+/* Etched mark: a faint Star Paper mark cut into each pane, drawn on its
+   stand-in so it only really shows while light grazes the glass. */
+.lp-shade[data-mark]::before {
+  content: '';
+  position: absolute;
+  right: 6%;
+  bottom: 8%;
+  width: min(104px, calc(var(--lp-ph, 0px) * 0.46));
+  aspect-ratio: 1;
+  rotate: -14deg;
+  background: linear-gradient(135deg, rgb(255 250 232), rgb(255 226 160));
+  -webkit-mask: url('star_paper_logo_pack/star-paper-mono.svg') center / contain no-repeat;
+  mask: url('star_paper_logo_pack/star-paper-mono.svg') center / contain no-repeat;
+  mix-blend-mode: plus-lighter;
+  opacity: calc(0.03 + 0.14 * var(--lp-gl));
+}
+
+body.light-theme .lp-shade[data-mark='pale']::before {
+  background: rgb(48 36 14);
+  mix-blend-mode: multiply;
+  opacity: calc(0.05 + 0.08 * var(--lp-gl));
+}
+
+/* Stage floor: the wall ends at the footer's top edge, which is where the
+   stage floor begins. The hanging panel is mirrored faintly in the glossy
+   floor there, just its lower edge, fading out before the footer's words.
+   The reflection's mask is laid over the unflipped box, so the floor end of
+   the reflection is the bottom of the gradient. */
+.lp-cta__hang {
+  -webkit-box-reflect: below var(--sp-section) linear-gradient(transparent calc(100% - 200px), rgb(255 255 255 / 0.14) calc(100% - 120px), rgb(255 255 255 / 0.5));
+}
+
+body.light-theme .lp-cta__hang {
+  -webkit-box-reflect: below var(--sp-section) linear-gradient(transparent calc(100% - 190px), rgb(255 255 255 / 0.08) calc(100% - 110px), rgb(255 255 255 / 0.26));
+}
+
+/* Room on the floor for the reflection before the footer's words begin. */
+@supports (-webkit-box-reflect: below 0) {
+  .lp .lp-footer { padding-top: calc(var(--sp-space-12) + 140px); }
+}
+
+/* Backstage passes: each testimonial is a laminated pass on a lanyard, with
+   a punched slot, a metal clip and a holographic foil strip down one side
+   whose colours drift as the light moves over it. */
+.lp .lp-qcard {
+  padding-top: calc(var(--sp-space-6) + 18px);
+  padding-right: calc(var(--sp-space-6) + 22px);
+}
+
+.lp-pass__clip {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  width: 46px;
+  height: 9px;
+  translate: -50% 0;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.55);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.8), 0 1px 0 rgb(255 255 255 / 0.12);
+}
+
+/* The clip bites the slot; the strap runs up out of the light. */
+.lp-pass__clip::before {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  width: 22px;
+  height: 22px;
+  translate: -50% 0;
+  border-radius: 4px 4px 6px 6px;
+  background: linear-gradient(90deg, #6E6A60, #E9E4D6 35%, #9A958A 60%, #E1DCCD 80%, #6E6A60);
+  box-shadow: 0 2px 3px rgb(0 0 0 / 0.5);
+}
+
+.lp-pass__clip::after {
+  content: '';
+  position: absolute;
+  bottom: 22px;
+  left: 50%;
+  width: 16px;
+  height: 120px;
+  translate: -50% 0;
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 0.06) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, transparent, rgb(34 64 46) 70%);
+  border-radius: 2px;
+}
+
+.lp-pass__foil {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 22px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 0 var(--sp-radius-lg) var(--sp-radius-lg) 0;
+  background:
+    linear-gradient(115deg, rgb(255 120 190 / 0.55), rgb(255 220 120 / 0.55), rgb(120 255 200 / 0.55), rgb(120 170 255 / 0.55), rgb(210 130 255 / 0.55), rgb(255 120 190 / 0.55)) 0 0 / 100% 400%;
+  mix-blend-mode: screen;
+  animation: lp-foil 9s linear infinite;
+}
+
+.lp-pass__foil span {
+  writing-mode: vertical-rl;
+  font-family: var(--sp-font-ui);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.72);
+  white-space: nowrap;
+}
+
+@keyframes lp-foil {
+  to { background-position: 0 400%; }
+}
+
+@media (hover: hover) {
+  .lp .lp-qcard[data-pos='front']:hover .lp-pass__foil { animation-duration: 2.4s; }
+}
+
+/* Hung from the rig: the closing panel hangs on two steel cables and swings
+   a little when the page is scrolled (app.landing-lights.js), pivoting on a
+   point high above it. */
+.lp-cta__hang {
+  position: relative;
+  transform-origin: 50% -480px;
+  margin-top: 140px;
+}
+
+.lp-cta__hang::before,
+.lp-cta__hang::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  width: 3px;
+  height: 200px;
+  background:
+    linear-gradient(90deg, rgb(255 255 255 / 0.05), rgb(255 248 228 / 0.55) 50%, rgb(255 255 255 / 0.05)),
+    linear-gradient(0deg, rgb(150 146 136), rgb(150 146 136 / 0) 92%);
+  -webkit-mask: linear-gradient(0deg, #000 60%, transparent);
+  mask: linear-gradient(0deg, #000 60%, transparent);
+  pointer-events: none;
+}
+
+.lp-cta__hang::before { left: 14%; }
+.lp-cta__hang::after { right: 14%; }
+
+/* The rigging clamps where each cable bites the panel. */
+.lp-cta__inner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 14%;
+  right: 14%;
+  height: 10px;
+  margin-inline: -5px;
+  background:
+    radial-gradient(circle at 6.5px 3px, #D8D3C4 0 4px, #5E5A50 4.5px 5.5px, transparent 6px) left top / 13px 10px no-repeat,
+    radial-gradient(circle at 6.5px 3px, #D8D3C4 0 4px, #5E5A50 4.5px 5.5px, transparent 6px) right top / 13px 10px no-repeat;
+  pointer-events: none;
+}
+
+body.light-theme .lp-cta__hang::before,
+body.light-theme .lp-cta__hang::after {
+  background:
+    linear-gradient(90deg, rgb(0 0 0 / 0.1), rgb(255 255 255 / 0.6) 50%, rgb(0 0 0 / 0.1)),
+    linear-gradient(0deg, rgb(92 90 82), rgb(92 90 82 / 0) 92%);
+}
+
+@media (max-width: 599px) {
+  .lp-cta__hang { margin-top: 100px; }
+  .lp-cta__hang::before,
+  .lp-cta__hang::after { height: 140px; }
 }
 
 /* Light theme: the panes hang straight on the pale wall (no night panel
