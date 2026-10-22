@@ -170,6 +170,9 @@ body.light-theme .lp {
   --sp-font-display: 'Roschild', 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
 }
 :is(#landingScreen, #loginScreen) :is(.lp-display, .lp-h2) { letter-spacing: 0; word-spacing: normal; }
+/* Roschild's caps run long: the italic second line steps down to sit on one
+   line under the first. */
+#landingScreen .lp-display em { display: inline-block; font-size: 0.62em; white-space: nowrap; }
 
 .lp-display,
 .lp-h2,
