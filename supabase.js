@@ -4241,6 +4241,14 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
     const sig = computeCloudSignature(payload);
 
+    // Read-only team roles (viewer, reports) cannot write team records; the
+    // database refuses them, so only their own theme is saved.
+    const teamAccess = workspaceMeta.teamId
+      ? (_teamContextCache.find((team) => team.id === workspaceMeta.teamId) || null)
+      : null;
+    const readOnlyTeam = Boolean(teamAccess?.myPermissions && !teamAccess.myPermissions.edit && !teamAccess.myPermissions.admin);
+    const savePayload = readOnlyTeam ? { theme: payload?.theme } : payload;
+
     updateSyncIndicator('syncing');
     let didSave = false;
     const {
@@ -4256,7 +4264,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       financeSettings,
       categoryBudgets,
       theme,
-    } = payload || {};
+    } = savePayload || {};
 
     let failedStep = 'saveAllData';
     beginCloudSaveOperation();
@@ -4929,7 +4937,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         // Exchange failed AND no stored session — clear the loader and show login
         // so the user isn't stranded on a blank page after a bad OAuth redirect.
         if (pkceVerifierMissing) {
-          const message = 'Google returned without its sign-in verifier. Check Supabase redirect URLs for this exact origin, then try again.';
+          const message = 'Google sign-in did not finish. Tap Continue with Google again.';
           warn('Auth redirect PKCE verifier missing; showing login with configuration guidance.', {
             currentOrigin: redirectLocation.origin,
             expectedOrigin: oauthIntent?.origin || null,
@@ -5014,7 +5022,22 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     }
   }
 
+  // Logging out revokes the old session in the background. If that call is
+  // still running when someone signs straight back in, its cleanup wipes the
+  // new Google sign-in verifier (or the new session), and the sign-in
+  // bounces back to the landing page. Every sign-in waits for it first.
+  let _pendingSignOut = null;
+  async function settlePendingSignOut() {
+    if (!_pendingSignOut) return;
+    try {
+      await withTimeout(() => _pendingSignOut, 5000, 'sign-in-wait-signout');
+    } catch (_err) {
+      warn('Background sign-out still running; continuing with sign-in.');
+    }
+  }
+
   async function signUp(username, email, password, phone) {
+    await settlePendingSignOut();
     const { data, error } = await db.auth.signUp({
       email,
       password,
@@ -5040,6 +5063,7 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   }
 
   async function signIn(email, password) {
+    await settlePendingSignOut();
     const { data, error } = await db.auth.signInWithPassword({ email, password });
     if (error) throw error;
     _session = data.session;
@@ -5553,16 +5577,33 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       throw err;
     }
     writeOAuthIntent(redirectTo);
-    const { error } = await db.auth.signInWithOAuth({
+    await settlePendingSignOut();
+    const startOAuth = () => db.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo,
+        skipBrowserRedirect: true,
         queryParams: {
           access_type: 'offline',
           prompt: 'select_account',
         },
       }
     });
+    const hasVerifier = () => {
+      try { return Boolean(localStorage.getItem(SP_SUPABASE_PKCE_KEY)); } catch (_err) { return true; }
+    };
+    let { data, error } = await startOAuth();
+    // Only leave for Google once the verifier is safely stored; without it the
+    // return trip cannot finish and lands back on the login screen.
+    if (!error && !hasVerifier()) {
+      warn('Google sign-in verifier missing before redirect; starting again.');
+      ({ data, error } = await startOAuth());
+    }
+    if (!error && data?.url) {
+      window.location.assign(data.url);
+      return;
+    }
+    if (!error) error = new Error('Google sign-in could not start. Please try again.');
     if (error) {
       try {
         sessionStorage.removeItem(BOOT_CONTEXT_STORAGE_KEY);
@@ -7391,6 +7432,12 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
     // ── SUPABASE LOGOUT ─────────────────────────────────────────────────────────
     window.logout = async function supabaseLogout() {
       const flowId = beginBootTransitionSafe('logout', 'signing-out');
+      // Sign-ins wait on this until every sign-out call below has settled.
+      let releaseSignOut = () => {};
+      const signOutCalls = [];
+      const pending = new Promise((resolve) => { releaseSignOut = resolve; });
+      _pendingSignOut = pending;
+      pending.then(() => { if (_pendingSignOut === pending) _pendingSignOut = null; });
       const logoutOwnerId = getOwnerId();
       try {
         document.getElementById('sidebar')?.classList.remove('active');
@@ -7420,7 +7467,9 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       //     so its in-memory state matches what we are about to do to localStorage.
       try {
         if (db && db.auth && typeof db.auth.signOut === 'function') {
-          await withTimeout(() => db.auth.signOut({ scope: 'local' }), 800, 'logout-signOut');
+          const localSignOut = db.auth.signOut({ scope: 'local' }).catch(() => null);
+          signOutCalls.push(localSignOut);
+          await withTimeout(() => localSignOut, 800, 'logout-signOut');
         }
       } catch (_err) {
         // Best-effort: even if signOut hangs/fails, the artifact wipe below is the
@@ -7512,7 +7561,8 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
       // 7. Revoke the server-side token in the background (best-effort).
       //    Even if this fails the user is fully logged out locally (steps 2–5 above).
-      signOut().catch(() => {});
+      signOutCalls.push(signOut().catch(() => {}));
+      Promise.allSettled(signOutCalls).then(() => releaseSignOut());
     };
 
     // ── PATCH saveUserData TO CLOUD-FIRST SYNC ──────────────────────────────────

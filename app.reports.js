@@ -19,7 +19,7 @@
   const RED = '#ef4444';
   const GLASS_BG = 'rgba(255,255,255,0.06)';
   const CHART_COLORS = [GOLD, '#60a5fa', GREEN, '#f97316', '#a78bfa', '#ec4899', '#14b8a6', '#f43f5e'];
-  const REPORT_RUNTIME_VERSION = 'report-runtime-v17';
+  const REPORT_RUNTIME_VERSION = 'report-runtime-v19';
   window.SP_REPORT_RUNTIME_VERSION = REPORT_RUNTIME_VERSION;
 
   function buildStarPaperChartTheme(mode = 'dark') {
@@ -292,7 +292,9 @@
     const bbf = Number(data?.bbf) || 0;
     const closingBalance = Number(data?.closingBalance ?? (bbf + periodNetProfit)) || 0;
 
-    const totalBookings = filteredBookings.length;
+    // Cancelled shows stay in the status counts but earn nothing.
+    const liveBookings = filteredBookings.filter(b => String(b?.status || '').toLowerCase() !== 'cancelled');
+    const totalBookings = liveBookings.length;
     const grossIncome = totalIncome + totalOtherIncome;
     const profitMargin = grossIncome > 0 ? (netProfit / grossIncome) * 100 : 0;
     const avgPerShow = totalBookings > 0 ? Math.round(totalIncome / totalBookings) : 0;
@@ -311,7 +313,7 @@
     const pendingCount = statusCounts.pending || 0;
     const confirmedCount = statusCounts.confirmed || 0;
 
-    const totalCapacity = filteredBookings.reduce((sum, b) => sum + Math.max(0, Math.round(Number(b.capacity) || 0)), 0);
+    const totalCapacity = liveBookings.reduce((sum, b) => sum + Math.max(0, Math.round(Number(b.capacity) || 0)), 0);
     const avgCapacity = totalBookings > 0 ? Math.round(totalCapacity / totalBookings) : 0;
     const revenuePerSeat = totalCapacity > 0 ? Math.round(totalIncome / totalCapacity) : 0;
 
@@ -325,7 +327,7 @@
     // Monthly trend
     const monthlyRevenue = {};
     const monthlyExpenses = {};
-    filteredBookings.forEach(b => {
+    liveBookings.forEach(b => {
       const mk = monthKey(b.date);
       if (mk) monthlyRevenue[mk] = (monthlyRevenue[mk] || 0) + Math.round(Number(b.fee) || 0);
     });
@@ -342,7 +344,7 @@
     // Top city/venue
     const venueCounts = {};
     const venueRevenue = {};
-    filteredBookings.forEach(b => {
+    liveBookings.forEach(b => {
       const loc = b.location || 'Unknown';
       venueCounts[loc] = (venueCounts[loc] || 0) + 1;
       venueRevenue[loc] = (venueRevenue[loc] || 0) + Math.round(Number(b.fee) || 0);
@@ -357,8 +359,8 @@
       const rev = venueRevenue[loc] || 0;
       const shows = venueCounts[loc] || 0;
       // Estimate cost per show (total expenses / total bookings * shows at this venue)
-      const costPerShow = filteredBookings.length > 0
-        ? Math.round(totalExpenses / filteredBookings.length)
+      const costPerShow = liveBookings.length > 0
+        ? Math.round(totalExpenses / liveBookings.length)
         : 0;
       const totalCost = costPerShow * shows;
       const profit = rev - totalCost;
@@ -466,7 +468,8 @@
   }
 
   function buildPdfVenuePerformance(bookings, totalExpenses) {
-    const allBookings = Array.isArray(bookings) ? bookings : [];
+    const allBookings = (Array.isArray(bookings) ? bookings : [])
+      .filter((booking) => String(booking?.status || '').toLowerCase() !== 'cancelled');
     const revenueByLocation = {};
     const showsByLocation = {};
 
@@ -540,6 +543,7 @@
       const avgBookingValue = Math.round(totalBookingRevenue / m.totalBookings);
       const topThreeShare = Math.round(
         ((m.filteredBookings || [])
+          .filter((booking) => String(booking?.status || '').toLowerCase() !== 'cancelled')
           .map((booking) => Math.round(Number(booking?.fee) || 0))
           .sort((a, b) => b - a)
           .slice(0, 3)
@@ -1157,6 +1161,22 @@
 
   // ── AVATAR LOADING ─────────────────────────────────────────────────────────
 
+  // Real uploaded photo only; symbol or emoji avatars fall back to initials.
+  function reportArtistPhotoSource(artist) {
+    const raw = String(artist?.avatar || '').trim();
+    if (!raw) return '';
+    if (/^data:image\/(png|jpe?g|webp|gif)[;,]/i.test(raw)) return raw;
+    if (/^(https?:)?\/\//i.test(raw) || raw.startsWith('./') || raw.startsWith('/')) return raw;
+    return '';
+  }
+
+  function reportInitials(name) {
+    const words = String(name || '').trim().split(/\s+/).filter(Boolean);
+    if (!words.length) return '?';
+    const letters = words.length === 1 ? words[0][0] : words[0][0] + words[words.length - 1][0];
+    return letters.toUpperCase();
+  }
+
   async function loadAvatarDataUrl(src) {
     if (!src) return '';
     // Already a data URI
@@ -1416,6 +1436,803 @@
     return !hasPdfDataHydrationPending();
   }
 
+  // ── PDF RENDERER ─────────────────────────────────────────────────────────────
+  // Draws the Money Moves report with jsPDF vector primitives so the PDF matches
+  // the app: Sage palette, Roschild headings, Inter Tight text and JetBrains Mono
+  // figures. Charts are drawn as shapes, not screenshots, so they stay sharp.
+  const PDF_FONT_FILES = Object.freeze({
+    display: 'roschild.ttf',
+    ui: 'inter-400.ttf',
+    uiBold: 'inter-600.ttf',
+    mono: 'mono-500.ttf',
+    monoBold: 'mono-700.ttf'
+  });
+  let pdfFontCache = null;
+
+  async function loadPdfFonts() {
+    if (pdfFontCache) return pdfFontCache;
+    const assets = window.SP_BROWSER_ASSETS;
+    const entries = await Promise.all(Object.entries(PDF_FONT_FILES).map(async ([key, file]) => {
+      const path = `./assets/fonts/pdf/${file}`;
+      const res = await fetch(typeof assets?.url === 'function' ? assets.url(path) : path);
+      if (!res.ok) throw new Error(`PDF font ${file} failed to load (${res.status})`);
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      let binary = '';
+      for (let i = 0; i < bytes.length; i += 0x8000) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+      }
+      return [key, { file, data: btoa(binary) }];
+    }));
+    pdfFontCache = Object.fromEntries(entries);
+    return pdfFontCache;
+  }
+
+  function hexRgb(hex) {
+    const h = String(hex).replace('#', '');
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  }
+
+  function mixRgb(a, b, t) {
+    return a.map((v, i) => Math.round(v * t + b[i] * (1 - t)));
+  }
+
+  function buildPdfPalette(mode) {
+    const light = mode === 'light';
+    const c = light
+      ? {
+          page: '#F5F8F5', card: '#FFFFFF', card2: '#EAF0EB',
+          ink: '#0F1C15', ink2: '#34443A', ink3: '#4F5E54',
+          gold: '#A67C2A', goldText: '#7A5818', goldHi: '#D9B45A',
+          inn: '#13704C', out: '#A3402B', steel: '#557489', sage: '#3F5A44', onGold: '#16130A'
+        }
+      : {
+          page: '#0A1210', card: '#121C17', card2: '#1B2516',
+          ink: '#F7F3E8', ink2: '#C9CFC4', ink3: '#8E9A8F',
+          gold: '#D9B45A', goldText: '#E3C46B', goldHi: '#F6E68A',
+          inn: '#5FD3A0', out: '#F0846C', steel: '#7E9CB0', sage: '#A9C2A7', onGold: '#16130A'
+        };
+    const P = {};
+    Object.keys(c).forEach((k) => { P[k] = hexRgb(c[k]); });
+    const lineBase = light ? hexRgb('#0F281C') : P.gold;
+    P.line = mixRgb(lineBase, P.card, light ? 0.12 : 0.16);
+    P.lineStrong = mixRgb(lineBase, P.card, light ? 0.26 : 0.34);
+    P.goldSoft = mixRgb(P.gold, P.card, light ? 0.14 : 0.16);
+    P.inSoft = mixRgb(P.inn, P.card, light ? 0.12 : 0.16);
+    P.outSoft = mixRgb(P.out, P.card, light ? 0.12 : 0.16);
+    P.steelSoft = mixRgb(P.steel, P.card, 0.16);
+    P.track = light ? hexRgb('#E3EAE4') : mixRgb(P.ink, P.card, 0.07);
+    P.series = [P.gold, P.steel, P.sage, P.out, P.goldHi, P.ink3];
+    P.light = light;
+    return P;
+  }
+
+  async function renderMoneyMovesPdf(jsPDF, d) {
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', putOnlyUsedFonts: true, compress: true });
+    const P = buildPdfPalette(d.themeMode);
+    const W = pdf.internal.pageSize.getWidth();
+    const H = pdf.internal.pageSize.getHeight();
+    const mg = 14;
+    const cw = W - mg * 2;
+    const gap = 5;
+    const footerY = H - 8;
+
+    // ── Fonts ──
+    const F = {
+      display: ['helvetica', 'bold'], ui: ['helvetica', 'normal'], uiBold: ['helvetica', 'bold'],
+      mono: ['courier', 'normal'], monoBold: ['courier', 'bold']
+    };
+    try {
+      const fonts = await loadPdfFonts();
+      const family = { display: ['SPDisplay', 'normal'], ui: ['SPUI', 'normal'], uiBold: ['SPUI', 'bold'], mono: ['SPMono', 'normal'], monoBold: ['SPMono', 'bold'] };
+      Object.entries(fonts).forEach(([key, font]) => {
+        pdf.addFileToVFS(font.file, font.data);
+        pdf.addFont(font.file, family[key][0], family[key][1]);
+        F[key] = family[key];
+      });
+    } catch (_e) {
+      // Built-in fonts keep the report working if the font files can't load.
+    }
+
+    // ── Primitives ──
+    const fill = (c) => pdf.setFillColor(c[0], c[1], c[2]);
+    const stroke = (c) => pdf.setDrawColor(c[0], c[1], c[2]);
+    const ink = (c) => pdf.setTextColor(c[0], c[1], c[2]);
+    const font = (kind, size, color) => {
+      pdf.setFont(F[kind][0], F[kind][1]);
+      pdf.setFontSize(size);
+      if (color) ink(color);
+    };
+    const textW = (t) => pdf.getTextWidth(String(t));
+    const fit = (text, maxW, kind, size, minSize = size * 0.75) => {
+      let s = size;
+      const t = String(text ?? '');
+      font(kind, s);
+      while (s > minSize && textW(t) > maxW) { s -= 0.25; font(kind, s); }
+      if (textW(t) <= maxW) return { text: t, size: s };
+      let cut = t;
+      while (cut.length > 1 && textW(`${cut}…`) > maxW) cut = cut.slice(0, -1);
+      return { text: `${cut.trimEnd()}…`, size: s };
+    };
+    const put = (text, x, y, kind, size, color, opts = {}) => {
+      const f = opts.maxW ? fit(text, opts.maxW, kind, size, opts.minSize) : { text: String(text ?? ''), size };
+      font(kind, f.size, color);
+      const o = {};
+      if (opts.align) o.align = opts.align;
+      if (opts.charSpace) o.charSpace = opts.charSpace;
+      pdf.text(f.text, x, y, o);
+      return f;
+    };
+    const caps = (text, x, y, color = P.ink3, opts = {}) => put(String(text).toUpperCase(), x, y, 'uiBold', opts.size || 6.4, color, { charSpace: 0.35, ...opts });
+    const card = (x, y, w, h, opts = {}) => {
+      fill(opts.fill || P.card);
+      stroke(opts.line || P.line);
+      pdf.setLineWidth(0.25);
+      pdf.roundedRect(x, y, w, h, 3, 3, 'FD');
+    };
+    const pill = (text, x, y, color, soft, opts = {}) => {
+      font(opts.mono ? 'monoBold' : 'uiBold', opts.size || 6.6);
+      const w = textW(text) + 5;
+      const h = 4.8;
+      const px = opts.align === 'right' ? x - w : x;
+      fill(soft);
+      pdf.roundedRect(px, y - h + 1.3, w, h, h / 2, h / 2, 'F');
+      ink(color);
+      pdf.text(text, px + 2.5, y);
+      return w;
+    };
+    const opacity = (o) => {
+      if (typeof pdf.GState === 'function' && typeof pdf.setGState === 'function') {
+        pdf.setGState(new pdf.GState({ opacity: o, 'stroke-opacity': o }));
+      }
+    };
+    const poly = (pts, style) => {
+      const rel = [];
+      for (let i = 1; i < pts.length; i += 1) rel.push([pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]]);
+      pdf.lines(rel, pts[0][0], pts[0][1], [1, 1], style, true);
+    };
+    const ringSegment = (cx, cy, r0, r1, a0, a1, color) => {
+      const steps = Math.max(6, Math.ceil(Math.abs(a1 - a0) / 0.06));
+      const pts = [];
+      for (let i = 0; i <= steps; i += 1) {
+        const a = a0 + (a1 - a0) * (i / steps);
+        pts.push([cx + Math.cos(a) * r1, cy + Math.sin(a) * r1]);
+      }
+      for (let i = steps; i >= 0; i -= 1) {
+        const a = a0 + (a1 - a0) * (i / steps);
+        pts.push([cx + Math.cos(a) * r0, cy + Math.sin(a) * r0]);
+      }
+      fill(color);
+      poly(pts, 'F');
+    };
+    const money = (v) => `UGX ${Math.round(Number(v) || 0).toLocaleString('en-US')}`;
+    const compact = (v) => {
+      const n = Math.round(Number(v) || 0);
+      const a = Math.abs(n);
+      const sign = n < 0 ? '-' : '';
+      if (a >= 1e9) return `${sign}${(a / 1e9).toFixed(a >= 1e10 ? 0 : 1).replace(/\.0$/, '')}B`;
+      if (a >= 1e6) return `${sign}${(a / 1e6).toFixed(a >= 1e7 ? 0 : 1).replace(/\.0$/, '')}M`;
+      if (a >= 1e3) return `${sign}${Math.round(a / 1e3)}K`;
+      return `${sign}${a}`;
+    };
+    const pct = (v) => `${Math.round(Number(v) || 0)}%`;
+    const signedPct = (v) => `${v >= 0 ? '+' : ''}${(Math.round(v * 10) / 10).toFixed(Math.abs(v) >= 100 ? 0 : 1)}%`;
+    const fmtDate = (iso) => {
+      if (!iso) return '';
+      const dt = new Date(`${String(iso).slice(0, 10)}T00:00:00`);
+      return Number.isNaN(dt.getTime()) ? String(iso) : dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    };
+    const now = new Date();
+    const stamp = `${now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}, ${now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
+
+    // ── Page chrome ──
+    function startPage(section) {
+      fill(P.page);
+      pdf.rect(0, 0, W, H, 'F');
+      let x = mg;
+      if (d.logo) {
+        try { pdf.addImage(d.logo, 'PNG', mg, 8.2, 7.6, 7.6); x += 10; } catch (_e) { /* skip */ }
+      }
+      put('STAR PAPER', x, 13.3, 'uiBold', 8, P.goldText, { charSpace: 0.9 });
+      font('uiBold', 6.4);
+      const right = `${section.toUpperCase()}   ·   ${String(d.periodLabel || '').toUpperCase()}`;
+      put(right, W - mg, 13.3, 'uiBold', 6.4, P.ink3, { align: 'right', charSpace: 0.35 });
+      stroke(P.line);
+      pdf.setLineWidth(0.25);
+      pdf.line(mg, 19, W - mg, 19);
+    }
+
+    function drawFooters() {
+      const total = pdf.getNumberOfPages();
+      for (let p = 1; p <= total; p += 1) {
+        pdf.setPage(p);
+        stroke(P.line);
+        pdf.setLineWidth(0.2);
+        pdf.line(mg, footerY - 4, W - mg, footerY - 4);
+        put(`Money Moves · ${d.subjectName}`, mg, footerY, 'ui', 6.6, P.ink3);
+        put(`Prepared by ${d.generatedBy} · ${stamp}`, W / 2, footerY, 'ui', 6.6, P.ink3, { align: 'center' });
+        put(`${p} / ${total}`, W - mg, footerY, 'mono', 6.6, P.ink3, { align: 'right' });
+      }
+    }
+
+    function sectionHead(title, kicker, x, y, w) {
+      put(title, x, y, 'display', 15, P.goldText);
+      if (kicker) put(kicker, x + w, y, 'ui', 7, P.ink3, { align: 'right', maxW: w * 0.5 });
+      return y + 5;
+    }
+
+    function cardTitle(title, x, y, w, note) {
+      caps(title, x + 5, y + 7.4, P.ink2, { size: 6.8 });
+      if (note) put(note, x + w - 5, y + 7.4, 'ui', 6.6, P.ink3, { align: 'right', maxW: w * 0.55 });
+      return y + 12;
+    }
+
+    function emptyNote(text, x, y, w, h) {
+      put(text, x + w / 2, y + h / 2, 'ui', 8, P.ink3, { align: 'center', maxW: w - 10 });
+    }
+
+    const m = d.metrics;
+
+    // ════════════════════════════════════════════════════════════════════════
+    // PAGE 1 · OVERVIEW
+    // ════════════════════════════════════════════════════════════════════════
+    startPage('Overview');
+    let y = 36;
+    put('Money Moves', mg, y, 'display', 30, P.goldText);
+    const subX = mg;
+    put(`${d.subjectName}  ·  ${d.periodLabel}`, subX, y + 8.4, 'uiBold', 11, P.ink, { maxW: cw * 0.62 });
+    put(`Prepared by ${d.generatedBy} on ${stamp}`, subX, y + 14, 'ui', 7.6, P.ink3, { maxW: cw * 0.62 });
+    if (d.avatar) {
+      try { pdf.addImage(d.avatar, 'PNG', W - mg - 22, y - 13, 22, 22); } catch (_e) { /* skip */ }
+      stroke(P.gold);
+      pdf.setLineWidth(0.5);
+      pdf.circle(W - mg - 11, y - 2, 11, 'S');
+    } else if (d.subjectInitials) {
+      fill(P.gold);
+      stroke(P.gold);
+      pdf.setLineWidth(0.5);
+      pdf.circle(W - mg - 11, y - 2, 11, 'FD');
+      put(d.subjectInitials, W - mg - 11, y + 1.6, 'display', d.subjectInitials.length > 1 ? 13 : 15, P.onGold, { align: 'center' });
+    } else {
+      // Roster reports: a highlight chip with how many shows this report covers.
+      const chip = `${m.activeShows} show${m.activeShows === 1 ? '' : 's'}  ·  ${compact(m.totalIncome)} booked`;
+      pill(chip, W - mg, y - 1, P.onGold, P.gold, { align: 'right', size: 7.4 });
+    }
+
+    // Hero: closing balance + cash-flow waterfall
+    y = 58;
+    const heroH = 52;
+    const heroLW = 96;
+    card(mg, y, heroLW, heroH, { fill: P.card2, line: P.lineStrong });
+    caps('Closing balance', mg + 6, y + 9, P.ink2, { size: 6.8 });
+    const closing = Math.round(Number(m.closingBalance) || 0);
+    put(money(closing), mg + 6, y + 23, 'monoBold', 21, closing >= 0 ? P.ink : P.out, { maxW: heroLW - 12, minSize: 13 });
+    if (m.trendPct !== null && Number.isFinite(m.trendPct)) {
+      const up = m.trendPct >= 0;
+      pill(`${signedPct(m.trendPct)} net vs last period`, mg + 6, y + 31.5, up ? P.inn : P.out, up ? P.inSoft : P.outSoft);
+    }
+    const formulaY = y + 40;
+    stroke(P.line);
+    pdf.setLineWidth(0.2);
+    pdf.line(mg + 6, formulaY - 3.6, mg + heroLW - 6, formulaY - 3.6);
+    const formula = [
+      ['Brought forward', m.bbf, P.ink2],
+      ['+ Bookings', m.totalIncome, P.inn],
+      ['+ Other income', m.totalOtherIncome, P.inn],
+      ['− Expenses', m.totalExpenses, P.out]
+    ];
+    formula.forEach(([label, value, color], i) => {
+      const fx = mg + 6 + (i % 2) * ((heroLW - 12) / 2);
+      const fy = formulaY + Math.floor(i / 2) * 5.6;
+      put(label, fx, fy, 'ui', 6.6, P.ink3);
+      put(compact(value), fx + (heroLW - 12) / 2 - 4, fy, 'mono', 6.8, color, { align: 'right' });
+    });
+
+    // Waterfall
+    const wfX = mg + heroLW + gap;
+    const wfW = cw - heroLW - gap;
+    card(wfX, y, wfW, heroH);
+    cardTitle('Where the money went', wfX, y, wfW, 'Opening balance to closing balance');
+    const steps = [
+      { label: 'Brought fwd', value: m.bbf, kind: 'total' },
+      { label: 'Bookings', value: m.totalIncome, kind: 'up' },
+      { label: 'Other income', value: m.totalOtherIncome, kind: 'up' },
+      { label: 'Expenses', value: -m.totalExpenses, kind: 'down' },
+      { label: 'Closing', value: closing, kind: 'total' }
+    ];
+    let run = 0;
+    const bars = steps.map((s) => {
+      if (s.kind === 'total') { const b = { ...s, from: 0, to: s.value }; run = s.value; return b; }
+      const b = { ...s, from: run, to: run + s.value };
+      run += s.value;
+      return b;
+    });
+    const hi = Math.max(1, ...bars.map((b) => Math.max(b.from, b.to)));
+    const lo = Math.min(0, ...bars.map((b) => Math.min(b.from, b.to)));
+    const plotTop = y + 18;
+    const plotBottom = y + heroH - 10;
+    const plotH = plotBottom - plotTop;
+    const yAt = (v) => plotBottom - ((v - lo) / (hi - lo)) * plotH;
+    const slot = (wfW - 12) / bars.length;
+    const barW = Math.min(22, slot * 0.56);
+    stroke(P.line);
+    pdf.setLineWidth(0.2);
+    pdf.line(wfX + 6, yAt(0), wfX + wfW - 6, yAt(0));
+    bars.forEach((b, i) => {
+      const bx = wfX + 6 + slot * i + (slot - barW) / 2;
+      const top = yAt(Math.max(b.from, b.to));
+      const bottom = yAt(Math.min(b.from, b.to));
+      const color = b.kind === 'up' ? P.inn : b.kind === 'down' ? P.out : (b.value < 0 ? P.out : P.gold);
+      fill(color);
+      const bh = Math.max(0.6, bottom - top);
+      pdf.roundedRect(bx, top, barW, bh, Math.min(1.2, bh / 2), Math.min(1.2, bh / 2), 'F');
+      if (i < bars.length - 1) {
+        stroke(P.lineStrong);
+        pdf.setLineWidth(0.2);
+        pdf.setLineDashPattern([0.8, 0.8], 0);
+        pdf.line(bx + barW, yAt(b.to), bx + slot, yAt(b.to));
+        pdf.setLineDashPattern([], 0);
+      }
+      const sign = b.kind === 'up' ? '+' : b.kind === 'down' ? '−' : '';
+      put(`${sign}${compact(Math.abs(b.value))}`, bx + barW / 2, top - 1.6, 'monoBold', 7, b.kind === 'total' ? P.ink : color, { align: 'center' });
+      put(b.label, bx + barW / 2, plotBottom + 5, 'ui', 6.6, P.ink3, { align: 'center', maxW: slot - 1 });
+    });
+
+    // KPI tiles
+    y += heroH + gap;
+    const kpiH = 30;
+    const kpiW = (cw - gap * 3) / 4;
+    const gross = Math.max(0, m.totalIncome + m.totalOtherIncome);
+    const kpis = [
+      {
+        label: 'Booked revenue', value: m.totalIncome, color: P.ink,
+        sub: `${m.activeShows} show${m.activeShows === 1 ? '' : 's'} · ${compact(m.collected)} collected`,
+        share: m.totalIncome > 0 ? m.collected / m.totalIncome : 0, bar: P.inn, barNote: 'collected'
+      },
+      {
+        label: 'Other income', value: m.totalOtherIncome, color: P.ink,
+        sub: `${m.otherCount} ${m.otherCount === 1 ? 'entry' : 'entries'}`,
+        share: gross > 0 ? m.totalOtherIncome / gross : 0, bar: P.steel, barNote: 'of income'
+      },
+      {
+        label: 'Expenses', value: m.totalExpenses, color: P.out,
+        sub: `${m.expenseCount} ${m.expenseCount === 1 ? 'payment' : 'payments'}`,
+        share: gross > 0 ? m.totalExpenses / gross : 0, bar: P.out, barNote: 'of income'
+      },
+      {
+        label: 'Net profit', value: m.netProfit, color: m.netProfit >= 0 ? P.inn : P.out,
+        sub: `${pct(m.profitMargin)} margin`,
+        share: Math.max(0, m.profitMargin / 100), bar: P.gold, barNote: 'margin'
+      }
+    ];
+    kpis.forEach((k, i) => {
+      const kx = mg + i * (kpiW + gap);
+      card(kx, y, kpiW, kpiH);
+      caps(k.label, kx + 5, y + 7, P.ink3);
+      put(money(k.value), kx + 5, y + 15.4, 'monoBold', 12.5, k.color, { maxW: kpiW - 10, minSize: 8 });
+      put(k.sub, kx + 5, y + 20.6, 'ui', 6.8, P.ink2, { maxW: kpiW - 10 });
+      const tw = kpiW - 10 - 17;
+      fill(P.track);
+      pdf.roundedRect(kx + 5, y + 24.2, tw, 1.6, 0.8, 0.8, 'F');
+      const sw = Math.max(0, Math.min(1, k.share)) * tw;
+      if (sw > 0.2) {
+        fill(k.bar);
+        pdf.roundedRect(kx + 5, y + 24.2, sw, 1.6, 0.8, 0.8, 'F');
+      }
+      put(`${pct(Math.min(1, Math.max(0, k.share)) * 100)}`, kx + kpiW - 5, y + 25.7, 'mono', 6.4, P.ink3, { align: 'right' });
+    });
+
+    // Momentum + cost breakdown
+    y += kpiH + gap;
+    const rowH = footerY - 6 - y;
+    const momW = cw * 0.6;
+    const costW = cw - momW - gap;
+    card(mg, y, momW, rowH);
+    cardTitle('Revenue momentum', mg, y, momW, 'Last 6 months · income vs expenses');
+    const hist = Array.isArray(d.history) ? d.history : [];
+    const legendY = y + 7.4;
+    [['Income', P.gold], ['Expenses', P.out], ['Net', P.inn]].reduce((lx, [name, color]) => {
+      fill(color);
+      pdf.circle(lx, legendY - 1.1, 1.1, 'F');
+      put(name, lx + 2.2, legendY, 'ui', 6.6, P.ink2);
+      return lx + textW(name) + 7.5;
+    }, mg + 46);
+    const chartX = mg + 18;
+    const chartW = momW - 24;
+    const chartTop = y + 16;
+    const chartBottom = y + rowH - 10;
+    const maxV = Math.max(1, ...hist.map((h) => Math.max(h.income, h.expenses)));
+    const niceMax = (() => {
+      const rough = maxV / 4;
+      const mag = 10 ** Math.floor(Math.log10(rough));
+      const step = [1, 2, 2.5, 5, 10].map((k) => k * mag).find((v) => v >= rough) || 10 * mag;
+      return step * 4;
+    })();
+    const minNet = Math.min(0, ...hist.map((h) => h.income - h.expenses));
+    const floorV = minNet < 0 ? -Math.ceil(Math.abs(minNet) / (niceMax / 4)) * (niceMax / 4) : 0;
+    const vy = (v) => chartBottom - ((v - floorV) / (niceMax - floorV)) * (chartBottom - chartTop);
+    const hasHistory = hist.some((h) => h.income || h.expenses);
+    for (let g = 0; g <= 4 && hasHistory; g += 1) {
+      const v = floorV + ((niceMax - floorV) / 4) * g;
+      const gy = vy(v);
+      stroke(v === 0 ? P.lineStrong : P.line);
+      pdf.setLineWidth(0.2);
+      pdf.line(chartX, gy, chartX + chartW, gy);
+      put(compact(v), chartX - 2, gy + 1, 'mono', 6.2, P.ink3, { align: 'right' });
+    }
+    if (hasHistory) {
+      const groupW = chartW / hist.length;
+      const bw = Math.min(8, groupW * 0.28);
+      const netPts = [];
+      hist.forEach((h, i) => {
+        const gx = chartX + groupW * i + groupW / 2;
+        const current = i === hist.length - 1;
+        if (!current) opacity(0.62);
+        fill(P.gold);
+        const iy = vy(h.income);
+        if (h.income > 0) pdf.roundedRect(gx - bw - 0.5, iy, bw, vy(0) - iy, 1, 1, 'F');
+        fill(P.out);
+        const ey = vy(h.expenses);
+        if (h.expenses > 0) pdf.roundedRect(gx + 0.5, ey, bw, vy(0) - ey, 1, 1, 'F');
+        opacity(1);
+        netPts.push([gx, vy(h.income - h.expenses)]);
+        put(h.label, gx, chartBottom + 5, current ? 'uiBold' : 'ui', 6.8, current ? P.ink : P.ink3, { align: 'center' });
+      });
+      stroke(P.inn);
+      pdf.setLineWidth(0.6);
+      for (let i = 1; i < netPts.length; i += 1) pdf.line(netPts[i - 1][0], netPts[i - 1][1], netPts[i][0], netPts[i][1]);
+      netPts.forEach(([px, py], i) => {
+        fill(P.card);
+        stroke(P.inn);
+        pdf.setLineWidth(0.5);
+        pdf.circle(px, py, i === netPts.length - 1 ? 1.3 : 0.9, 'FD');
+      });
+      const last = hist[hist.length - 1];
+      const lastNet = last.income - last.expenses;
+      put(`${lastNet >= 0 ? '+' : ''}${compact(lastNet)} net`, netPts[netPts.length - 1][0], netPts[netPts.length - 1][1] - 2.6, 'monoBold', 6.8, P.inn, { align: 'center' });
+    } else {
+      emptyNote('No income or expenses recorded in the last six months.', chartX, chartTop, chartW, chartBottom - chartTop);
+    }
+
+    // Cost breakdown donut
+    const costX = mg + momW + gap;
+    card(costX, y, costW, rowH);
+    cardTitle('Where costs went', costX, y, costW, m.totalExpenses > 0 ? compact(m.totalExpenses) + ' total' : '');
+    const cats = (m.costBreakdown || []).slice();
+    if (cats.length && m.totalExpenses > 0) {
+      const r1 = Math.min(19, (rowH - 22) / 2);
+      const r0 = r1 * 0.64;
+      const cx = costX + 6 + r1;
+      const cy = y + 14 + (rowH - 18) / 2;
+      let a = -Math.PI / 2;
+      cats.forEach((c, i) => {
+        const span = (c.value / m.totalExpenses) * Math.PI * 2;
+        ringSegment(cx, cy, r0, r1, a + 0.012, a + span - 0.012, P.series[i % P.series.length]);
+        a += span;
+      });
+      put(compact(m.totalExpenses), cx, cy + 1, 'monoBold', 10, P.ink, { align: 'center' });
+      put('spent', cx, cy + 5, 'ui', 6.4, P.ink3, { align: 'center' });
+      const lx = cx + r1 + 7;
+      const lw = costX + costW - 5 - lx;
+      const rowGap = Math.min(8.4, (rowH - 20) / Math.max(1, cats.length));
+      let ly = cy - ((cats.length - 1) * rowGap) / 2;
+      cats.forEach((c, i) => {
+        fill(P.series[i % P.series.length]);
+        pdf.roundedRect(lx, ly - 2.4, 2.4, 2.4, 0.6, 0.6, 'F');
+        put(c.label, lx + 4, ly, 'ui', 7.2, P.ink, { maxW: lw - 24 });
+        put(compact(c.value), lx + lw, ly, 'mono', 7, P.ink2, { align: 'right' });
+        put(pct((c.value / m.totalExpenses) * 100), lx + 4, ly + 3.3, 'mono', 6, P.ink3);
+        ly += rowGap;
+      });
+    } else {
+      emptyNote('No expenses in this period.', costX, y + 12, costW, rowH - 12);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // PAGE 2 · SHOWS & MARKETS
+    // ════════════════════════════════════════════════════════════════════════
+    pdf.addPage();
+    startPage('Shows & markets');
+    y = 30;
+    sectionHead('Shows & markets', `${m.activeShows} active show${m.activeShows === 1 ? '' : 's'} in ${d.periodLabel}`, mg, y, cw);
+    y += 6;
+    const leftW = cw * 0.62;
+    const rightW = cw - leftW - gap;
+    const rightX = mg + leftW + gap;
+
+    // Booking pipeline: status bar + collection bar
+    const pipeH = 40;
+    card(mg, y, leftW, pipeH);
+    cardTitle('Booking pipeline', mg, y, leftW, `${m.allShows} booking${m.allShows === 1 ? '' : 's'} in period`);
+    const statuses = [
+      ['confirmed', 'Confirmed', P.inn],
+      ['completed', 'Completed', P.gold],
+      ['pending', 'Pending', P.steel],
+      ['cancelled', 'Cancelled', P.out]
+    ].map(([key, label, color]) => ({ key, label, color, n: Number(m.statusCounts?.[key]) || 0 }));
+    const knownN = statuses.reduce((s, x) => s + x.n, 0);
+    const otherN = Math.max(0, m.allShows - knownN);
+    if (otherN) statuses.push({ key: 'other', label: 'Other', color: P.ink3, n: otherN });
+    const sbX = mg + 5;
+    const sbW = leftW - 10;
+    const sbY = y + 15;
+    fill(P.track);
+    pdf.roundedRect(sbX, sbY, sbW, 4, 2, 2, 'F');
+    if (m.allShows > 0) {
+      let sx = sbX;
+      statuses.filter((s) => s.n > 0).forEach((s) => {
+        const w = (s.n / m.allShows) * sbW;
+        fill(s.color);
+        pdf.rect(sx + 0.15, sbY, Math.max(0.3, w - 0.3), 4, 'F');
+        sx += w;
+      });
+    }
+    let lgx = sbX;
+    statuses.forEach((s) => {
+      fill(s.color);
+      pdf.circle(lgx + 1, sbY + 8.2, 1, 'F');
+      const label = `${s.label}`;
+      put(label, lgx + 3, sbY + 9, 'ui', 6.8, P.ink2);
+      const lw2 = textW(label);
+      put(String(s.n), lgx + 4 + lw2, sbY + 9, 'monoBold', 6.8, P.ink);
+      lgx += lw2 + 12 + textW(String(s.n));
+    });
+    // Collection
+    const colY = sbY + 15;
+    caps('Collected', sbX, colY, P.ink3);
+    const colBarX = sbX + 20;
+    const colBarW = sbW - 20 - 52;
+    fill(P.track);
+    pdf.roundedRect(colBarX, colY - 2.4, colBarW, 3, 1.5, 1.5, 'F');
+    const colShare = m.totalIncome > 0 ? Math.max(0, Math.min(1, m.collected / m.totalIncome)) : 0;
+    if (colShare > 0) {
+      fill(P.inn);
+      pdf.roundedRect(colBarX, colY - 2.4, Math.max(1.5, colBarW * colShare), 3, 1.5, 1.5, 'F');
+    }
+    put(`${compact(m.collected)} of ${compact(m.totalIncome)}`, sbX + sbW, colY, 'monoBold', 7, P.ink, { align: 'right' });
+    if (m.balancesDue > 0) {
+      put(`${compact(m.balancesDue)} still owed`, sbX + sbW, colY + 4.2, 'mono', 6.4, P.out, { align: 'right' });
+    }
+
+    // Venue performance
+    const vY = y + pipeH + gap;
+    const venues = (m.venues || []).slice(0, 6);
+    const topShows = (m.topShows || []).slice(0, 5);
+    const vSpace = footerY - 6 - vY;
+    const vH = topShows.length ? Math.max(42, 26 + Math.max(1, venues.length) * 8.2) : vSpace;
+    card(mg, vY, leftW, vH);
+    cardTitle('Markets', mg, vY, leftW, 'Cost is shared out by each city\'s revenue');
+    const cols = [
+      { key: 'location', label: 'City / venue', x: mg + 5, align: 'left' },
+      { key: 'shows', label: 'Shows', x: mg + 5 + leftW * 0.27, align: 'right' },
+      { key: 'revenue', label: 'Revenue', x: mg + 5 + leftW * 0.31, align: 'left' },
+      { key: 'cost', label: 'Est. cost', x: mg + leftW * 0.76, align: 'right' },
+      { key: 'profit', label: 'Profit', x: mg + leftW * 0.88, align: 'right' },
+      { key: 'margin', label: 'Margin', x: mg + leftW - 5, align: 'right' }
+    ];
+    const thY = vY + 18;
+    cols.forEach((c) => caps(c.label, c.x, thY, P.ink3, { align: c.align === 'right' ? 'right' : undefined, size: 6 }));
+    stroke(P.line);
+    pdf.setLineWidth(0.2);
+    pdf.line(mg + 5, thY + 2, mg + leftW - 5, thY + 2);
+    if (venues.length) {
+      const maxRev = Math.max(1, ...venues.map((v) => v.revenue));
+      const rowHt = Math.min(8.2, (vY + vH - 6 - (thY + 4)) / venues.length);
+      venues.forEach((v, i) => {
+        const ry = thY + 4 + rowHt * i + rowHt * 0.62;
+        put(v.location, cols[0].x, ry, i === 0 ? 'uiBold' : 'ui', 7.6, P.ink, { maxW: leftW * 0.22 });
+        put(String(v.shows), cols[1].x, ry, 'mono', 7.4, P.ink2, { align: 'right' });
+        const barMax = cols[3].x - cols[2].x - 30;
+        const bw2 = Math.max(1, (v.revenue / maxRev) * barMax);
+        fill(i === 0 ? P.gold : P.goldSoft);
+        pdf.roundedRect(cols[2].x, ry - 2.6, bw2, 3, 1, 1, 'F');
+        put(compact(v.revenue), cols[2].x + bw2 + 2, ry, 'mono', 7.2, P.ink, {});
+        put(compact(v.cost), cols[3].x, ry, 'mono', 7.2, P.ink3, { align: 'right' });
+        put(compact(v.profit), cols[4].x, ry, 'monoBold', 7.2, v.profit >= 0 ? P.inn : P.out, { align: 'right' });
+        const mgn = v.revenue > 0 ? (v.profit / v.revenue) * 100 : 0;
+        put(pct(mgn), cols[5].x, ry, 'mono', 7.2, P.ink2, { align: 'right' });
+        if (i < venues.length - 1) {
+          stroke(P.line);
+          pdf.setLineWidth(0.15);
+          pdf.line(mg + 5, ry + rowHt * 0.38, mg + leftW - 5, ry + rowHt * 0.38);
+        }
+      });
+    } else {
+      emptyNote('No shows in this period yet.', mg, thY + 4, leftW, vY + vH - thY - 8);
+    }
+
+    // Biggest shows: each fee as a bar, so one big night stands out
+    if (topShows.length) {
+      const tsY = vY + vH + gap;
+      const tsH = footerY - 6 - tsY;
+      card(mg, tsY, leftW, tsH);
+      cardTitle('Biggest shows', mg, tsY, leftW, 'By fee, this period');
+      const maxFee = Math.max(1, ...topShows.map((b) => b.fee));
+      const rowT = Math.min(8.4, (tsH - 16) / topShows.length);
+      const labelW = leftW * 0.36;
+      const barX0 = mg + 5 + labelW + 3;
+      const barMax = leftW - 10 - labelW - 3 - 22;
+      topShows.forEach((b, i) => {
+        const ry = tsY + 14 + rowT * i + rowT * 0.55;
+        put(b.event || 'Show', mg + 5, ry, i === 0 ? 'uiBold' : 'ui', 7.4, P.ink, { maxW: labelW });
+        put([fmtDate(b.date), b.location].filter(Boolean).join(' · '), mg + 5, ry + 3.2, 'ui', 6, P.ink3, { maxW: labelW });
+        const bw3 = Math.max(1, (b.fee / maxFee) * barMax);
+        fill(i === 0 ? P.gold : P.goldSoft);
+        pdf.roundedRect(barX0, ry - 2.2, bw3, 3.4, 1, 1, 'F');
+        put(compact(b.fee), barX0 + bw3 + 2, ry + 0.4, 'monoBold', 7.2, i === 0 ? P.goldText : P.ink2);
+      });
+    }
+
+    // Right column: next 30 days + next on stage
+    const fcH = 34;
+    card(rightX, y, rightW, fcH, { fill: P.card2, line: P.lineStrong });
+    caps('Booked for the next 30 days', rightX + 5, y + 8, P.ink2, { size: 6.8 });
+    put(money(d.projectedRevenue), rightX + 5, y + 20, 'monoBold', 16, P.goldText, { maxW: rightW - 10, minSize: 10 });
+    put(`${d.projectedShows} show${d.projectedShows === 1 ? '' : 's'} on the calendar`, rightX + 5, y + 27, 'ui', 7, P.ink3);
+
+    const nsY = y + fcH + gap;
+    const nsH = footerY - 6 - nsY;
+    card(rightX, nsY, rightW, nsH);
+    cardTitle('Next on stage', rightX, nsY, rightW);
+    const upcoming = (d.nextOnStage || []).slice(0, 5);
+    if (upcoming.length) {
+      const itemH = Math.min(17, (nsH - 16) / upcoming.length);
+      upcoming.forEach((b, i) => {
+        const iy = nsY + 14 + itemH * i;
+        const dt = new Date(`${String(b.date || '').slice(0, 10)}T00:00:00`);
+        const ok = !Number.isNaN(dt.getTime());
+        fill(P.card2);
+        pdf.roundedRect(rightX + 5, iy, 12, 12, 2, 2, 'F');
+        put(ok ? String(dt.getDate()) : '–', rightX + 11, iy + 6.6, 'monoBold', 10, P.ink, { align: 'center' });
+        put(ok ? dt.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase() : '', rightX + 11, iy + 10.2, 'uiBold', 5.6, P.goldText, { align: 'center', charSpace: 0.3 });
+        const tx = rightX + 20;
+        const tw2 = rightW - 25;
+        put(b.event || 'Show', tx, iy + 4.4, 'uiBold', 8, P.ink, { maxW: tw2 - 22 });
+        put([b.artist, b.location].filter(Boolean).join(' · '), tx, iy + 8.6, 'ui', 6.8, P.ink3, { maxW: tw2 - 22 });
+        put(compact(b.fee), rightX + rightW - 5, iy + 4.4, 'monoBold', 7.6, P.ink, { align: 'right' });
+        const st = String(b.status || 'pending').toLowerCase();
+        const stColor = st === 'confirmed' ? P.inn : st === 'cancelled' ? P.out : P.steel;
+        const stSoft = st === 'confirmed' ? P.inSoft : st === 'cancelled' ? P.outSoft : P.steelSoft;
+        pill(st.charAt(0).toUpperCase() + st.slice(1), rightX + rightW - 5, iy + 9.4, stColor, stSoft, { align: 'right', size: 5.8 });
+      });
+    } else {
+      emptyNote('Nothing booked ahead yet.', rightX, nsY + 12, rightW, nsH - 12);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // PAGE 3+ · LEDGER, then THE GAME PLAN
+    // ════════════════════════════════════════════════════════════════════════
+    pdf.addPage();
+    startPage('Ledger');
+    y = 30;
+    const ledger = Array.isArray(d.ledger) ? d.ledger : [];
+    const totIn = ledger.filter((t) => t.type !== 'Expense').reduce((s, t) => s + t.amount, 0);
+    const totOut = ledger.filter((t) => t.type === 'Expense').reduce((s, t) => s + t.amount, 0);
+    sectionHead('Ledger', `${ledger.length} entr${ledger.length === 1 ? 'y' : 'ies'} · newest first`, mg, y, cw);
+    y += 6;
+    const lc = {
+      date: mg + 5,
+      type: mg + 34,
+      desc: mg + 62,
+      inn: mg + cw - 60,
+      out: mg + cw - 32,
+      bal: mg + cw - 5
+    };
+    const ledgerHeader = (top) => {
+      ['Date', 'Type', 'Description'].forEach((label, i) => caps(label, [lc.date, lc.type, lc.desc][i], top + 7, P.ink3, { size: 6 }));
+      caps('Money in', lc.inn, top + 7, P.ink3, { size: 6, align: 'right' });
+      caps('Money out', lc.out, top + 7, P.ink3, { size: 6, align: 'right' });
+      caps('Running', lc.bal, top + 7, P.ink3, { size: 6, align: 'right' });
+      stroke(P.lineStrong);
+      pdf.setLineWidth(0.25);
+      pdf.line(mg + 5, top + 9.4, mg + cw - 5, top + 9.4);
+      return top + 9.4;
+    };
+    const rowH2 = 6.6;
+    const bottomLimit = footerY - 8;
+    let rows = ledger.slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+    let running = Math.round(Number(m.bbf) || 0);
+    rows = rows.map((t) => {
+      running += t.type === 'Expense' ? -t.amount : t.amount;
+      return { ...t, running };
+    }).reverse();
+    let idx = 0;
+    const typeStyle = {
+      Booking: [P.goldText, P.goldSoft],
+      Income: [P.steel, P.steelSoft],
+      Expense: [P.out, P.outSoft]
+    };
+    do {
+      const available = Math.floor((bottomLimit - y - 22) / rowH2);
+      const chunk = rows.slice(idx, idx + Math.max(1, available));
+      const isLast = idx + chunk.length >= rows.length;
+      const blockH = 10 + Math.max(1, chunk.length) * rowH2 + (isLast ? 12 : 3);
+      card(mg, y, cw, blockH);
+      let ry = ledgerHeader(y);
+      if (!chunk.length) {
+        put('No transactions in this period.', mg + cw / 2, ry + 5, 'ui', 7.6, P.ink3, { align: 'center' });
+        ry += rowH2;
+      }
+      chunk.forEach((t, i) => {
+        const rowTop = ry;
+        if (i % 2 === 1) {
+          fill(P.light ? P.page : P.card2);
+          pdf.rect(mg + 1, rowTop, cw - 2, rowH2, 'F');
+        }
+        const by = rowTop + 4.4;
+        put(fmtDate(t.date), lc.date, by, 'mono', 6.8, P.ink2);
+        const [tc, ts] = typeStyle[t.type] || [P.ink2, P.track];
+        pill(t.type, lc.type, by, tc, ts, { size: 5.8 });
+        put(t.desc || '—', lc.desc, by, 'ui', 7.4, P.ink, { maxW: lc.inn - lc.desc - 26 });
+        if (t.type === 'Expense') put(money(t.amount).replace('UGX ', ''), lc.out, by, 'mono', 7, P.out, { align: 'right' });
+        else put(money(t.amount).replace('UGX ', ''), lc.inn, by, 'mono', 7, P.inn, { align: 'right' });
+        put(money(t.running).replace('UGX ', ''), lc.bal, by, 'mono', 7, t.running >= 0 ? P.ink2 : P.out, { align: 'right' });
+        ry += rowH2;
+      });
+      if (isLast) {
+        stroke(P.lineStrong);
+        pdf.setLineWidth(0.25);
+        pdf.line(mg + 5, ry + 1.4, mg + cw - 5, ry + 1.4);
+        caps('Period totals (UGX)', lc.desc, ry + 7, P.ink2, { size: 6.4 });
+        put(totIn.toLocaleString('en-US'), lc.inn, ry + 7, 'monoBold', 7.4, P.inn, { align: 'right' });
+        put(totOut.toLocaleString('en-US'), lc.out, ry + 7, 'monoBold', 7.4, P.out, { align: 'right' });
+        put(closing.toLocaleString('en-US'), lc.bal, ry + 7, 'monoBold', 7.4, closing >= 0 ? P.ink : P.out, { align: 'right' });
+      }
+      idx += chunk.length;
+      y += blockH + gap;
+      if (!isLast) {
+        pdf.addPage();
+        startPage('Ledger (continued)');
+        y = 26;
+      }
+    } while (idx < rows.length);
+
+    // The game plan
+    const notes = (Array.isArray(d.notes) ? d.notes : []).filter(Boolean).slice(0, 8);
+    if (notes.length) {
+      const colW = (cw - gap) / 2;
+      font('ui', 8);
+      const noteBlocks = notes.map((n) => {
+        const lines = pdf.splitTextToSize(String(n), colW - 22);
+        return { lines: lines.slice(0, 4), h: Math.max(16, 9 + lines.slice(0, 4).length * 3.9) };
+      });
+      const rowsOfNotes = [];
+      for (let i = 0; i < noteBlocks.length; i += 2) rowsOfNotes.push([noteBlocks[i], noteBlocks[i + 1]].filter(Boolean));
+      const planH = 12 + rowsOfNotes.reduce((s, r) => s + Math.max(...r.map((b) => b.h)) + 3, 0);
+      if (y + planH > bottomLimit) {
+        pdf.addPage();
+        startPage('The game plan');
+        y = 30;
+      } else {
+        y += 4;
+      }
+      sectionHead('The game plan', 'What the numbers say, and what to do next', mg, y, cw);
+      y += 5;
+      let n = 0;
+      rowsOfNotes.forEach((r) => {
+        const rh = Math.max(...r.map((b) => b.h));
+        r.forEach((b, j) => {
+          n += 1;
+          const nx = mg + j * (colW + gap);
+          card(nx, y, colW, rh);
+          put(String(n).padStart(2, '0'), nx + 5, y + 8.6, 'display', 13, P.goldText);
+          font('ui', 8, P.ink);
+          b.lines.forEach((ln, k) => pdf.text(ln, nx + 17, y + 7.4 + k * 3.9));
+        });
+        y += rh + 3;
+      });
+    }
+
+    drawFooters();
+    if (typeof pdf.setProperties === 'function') {
+      pdf.setProperties({
+        title: `Money Moves · ${d.subjectName} · ${d.periodLabel}`,
+        subject: `Generated with ${REPORT_RUNTIME_VERSION}`,
+        creator: `Star Paper ${REPORT_RUNTIME_VERSION}`
+      });
+    }
+    return pdf;
+  }
+
   async function generateMomentumPDF() {
     if (generateMomentumPDF._busy) return;
     generateMomentumPDF._busy = true;
@@ -1432,9 +2249,6 @@
 
       if (!window.jspdf?.jsPDF && typeof window.__spLoadDeferredLibrary === 'function') {
         await window.__spLoadDeferredLibrary('pdf');
-      }
-      if (typeof window.Chart === 'undefined' && typeof window.__spLoadDeferredLibrary === 'function') {
-        await window.__spLoadDeferredLibrary('chart').catch(() => null);
       }
       const { jsPDF } = window.jspdf || {};
       if (!jsPDF) { window.toastError?.('PDF library not loaded'); return; }
@@ -1504,7 +2318,7 @@
         wantAudiencePrompt: true
       };
       const allBookings = Array.isArray(window.bookings) ? window.bookings : [];
-      const pdfNextOnStage = buildPdfNextOnStage(allBookings, selectedArtist, 3, selectedArtistId);
+      const pdfNextOnStage = buildPdfNextOnStage(allBookings, selectedArtist, 5, selectedArtistId);
       const periodDates = [
         ...data.filteredBookings.map((entry) => entry?.date),
         ...data.filteredExpenses.map((entry) => entry?.date),
@@ -1531,13 +2345,11 @@
         try { logoDataUrl = await window.getReportLogoDataUrl({ themeMode: reportThemeMode }); } catch (_e) { /* skip */ }
       }
 
+      // Artist reports show the artist's current photo, or their initials when they have none.
       let avatarDataUrl = '';
-      if (artistObj && artistObj.avatar) {
-        const resolvedSrc = typeof window.resolveDisplayAvatar === 'function'
-          ? window.resolveDisplayAvatar(artistObj)
-          : artistObj.avatar;
-        avatarDataUrl = await loadAvatarDataUrl(resolvedSrc);
-      }
+      const artistPhoto = reportArtistPhotoSource(artistObj);
+      if (artistPhoto) avatarDataUrl = await loadAvatarDataUrl(artistPhoto);
+      const subjectInitials = artistObj ? reportInitials(artistObj.name) : '';
       const logoHeaderAsset = await prepareReportHeaderAsset(logoDataUrl, { mode: 'contain', circular: false });
       const avatarHeaderAsset = avatarDataUrl
         ? await prepareReportHeaderAsset(avatarDataUrl, { mode: 'cover', circular: true })
@@ -1551,7 +2363,7 @@
       const pdfClosingBalance = Math.round(Number(data.closingBalance ?? m.closingBalance) || 0);
       const pdfVenuePerf = buildPdfVenuePerformance(m.filteredBookings, m.totalExpenses);
       const pdfTransactions = sortTransactionsForPdf([
-        ...m.filteredBookings.map(b => ({ type: 'Booking', date: b.date, desc: b.event || b.artist || '', amount: Math.round(Number(b.fee) || 0) })),
+        ...m.filteredBookings.filter(b => String(b?.status || '').toLowerCase() !== 'cancelled').map(b => ({ type: 'Booking', date: b.date, desc: b.event || b.artist || '', amount: Math.round(Number(b.fee) || 0) })),
         ...m.filteredExpenses.map(e => {
           const baseDesc = e.description || e.category || '';
           const hasArtistTag = Boolean(String(e.artistId || '').trim()) || Boolean(String(e.artist || e.artistName || '').trim());
@@ -1571,1430 +2383,91 @@
         closingThoughts,
         pdfVenuePerf
       );
-      const pdfData = {
-        artist: {
-          id: artistObj?.id || '',
-          name: artistName || 'Roster'
-        },
-        filters: {
-          selectedArtist,
-          dateStart,
-          dateEnd,
-          period,
-          periodLabel: actualPeriodLabel
-        },
+      // ── Render ──
+      const isLive = (b) => String(b?.status || '').toLowerCase() !== 'cancelled';
+      const liveBookings = m.filteredBookings.filter(isLive);
+      const collected = liveBookings.reduce((sum, b) => {
+        const fee = Math.round(Number(b.fee) || 0);
+        const owed = Math.max(0, Math.round(Number(b.balance) || 0));
+        return sum + Math.max(0, Math.min(fee, fee - owed));
+      }, 0);
+      const titleCase = (s) => String(s || 'Other').replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+      const costEntries = Object.entries(m.expenseByCat).sort((a, b) => b[1] - a[1]);
+      const costBreakdown = costEntries.slice(0, 5).map(([label, value]) => ({ label: titleCase(label), value }));
+      if (costEntries.length > 5) {
+        costBreakdown.push({ label: 'Everything else', value: costEntries.slice(5).reduce((s, e) => s + e[1], 0) });
+      }
+
+      // Six months of history ending at the report's last month, so the trend
+      // chart has context even for a single-month report.
+      const anchorKey = String(forecastAnchorIso || '').slice(0, 7) || new Date().toISOString().slice(0, 7);
+      const [anchorYear, anchorMonth] = anchorKey.split('-').map(Number);
+      const history = [];
+      for (let i = 5; i >= 0; i -= 1) {
+        const dt = new Date(anchorYear, anchorMonth - 1 - i, 1);
+        const key = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+        history.push({ key, label: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][dt.getMonth()], income: 0, expenses: 0 });
+      }
+      const historyIndex = Object.fromEntries(history.map((h, i) => [h.key, i]));
+      const addHistory = (list, field, amountKey, filter = () => true) => {
+        (Array.isArray(list) ? list : []).forEach((row) => {
+          if (!row || !filter(row) || !reportRecordMatchesArtist(row, selectedArtist, selectedArtistId)) return;
+          const i = historyIndex[String(row.date || '').slice(0, 7)];
+          if (i === undefined) return;
+          history[i][field] += Math.round(Number(row[amountKey]) || 0);
+        });
+      };
+      addHistory(allBookings, 'income', 'fee', isLive);
+      addHistory(window.otherIncome, 'income', 'amount');
+      addHistory(window.expenses, 'expenses', 'amount');
+
+      const venues = buildPdfVenuePerformance(liveBookings, m.totalExpenses);
+      const grossIncome = m.totalIncome + m.totalOtherIncome;
+      const pdf = await renderMoneyMovesPdf(jsPDF, {
         themeMode: reportThemeMode,
-        raw: {
-          ...data,
-          bbf: Math.round(Number(data.bbf) || 0),
-          bbfPeriod: data.bbfPeriod || getReportStartPeriodKey(period, dateStart, data)
-        },
-        metrics: {
-          ...m,
-          pdfVenuePerf,
-          bbf: Math.round(Number(data.bbf) || 0),
-          bbfPeriod: data.bbfPeriod || getReportStartPeriodKey(period, dateStart, data),
-          bbfSourcePeriodLabel: data.bbfSourcePeriodLabel || '',
-          closingBalance: pdfClosingBalance
-        },
+        logo: logoHeaderAsset,
+        avatar: avatarHeaderAsset,
+        subjectName: artistObj ? artistName : 'Full roster',
+        subjectInitials,
+        periodLabel: actualPeriodLabel,
         generatedBy: window.currentUser || 'Manager',
-        nextOnStage: pdfNextOnStage,
-        projectedRevenue: pdfForecastBookings.reduce((sum, booking) => sum + Math.round(Number(booking?.fee) || 0), 0),
-        projectedRevenueShows: pdfForecastBookings.length,
-        ledgerTransactions: pdfTransactions,
-        insights,
-        strategyNotes: pdfStrategyNotes,
-        closingThoughts
-      };
-
-      // ── PDF setup ──
-      const isMobile = window.matchMedia('(max-width: 900px), (pointer: coarse)').matches;
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'mm', format: 'a4', putOnlyUsedFonts: true, floatPrecision: 16
-      });
-      if (typeof pdf.setProperties === 'function') {
-        pdf.setProperties({
-          title: 'Star Paper Money Moves Report',
-          subject: `Generated with ${REPORT_RUNTIME_VERSION}`,
-          creator: `Star Paper ${REPORT_RUNTIME_VERSION}`
-        });
-      }
-
-      const W = pdf.internal.pageSize.getWidth();
-      const H = pdf.internal.pageSize.getHeight();
-      const pxToMm = 25.4 / 96;
-      const mg = 12;
-      const cw = W - mg * 2;
-      const headerH = 26;
-      const footerH = 8;
-      const contentTop = headerH + 8;
-      const cardPad = 18 * pxToMm;
-      const sectionGap = 20 * pxToMm;
-      const largeBlockThreshold = 0.6;
-      const PDF_THEME = pdfData.themeMode === 'light' ? 'light' : 'dark';
-      const isLightTheme = PDF_THEME === 'light';
-
-      const P = isLightTheme
-        ? {
-            bgDark: [255, 255, 255],
-            bgPanel: [255, 255, 255],
-            bgCard: [248, 250, 252],
-            gold: [202, 138, 4],
-            goldDim: [148, 122, 69],
-            white: [15, 23, 42],
-            textPrimary: [15, 23, 42],
-            textMuted: [71, 85, 105],
-            green: [22, 163, 74],
-            red: [220, 38, 38],
-            blue: [37, 99, 235],
-            border: [203, 213, 225],
-            accent: [202, 138, 4],
-            chartBg: '#FFFFFF',
-            chartLegend: '#0F172A',
-            chartTicks: '#334155',
-            chartGrid: 'rgba(15,23,42,0.08)',
-            chartCard: '#FFFFFF',
-            chartBorder: '#CBD5E1'
-          }
-        : {
-            bgDark: [0, 0, 0],
-            bgPanel: [7, 7, 8],
-            bgCard: [16, 16, 18],
-            gold: [255, 215, 0],
-            goldDim: [181, 154, 23],
-            white: [255, 255, 255],
-            textPrimary: [245, 245, 247],
-            textMuted: [163, 163, 170],
-            green: [34, 197, 94],
-            red: [239, 68, 68],
-            blue: [96, 165, 250],
-            border: [52, 52, 58],
-            accent: [255, 215, 0],
-            chartBg: '#101012',
-            chartLegend: '#F4F4F5',
-            chartTicks: '#A1A1AA',
-            chartGrid: 'rgba(255,255,255,0.06)',
-            chartCard: '#101012',
-            chartBorder: '#101012'
-          };
-      const PDF_CHART = buildStarPaperChartTheme(PDF_THEME);
-      P.chartBg = PDF_CHART.surface;
-      P.chartCard = PDF_CHART.surface;
-      P.chartLegend = PDF_CHART.ink;
-      P.chartTicks = PDF_CHART.muted;
-      P.chartGrid = PDF_CHART.grid;
-      P.chartBorder = PDF_CHART.surface;
-
-      const formatMoney = (v) => `UGX ${Math.round(Number(v) || 0).toLocaleString()}`;
-      const fmtDate = (d) => {
-        if (!d) return '—';
-        const fn = window.formatDisplayDate;
-        return typeof fn === 'function' ? fn(d) : new Date(d).toLocaleDateString('en-GB');
-      };
-
-      // ── Color helper (can't spread in ternary) ──
-      function textColor(arr) { pdf.setTextColor(arr[0], arr[1], arr[2]); }
-      function fillColor(arr) { pdf.setFillColor(arr[0], arr[1], arr[2]); }
-
-      // ── Reusable PDF helpers ──
-
-      function drawPageBg() {
-        fillColor(P.bgDark);
-        pdf.rect(0, 0, W, H, 'F');
-      }
-
-      function drawHeader(subtitle) {
-        // Dark header bar
-        fillColor(P.bgPanel);
-        pdf.rect(0, 0, W, headerH, 'F');
-
-        // Gold accent line
-        fillColor(P.gold);
-        pdf.rect(0, headerH - 0.6, W, 0.6, 'F');
-
-        const assetBox = headerH - 6;
-        const assetY = (headerH - assetBox) / 2;
-        const leftX = mg;
-        const avatarBox = avatarHeaderAsset ? assetBox : 0;
-        const avatarX = leftX;
-        const avatarY = assetY;
-        const rightLogoX = W - mg - assetBox;
-
-        // Artist avatar anchors the left side of the header
-        if (avatarHeaderAsset) {
-          try {
-            pdf.addImage(avatarHeaderAsset, 'PNG', avatarX, avatarY, avatarBox, avatarBox);
-          } catch (_e) { /* skip */ }
-        }
-
-        // Brand logo moves to the far right of the header
-        if (logoHeaderAsset) {
-          try {
-            pdf.addImage(logoHeaderAsset, 'PNG', rightLogoX, assetY, assetBox, assetBox);
-          } catch (_e) { /* skip */ }
-        }
-
-        // H1: MONEY MOVES
-        const titleX = leftX + (avatarHeaderAsset ? avatarBox + 6 : 0);
-        const titleW = Math.max(30, rightLogoX - titleX - 6);
-        const titleFit = fitSingleLineText(reportTitle, Math.max(28, titleW - 10), 'helvetica', 'bold', 14, 10);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(titleFit.fontSize);
-        pdf.setTextColor(...P.gold);
-        pdf.text(titleFit.text, titleX, assetY + 6.4);
-
-        const badgeX = Math.min(rightLogoX - 4, titleX + pdf.getTextWidth(titleFit.text) + 5);
-        const badgeY = assetY + 5;
-        pdf.setFillColor(59, 130, 246);
-        pdf.circle(badgeX, badgeY, 2.1, 'F');
-        pdf.setDrawColor(255, 255, 255);
-        pdf.setLineWidth(0.45);
-        pdf.line(badgeX - 0.8, badgeY + 0.1, badgeX - 0.2, badgeY + 0.8);
-        pdf.line(badgeX - 0.2, badgeY + 0.8, badgeX + 0.9, badgeY - 0.7);
-
-        // Subtitle + period
-        const subtitleFit = fitSingleLineText(
-          subtitle ? `${subtitle}  |  ${actualPeriodLabel}` : actualPeriodLabel,
-          titleW,
-          'helvetica',
-          'bold',
-          8.4,
-          6.2
-        );
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(subtitleFit.fontSize);
-        pdf.setTextColor(...P.textPrimary);
-        pdf.text(subtitleFit.text, titleX, assetY + 12.6);
-
-        // Generated info
-        const generatedFit = fitSingleLineText(
-          `Generated: ${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}   |   ${pdfData.generatedBy || window.currentUser || 'Manager'}`,
-          titleW,
-          'helvetica',
-          'normal',
-          7.1,
-          5.8
-        );
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(generatedFit.fontSize);
-        pdf.setTextColor(...P.textMuted);
-        const now = new Date();
-        const gen = `${now.toLocaleDateString('en-GB')} ${now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
-        pdf.text(
-          fitSingleLineText(
-            `Generated: ${gen}   |   ${pdfData.generatedBy || window.currentUser || 'Manager'}`,
-            titleW,
-            'helvetica',
-            'normal',
-            7.1,
-            5.8
-          ).text,
-          titleX,
-          assetY + 17.8
-        );
-      }
-
-      function drawFooter(page, total) {
-        pdf.setDrawColor(...P.border);
-        pdf.setLineWidth(0.2);
-        pdf.line(mg, H - footerH, W - mg, H - footerH);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(7);
-        pdf.setTextColor(...P.textMuted);
-        pdf.text('star-paper.netlify.app', mg, H - 3.4);
-        const lbl = `Page ${page} of ${total}`;
-        pdf.text(lbl, W - mg - pdf.getTextWidth(lbl), H - 3.4);
-      }
-
-      function sectionTitle(title, y) {
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(11);
-        pdf.setTextColor(...P.gold);
-        pdf.text(title, mg, y + 3);
-        pdf.setDrawColor(...P.gold);
-        pdf.setLineWidth(0.5);
-        pdf.line(mg, y + 4.8, W - mg, y + 4.8);
-        return y + 8;
-      }
-
-      function drawCardTitle(title, x, y, w) {
-        const titleBaseline = y + cardPad + 2.2;
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(10.8);
-        pdf.setTextColor(...P.gold);
-        pdf.text(title, x + cardPad, titleBaseline);
-        pdf.setDrawColor(...P.border);
-        pdf.setLineWidth(0.18);
-        pdf.line(x + cardPad, titleBaseline + 1.9, x + w - cardPad, titleBaseline + 1.9);
-        return titleBaseline + 4.8;
-      }
-
-      function ensureSectionPageBreak(y, blockHeight, subtitle, options = {}) {
-        const allowHeuristicBreak = options.allowHeuristicBreak !== false;
-        const remaining = (H - mg - footerH) - y;
-        const shouldHeuristicBreak = allowHeuristicBreak
-          && y > contentTop + 2
-          && blockHeight > remaining * largeBlockThreshold;
-        if (blockHeight > remaining || shouldHeuristicBreak) {
-          pdf.addPage();
-          drawPageBg();
-          drawHeader(subtitle);
-          return contentTop;
-        }
-        return y;
-      }
-
-      function drawContainedImage(imageData, x, y, boxW, boxH, srcW, srcH, format = 'PNG') {
-        const safeSrcW = Math.max(1, Number(srcW) || 1);
-        const safeSrcH = Math.max(1, Number(srcH) || 1);
-        const scale = Math.min(boxW / safeSrcW, boxH / safeSrcH);
-        const drawW = safeSrcW * scale;
-        const drawH = safeSrcH * scale;
-        const drawX = x + ((boxW - drawW) / 2);
-        const drawY = y + ((boxH - drawH) / 2);
-        pdf.addImage(imageData, format, drawX, drawY, drawW, drawH);
-      }
-
-      function canvasCoverDataUrl(canvas, targetW, targetH, focusX = 0.28, focusY = 0.5) {
-        const srcW = Math.max(1, Number(canvas?.width) || 1);
-        const srcH = Math.max(1, Number(canvas?.height) || 1);
-        const targetRatio = Math.max(0.01, Number(targetW) || 1) / Math.max(0.01, Number(targetH) || 1);
-        const srcRatio = srcW / srcH;
-        let sx = 0;
-        let sy = 0;
-        let sw = srcW;
-        let sh = srcH;
-
-        if (srcRatio > targetRatio) {
-          sw = srcH * targetRatio;
-          sx = (srcW - sw) * Math.min(Math.max(focusX, 0), 1);
-        } else if (srcRatio < targetRatio) {
-          sh = srcW / targetRatio;
-          sy = (srcH - sh) * Math.min(Math.max(focusY, 0), 1);
-        }
-
-        const out = document.createElement('canvas');
-        out.width = Math.max(1, Math.round(targetW * 12));
-        out.height = Math.max(1, Math.round(targetH * 12));
-        const outCtx = out.getContext('2d');
-        if (!outCtx) {
-          return canvas.toDataURL('image/png', 0.95);
-        }
-        outCtx.drawImage(canvas, sx, sy, sw, sh, 0, 0, out.width, out.height);
-        return out.toDataURL('image/png', 0.95);
-      }
-
-      function fitSingleLineText(text, maxWidth, fontName = 'helvetica', fontStyle = 'normal', maxFontSize = 8.4, minFontSize = 6) {
-        let safeText = String(text || '');
-        let fontSize = maxFontSize;
-        pdf.setFont(fontName, fontStyle);
-        pdf.setFontSize(fontSize);
-        while (pdf.getTextWidth(safeText) > maxWidth && fontSize > minFontSize) {
-          fontSize -= 0.2;
-          pdf.setFontSize(fontSize);
-        }
-        while (pdf.getTextWidth(safeText) > maxWidth && safeText.length > 3) {
-          safeText = `${safeText.slice(0, -4).trimEnd()}...`;
-        }
-        return { text: safeText, fontSize };
-      }
-
-      function fitMultilineText(text, maxWidth, maxLines = 2, fontName = 'helvetica', fontStyle = 'normal', fontSize = 8) {
-        const safeText = String(text || '');
-        pdf.setFont(fontName, fontStyle);
-        pdf.setFontSize(fontSize);
-        const rawLines = pdf.splitTextToSize(safeText, maxWidth);
-        if (rawLines.length <= maxLines) {
-          return { lines: rawLines, fontSize };
-        }
-        const lines = rawLines.slice(0, maxLines);
-        const lastLineFit = fitSingleLineText(`${lines[maxLines - 1]}...`, maxWidth, fontName, fontStyle, fontSize, Math.max(5.6, fontSize - 1.2));
-        lines[maxLines - 1] = lastLineFit.text;
-        return { lines, fontSize: lastLineFit.fontSize };
-      }
-
-      function normalizeMapLocationKey(value) {
-        return String(value || '').trim().toLowerCase();
-      }
-
-      function buildPdfTourMapData(rows) {
-        const fallbackCoords = [
-          { x: 0.66, y: 0.26, dx: 22, dy: -4 },
-          { x: 0.69, y: 0.40, dx: 22, dy: 0 },
-          { x: 0.63, y: 0.58, dx: 22, dy: 0 },
-          { x: 0.58, y: 0.72, dx: 22, dy: 0 },
-        ];
-        const ugandaCoords = {
-          kampala: { x: 0.39, y: 0.56, dx: 22, dy: 0 },
-          wakiso: { x: 0.35, y: 0.52, dx: -86, dy: -6 },
-          entebbe: { x: 0.34, y: 0.63, dx: -98, dy: 18 },
-          jinja: { x: 0.50, y: 0.53, dx: 22, dy: 0 },
-          hoima: { x: 0.32, y: 0.42, dx: 22, dy: -8 },
-          mbarara: { x: 0.31, y: 0.70, dx: -84, dy: 10 },
-          masaka: { x: 0.35, y: 0.66, dx: 18, dy: 16 },
-          'fort portal': { x: 0.25, y: 0.52, dx: -102, dy: 6 },
-          gulu: { x: 0.41, y: 0.23, dx: 22, dy: -8 },
-          lira: { x: 0.50, y: 0.33, dx: 22, dy: -8 },
-          soroti: { x: 0.57, y: 0.43, dx: 22, dy: 0 },
-          mbale: { x: 0.61, y: 0.48, dx: 22, dy: 0 },
-          arua: { x: 0.22, y: 0.18, dx: -72, dy: -4 },
-          kabale: { x: 0.26, y: 0.82, dx: -82, dy: 14 },
-          tororo: { x: 0.64, y: 0.55, dx: 22, dy: 10 },
-          busia: { x: 0.60, y: 0.56, dx: 22, dy: 18 },
-          rwanda: { x: 0.29, y: 0.77, dx: 20, dy: 10 },
-          kenya: { x: 0.70, y: 0.49, dx: 22, dy: -4 },
-          tanzania: { x: 0.53, y: 0.82, dx: 22, dy: 8 },
-        };
-
-        return (Array.isArray(rows) ? rows : []).slice(0, 6).map((row, index) => {
-          const key = normalizeMapLocationKey(row.location);
-          return {
-            ...row,
-            coord: ugandaCoords[key] || fallbackCoords[index] || fallbackCoords[fallbackCoords.length - 1],
-            knownOnUgandaMap: Boolean(ugandaCoords[key])
-          };
-        });
-      }
-
-      function buildPdfTourMapCanvas(rows) {
-        const mapRows = buildPdfTourMapData(rows);
-        const canvas = document.createElement('canvas');
-        canvas.width = 1400;
-        canvas.height = 760;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return null;
-
-        const bgColor = isLightTheme ? '#F8FAFC' : '#111217';
-        const gridColor = isLightTheme ? 'rgba(15,23,42,0.07)' : 'rgba(255,255,255,0.05)';
-        const outlineFill = isLightTheme ? 'rgba(22,163,74,0.08)' : 'rgba(20,83,45,0.36)';
-        const outlineStroke = isLightTheme ? 'rgba(22,163,74,0.9)' : 'rgba(34,197,94,0.68)';
-        const titleColor = isLightTheme ? '#0F172A' : '#FFFFFF';
-        const metaColor = isLightTheme ? '#CA8A04' : '#FACC15';
-        const pinOuter = isLightTheme ? '#F59E0B' : '#FBBF24';
-        const pinInner = isLightTheme ? '#FCD34D' : '#FED7AA';
-        const plot = { x: 120, y: 50, w: canvas.width - 240, h: canvas.height - 100 };
-        const ugandaOutline = [
-          [0.39, 0.12], [0.46, 0.18], [0.49, 0.28], [0.56, 0.37], [0.53, 0.48],
-          [0.46, 0.58], [0.43, 0.69], [0.40, 0.82], [0.31, 0.87], [0.24, 0.79],
-          [0.20, 0.68], [0.17, 0.52], [0.20, 0.39], [0.24, 0.28], [0.30, 0.16]
-        ];
-        const allKnownOnUganda = mapRows.length > 0 && mapRows.every((row) => row.knownOnUgandaMap);
-        const fitCanvasText = (text, maxWidth, fontWeight, maxSize, minSize = 16, fontFamily = 'Arial') => {
-          let safeText = String(text || '');
-          let size = maxSize;
-          ctx.font = `${fontWeight} ${size}px ${fontFamily}`;
-          while (ctx.measureText(safeText).width > maxWidth && size > minSize) {
-            size -= 1;
-            ctx.font = `${fontWeight} ${size}px ${fontFamily}`;
-          }
-          while (ctx.measureText(safeText).width > maxWidth && safeText.length > 3) {
-            safeText = `${safeText.slice(0, -4).trimEnd()}...`;
-          }
-          return { text: safeText, size };
-        };
-
-        ctx.fillStyle = bgColor;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        ctx.strokeStyle = gridColor;
-        ctx.lineWidth = 1;
-        for (let gx = plot.x; gx <= plot.x + plot.w; gx += plot.w / 7) {
-          ctx.beginPath();
-          ctx.moveTo(gx, plot.y);
-          ctx.lineTo(gx, plot.y + plot.h);
-          ctx.stroke();
-        }
-        for (let gy = plot.y; gy <= plot.y + plot.h; gy += plot.h / 4) {
-          ctx.beginPath();
-          ctx.moveTo(plot.x, gy);
-          ctx.lineTo(plot.x + plot.w, gy);
-          ctx.stroke();
-        }
-
-        if (allKnownOnUganda) {
-          ctx.beginPath();
-          ugandaOutline.forEach(([px, py], index) => {
-            const drawX = plot.x + (plot.w * px);
-            const drawY = plot.y + (plot.h * py);
-            if (index === 0) ctx.moveTo(drawX, drawY);
-            else ctx.lineTo(drawX, drawY);
-          });
-          ctx.closePath();
-          ctx.fillStyle = outlineFill;
-          ctx.fill();
-          ctx.strokeStyle = outlineStroke;
-          ctx.lineWidth = 3;
-          ctx.stroke();
-        }
-
-        mapRows.forEach((row) => {
-          const px = plot.x + (plot.w * row.coord.x);
-          const py = plot.y + (plot.h * row.coord.y);
-          const labelMaxW = Math.min(280, plot.w * 0.26);
-          const alignLeft = (row.coord.dx || 0) >= 0;
-          const rawLabelX = px + row.coord.dx;
-          const labelX = alignLeft
-            ? Math.min(rawLabelX, (plot.x + plot.w) - labelMaxW - 12)
-            : Math.max(rawLabelX, plot.x + labelMaxW + 12);
-          const labelY = Math.min(Math.max(py + row.coord.dy, plot.y + 24), (plot.y + plot.h) - 44);
-          const subText = `${row.shows} show${row.shows === 1 ? '' : 's'} | ${fmtUGX(row.revenue)}`;
-          const titleFit = fitCanvasText(String(row.location || 'Unknown'), labelMaxW, 700, 34, 20, 'Arial');
-          const subFit = fitCanvasText(subText, labelMaxW, 600, 22, 14, 'Courier New');
-
-          const glow = ctx.createRadialGradient(px, py, 2, px, py, 28);
-          glow.addColorStop(0, isLightTheme ? 'rgba(245,158,11,0.35)' : 'rgba(251,191,36,0.45)');
-          glow.addColorStop(1, 'rgba(251,191,36,0)');
-          ctx.fillStyle = glow;
-          ctx.beginPath();
-          ctx.arc(px, py, 28, 0, Math.PI * 2);
-          ctx.fill();
-
-          ctx.fillStyle = pinOuter;
-          ctx.beginPath();
-          ctx.arc(px, py, 12, 0, Math.PI * 2);
-          ctx.fill();
-
-          ctx.fillStyle = pinInner;
-          ctx.beginPath();
-          ctx.arc(px, py, 5, 0, Math.PI * 2);
-          ctx.fill();
-
-          ctx.font = `700 ${titleFit.size}px Arial`;
-          ctx.fillStyle = titleColor;
-          ctx.textAlign = alignLeft ? 'left' : 'right';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(titleFit.text, labelX, labelY);
-
-          ctx.font = `600 ${subFit.size}px Courier New`;
-          ctx.fillStyle = metaColor;
-          ctx.fillText(subFit.text, labelX, labelY + 30);
-        });
-
-        if (mapRows.length === 0) {
-          ctx.font = '600 28px Arial';
-          ctx.fillStyle = isLightTheme ? '#64748B' : '#A1A1AA';
-          ctx.textAlign = 'center';
-          ctx.fillText('No routed shows to map yet.', canvas.width / 2, canvas.height / 2);
-        }
-
-        return canvas;
-      }
-
-      function glassPanel(x, y, w, h) {
-        fillColor(P.bgCard);
-        pdf.roundedRect(x, y, w, h, 2.5, 2.5, 'F');
-        pdf.setDrawColor(...P.border);
-        pdf.setLineWidth(0.25);
-        pdf.roundedRect(x, y, w, h, 2.5, 2.5, 'S');
-      }
-
-      // ══════════════════════════════════════════════════════════════════════
-      // PAGE 1: The Money Moves
-      // =====================================================================
-      drawPageBg();
-      drawHeader('PERIOD');
-
-      let y = contentTop;
-
-      const closingBalance = pdfData.metrics.closingBalance;
-      const balanceChangePct = pdfData.metrics.bbf > 0
-        ? ((closingBalance - pdfData.metrics.bbf) / pdfData.metrics.bbf) * 100
-        : null;
-      const trendPctRaw = pdfData.metrics.trendPct;
-      const trendChangePct = trendPctRaw !== null &&
-        typeof trendPctRaw !== 'undefined' &&
-        Number.isFinite(Number(trendPctRaw))
-          ? Number(trendPctRaw)
-          : null;
-      const closingInsightValue = trendChangePct ?? balanceChangePct;
-      const closingInsightText = closingInsightValue !== null
-        ? `${fmtPct(closingInsightValue)} ${trendChangePct !== null ? 'vs previous' : 'vs BBF'}`
-        : '';
-      const closingBadgePadX = 4.2;
-      const closingBadgeFit = closingInsightText
-        ? fitSingleLineText(closingInsightText, Math.min(76, cw * 0.36), 'courier', 'bold', 8.4, 6.6)
-        : null;
-      const closingBadgeW = closingBadgeFit
-        ? pdf.getTextWidth(closingBadgeFit.text) + (closingBadgePadX * 2)
-        : 0;
-
-      y = sectionTitle('Closing Balance', y);
-      const heroH = 18;
-      glassPanel(mg, y, cw, heroH);
-
-      const closingValueFit = fitSingleLineText(
-        formatMoney(closingBalance),
-        cw - (cardPad * 2) - (closingBadgeW ? closingBadgeW + 10 : 0),
-        'courier',
-        'bold',
-        18,
-        11
-      );
-      pdf.setFont('courier', 'bold');
-      pdf.setFontSize(closingValueFit.fontSize);
-      textColor(closingBalance >= 0 ? P.green : P.red);
-      pdf.text(closingValueFit.text, mg + cardPad, y + 9.2);
-
-      if (closingBadgeFit) {
-        pdf.setFont('courier', 'bold');
-        pdf.setFontSize(closingBadgeFit.fontSize);
-        const badgeH = 8.4;
-        const badgeX = mg + cw - cardPad - closingBadgeW;
-        const badgeY = y + 4.2;
-        fillColor(closingInsightValue >= 0 ? P.green : P.red);
-        pdf.roundedRect(badgeX, badgeY, closingBadgeW, badgeH, 4.2, 4.2, 'F');
-        pdf.setTextColor(255, 255, 255);
-        pdf.text(closingBadgeFit.text, badgeX + closingBadgePadX, badgeY + 5.6);
-      }
-
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(8.2);
-      pdf.setTextColor(...P.textPrimary);
-      const closingFormulaFit = fitSingleLineText(
-        `(BBF ${formatMoney(pdfData.metrics.bbf)}) + Revenue + Other Income - Expenses`,
-        cw - (cardPad * 2) - 8,
-        'helvetica',
-        'normal',
-        8.2,
-        6.2
-      );
-      pdf.setFontSize(closingFormulaFit.fontSize);
-      pdf.text(closingFormulaFit.text, mg + cardPad, y + 14.2);
-
-      y += heroH + sectionGap;
-
-      // KPI Grid
-      y = sectionTitle('Key Metrics', y);
-      const kpis = [
-        { label: 'Total Revenue', value: fmtUGX(pdfData.metrics.totalIncome), sub: `${pdfData.metrics.totalBookings} bookings`, color: P.green },
-        { label: 'Total Expenses', value: fmtUGX(pdfData.metrics.totalExpenses), sub: `${pdfData.raw.filteredExpenses.length} transactions`, color: P.red },
-        { label: 'Other Income', value: fmtUGX(pdfData.metrics.totalOtherIncome), sub: `${pdfData.raw.filteredOtherIncome.length} ${pdfData.raw.filteredOtherIncome.length === 1 ? 'entry' : 'entries'}`, color: P.blue },
-        {
-          label: 'Balance Brought Forward (BBF)',
-          value: fmtUGX(pdfData.metrics.bbf),
-          sub: pdfData.metrics.bbfSourcePeriodLabel
-            ? `${pdfData.metrics.bbfSourcePeriodLabel} opening balance`
-            : 'Opening balance',
-          color: P.gold
+        metrics: {
+          bbf: Math.round(Number(data.bbf) || 0),
+          closingBalance: pdfClosingBalance,
+          totalIncome: m.totalIncome,
+          totalOtherIncome: m.totalOtherIncome,
+          totalExpenses: m.totalExpenses,
+          netProfit: m.netProfit,
+          profitMargin: grossIncome > 0 ? (m.netProfit / grossIncome) * 100 : 0,
+          trendPct: (hasCustomDateRange && !hasComparablePreviousData) ? null : m.trendPct,
+          activeShows: liveBookings.length,
+          allShows: m.filteredBookings.length,
+          statusCounts: m.statusCounts,
+          collected,
+          balancesDue: liveBookings.reduce((s, b) => s + Math.max(0, Math.round(Number(b.balance) || 0)), 0),
+          otherCount: m.filteredOtherIncome.length,
+          expenseCount: m.filteredExpenses.length,
+          costBreakdown,
+          venues,
+          topShows: liveBookings
+            .map((b) => ({ event: b.event, date: b.date, location: b.location || '', fee: Math.round(Number(b.fee) || 0) }))
+            .filter((b) => b.fee > 0)
+            .sort((a, b) => b.fee - a.fee)
         },
-      ];
-
-      const cols = 4;
-      const kpiW = (cw - (cols - 1) * 4) / cols;
-      const kpiH = 18;
-      kpis.forEach((kpi, i) => {
-        const col = i % cols;
-        const row = Math.floor(i / cols);
-        const kx = mg + col * (kpiW + 4);
-        const ky = y + row * (kpiH + 4);
-
-        glassPanel(kx, ky, kpiW, kpiH);
-        pdf.setFont('helvetica', 'normal');
-        const kpiLabelFit = fitSingleLineText(kpi.label, kpiW - (cardPad * 2), 'helvetica', 'normal', 7, 5.8);
-        pdf.setFontSize(kpiLabelFit.fontSize);
-        pdf.setTextColor(...P.textMuted);
-        pdf.text(kpiLabelFit.text, kx + cardPad, ky + 5.2);
-
-        const kpiValueFit = fitSingleLineText(kpi.value, kpiW - (cardPad * 2), 'courier', 'bold', 16, 9.5);
-        pdf.setFont('courier', 'bold');
-        pdf.setFontSize(kpiValueFit.fontSize);
-        pdf.setTextColor(...kpi.color);
-        pdf.text(kpiValueFit.text, kx + cardPad, ky + 11.8);
-
-        pdf.setFont('helvetica', 'normal');
-        const kpiSubFit = fitMultilineText(kpi.sub || '', kpiW - (cardPad * 2), 1, 'helvetica', 'normal', 6.5);
-        pdf.setFontSize(kpiSubFit.fontSize);
-        pdf.setTextColor(...P.textMuted);
-        pdf.text(kpiSubFit.lines[0] || '', kx + cardPad, ky + 15.8);
+        history,
+        projectedRevenue: pdfForecastBookings.reduce((sum, booking) => sum + Math.round(Number(booking?.fee) || 0), 0),
+        projectedShows: pdfForecastBookings.length,
+        nextOnStage: pdfNextOnStage.map((b) => ({
+          date: b.date,
+          event: b.event,
+          artist: b.artist || b.artist_name || '',
+          location: b.location || '',
+          fee: Math.round(Number(b.fee) || 0),
+          status: b.status
+        })),
+        ledger: pdfTransactions,
+        notes: pdfStrategyNotes.length ? pdfStrategyNotes : insights
       });
-
-      const kpiRows = Math.ceil(kpis.length / cols);
-      y += kpiRows * (kpiH + 4) + sectionGap;
-
-      // Revenue + Cost chart row
-      const chartsBottom = H - mg - footerH - 2;
-      const chartsRowH = Math.max(52, chartsBottom - y);
-      const chartsGap = 4;
-      const chartCardW = (cw - chartsGap) / 2;
-      y = ensureSectionPageBreak(y, chartsRowH, 'PERIOD', { allowHeuristicBreak: false });
-
-      const revenueX = mg;
-      const costX = mg + chartCardW + chartsGap;
-      glassPanel(revenueX, y, chartCardW, chartsRowH);
-      glassPanel(costX, y, chartCardW, chartsRowH);
-
-      const revenueChartY = drawCardTitle('Revenue Momentum', revenueX, y, chartCardW) + 0.8;
-      const costChartY = drawCardTitle('Cost Breakdown', costX, y, chartCardW) + 0.8;
-      const revenueChartH = chartsRowH - (revenueChartY - y) - cardPad;
-      const costChartH = chartsRowH - (costChartY - y) - cardPad;
-
-      if (typeof Chart !== 'undefined' && m.allMonths.length > 0) {
-        const canvas = document.createElement('canvas');
-        canvas.width = 920;
-        canvas.height = 420;
-        const ctx = canvas.getContext('2d');
-
-        const revenueBarGrad = ctx.createLinearGradient(0, 0, 0, 420);
-        revenueBarGrad.addColorStop(0, PDF_CHART.goldBright);
-        revenueBarGrad.addColorStop(1, PDF_CHART.revenue);
-        const expenseBarGrad = ctx.createLinearGradient(0, 0, 0, 420);
-        expenseBarGrad.addColorStop(0, PDF_CHART.expense);
-        expenseBarGrad.addColorStop(1, PDF_CHART.red);
-        const profitBarGrad = ctx.createLinearGradient(0, 0, 0, 420);
-        profitBarGrad.addColorStop(0, PDF_CHART.profit);
-        profitBarGrad.addColorStop(1, PDF_CHART.green);
-
-        const revData = m.allMonths.map(k => m.monthlyRevenue[k] || 0);
-        const expData = m.allMonths.map(k => m.monthlyExpenses[k] || 0);
-        const profData = m.allMonths.map((_, i) => revData[i] - expData[i]);
-
-        ctx.fillStyle = P.chartBg;
-        ctx.fillRect(0, 0, 920, 420);
-
-        const chart = new Chart(ctx, {
-          type: 'bar',
-          data: {
-            labels: m.allMonths.map(monthLabel),
-            datasets: [
-              {
-                label: 'Revenue',
-                data: revData,
-                borderColor: PDF_CHART.revenue,
-                backgroundColor: revenueBarGrad,
-                borderWidth: 1.8,
-                borderRadius: 10,
-                borderSkipped: false,
-                maxBarThickness: 26,
-                categoryPercentage: 0.66,
-                barPercentage: 0.9
-              },
-              {
-                label: 'Expenses',
-                data: expData,
-                borderColor: PDF_CHART.expense,
-                backgroundColor: expenseBarGrad,
-                borderWidth: 1.8,
-                borderRadius: 10,
-                borderSkipped: false,
-                maxBarThickness: 26,
-                categoryPercentage: 0.66,
-                barPercentage: 0.9
-              },
-              {
-                label: 'Net Profit',
-                data: profData,
-                borderColor: PDF_CHART.profit,
-                backgroundColor: profitBarGrad,
-                borderWidth: 1.8,
-                borderRadius: 10,
-                borderSkipped: false,
-                maxBarThickness: 26,
-                categoryPercentage: 0.66,
-                barPercentage: 0.9
-              }
-            ]
-          },
-          options: {
-            responsive: false,
-            maintainAspectRatio: false,
-            animation: { duration: 0 },
-            plugins: {
-              legend: {
-                position: 'top',
-                labels: {
-                  color: P.chartLegend,
-                  font: { size: 14 },
-                  usePointStyle: true,
-                  padding: 12
-                }
-              }
-            },
-            scales: {
-              y: {
-                beginAtZero: true,
-                ticks: { color: P.chartTicks, font: { size: 12.5 } },
-                grid: { color: P.chartGrid }
-              },
-              x: {
-                ticks: { color: P.chartTicks, font: { size: 12.5 } },
-                grid: { display: false }
-              }
-            }
-          }
-        });
-        chart.update();
-        await new Promise(r => { const t = setTimeout(r, 50); requestAnimationFrame(() => { clearTimeout(t); r(); }); });
-        drawContainedImage(
-          canvas.toDataURL('image/png', 1.0),
-          revenueX + cardPad,
-          revenueChartY,
-          chartCardW - (cardPad * 2),
-          revenueChartH,
-          canvas.width,
-          canvas.height
-        );
-        chart.destroy();
-      } else {
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(9);
-        pdf.setTextColor(...P.textMuted);
-        pdf.text('No chart data available.', revenueX + cardPad, revenueChartY + 12);
-      }
-
-      const costEntries = Object.entries(m.expenseByCat).sort((a, b) => b[1] - a[1]).slice(0, 6);
-      if (typeof Chart !== 'undefined' && costEntries.length > 0) {
-        const c2 = document.createElement('canvas');
-        c2.width = 560;
-        c2.height = 560;
-        const ctx2 = c2.getContext('2d');
-        ctx2.fillStyle = P.chartCard;
-        ctx2.fillRect(0, 0, c2.width, c2.height);
-        const dColors = PDF_CHART.pie.slice(0, costEntries.length);
-        const ch2 = new Chart(ctx2, {
-          type: 'doughnut',
-          data: {
-            labels: costEntries.map(e => e[0]),
-            datasets: [{ data: costEntries.map(e => e[1]), backgroundColor: dColors, borderColor: P.chartBorder, borderWidth: 4 }]
-          },
-          options: {
-            responsive: false,
-            maintainAspectRatio: true,
-            animation: { duration: 0 },
-            cutout: '56%',
-            plugins: {
-              legend: {
-                position: 'top',
-                labels: {
-                  color: P.chartLegend,
-                  font: { size: 12 },
-                  padding: 8,
-                  boxWidth: 12,
-                  usePointStyle: true
-                }
-              }
-            }
-          }
-        });
-        ch2.update();
-        await new Promise(r => { const t = setTimeout(r, 50); requestAnimationFrame(() => { clearTimeout(t); r(); }); });
-        drawContainedImage(
-          c2.toDataURL('image/png', 1.0),
-          costX + cardPad,
-          costChartY,
-          chartCardW - (cardPad * 2),
-          costChartH,
-          c2.width,
-          c2.height
-        );
-        ch2.destroy();
-      } else {
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(9);
-        pdf.setTextColor(...P.textMuted);
-        pdf.text('No expense data.', costX + cardPad, costChartY + 12);
-      }
-      y += chartsRowH + sectionGap;
-
-      // =====================================================================
-      // PAGE 2: The World Tour
-      // =====================================================================
-      pdf.addPage();
-      drawPageBg();
-      drawHeader('THE WORLD TOUR');
-      y = contentTop;
-
-      const venueHeaders = ['Venue / City', 'Shows', 'Revenue', 'Est. Cost', 'Profit', 'ROI %'];
-
-      async function renderVenuePerformanceCard(x, yTop, w, h) {
-        glassPanel(x, yTop, w, h);
-        const rows = pdfData.metrics.pdfVenuePerf || [];
-        const tableY = drawCardTitle('Venue Performance', x, yTop, w) + 0.8;
-
-        if (rows.length === 0) {
-          pdf.setFont('helvetica', 'normal');
-          pdf.setFontSize(8.8);
-          pdf.setTextColor(...P.textPrimary);
-          pdf.text('No venue performance data available yet.', x + cardPad, tableY + 10);
-          return;
-        }
-
-        const tableX = x + cardPad;
-        const innerW = w - (cardPad * 2);
-        const venueColWidths = [
-          innerW * 0.29,
-          innerW * 0.10,
-          innerW * 0.17,
-          innerW * 0.16,
-          innerW * 0.17,
-          innerW * 0.11
-        ];
-        const venueHeaderH = 5.2;
-        const venueRowH = 6;
-        const maxRows = Math.max(1, Math.min(rows.length, 4));
-        const visibleRows = rows.slice(0, maxRows);
-
-        fillColor(P.bgPanel);
-        pdf.roundedRect(tableX - 1.4, tableY - 1.4, innerW + 2.8, venueHeaderH, 1.8, 1.8, 'F');
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(7.2);
-        pdf.setTextColor(...P.gold);
-        let headerX = tableX;
-        venueHeaders.forEach((header, index) => {
-          const headerFit = fitSingleLineText(header, venueColWidths[index] - 1.5, 'helvetica', 'bold', 7.2, 6.1);
-          pdf.setFont('helvetica', 'bold');
-          pdf.setFontSize(headerFit.fontSize);
-          if (index === venueHeaders.length - 1) {
-            pdf.text(headerFit.text, headerX + venueColWidths[index] - pdf.getTextWidth(headerFit.text), tableY + 2);
-          } else {
-            pdf.text(headerFit.text, headerX, tableY + 2);
-          }
-          headerX += venueColWidths[index];
-        });
-
-        let rowY = tableY + venueHeaderH + 1.8;
-        visibleRows.forEach((row, idx) => {
-          if (idx % 2 === 0) {
-            fillColor(P.bgPanel);
-            pdf.roundedRect(tableX - 1.4, rowY - 3.6, innerW + 2.8, venueRowH, 1.6, 1.6, 'F');
-          }
-
-          const profitabilityTone = row.profit > (row.revenue * 0.15) ? P.green : (row.profit >= 0 ? P.gold : P.red);
-          fillColor(profitabilityTone);
-          pdf.circle(tableX + 1.8, rowY - 1.2, 1.1, 'F');
-
-          pdf.setFont('helvetica', 'normal');
-          const locationFit = fitSingleLineText(row.location || '-', venueColWidths[0] - 6.4, 'helvetica', 'normal', 7.4, 6.1);
-          pdf.setFontSize(locationFit.fontSize);
-          pdf.setTextColor(...P.textPrimary);
-          let cellX = tableX;
-          pdf.text(locationFit.text, cellX + 4.2, rowY);
-          cellX += venueColWidths[0];
-          const showsFit = fitSingleLineText(String(row.shows || 0), venueColWidths[1] - 2.2, 'courier', 'bold', 7.4, 6.2);
-          pdf.setFont('courier', 'bold');
-          pdf.setFontSize(showsFit.fontSize);
-          pdf.text(showsFit.text, cellX + 1.2, rowY);
-          cellX += venueColWidths[1];
-          const revenueFit = fitSingleLineText(fmtUGX(row.revenue), venueColWidths[2] - 2.2, 'courier', 'bold', 7.4, 5.8);
-          pdf.setFont('courier', 'bold');
-          pdf.setFontSize(revenueFit.fontSize);
-          pdf.text(revenueFit.text, cellX + 1.2, rowY);
-          cellX += venueColWidths[2];
-          const costFit = fitSingleLineText(fmtUGX(row.cost), venueColWidths[3] - 2.2, 'courier', 'bold', 7.4, 5.8);
-          pdf.setTextColor(...P.textMuted);
-          pdf.setFontSize(costFit.fontSize);
-          pdf.text(costFit.text, cellX + 1.2, rowY);
-          cellX += venueColWidths[3];
-          const profitFit = fitSingleLineText(fmtUGX(row.profit), venueColWidths[4] - 2.2, 'courier', 'bold', 7.4, 5.8);
-          textColor(row.profit >= 0 ? P.green : P.red);
-          pdf.setFontSize(profitFit.fontSize);
-          pdf.text(profitFit.text, cellX + 1.2, rowY);
-          cellX += venueColWidths[4];
-          textColor(row.roi >= 0 ? P.green : P.red);
-          const roiFit = fitSingleLineText(`${row.roi.toFixed(0)}%`, venueColWidths[5] - 1.8, 'courier', 'bold', 7.4, 6);
-          pdf.setFontSize(roiFit.fontSize);
-          pdf.text(roiFit.text, cellX + venueColWidths[5] - pdf.getTextWidth(roiFit.text), rowY);
-          rowY += venueRowH + 0.6;
-        });
-
-        const footerLine = rows.length > visibleRows.length
-          ? `Showing top ${visibleRows.length} of ${rows.length} venues.`
-          : 'Est. cost is apportioned by each city\'s share of booking revenue.';
-        pdf.setFont('helvetica', 'normal');
-        const footerFit = fitSingleLineText(footerLine, w - (cardPad * 2), 'helvetica', 'normal', 6.1, 5.4);
-        pdf.setFontSize(footerFit.fontSize);
-        pdf.setTextColor(...P.textMuted);
-        pdf.text(footerFit.text, x + cardPad, yTop + h - 3.2);
-      }
-
-      async function renderBookingsMixCard(x, yTop, w, h) {
-        glassPanel(x, yTop, w, h);
-        const chartY = drawCardTitle('Bookings Mix', x, yTop, w) + 0.8;
-        const chartH = h - (chartY - yTop) - cardPad;
-        const statusEntries = Object.entries(m.statusCounts || {}).filter(([, count]) => Number(count) > 0);
-        const totalStatuses = statusEntries.reduce((sum, [, count]) => sum + Number(count || 0), 0);
-        const confirmedCount = Math.max(0, Number(m.confirmedCount) || 0);
-        const confirmedPct = totalStatuses > 0 ? Math.round((confirmedCount / totalStatuses) * 100) : 0;
-        const statusPalette = { confirmed: PDF_CHART.profit, pending: PDF_CHART.goldBright, completed: PDF_CHART.silver, cancelled: PDF_CHART.red };
-        const pieBoxW = Math.min(36, Math.max(28, (w - (cardPad * 2)) * 0.44));
-        const pieX = x + cardPad;
-        const summaryX = pieX + pieBoxW + 5;
-        const summaryW = Math.max(18, (x + w - cardPad) - summaryX);
-        const chartBottomY = chartY + chartH;
-
-        if (typeof Chart !== 'undefined' && totalStatuses > 0) {
-          const c3 = document.createElement('canvas');
-          c3.width = 420;
-          c3.height = 420;
-          const ctx3 = c3.getContext('2d');
-          ctx3.fillStyle = P.chartCard;
-          ctx3.fillRect(0, 0, c3.width, c3.height);
-          const ch3 = new Chart(ctx3, {
-            type: 'pie',
-            data: {
-              labels: statusEntries.map(([status]) => status),
-              datasets: [{
-                data: statusEntries.map(([, count]) => count),
-                backgroundColor: statusEntries.map(([status]) => statusPalette[status] || '#888'),
-                borderColor: P.chartCard,
-                borderWidth: 4
-              }]
-            },
-            options: {
-              responsive: false,
-              maintainAspectRatio: true,
-              animation: { duration: 0 },
-              plugins: { legend: { display: false } }
-            }
-          });
-          ch3.update();
-          await new Promise(r => { const t = setTimeout(r, 50); requestAnimationFrame(() => { clearTimeout(t); r(); }); });
-
-          drawContainedImage(
-            c3.toDataURL('image/png', 1.0),
-            pieX,
-            chartY + 0.5,
-            pieBoxW,
-            Math.max(16, chartH - 6),
-            c3.width,
-            c3.height
-          );
-          ch3.destroy();
-        } else {
-          pdf.setFont('helvetica', 'normal');
-          pdf.setFontSize(9);
-          pdf.setTextColor(...P.textPrimary);
-          pdf.text('No booking data.', pieX, chartY + 12);
-        }
-
-        const shareLabel = `${confirmedPct}% confirmed`;
-        const shareFit = fitSingleLineText(shareLabel, pieBoxW, 'courier', 'bold', 12, 7.2);
-        pdf.setFont('courier', 'bold');
-        pdf.setFontSize(shareFit.fontSize);
-        pdf.setTextColor(...P.textPrimary);
-        pdf.text(shareFit.text, pieX + ((pieBoxW - pdf.getTextWidth(shareFit.text)) / 2), chartBottomY - 4.6);
-        const bookingCountLabel = `${totalStatuses} live booking${totalStatuses === 1 ? '' : 's'}`;
-        const bookingCountFit = fitSingleLineText(bookingCountLabel, pieBoxW, 'helvetica', 'normal', 6.2, 5.6);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(bookingCountFit.fontSize);
-        pdf.setTextColor(...P.textMuted);
-        pdf.text(bookingCountFit.text, pieX + ((pieBoxW - pdf.getTextWidth(bookingCountFit.text)) / 2), chartBottomY - 1.1);
-
-        const summaryEntries = statusEntries.length > 0
-          ? statusEntries.slice().sort((a, b) => b[1] - a[1]).slice(0, 4)
-          : [['confirmed', 0]];
-        const cardGapY = 2.2;
-        const summaryAvailableH = Math.max(14, chartH - 2);
-        const summaryCardH = Math.max(8.4, Math.min(11, (summaryAvailableH - ((summaryEntries.length - 1) * cardGapY)) / summaryEntries.length));
-        let summaryY = chartY + 1;
-
-        summaryEntries.forEach(([status, count]) => {
-          const sharePct = totalStatuses > 0 ? Math.round((Number(count || 0) / totalStatuses) * 100) : 0;
-          const accent = statusPalette[status] || '#888';
-          const accentRgb = accent.match(/[A-Fa-f0-9]{2}/g)?.map((part) => parseInt(part, 16)) || P.textMuted;
-          fillColor(P.bgPanel);
-          pdf.roundedRect(summaryX, summaryY, summaryW, summaryCardH, 1.8, 1.8, 'F');
-          pdf.setDrawColor(...P.border);
-          pdf.setLineWidth(0.18);
-          pdf.roundedRect(summaryX, summaryY, summaryW, summaryCardH, 1.8, 1.8, 'S');
-          pdf.setFillColor(accentRgb[0], accentRgb[1], accentRgb[2]);
-          pdf.roundedRect(summaryX + 1.2, summaryY + 1.2, 1.6, summaryCardH - 2.4, 0.9, 0.9, 'F');
-
-          const labelFit = fitSingleLineText(
-            String(status || 'unknown').toUpperCase(),
-            Math.max(10, summaryW - 20),
-            'helvetica',
-            'bold',
-            7.4,
-            6.2
-          );
-          pdf.setFont('helvetica', 'bold');
-          pdf.setFontSize(labelFit.fontSize);
-          pdf.setTextColor(...P.textPrimary);
-          pdf.text(labelFit.text, summaryX + 4.6, summaryY + 3.7);
-
-          const pctLabel = `${sharePct}%`;
-          pdf.setFont('courier', 'bold');
-          pdf.setFontSize(8.8);
-          pdf.setTextColor(accentRgb[0], accentRgb[1], accentRgb[2]);
-          pdf.text(pctLabel, summaryX + summaryW - 2 - pdf.getTextWidth(pctLabel), summaryY + 3.7);
-
-          pdf.setFont('helvetica', 'normal');
-          const detailFit = fitSingleLineText(`${count} booking${Number(count) === 1 ? '' : 's'}`, Math.max(10, summaryW - 6), 'helvetica', 'normal', 6.3, 5.7);
-          pdf.setFontSize(detailFit.fontSize);
-          pdf.setTextColor(...P.textMuted);
-          pdf.text(detailFit.text, summaryX + 4.6, summaryY + summaryCardH - 2.2);
-          summaryY += summaryCardH + cardGapY;
-        });
-      }
-
-      async function renderWorldTourPanel(x, yTop, w, h) {
-        glassPanel(x, yTop, w, h);
-        const bodyY = drawCardTitle('Tour Map', x, yTop, w) + 0.8;
-        const bodyH = h - (bodyY - yTop) - cardPad;
-        const panelGap = 4;
-        const mapPanelW = (w - (cardPad * 2) - panelGap) * 0.7;
-        const sidebarW = (w - (cardPad * 2) - panelGap) - mapPanelW;
-        const mapX = x + cardPad;
-        const sidebarX = mapX + mapPanelW + panelGap;
-
-        glassPanel(mapX, bodyY, mapPanelW, bodyH);
-        glassPanel(sidebarX, bodyY, sidebarW, bodyH);
-
-        const tourMapCanvas = buildPdfTourMapCanvas(pdfData.metrics.pdfVenuePerf || []);
-        if (tourMapCanvas) {
-          pdf.addImage(
-            tourMapCanvas.toDataURL('image/png', 0.98),
-            'PNG',
-            mapX + 2,
-            bodyY + 2,
-            mapPanelW - 4,
-            bodyH - 4
-          );
-        } else {
-          pdf.setFont('helvetica', 'normal');
-          pdf.setFontSize(9);
-          pdf.setTextColor(...P.textMuted);
-          pdf.text('Map preview unavailable.', mapX + 6, bodyY + 10);
-        }
-
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(10);
-        pdf.setTextColor(...P.gold);
-        pdf.text('Next on Stage', sidebarX + 6, bodyY + 8);
-
-        const sidebarItems = Array.isArray(pdfData.nextOnStage) ? pdfData.nextOnStage.slice(0, 3) : [];
-        const footerPanelX = sidebarX + 4;
-        const footerPanelW = sidebarW - 8;
-        const hasForecast = pdfData.projectedRevenueShows > 0;
-        const forecastSummary = hasForecast
-          ? `Based on ${pdfData.projectedRevenueShows} confirmed show${pdfData.projectedRevenueShows === 1 ? '' : 's'} in the next 30 days.`
-          : 'No confirmed shows in the next 30 days yet.';
-        const forecastSummaryFit = fitMultilineText(
-          forecastSummary,
-          footerPanelW - 6.4,
-          2,
-          'helvetica',
-          'normal',
-          6.1
-        );
-        const footerPanelH = Math.max(18.6, 12.8 + (forecastSummaryFit.lines.length * 3.3));
-        const footerPanelY = (bodyY + bodyH) - footerPanelH - 2.4;
-        const footerLeftX = footerPanelX + 3.2;
-        const footerRightX = footerPanelX + footerPanelW - 3.2;
-        const itemsBottomLimit = footerPanelY - 4.6;
-        let itemY = bodyY + 16;
-        if (sidebarItems.length === 0) {
-          pdf.setFont('helvetica', 'normal');
-          pdf.setFontSize(8.4);
-          pdf.setTextColor(...P.textMuted);
-          pdf.text('No upcoming or recent bookings to highlight.', sidebarX + 6, itemY);
-        } else {
-          let renderedSidebarItems = 0;
-          for (const booking of sidebarItems) {
-            const venueFit = fitMultilineText(
-              String(booking.event || booking.location || booking.artist || 'Untitled booking'),
-              sidebarW - 12,
-              2,
-              'helvetica',
-              'normal',
-              7.8
-            );
-            const itemBottomY = itemY + 4.2 + ((venueFit.lines.length - 1) * 3.8);
-            if (renderedSidebarItems > 0 && itemBottomY > itemsBottomLimit) {
-              break;
-            }
-
-            if (renderedSidebarItems > 0) {
-              pdf.setDrawColor(...P.border);
-              pdf.setLineWidth(0.18);
-              pdf.line(sidebarX + 6, itemY - 4, sidebarX + sidebarW - 6, itemY - 4);
-            }
-
-            pdf.setFont('courier', 'bold');
-            pdf.setFontSize(8.4);
-            pdf.setTextColor(...P.gold);
-            pdf.text(fmtDate(booking.date), sidebarX + 6, itemY);
-
-            const statusText = String(booking.status || 'pending');
-            const statusTone = statusText.toLowerCase() === 'confirmed'
-              ? P.green
-              : statusText.toLowerCase() === 'pending'
-                ? P.gold
-                : P.textMuted;
-            pdf.setFont('helvetica', 'bold');
-            pdf.setFontSize(7.2);
-            pdf.setTextColor(...statusTone);
-            const statusLabel = statusText.charAt(0).toUpperCase() + statusText.slice(1);
-            const statusFit = fitSingleLineText(statusLabel, 24, 'helvetica', 'bold', 7.2, 6);
-            pdf.setFontSize(statusFit.fontSize);
-            pdf.text(statusFit.text, sidebarX + sidebarW - 6 - pdf.getTextWidth(statusFit.text), itemY);
-
-            pdf.setFont('helvetica', 'normal');
-            pdf.setFontSize(venueFit.fontSize);
-            pdf.setTextColor(...P.textPrimary);
-            venueFit.lines.forEach((line, lineIdx) => {
-              pdf.text(line, sidebarX + 6, itemY + 4.2 + (lineIdx * 3.8));
-            });
-            renderedSidebarItems += 1;
-            itemY = itemBottomY + 6.2;
-          }
-        }
-
-        fillColor(P.bgPanel);
-        pdf.roundedRect(footerPanelX, footerPanelY, footerPanelW, footerPanelH, 2, 2, 'F');
-        pdf.setDrawColor(...P.border);
-        pdf.setLineWidth(0.18);
-        pdf.roundedRect(footerPanelX, footerPanelY, footerPanelW, footerPanelH, 2, 2, 'S');
-        pdf.setDrawColor(...P.gold);
-        pdf.setLineWidth(0.35);
-        pdf.line(footerPanelX, footerPanelY, footerPanelX, footerPanelY + footerPanelH);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(6.7);
-        pdf.setTextColor(...P.textMuted);
-        pdf.text('Projected Revenue', footerLeftX, footerPanelY + 4.6);
-        const forecastLabel = hasForecast
-          ? `${fmtUGX(pdfData.projectedRevenue)}`
-          : 'UGX 0';
-        const forecastValueFit = fitSingleLineText(forecastLabel, Math.max(18, footerPanelW * 0.34), 'courier', 'bold', 9.6, 7);
-        const amountPillW = pdf.getTextWidth(forecastValueFit.text) + 8;
-        const amountPillH = 6.2;
-        const amountPillX = footerRightX - amountPillW;
-        const amountPillY = footerPanelY + 1.8;
-        fillColor(hasForecast ? P.green : P.bgCard);
-        pdf.roundedRect(amountPillX, amountPillY, amountPillW, amountPillH, 3.1, 3.1, 'F');
-        pdf.setDrawColor(...(hasForecast ? P.green : P.border));
-        pdf.setLineWidth(0.18);
-        pdf.roundedRect(amountPillX, amountPillY, amountPillW, amountPillH, 3.1, 3.1, 'S');
-        pdf.setFont('courier', 'bold');
-        pdf.setFontSize(forecastValueFit.fontSize);
-        if (hasForecast) {
-          pdf.setTextColor(...P.bgDark);
-        } else {
-          pdf.setTextColor(...P.textPrimary);
-        }
-        pdf.text(forecastValueFit.text, amountPillX + ((amountPillW - pdf.getTextWidth(forecastValueFit.text)) / 2), footerPanelY + 5.9);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(forecastSummaryFit.fontSize);
-        pdf.setTextColor(...P.textMuted);
-        forecastSummaryFit.lines.slice(0, 2).forEach((line, index) => {
-          pdf.text(line, footerLeftX, footerPanelY + 11.3 + (index * 3.3));
-        });
-      }
-
-      function renderCoverageSnapshotRow(x, yTop, w, h) {
-        const venueRows = pdfData.metrics.pdfVenuePerf || [];
-        const totalShows = venueRows.reduce((sum, row) => sum + Math.max(0, Number(row.shows) || 0), 0);
-        const topMarket = venueRows[0] || null;
-        const topShare = topMarket && pdfData.metrics.totalIncome > 0
-          ? Math.round((topMarket.revenue / pdfData.metrics.totalIncome) * 100)
-          : 0;
-        const audienceRows = getAudiencePlatformRows(audienceTrend);
-        const items = [
-          { label: 'Run Type', value: getPdfRunTypeLabel(venueRows) },
-          { label: 'Top Market', value: topMarket ? `${topMarket.location} - ${topShare}% Rev` : 'No market yet' },
-          { label: 'Shows', value: String(totalShows) },
-          { label: 'Audience', value: audienceRows.length ? 'Platform breakdown' : 'Live demand active', audienceRows }
-        ];
-
-        const gap = 4;
-        const itemW = (w - (gap * 3)) / 4;
-        items.forEach((item, idx) => {
-          const ix = x + idx * (itemW + gap);
-          glassPanel(ix, yTop, itemW, h);
-          pdf.setFont('helvetica', 'normal');
-          pdf.setFontSize(6.8);
-          pdf.setTextColor(...P.textMuted);
-          pdf.text(item.label.toUpperCase(), ix + 6, yTop + 6.2);
-          if (Array.isArray(item.audienceRows) && item.audienceRows.length) {
-            item.audienceRows.slice(0, 3).forEach((row, lineIdx) => {
-              const count = fmtCompactCount(row.value);
-              const line = `${row.pdfPrefix} ${count} ${row.compactUnit}`;
-              const lineFit = fitSingleLineText(line, itemW - 12, 'courier', 'bold', 7.6, 5.4);
-              pdf.setFont('courier', 'bold');
-              pdf.setFontSize(lineFit.fontSize);
-              pdf.setTextColor(...P.textPrimary);
-              pdf.text(lineFit.text, ix + 6, yTop + 11.2 + (lineIdx * 4.2));
-            });
-            return;
-          }
-          const valueFit = fitSingleLineText(String(item.value || '-'), itemW - 12, 'courier', 'bold', 10.5, 7);
-          pdf.setFont('courier', 'bold');
-          pdf.setFontSize(valueFit.fontSize);
-          pdf.setTextColor(...P.textPrimary);
-          pdf.text(valueFit.text, ix + 6, yTop + 12.8);
-        });
-      }
-
-      const worldTourH = 74;
-      const snapshotH = 24;
-      const bottomRowH = Math.max(36, (H - mg - footerH) - (y + worldTourH + snapshotH + (sectionGap * 2)));
-      const bottomGap = 4;
-      const venueCardW = (cw - bottomGap) * 0.58;
-      const bookingsCardW = cw - bottomGap - venueCardW;
-      y = ensureSectionPageBreak(y, worldTourH + snapshotH + bottomRowH + (sectionGap * 2), 'THE WORLD TOUR', { allowHeuristicBreak: false });
-      await renderWorldTourPanel(mg, y, cw, worldTourH);
-      y += worldTourH + sectionGap;
-      renderCoverageSnapshotRow(mg, y, cw, snapshotH);
-      y += snapshotH + sectionGap;
-      await renderVenuePerformanceCard(mg, y, venueCardW, bottomRowH);
-      await renderBookingsMixCard(mg + venueCardW + bottomGap, y, bookingsCardW, bottomRowH);
-      y += bottomRowH + sectionGap;
-
-      // =====================================================================
-      // PAGE 3+: The Proof of Work
-      // =====================================================================
-      pdf.addPage();
-      drawPageBg();
-      drawHeader('THE PROOF OF WORK');
-      y = contentTop;
-
-      const allTx = Array.isArray(pdfData.ledgerTransactions) ? pdfData.ledgerTransactions : [];
-
-      if (allTx.length === 0) {
-        y = sectionTitle('Transaction Ledger', y);
-        glassPanel(mg, y, cw, 16);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(9);
-        pdf.setTextColor(...P.textPrimary);
-        pdf.text('No transactions in this period.', mg + cardPad, y + 9);
-      } else {
-        const ledgerDateW = 24;
-        const ledgerTypeW = 22;
-        const ledgerAmountW = 34;
-        const ledgerDescW = cw - (cardPad * 2) - ledgerDateW - ledgerTypeW - ledgerAmountW - 4;
-        const ledgerHeaderH = 5.6;
-        const ledgerRowH = 5.4;
-        let txIndex = 0;
-
-        while (txIndex < allTx.length) {
-          y = ensureSectionPageBreak(y, 70, 'THE PROOF OF WORK');
-          y = sectionTitle('Transaction Ledger', y);
-
-          const rowsPerPage = Math.max(
-            1,
-            Math.floor(((H - mg - footerH) - (y + cardPad + ledgerHeaderH + 2)) / ledgerRowH)
-          );
-          const chunk = allTx.slice(txIndex, txIndex + rowsPerPage);
-          const panelH = (cardPad * 2) + ledgerHeaderH + (chunk.length * ledgerRowH) + 2;
-          glassPanel(mg, y, cw, panelH);
-
-          const tableX = mg + cardPad;
-          const tableY = y + cardPad;
-          const typeX = tableX + ledgerDateW;
-          const descX = typeX + ledgerTypeW;
-          const amountRight = mg + cw - cardPad;
-
-          fillColor(P.bgPanel);
-          pdf.rect(tableX - 1.4, tableY - 1.6, cw - ((cardPad * 2) - 2.8), ledgerHeaderH, 'F');
-          pdf.setFont('helvetica', 'bold');
-          pdf.setFontSize(7.2);
-          pdf.setTextColor(...P.gold);
-          pdf.text('Date', tableX, tableY + 2.2);
-          pdf.text('Type', typeX, tableY + 2.2);
-          pdf.text('Description', descX, tableY + 2.2);
-          const amountLabel = 'Amount';
-          pdf.text(amountLabel, amountRight - pdf.getTextWidth(amountLabel), tableY + 2.2);
-
-          let rowY = tableY + ledgerHeaderH + 1.6;
-          chunk.forEach((tx, idx) => {
-            if (idx % 2 === 0) {
-              fillColor(P.bgPanel);
-              pdf.rect(tableX - 1.4, rowY - 3.7, cw - ((cardPad * 2) - 2.8), ledgerRowH, 'F');
-            }
-
-            const descFit = fitSingleLineText(String(tx.desc || '-'), ledgerDescW, 'helvetica', 'normal', 7.5, 6);
-            const typeFit = fitSingleLineText(String(tx.type || '-'), ledgerTypeW - 1, 'helvetica', 'normal', 7.5, 6.2);
-            const amountFit = fitSingleLineText(formatMoney(tx.amount), ledgerAmountW, 'courier', 'bold', 7.5, 5.6);
-
-            pdf.setFont('helvetica', 'normal');
-            pdf.setFontSize(descFit.fontSize);
-            pdf.setTextColor(...P.textPrimary);
-            pdf.text(fmtDate(tx.date), tableX, rowY);
-            pdf.text(typeFit.text, typeX, rowY);
-            pdf.text(descFit.text, descX, rowY);
-
-            pdf.setFont('courier', 'bold');
-            const amtColor = tx.type === 'Expense' ? P.red : (tx.type === 'Income' ? P.blue : P.green);
-            textColor(amtColor);
-            pdf.setFontSize(amountFit.fontSize);
-            pdf.text(amountFit.text, amountRight - pdf.getTextWidth(amountFit.text), rowY);
-
-            pdf.setDrawColor(...P.border);
-            pdf.setLineWidth(0.08);
-            pdf.line(tableX - 1.4, rowY + 1.5, mg + cw - cardPad + 1.4, rowY + 1.5);
-            rowY += ledgerRowH;
-          });
-
-          txIndex += chunk.length;
-          y += panelH + sectionGap;
-          if (txIndex < allTx.length) {
-            pdf.addPage();
-            drawPageBg();
-            drawHeader('THE PROOF OF WORK');
-            y = contentTop;
-          }
-        }
-      }
-
-      const strategyNotes = Array.isArray(pdfData.strategyNotes) && pdfData.strategyNotes.length > 0
-        ? pdfData.strategyNotes
-        : ['Add more data to strengthen strategy notes and performance focus.'];
-
-      const noteItems = [];
-      strategyNotes.forEach((line) => {
-        const wrappedLines = pdf.splitTextToSize(line, cw - (cardPad * 2) - 8);
-        wrappedLines.forEach((wrappedLine, idx) => {
-          noteItems.push({ text: wrappedLine, bullet: idx === 0 });
-        });
-      });
-
-      pdf.addPage();
-      drawPageBg();
-      drawHeader('THE GAME PLAN');
-      y = contentTop;
-
-      let noteIndex = 0;
-      while (noteIndex < noteItems.length) {
-        y = ensureSectionPageBreak(y, 60, 'THE GAME PLAN');
-        y = sectionTitle('The Game Plan', y);
-        const notesLineHeight = 4.8;
-        const linesPerPage = Math.max(
-          1,
-          Math.floor(((H - mg - footerH) - (y + cardPad + 2)) / notesLineHeight)
-        );
-        const noteChunk = noteItems.slice(noteIndex, noteIndex + linesPerPage);
-        const notesH = (cardPad * 2) + (noteChunk.length * notesLineHeight) + 2;
-        glassPanel(mg, y, cw, notesH);
-
-        let noteY = y + cardPad + 2.2;
-        noteChunk.forEach((item) => {
-          pdf.setFont('helvetica', 'normal');
-          pdf.setFontSize(8.5);
-          if (item.bullet) {
-            pdf.setTextColor(...P.gold);
-            pdf.text('-', mg + cardPad, noteY);
-          }
-          pdf.setTextColor(...P.textPrimary);
-          pdf.text(item.text, mg + cardPad + 5, noteY);
-          noteY += notesLineHeight;
-        });
-
-        noteIndex += noteChunk.length;
-        y += notesH + sectionGap;
-        if (noteIndex < noteItems.length) {
-          pdf.addPage();
-          drawPageBg();
-          drawHeader('THE GAME PLAN');
-          y = contentTop;
-        }
-      }
-      // ── Add footers to all pages ──
-      const totalPages = pdf.getNumberOfPages();
-      for (let p = 1; p <= totalPages; p++) {
-        pdf.setPage(p);
-        drawFooter(p, totalPages);
-      }
 
       // ── Save ──
       const safeName = artistObj ? artistName.replace(/[^a-zA-Z0-9]/g, '-') : 'Report';

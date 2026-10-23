@@ -200,8 +200,8 @@
         card?.classList.toggle('is-met', goal > 0 && collected >= goal);
         if (!toGo) return;
         if (!(goal > 0)) toGo.textContent = 'No goal yet. Set one to track the month.';
-        else if (collected >= goal) toGo.textContent = `Goal reached, ${ugx(collected - goal)} over.`;
-        else toGo.textContent = `${ugx(goal - collected)} to go`;
+        else if (collected >= goal) toGo.textContent = `Goal reached, UGX ${compact(collected - goal)} over.`;
+        else toGo.textContent = `UGX ${compact(goal - collected)} to go`;
     }
 
     function renderTrend(rows) {

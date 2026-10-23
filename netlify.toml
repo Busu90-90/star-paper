@@ -1,3 +1,7 @@
 [build]
   command = "npm run build"
   publish = "."
+  # The legacy starpaper site (another Netlify team) only redirects, so it sets
+  # SP_SKIP_PRODUCTION_DEPLOY=true to skip production builds and save credits.
+  # Its deploy previews and every star-paper build still run.
+  ignore = "if [ \"$CONTEXT\" = production ] && [ \"$SP_SKIP_PRODUCTION_DEPLOY\" = true ]; then exit 0; else exit 1; fi"

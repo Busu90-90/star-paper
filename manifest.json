@@ -2,6 +2,7 @@
   "name": "Star Paper",
   "short_name": "Star Paper",
   "description": "The Artist Manager's Mainstage — track bookings, finances, artists, and more.",
+  "id": "./",
   "start_url": "./",
   "display": "standalone",
   "orientation": "portrait-primary",

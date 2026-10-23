@@ -13,6 +13,8 @@
 
 *.html
 !/index.html
+!/privacy.html
+!/terms.html
 
 .git/
 .github/

@@ -87,6 +87,15 @@
       document.addEventListener('visibilitychange', function () {
         show.toggleAttribute('data-paused', document.hidden);
       });
+      // Never turn the slide while the page itself is being scrolled: the
+      // timer holds until the page has been still for a moment.
+      var settle = 0;
+      window.addEventListener('scroll', function () {
+        if (document.hidden) return;
+        show.setAttribute('data-paused', '');
+        clearTimeout(settle);
+        settle = setTimeout(function () { show.toggleAttribute('data-paused', document.hidden); }, 400);
+      }, { passive: true });
     }
 
     setActive(0);
@@ -270,6 +279,54 @@
     }, true);
   }
 
+  // Install: Chrome, Edge and Android hand us a prompt to replay from our own
+  // button. iPhone Safari has no prompt, so the button shows the Share hint.
+  // Hidden once the app runs from the home screen.
+  var installPrompt = null;
+  var standalone = Boolean((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone);
+  var ua = navigator.userAgent || '';
+  var iosSafari = /iP(hone|ad|od)/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  iosSafari = iosSafari && !/CriOS|FxiOS|EdgiOS/.test(ua);
+
+  function showInstall(on) {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-lp-install]'), function (button) {
+      button.hidden = !on;
+    });
+  }
+
+  window.addEventListener('beforeinstallprompt', function (event) {
+    event.preventDefault();
+    installPrompt = event;
+    onReady(function () { showInstall(true); });
+  });
+  window.addEventListener('appinstalled', function () {
+    installPrompt = null;
+    showInstall(false);
+  });
+
+  function setupInstall() {
+    if (standalone) return;
+    if (iosSafari || installPrompt) showInstall(true);
+    var hint = document.querySelector('[data-lp-install-hint]');
+    document.addEventListener('click', function (event) {
+      var button = event.target.closest ? event.target.closest('[data-lp-install]') : null;
+      if (!button) return;
+      event.preventDefault();
+      if (installPrompt) {
+        var prompt = installPrompt;
+        installPrompt = null;
+        // A prompt plays once; the browser sends a fresh one if it may ask again.
+        showInstall(false);
+        prompt.prompt();
+        return;
+      }
+      if (hint) {
+        hint.hidden = !hint.hidden;
+        if (!hint.hidden) hint.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' });
+      }
+    });
+  }
+
   setupAuthHelpers();
 
   onReady(function mountLanding() {
@@ -280,5 +337,6 @@
     setupQuotes(root);
     setupReveal(root);
     setupCountUp(root);
+    setupInstall();
   });
 })();
