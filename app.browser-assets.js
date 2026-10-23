@@ -60,7 +60,7 @@
     ]],
     ['1', ['app.offline-cache.js']],
     ['3', ['app.todayboard.js']],
-    ['65', ['app.browser-assets.js']],
+    ['66', ['app.browser-assets.js']],
     ['3', ['app.boot-head.js']],
     ['3', ['app.money.js']],
     ['4', ['app.home.js']],
@@ -72,17 +72,18 @@
     ['4', ['app.docs.js']],
     ['4', ['app.chrome.js']],
     ['2', ['app.insights.js']],
-    ['45', ['styles.landing.css']],
+    ['46', ['styles.landing.css']],
     ['2', ['assets/landing/brick-wall.webp']],
     ['1', ['styles.brand.css']],
     ['24', ['styles.app.css']],
     ['9', ['app.root-shell.js']],
-    ['2', ['app.public-pages.js']],
+    ['3', ['app.public-pages.js']],
     ['4', ['app.boot-flags.js']],
     ['4', ['app.boot-body.js']],
     ['2', ['styles.utilities.css']],
-    ['4', ['app.landing.js']],
-    ['13', ['app.landing-lights.js']],
+    ['5', ['app.landing.js']],
+    ['14', ['app.landing-lights.js']],
+    ['1', ['app.legal.js']],
     ['2', ['assets/vendor/fonts/star-paper-fonts.css']],
     ['5', ['sp-design-tokens.css']],
     ['2', [
@@ -109,11 +110,11 @@
     ['10', ['app.migrations.js']],
     ['15', ['app.globe.js']],
     ['23', ['app.reports.js']],
-    ['27', ['manifest.json']],
+    ['28', ['manifest.json']],
     ['65', ['styles.css']],
     ['105', ['supabase.js']],
     ['163', ['app.js']],
-    ['244', ['sw.js']]
+    ['245', ['sw.js']]
   ];
 
   const assetVersions = {};
@@ -251,6 +252,8 @@
 
   const appShell = Object.freeze([
     './index.html',
+    './privacy.html',
+    './terms.html',
     url('./styles.css'),
     url('./styles.utilities.css'),
     url('./sp-design-tokens.css'),
@@ -330,6 +333,7 @@
     url('./app.pickers.js'),
     url('./app.landing.js'),
     url('./app.landing-lights.js'),
+    url('./app.legal.js'),
     url('./app.chrome.js'),
     url('./app.globe.js'),
     url('./assets/world-atlas/land-50m.json'),

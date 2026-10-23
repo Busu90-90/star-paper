@@ -545,29 +545,6 @@ body.light-theme .lp-header.is-scrolled {
   .lp-header__actions { justify-self: end; }
 }
 
-.lp-hero__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-space-2) var(--sp-space-5);
-  font-size: var(--sp-text-sm);
-  color: var(--sp-ink-3);
-}
-
-.lp-hero__meta li {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-space-2);
-}
-
-.lp-hero__for {
-  font-size: var(--sp-text-sm);
-  color: var(--sp-ink-3);
-}
-
-.lp-hero__meta .ph {
-  color: var(--sp-in);
-}
-
 /* ── 5. Showcase (hero slides) ─────────────────────────────────────────────
    One horizontal scroll-snap track: swipe on phones, tabs + arrows anywhere.
    The active tab's progress bar is a CSS animation; app.landing.js advances
@@ -606,6 +583,15 @@ body.light-theme .lp-header.is-scrolled {
   padding-block: var(--sp-space-4);
   scroll-snap-align: start;
   scroll-snap-stop: always;
+}
+
+/* On phones the showcase is one screen: a tighter stack, and a swipe that
+   flicks past a slide is allowed to (no forced stop), so a thumb that was
+   heading down the page is never held by the carousel. */
+@media (max-width: 959px) {
+  .lp-show { padding-top: var(--sp-space-2); padding-bottom: var(--sp-space-8); }
+  .lp-slide { gap: var(--sp-space-6); padding-block: var(--sp-space-2); scroll-snap-stop: normal; }
+  .lp-slide__copy { gap: var(--sp-space-4); }
 }
 
 .lp-slide__copy {
@@ -1745,6 +1731,29 @@ body.light-theme .lp-twinkles i {
   bottom: auto;
   height: 100lvh;
   translate: 0 var(--lp-off, 0px);
+}
+
+/* Where the browser can, the page scroll itself drives --lp-off (a scroll
+   timeline), so the washes move in the same frame as the page instead of a
+   frame late from script. The ride starts when the wall's top reaches the
+   top of the screen and ends when its bottom reaches the bottom; script
+   measures those two scroll positions on load and resize only
+   (--lp-ride-a/-b) and drives --lp-off itself where this isn't supported. */
+@property --lp-off {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+@keyframes lp-wall-ride {
+  from { --lp-off: 0px; }
+  to { --lp-off: calc(100cqh - 100lvh); }
+}
+@supports (animation-timeline: scroll()) {
+  .lp-main[data-lp-lights] .lp-wall[data-lp-ride] .lp-wall__wash {
+    animation: lp-wall-ride linear both;
+    animation-timeline: scroll(root block);
+    animation-range: var(--lp-ride-a, 0px) var(--lp-ride-b, 1px);
+  }
 }
 
 /* Text caught in the follow spot (app.landing-lights.js) lights up. The
@@ -3576,3 +3585,88 @@ body.light-theme .lp .lp-cta__inner {
   }
 }
 
+
+/* ── Install the app (footer button + iPhone hint) ─────────────────────── */
+
+.lp-install {
+  display: grid;
+  gap: var(--sp-space-3);
+  justify-items: center;
+}
+
+.lp-install__hint {
+  max-width: 34ch;
+  font-size: var(--sp-text-sm);
+  color: var(--sp-ink-2);
+  text-wrap: balance;
+}
+
+.lp-install__hint .ph { color: var(--sp-gold-text); vertical-align: -2px; }
+
+.lp-auth__legal {
+  text-align: center;
+  font-size: var(--sp-text-xs);
+  color: var(--sp-ink-3);
+}
+
+.lp .lp-auth__legal a,
+.lp .lp-legal a { color: var(--sp-gold-text); text-decoration: underline; text-underline-offset: 2px; }
+
+/* ── Legal pages (privacy.html, terms.html) ────────────────────────────── */
+
+.lp-legal {
+  padding: var(--sp-space-8) var(--sp-gutter) var(--sp-space-16);
+}
+
+.lp-legal__doc {
+  max-width: 68ch;
+  margin-inline: auto;
+  color: var(--sp-ink-2);
+  line-height: 1.7;
+}
+
+.lp-legal__head {
+  display: grid;
+  gap: var(--sp-space-2);
+  margin-bottom: var(--sp-space-8);
+}
+
+.lp-legal__title {
+  font-family: var(--sp-font-display);
+  font-size: clamp(2.25rem, 7vw, 3.5rem);
+  line-height: 1.05;
+  font-weight: 600;
+  color: var(--sp-ink);
+}
+
+.lp-legal__date {
+  font-size: var(--sp-text-sm);
+  color: var(--sp-ink-3);
+}
+
+.lp-legal__doc h2 {
+  margin: var(--sp-space-10) 0 var(--sp-space-3);
+  font-family: var(--sp-font-display);
+  font-size: 1.5rem;
+  line-height: 1.2;
+  font-weight: 600;
+  color: var(--sp-ink);
+}
+
+.lp-legal__doc p + p,
+.lp-legal__doc ul + p,
+.lp-legal__doc p + ul { margin-top: var(--sp-space-4); }
+
+.lp-legal__doc ul {
+  display: grid;
+  gap: var(--sp-space-2);
+  padding-left: 1.25em;
+  list-style: disc;
+}
+
+.lp-legal__doc li::marker { color: var(--sp-gold-text); }
+
+.lp-legal__doc strong { color: var(--sp-ink); font-weight: 600; }
+
+body:has(> .lp--page) { margin: 0; }
+.lp[data-page='legal'] .lp-header__bar { display: flex; }

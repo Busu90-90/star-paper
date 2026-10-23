@@ -510,10 +510,12 @@
     // writes), and written at the end, so the browser works out styles and
     // layout once per frame rather than once per card.
     var base = null;
-    function measureGlass() {
+    function measureGlass(moving) {
       var vh = window.innerHeight;
       base = shades.getBoundingClientRect();
       panes.forEach(function (pane) {
+        pane.stale = moving && !pane.sways;
+        if (pane.stale) return;
         pane.box = null;
         // Cards on other slides, and the testimonial cards stacked behind the
         // front one, throw no shadow.
@@ -542,6 +544,7 @@
     function castGlass(piv, dt, now) {
       var k = 1 - Math.exp(-dt * 8);
       panes.forEach(function (pane) {
+        if (pane.stale) return;
         var box = pane.box;
         if (!box) {
           pane.lit0 = 0;
@@ -653,7 +656,11 @@
         lamp.reach = key === 'c' ? lamp.level : lamp.lit * Math.abs(Math.cos(tilts[key] * Math.PI / 180));
       });
       castShadow(piv, dt);
-      measureGlass();
+      // While the page is moving the cards and their stand-ins move together,
+      // so the glass is left alone until the scroll settles (only the swinging
+      // panel keeps up): no measuring in the middle of a swipe.
+      var settled = now - scrolledAt > 160;
+      measureGlass(!settled);
       slideWashes();
       placeSpot(piv, following, lamps.c.level);
       swing(dt);
@@ -695,7 +702,26 @@
 
     // Keeps the screen-tall washes over the part of the wall on screen.
     var washHeight = 0;
+    var scrollDriven = !!(window.CSS && CSS.supports && CSS.supports('animation-timeline: scroll()'));
+    // With scroll timelines the washes ride on their own; script only notes
+    // where the ride starts and ends, whenever the page's size changes.
+    function measureRide() {
+      var box = wall.getBoundingClientRect();
+      var height = wall.querySelector('.lp-wall__wash').offsetHeight || window.innerHeight;
+      var start = box.top + window.scrollY;
+      setVars(wall, {
+        '--lp-ride-a': Math.round(start) + 'px',
+        '--lp-ride-b': Math.round(start + Math.max(1, box.height - height)) + 'px'
+      });
+      wall.setAttribute('data-lp-ride', '');
+    }
+    if (scrollDriven) {
+      measureRide();
+      window.addEventListener('resize', measureRide, { passive: true });
+      if ('ResizeObserver' in window) new ResizeObserver(measureRide).observe(wall);
+    }
     function slideWashes() {
+      if (scrollDriven) return;
       var box = wall.getBoundingClientRect();
       if (!washHeight) washHeight = wall.querySelector('.lp-wall__wash').offsetHeight || window.innerHeight;
       var off = clamp(-box.top, 0, Math.max(0, box.height - washHeight));
@@ -719,6 +745,9 @@
       pointer.y = event.clientY;
       pointer.at = performance.now();
     }
+
+    var scrolledAt = -1e9;
+    window.addEventListener('scroll', function () { scrolledAt = performance.now(); }, { passive: true });
 
     // Anywhere on the page: the cursor, or a thumb touching or dragging.
     document.addEventListener('pointermove', function (event) {
