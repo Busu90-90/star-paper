@@ -1560,6 +1560,12 @@ body.light-theme .lp-rig__torch--hit i { mix-blend-mode: multiply; }
   .lp-bee--r,
   .lp-rig__truss use[x="19%"],
   .lp-rig__truss use[x="81%"] { display: none; }
+  .lp-rig__spill {
+    background: radial-gradient(11% 70% at var(--lp-lamp-c) 55%, rgb(255 236 190 / 0.26), transparent);
+  }
+  body.light-theme .lp-rig__spill {
+    background: radial-gradient(11% 70% at var(--lp-lamp-c) 55%, rgb(236 196 112 / 0.38), transparent);
+  }
 }
 
 /* Star glints: a few cross-shaped sparkles that wink on and off along the
