@@ -200,6 +200,21 @@
     var slides = Array.prototype.slice.call(show.querySelectorAll('[data-lp-slide]'));
     var PCT = { l: 0.19, c: 0.5, r: 0.81 };
     var PIVOT = 31;
+    // Phones restyle the rig (side heads taken down, follow spot moved and
+    // re-hung), so the lamp positions and whether the side heads are up are
+    // read from the stylesheet whenever the layout can change.
+    var sidesOn = true;
+    function readRig() {
+      var cs = getComputedStyle(rig);
+      var c = parseFloat(cs.getPropertyValue('--lp-lamp-c'));
+      var pivot = parseFloat(cs.getPropertyValue('--lp-pivot'));
+      if (isFinite(c)) PCT.c = c / 100;
+      if (isFinite(pivot)) PIVOT = pivot;
+      var head = rig.querySelector('.lp-bee--l');
+      sidesOn = Boolean(head && head.getClientRects().length);
+    }
+    readRig();
+    window.addEventListener('resize', readRig, { passive: true });
     var lamps = {
       l: { aim: 34, level: 0, target: 34, want: 1, rate: 6 },
       c: { aim: 0, level: 0, target: 0, want: 1, rate: 3 },
@@ -654,6 +669,13 @@
         // How much of the beam actually reaches the wall: the side heads only
         // throw it there while hanging, not when rolled to face the audience.
         lamp.reach = key === 'c' ? lamp.level : lamp.lit * Math.abs(Math.cos(tilts[key] * Math.PI / 180));
+        // With the side heads taken down only the follow spot lights anything:
+        // no coloured shadows, rims or glints from lamps that aren't there.
+        if (key !== 'c' && !sidesOn) {
+          lamp.level = 0;
+          lamp.lit = 0;
+          lamp.reach = 0;
+        }
       });
       castShadow(piv, dt);
       // While the page is moving the cards and their stand-ins move together,

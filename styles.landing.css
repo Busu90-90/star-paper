@@ -1576,38 +1576,62 @@ body.light-theme .lp-rig__torch--hit i { mix-blend-mode: multiply; }
   .lp-wall {
     --lp-rig-lift: calc(-1 * var(--lp-header-h, 68px));
     --lp-pivot: 18px;
-    /* Centre of the free gap between the wordmark and the nav buttons
-       (about 56.5% of the width on every phone size), not the page centre. */
+    /* The middle of the nav's open space, between the wordmark and the
+       buttons (about 56.5% on every phone width), so the head never
+       crowds STAR PAPER. */
     --lp-lamp-c: 56.5%;
   }
-  .lp-rig { --lp-lens: calc(var(--lp-pivot) + 29px); }
-  /* The wall bracket: a bolted steel plate on the bricks that the lamp's
-     yoke swings from. */
-  .lp-rig::before {
+  .lp-rig { --lp-lens: calc(var(--lp-pivot) + 26px); }
+  .lp-rig::before,
+  .lp-rig::after {
     content: '';
     position: absolute;
     left: var(--lp-lamp-c);
-    top: calc(var(--lp-pivot) - 15px);
-    width: var(--lp-plate-w, 46px);
-    height: 15px;
     translate: -50% 0;
-    border-radius: 3px;
+    pointer-events: none;
+  }
+  /* Wall plate: brushed steel with a bevelled edge, two slotted screws, a
+     soft shadow on the bricks and a warm rim where the lamp's spill
+     catches its lower edge. */
+  .lp-rig::before {
+    top: calc(var(--lp-pivot) - 15px);
+    width: var(--lp-plate-w, 42px);
+    height: 12px;
+    border-radius: 2px 2px 3px 3px;
     background:
-      radial-gradient(circle at 6px 50%, #e4e9e5 0 1.8px, #2f3832 2px 3px, transparent 3.2px),
-      radial-gradient(circle at calc(100% - 6px) 50%, #e4e9e5 0 1.8px, #2f3832 2px 3px, transparent 3.2px),
-      linear-gradient(180deg, #8a968d, #4c5850 45%, #2b332d);
+      radial-gradient(circle at 6px 50%, transparent 2.4px, rgb(0 0 0 / 0.55) 2.6px 3px, transparent 3.3px),
+      radial-gradient(circle at calc(100% - 6px) 50%, transparent 2.4px, rgb(0 0 0 / 0.55) 2.6px 3px, transparent 3.3px),
+      linear-gradient(35deg, transparent calc(50% - 0.5px), #39423b calc(50% - 0.5px) calc(50% + 0.5px), transparent calc(50% + 0.5px)) 4px 50% / 4px 4px no-repeat,
+      linear-gradient(-35deg, transparent calc(50% - 0.5px), #39423b calc(50% - 0.5px) calc(50% + 0.5px), transparent calc(50% + 0.5px)) calc(100% - 4px) 50% / 4px 4px no-repeat,
+      radial-gradient(circle at 6px 50%, #c9d0cb 0 1.6px, #8b958e 2.4px, transparent 2.5px),
+      radial-gradient(circle at calc(100% - 6px) 50%, #c9d0cb 0 1.6px, #8b958e 2.4px, transparent 2.5px),
+      repeating-linear-gradient(90deg, rgb(255 255 255 / 0.05) 0 1px, transparent 1px 3px),
+      linear-gradient(180deg, #a7b0a9 0%, #6f7a72 18%, #4a544d 60%, #343c36 100%);
     box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.35),
-      0 0 0 1px rgb(0 0 0 / 0.45),
-      0 3px 6px rgb(0 0 0 / 0.55);
+      inset 0 1px 0 rgb(255 255 255 / 0.45),
+      inset 0 -1px 0 rgb(255 220 150 / 0.35),
+      inset 1px 0 0 rgb(255 255 255 / 0.12),
+      inset -1px 0 0 rgb(0 0 0 / 0.3),
+      0 0 0 0.5px rgb(0 0 0 / 0.6),
+      0 3px 4px -1px rgb(0 0 0 / 0.55),
+      0 6px 12px -2px rgb(0 0 0 / 0.4);
+  }
+  /* Short stem from the plate down to the yoke bolt. */
+  .lp-rig::after {
+    top: calc(var(--lp-pivot) - 4px);
+    width: 6px;
+    height: 7px;
+    border-radius: 1px;
+    background: linear-gradient(90deg, #2a312c, #79847c 40%, #3a433d 75%, #1f2521);
+    box-shadow: 0 2px 3px rgb(0 0 0 / 0.5);
   }
   .lp-rig__truss,
   .lp-rig__glints,
   .lp-twinkles--rig { display: none; }
-  .lp-rig__lamp { width: 36px; height: 40px; margin-left: -18px; }
+  .lp-rig__lamp { width: 32px; height: 35px; margin-left: -16px; }
   .lp-rig__spill {
-    left: calc(var(--lp-lamp-c) - 60px);
-    width: 120px;
+    left: calc(var(--lp-lamp-c) - 50px);
+    width: 100px;
     top: -10px;
     height: 80px;
     background:
@@ -1627,12 +1651,17 @@ body.light-theme .lp-rig__torch--hit i { mix-blend-mode: multiply; }
     opacity: 0.6;
   }
   .lp-show { padding-top: 24px; }
+  /* Where the stage ends only the follow spot's warm pool lands on the
+     floor, none of the side heads' colours. */
+  .lp-rig .lp-rig__pool {
+    background: radial-gradient(closest-side at var(--lp-lamp-c) 50%, rgb(255 240 205 / 0.3), transparent);
+  }
 }
 
 /* The narrowest phones leave about 40px between wordmark and buttons. */
 @media (max-width: 379px) {
-  .lp-rig { --lp-plate-w: 38px; }
-  .lp-rig__lamp { width: 30px; height: 33px; margin-left: -15px; }
+  .lp-rig { --lp-plate-w: 36px; --lp-lens: calc(var(--lp-pivot) + 23px); }
+  .lp-rig__lamp { width: 28px; height: 31px; margin-left: -14px; }
 }
 
 /* Star glints: a few cross-shaped sparkles that wink on and off along the
