@@ -1575,17 +1575,40 @@ body.light-theme .lp-rig__torch--hit i { mix-blend-mode: multiply; }
   .lp-rig,
   .lp-wall {
     --lp-rig-lift: calc(-1 * var(--lp-header-h, 68px));
-    --lp-pivot: 14px;
+    --lp-pivot: 18px;
+    /* Centre of the free gap between the wordmark and the nav buttons
+       (about 56.5% of the width on every phone size), not the page centre. */
+    --lp-lamp-c: 56.5%;
   }
-  .lp-rig { --lp-lens: calc(var(--lp-pivot) + 32px); }
+  .lp-rig { --lp-lens: calc(var(--lp-pivot) + 29px); }
+  /* The wall bracket: a bolted steel plate on the bricks that the lamp's
+     yoke swings from. */
+  .lp-rig::before {
+    content: '';
+    position: absolute;
+    left: var(--lp-lamp-c);
+    top: calc(var(--lp-pivot) - 15px);
+    width: var(--lp-plate-w, 46px);
+    height: 15px;
+    translate: -50% 0;
+    border-radius: 3px;
+    background:
+      radial-gradient(circle at 6px 50%, #e4e9e5 0 1.8px, #2f3832 2px 3px, transparent 3.2px),
+      radial-gradient(circle at calc(100% - 6px) 50%, #e4e9e5 0 1.8px, #2f3832 2px 3px, transparent 3.2px),
+      linear-gradient(180deg, #8a968d, #4c5850 45%, #2b332d);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.35),
+      0 0 0 1px rgb(0 0 0 / 0.45),
+      0 3px 6px rgb(0 0 0 / 0.55);
+  }
   .lp-rig__truss,
   .lp-rig__glints,
   .lp-twinkles--rig { display: none; }
-  .lp-rig__lamp { width: 40px; height: 44px; margin-left: -20px; }
+  .lp-rig__lamp { width: 36px; height: 40px; margin-left: -18px; }
   .lp-rig__spill {
-    left: calc(var(--lp-lamp-c) - 70px);
-    width: 140px;
-    top: -6px;
+    left: calc(var(--lp-lamp-c) - 60px);
+    width: 120px;
+    top: -10px;
     height: 80px;
     background:
       radial-gradient(closest-side, rgb(255 226 160 / 0.42), rgb(255 226 160 / 0.12) 60%, transparent),
@@ -1604,6 +1627,12 @@ body.light-theme .lp-rig__torch--hit i { mix-blend-mode: multiply; }
     opacity: 0.6;
   }
   .lp-show { padding-top: 24px; }
+}
+
+/* The narrowest phones leave about 40px between wordmark and buttons. */
+@media (max-width: 379px) {
+  .lp-rig { --lp-plate-w: 38px; }
+  .lp-rig__lamp { width: 30px; height: 33px; margin-left: -15px; }
 }
 
 /* Star glints: a few cross-shaped sparkles that wink on and off along the
