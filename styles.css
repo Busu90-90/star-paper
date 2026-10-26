@@ -2409,7 +2409,7 @@ body.light-theme .activity-time-ago { color: #888; }
     gap: 10px;
     padding: 12px 14px;
     border-radius: 12px;
-    border-left: 3px solid rgba(255,179,0,0.4);
+    border: 1px solid rgba(255,179,0,0.4);
     background: rgba(255,179,0,0.06);
     font-size: 13px;
     line-height: 1.5;
@@ -4782,7 +4782,7 @@ body.light-theme .today-board__status--alerts {
 #dashboard .dashboard-alert-item {
     --alert-accent-dark: rgba(33,150,243,0.85);
     --alert-accent-light: rgba(33,150,243,0.65);
-    border-left: 3px solid var(--alert-accent-dark);
+    border: 1px solid var(--alert-accent-dark);
     padding-left: 13px;
 }
 #dashboard .dashboard-alert-item--urgent {
@@ -4824,7 +4824,7 @@ body.light-theme .today-board__status--alerts {
     border: 1px solid rgba(255,179,0,0.32);
     color: #ffd36a;
 }
-body.light-theme #dashboard .dashboard-alert-item { border-left-color: var(--alert-accent-light); }
+body.light-theme #dashboard .dashboard-alert-item { border-color: var(--alert-accent-light); }
 body.light-theme .dashboard-alert-icon {
     background: rgba(138,109,26,0.14);
     border-color: rgba(138,109,26,0.26);

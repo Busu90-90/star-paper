@@ -57,6 +57,9 @@ const SHELL_VERSION = SP_ASSET_MANIFEST.version("sw.js");
 const REPORT_BUNDLE_VERSION = SP_ASSET_MANIFEST.version("app.reports.js");
 const APP_BUNDLE_VERSION = SP_ASSET_MANIFEST.version("app.js");
 const CACHE_NAME = `star-paper-shell-v${SHELL_VERSION}`;
+// Versioned shell files never change at the same URL, so they live in one
+// cache that survives worker updates; a new deploy only downloads what changed.
+const ASSET_CACHE = "star-paper-assets";
 const REPORT_RUNTIME_ASSETS = new Set(
   [
     SP_ASSET_MANIFEST.url("./app.reports.js"),
@@ -68,6 +71,14 @@ const REPORT_RUNTIME_ASSETS = new Set(
 );
 const PUBLIC_LANDING_PAGES = SP_PUBLIC_PAGES.publicLandingRouteMap();
 const APP_SHELL = SP_ASSET_MANIFEST.appShell;
+// Installing must stay light: on mobile data a full precache (about 9 MB of
+// images, the 3D globe and map data) competed with sign-in and made the first
+// load after every deploy crawl. Images, the globe and map data are cached
+// the first time they are used instead.
+const HEAVY_SHELL_ASSET = /\.(png|jpe?g|webp|json)(\?|$)|\/three\/|\/world-atlas\//;
+const isVersionedAsset = (asset) => /[?&]v=/.test(String(asset));
+const CORE_SHELL = APP_SHELL.filter((asset) => isVersionedAsset(asset) && !HEAVY_SHELL_ASSET.test(asset));
+const UNVERSIONED_SHELL = APP_SHELL.filter((asset) => !isVersionedAsset(asset));
 
 const APP_SHELL_URLS = new Set(
   APP_SHELL.map((asset) => {
@@ -183,22 +194,42 @@ function isCacheableAppShellRequest(request) {
   return APP_SHELL_URLS.has(`${url.pathname}${url.search}`);
 }
 
+async function precacheCoreShell() {
+  const cache = await caches.open(ASSET_CACHE);
+  const missing = [];
+  for (const asset of CORE_SHELL) {
+    if (!(await cache.match(asset))) missing.push(asset);
+  }
+  await cache.addAll(missing);
+  // Unversioned pages (index.html) are refreshed with every worker version.
+  await (await caches.open(CACHE_NAME)).addAll(UNVERSIONED_SHELL);
+}
+
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
-  );
+  event.waitUntil(precacheCoreShell());
   self.skipWaiting();
 });
+
+async function pruneAssetCache() {
+  const cache = await caches.open(ASSET_CACHE);
+  const requests = await cache.keys();
+  await Promise.all(requests
+    .filter((req) => {
+      const url = new URL(req.url);
+      return !APP_SHELL_URLS.has(`${url.pathname}${url.search}`);
+    })
+    .map((req) => cache.delete(req)));
+}
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((key) => key !== CACHE_NAME)
+          .filter((key) => key !== CACHE_NAME && key !== ASSET_CACHE)
           .map((key) => caches.delete(key))
       )
-    )
+    ).then(pruneAssetCache)
   );
   self.clients.claim();
 });
@@ -268,8 +299,10 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (isFreshOnlyReportRuntimeAsset(url)) {
+    // Revalidate with the server (a cheap 304 when unchanged) instead of
+    // downloading the whole bundle again on every load.
     event.respondWith(
-      fetch(freshRequest(request))
+      fetch(request)
         .then((response) => {
           if (response && response.ok) {
             const clone = response.clone();
@@ -285,17 +318,35 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  if (!url.searchParams.has("v")) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request).then((cached) => cached || Response.error()))
+    );
+    return;
+  }
+
+  // Cache first: the URL carries the file's version, so a cached copy is
+  // always the right one and repeat visits skip the network entirely.
   event.respondWith(
-    fetch(freshRequest(request))
-      .then((response) => {
-        if (!response || response.status !== 200) return response;
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-        return response;
+    caches.open(ASSET_CACHE).then((cache) =>
+      cache.match(request).then((cached) => {
+        if (cached) return cached;
+        return fetch(request).then((response) => {
+          if (response && response.status === 200) cache.put(request, response.clone());
+          return response;
+        });
       })
-      .catch(() =>
-        caches.match(request).then((cached) => cached || Response.error())
-      )
+    ).catch(() =>
+      caches.match(request).then((cached) => cached || Response.error())
+    )
   );
 });
 }

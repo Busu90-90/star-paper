@@ -4,7 +4,10 @@
   const rootHtml = Object.freeze([
     // The landing, its showcase slides and sign-in all live in index.html.
     // The old /how-it-works, /proof and /testimonials URLs 301 to a slide (_redirects).
-    Object.freeze({ file: 'index.html', marker: 'app-shell', routes: Object.freeze([]) })
+    Object.freeze({ file: 'index.html', marker: 'app-shell', routes: Object.freeze([]) }),
+    // Legal pages stand alone so they open without the app.
+    Object.freeze({ file: 'privacy.html', marker: 'public-landing', routes: Object.freeze(['/privacy', '/privacy.html']) }),
+    Object.freeze({ file: 'terms.html', marker: 'public-landing', routes: Object.freeze(['/terms', '/terms.html']) })
   ]);
 
   function landingTarget(file) {
