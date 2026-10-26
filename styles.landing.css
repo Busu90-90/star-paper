@@ -1568,13 +1568,42 @@ body.light-theme .lp-rig__torch--hit i { mix-blend-mode: multiply; }
   }
 }
 
-/* Phones: the truss hangs at the very top of the page, in the same band as
-   the nav, so the follow spot drops straight out of the header and the
-   slides can start higher. */
+/* Phones: no truss. The follow spot is a small wall-mounted head fixed to
+   the brick wall in the middle of the nav band, with a warm patch of lit
+   brick around its bracket, and the slides start just below the nav. */
 @media (max-width: 599px) {
   .lp-rig,
-  .lp-wall { --lp-rig-lift: calc(-1 * var(--lp-header-h, 68px)); }
-  .lp-show { padding-top: 32px; }
+  .lp-wall {
+    --lp-rig-lift: calc(-1 * var(--lp-header-h, 68px));
+    --lp-pivot: 14px;
+  }
+  .lp-rig { --lp-lens: calc(var(--lp-pivot) + 32px); }
+  .lp-rig__truss,
+  .lp-rig__glints,
+  .lp-twinkles--rig { display: none; }
+  .lp-rig__lamp { width: 40px; height: 44px; margin-left: -20px; }
+  .lp-rig__spill {
+    left: calc(var(--lp-lamp-c) - 70px);
+    width: 140px;
+    top: -6px;
+    height: 80px;
+    background:
+      radial-gradient(closest-side, rgb(255 226 160 / 0.42), rgb(255 226 160 / 0.12) 60%, transparent),
+      url('assets/landing/brick-wall.webp') center / 300px auto;
+    background-blend-mode: multiply, normal;
+    -webkit-mask-image: radial-gradient(closest-side, #000 30%, transparent);
+    mask-image: radial-gradient(closest-side, #000 30%, transparent);
+    mix-blend-mode: screen;
+  }
+  body.light-theme .lp-rig__spill {
+    background:
+      radial-gradient(closest-side, rgb(236 196 112 / 0.5), rgb(236 196 112 / 0.15) 60%, transparent),
+      url('assets/landing/brick-wall.webp') center / 300px auto;
+    background-blend-mode: multiply, normal;
+    mix-blend-mode: multiply;
+    opacity: 0.6;
+  }
+  .lp-show { padding-top: 24px; }
 }
 
 /* Star glints: a few cross-shaped sparkles that wink on and off along the
