@@ -1540,6 +1540,19 @@ body.light-theme .lp-rig__torch--hit i { mix-blend-mode: multiply; }
   .lp-rig__torch { --lp-lens-c: 16px; }
 }
 
+/* Phones: only the follow spot. The screen is narrow, so the Bee Eye fans
+   cross the copy and fight the centre light; on phones the side heads hang
+   dark on the truss and throw nothing (no beams, wall washes, pools or
+   torch). Desktop keeps the full rig. */
+@media (max-width: 599px) {
+  .lp-rig__beam--l,
+  .lp-rig__beam--r,
+  .lp-rig__torch,
+  .lp-wall__wash--l,
+  .lp-wall__wash--r,
+  .lp-wall__pool { display: none; }
+}
+
 /* Star glints: a few cross-shaped sparkles that wink on and off along the
    truss and in the footer, one at a time, never more than a couple lit. */
 .lp-twinkles {
