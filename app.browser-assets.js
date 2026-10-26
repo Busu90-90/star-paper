@@ -60,7 +60,7 @@
     ]],
     ['1', ['app.offline-cache.js']],
     ['3', ['app.todayboard.js']],
-    ['76', ['app.browser-assets.js']],
+    ['77', ['app.browser-assets.js']],
     ['3', ['app.boot-head.js']],
     ['3', ['app.money.js']],
     ['4', ['app.home.js']],
@@ -72,7 +72,7 @@
     ['4', ['app.docs.js']],
     ['4', ['app.chrome.js']],
     ['2', ['app.insights.js']],
-    ['55', ['styles.landing.css']],
+    ['56', ['styles.landing.css']],
     ['2', ['assets/landing/brick-wall.webp']],
     ['1', ['styles.brand.css']],
     ['24', ['styles.app.css']],
@@ -114,7 +114,7 @@
     ['65', ['styles.css']],
     ['105', ['supabase.js']],
     ['164', ['app.js']],
-    ['255', ['sw.js']]
+    ['256', ['sw.js']]
   ];
 
   const assetVersions = {};

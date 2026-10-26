@@ -1593,11 +1593,9 @@ body.light-theme .lp-rig__torch--hit i { mix-blend-mode: multiply; }
   .lp-brand { gap: var(--sp-space-2); min-width: 0; }
   .lp-brand__mark { width: 32px; height: 32px; }
   .lp-brand__word { font-size: clamp(0.9375rem, 0.3rem + 2.9vw, 1.125rem); }
-  /* The buttons mirror the brand: the theme toggle sits as close to the
-     head as the wordmark does, Sign in sits on the edge like the logo. */
   .lp-header__actions {
     grid-column: 3;
-    justify-content: space-between;
+    justify-content: flex-end;
     margin-left: 0;
   }
   .lp-rig { --lp-lens: calc(var(--lp-pivot) + 26px); }
@@ -3546,12 +3544,16 @@ body.light-theme .lp-cta__hang {
   mix-blend-mode: screen;
 }
 
-/* Light: the lip, the follow spot's pool and its sheen. */
+/* Light: the lip, the follow spot's pool where the beam lands on the
+   boards (a flattened oval, as a round spot looks on a floor seen from the
+   front, with a hot centre and a soft edge), and its sheen. */
 .lp-floor::after {
   content: '';
   position: absolute;
   inset: 0;
   background:
+    radial-gradient(150px 34px at 50% 72px, rgb(255 244 220 / 0.3), rgb(255 238 200 / 0.14) 45%, rgb(255 230 180 / 0.03) 75%, transparent),
+    radial-gradient(240px 64px at 50% 72px, rgb(255 232 180 / 0.1), transparent),
     linear-gradient(180deg, rgb(255 240 210 / 0.75) 0, rgb(255 240 210 / 0.3) 1px, rgb(255 240 210 / 0.08) 3px, transparent 5px),
     radial-gradient(9% 4px at 50% 1px, rgb(255 250 235 / 0.9), transparent),
     radial-gradient(14% 85% at 50% 0, rgb(255 238 200 / 0.16), rgb(255 238 200 / 0.05) 55%, transparent),
@@ -3586,6 +3588,8 @@ body.light-theme .lp-floor::before {
 
 body.light-theme .lp-floor::after {
   background:
+    radial-gradient(150px 34px at 50% 72px, rgb(226 180 90 / 0.3), rgb(236 196 112 / 0.12) 50%, transparent),
+    radial-gradient(240px 64px at 50% 72px, rgb(236 196 112 / 0.12), transparent),
     linear-gradient(180deg, rgb(70 55 30 / 0.4) 0, rgb(70 55 30 / 0.12) 1.5px, transparent 4px),
     radial-gradient(14% 85% at 50% 0, rgb(236 196 112 / 0.22), rgb(236 196 112 / 0.06) 55%, transparent),
     radial-gradient(42% 60% at 50% 0, rgb(236 196 112 / 0.14), transparent);
