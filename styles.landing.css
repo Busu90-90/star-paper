@@ -1568,6 +1568,15 @@ body.light-theme .lp-rig__torch--hit i { mix-blend-mode: multiply; }
   }
 }
 
+/* Phones: the truss hangs at the very top of the page, in the same band as
+   the nav, so the follow spot drops straight out of the header and the
+   slides can start higher. */
+@media (max-width: 599px) {
+  .lp-rig,
+  .lp-wall { --lp-rig-lift: calc(-1 * var(--lp-header-h, 68px)); }
+  .lp-show { padding-top: 32px; }
+}
+
 /* Star glints: a few cross-shaped sparkles that wink on and off along the
    truss and in the footer, one at a time, never more than a couple lit. */
 .lp-twinkles {
