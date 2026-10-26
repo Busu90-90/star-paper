@@ -3447,6 +3447,56 @@ body.light-theme .lp-cta__hang {
   .lp .lp-footer { padding-top: calc(var(--sp-space-12) + 140px); }
 }
 
+/* The floor itself, so the mirrored buttons have something to sit on: a
+   lit stage lip where the wall meets the boards, polished boards running
+   away from the audience in perspective, a gloss that fades with depth and
+   the follow spot's warm pool where its light lands. It only adds light
+   (screen; multiply on the pale stage), so the reflection painted under it
+   stays fully visible. A soft shadow darkens the foot of the wall. */
+.lp .lp-footer { border-top: 0; }
+
+.lp-footer::before,
+.lp-footer::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  width: 100vw;
+  translate: -50% 0;
+  pointer-events: none;
+}
+
+.lp-footer::before {
+  top: 0;
+  height: calc(var(--sp-space-12) + 180px);
+  background:
+    linear-gradient(180deg, rgb(255 238 200 / 0.55) 0, rgb(255 238 200 / 0.16) 1.5px, rgb(255 238 200 / 0.04) 4px, transparent 6px),
+    radial-gradient(55% 70% at 50% 0%, rgb(255 232 180 / 0.2), rgb(255 232 180 / 0.06) 55%, transparent 80%),
+    repeating-conic-gradient(from 150deg at 50% -520px, rgb(255 250 235 / 0.07) 0deg 0.12deg, transparent 0.12deg 1.6deg),
+    linear-gradient(180deg, rgb(255 255 255 / 0.07), rgb(255 255 255 / 0.02) 45%, transparent 90%);
+  -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent);
+  mask-image: linear-gradient(180deg, #000 55%, transparent);
+  mix-blend-mode: screen;
+}
+
+.lp-footer::after {
+  bottom: 100%;
+  height: 28px;
+  background: linear-gradient(0deg, rgb(0 0 0 / 0.55), transparent);
+}
+
+body.light-theme .lp-footer::before {
+  background:
+    linear-gradient(180deg, rgb(60 50 30 / 0.45) 0, rgb(60 50 30 / 0.14) 1.5px, rgb(60 50 30 / 0.04) 4px, transparent 6px),
+    radial-gradient(55% 70% at 50% 0%, rgb(236 196 112 / 0.28), rgb(236 196 112 / 0.08) 55%, transparent 80%),
+    repeating-conic-gradient(from 150deg at 50% -520px, rgb(40 50 40 / 0.07) 0deg 0.12deg, transparent 0.12deg 1.6deg),
+    linear-gradient(180deg, rgb(40 50 40 / 0.06), transparent 85%);
+  mix-blend-mode: multiply;
+}
+
+body.light-theme .lp-footer::after {
+  background: linear-gradient(0deg, rgb(40 50 40 / 0.12), transparent);
+}
+
 /* Backstage passes: each testimonial is a laminated pass on a lanyard, with
    a punched slot, a metal clip and a holographic foil strip down one side
    whose colours drift as the light moves over it. */
