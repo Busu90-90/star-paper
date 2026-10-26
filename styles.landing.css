@@ -1540,6 +1540,22 @@ body.light-theme .lp-rig__torch--hit i { mix-blend-mode: multiply; }
   .lp-rig__torch { --lp-lens-c: 16px; }
 }
 
+/* Phones: the side heads are a lighter accent. The screen is narrow, so full
+   Bee Eye fans cross the copy and fight the follow spot. Their beams stop
+   about half a screen below the truss and everything they light (beams, wall
+   washes and pools, the torch at the viewer) burns at roughly half power.
+   Only plain CSS levels change here; app.landing-lights.js still drives the
+   animated ones on top. */
+@media (max-width: 599px) {
+  .lp-rig__cone--bee { height: min(100%, 55lvh); }
+  .lp-rig__beam:has(.lp-rig__cone--bee) { opacity: 0.55; }
+  .lp-rig__torch { opacity: 0.55; }
+  body:not(.light-theme) .lp-wall :is(.lp-wall__wash--l, .lp-wall__wash--r) { --lp-wash-o: 0.45; }
+  body.light-theme .lp-wall :is(.lp-wall__wash--l, .lp-wall__wash--r) { --lp-wash-o: 0.45; }
+  body:not(.light-theme) .lp-wall .lp-wall__pool,
+  body.light-theme .lp-wall .lp-wall__pool { --lp-wash-o: 0.55; }
+}
+
 /* Star glints: a few cross-shaped sparkles that wink on and off along the
    truss and in the footer, one at a time, never more than a couple lit. */
 .lp-twinkles {
