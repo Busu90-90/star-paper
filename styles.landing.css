@@ -1553,6 +1553,15 @@ body.light-theme .lp-rig__torch--hit i { mix-blend-mode: multiply; }
   .lp-wall__pool { display: none; }
 }
 
+/* Phones, no side lamps at all: the Bee Eye heads and their truss clamps
+   come down too, so the truss carries just the centre follow spot. */
+@media (max-width: 599px) {
+  .lp-bee--l,
+  .lp-bee--r,
+  .lp-rig__truss use[x="19%"],
+  .lp-rig__truss use[x="81%"] { display: none; }
+}
+
 /* Star glints: a few cross-shaped sparkles that wink on and off along the
    truss and in the footer, one at a time, never more than a couple lit. */
 .lp-twinkles {
