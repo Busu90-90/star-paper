@@ -1576,10 +1576,29 @@ body.light-theme .lp-rig__torch--hit i { mix-blend-mode: multiply; }
   .lp-wall {
     --lp-rig-lift: calc(-1 * var(--lp-header-h, 68px));
     --lp-pivot: 18px;
-    /* The middle of the nav's open space, between the wordmark and the
-       buttons (about 56.5% on every phone width), so the head never
-       crowds STAR PAPER. */
-    --lp-lamp-c: 56.5%;
+    /* Dead centre of the nav. The bar below keeps a clear column there. */
+    --lp-lamp-c: 50%;
+  }
+  .lp-header__bar,
+  .lp-rig { --lp-mount-gap: 64px; }
+  /* Nav: brand on the left, buttons on the right, and an empty centre
+     column the same width on every phone, so the head sits in the exact
+     middle with equal room either side and its glow never reaches the
+     wordmark. */
+  .lp-header__bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--lp-mount-gap) minmax(0, 1fr);
+    gap: 0;
+  }
+  .lp-brand { gap: var(--sp-space-2); min-width: 0; }
+  .lp-brand__mark { width: 32px; height: 32px; }
+  .lp-brand__word { font-size: clamp(0.9375rem, 0.3rem + 2.9vw, 1.125rem); }
+  /* The buttons mirror the brand: the theme toggle sits as close to the
+     head as the wordmark does, Sign in sits on the edge like the logo. */
+  .lp-header__actions {
+    grid-column: 3;
+    justify-content: space-between;
+    margin-left: 0;
   }
   .lp-rig { --lp-lens: calc(var(--lp-pivot) + 26px); }
   .lp-rig::before,
@@ -1629,11 +1648,12 @@ body.light-theme .lp-rig__torch--hit i { mix-blend-mode: multiply; }
   .lp-rig__glints,
   .lp-twinkles--rig { display: none; }
   .lp-rig__lamp { width: 32px; height: 35px; margin-left: -16px; }
+  /* Lit brick stays inside the centre column. */
   .lp-rig__spill {
-    left: calc(var(--lp-lamp-c) - 50px);
-    width: 100px;
-    top: -10px;
-    height: 80px;
+    left: calc(var(--lp-lamp-c) - var(--lp-mount-gap) / 2);
+    width: var(--lp-mount-gap);
+    top: -8px;
+    height: 72px;
     background:
       radial-gradient(closest-side, rgb(255 226 160 / 0.42), rgb(255 226 160 / 0.12) 60%, transparent),
       url('assets/landing/brick-wall.webp') center / 300px auto;
@@ -1650,6 +1670,14 @@ body.light-theme .lp-rig__torch--hit i { mix-blend-mode: multiply; }
     mix-blend-mode: multiply;
     opacity: 0.6;
   }
+  /* The beam's spill on the wall starts below the nav, so its glow
+     opens out over the slide and never haloes the wordmark. */
+  .lp-rig__beam--c::before {
+    top: 0;
+    width: min(240px, 60%);
+    height: 240px;
+    background: radial-gradient(50% 50% at 50% 55%, rgb(var(--lp-beam-tint) / 0.3), rgb(var(--lp-beam-tint) / 0.09) 55%, transparent 75%);
+  }
   .lp-show { padding-top: 24px; }
   /* Where the stage ends only the follow spot's warm pool lands on the
      floor, none of the side heads' colours. */
@@ -1658,10 +1686,20 @@ body.light-theme .lp-rig__torch--hit i { mix-blend-mode: multiply; }
   }
 }
 
-/* The narrowest phones leave about 40px between wordmark and buttons. */
+/* The narrowest phones: a smaller head and a slightly narrower centre column. */
 @media (max-width: 379px) {
+  .lp-header__bar,
+  .lp-rig { --lp-mount-gap: 52px; }
   .lp-rig { --lp-plate-w: 36px; --lp-lens: calc(var(--lp-pivot) + 23px); }
   .lp-rig__lamp { width: 28px; height: 31px; margin-left: -14px; }
+}
+
+/* Very small phones (320px): a smaller brand so it stays in its column. */
+@media (max-width: 339px) {
+  .lp-header__bar,
+  .lp-rig { --lp-mount-gap: 48px; }
+  .lp-brand__mark { width: 28px; height: 28px; }
+  .lp-brand__word { font-size: 0.8125rem; }
 }
 
 /* Star glints: a few cross-shaped sparkles that wink on and off along the
@@ -3431,31 +3469,99 @@ body.light-theme .lp-shade[data-mark='pale']::before {
 
 /* Stage floor: the wall ends at the footer's top edge, which is where the
    stage floor begins. The hanging panel is mirrored faintly in the glossy
-   floor there, just its lower edge, fading out before the footer's words.
+   floor there: the buttons clearly, the Team card above them faintly,
+   fading out before the footer's words.
    The reflection's mask is laid over the unflipped box, so the floor end of
    the reflection is the bottom of the gradient. */
 .lp-cta__hang {
-  -webkit-box-reflect: below var(--sp-section) linear-gradient(transparent calc(100% - 200px), rgb(255 255 255 / 0.14) calc(100% - 120px), rgb(255 255 255 / 0.5));
+  -webkit-box-reflect: below var(--sp-section) linear-gradient(transparent calc(100% - 205px), rgb(255 255 255 / 0.08) calc(100% - 170px), rgb(255 255 255 / 0.14) calc(100% - 120px), rgb(255 255 255 / 0.5));
 }
 
 body.light-theme .lp-cta__hang {
-  -webkit-box-reflect: below var(--sp-section) linear-gradient(transparent calc(100% - 190px), rgb(255 255 255 / 0.08) calc(100% - 110px), rgb(255 255 255 / 0.26));
+  -webkit-box-reflect: below var(--sp-section) linear-gradient(transparent calc(100% - 205px), rgb(255 255 255 / 0.05) calc(100% - 170px), rgb(255 255 255 / 0.08) calc(100% - 110px), rgb(255 255 255 / 0.26));
 }
 
 /* Room on the floor for the reflection before the footer's words begin. */
 @supports (-webkit-box-reflect: below 0) {
-  .lp .lp-footer { padding-top: calc(var(--sp-space-12) + 140px); }
+  .lp .lp-footer { padding-top: calc(var(--sp-space-12) + 180px); }
 }
 
-/* The floor itself, so the mirrored buttons have something to sit on: a
-   lit stage lip where the wall meets the boards, polished boards running
-   away from the audience in perspective, a gloss that fades with depth and
-   the follow spot's warm pool where its light lands. It only adds light
-   (screen; multiply on the pale stage), so the reflection painted under it
-   stays fully visible. A soft shadow darkens the foot of the wall. */
+/* Narrow phones stack the two buttons, which lifts the Team card higher in
+   the panel, so the mirror reaches further and the floor is deeper. */
+@media (max-width: 399px) {
+  .lp-cta__hang {
+    -webkit-box-reflect: below var(--sp-section) linear-gradient(transparent calc(100% - 270px), rgb(255 255 255 / 0.08) calc(100% - 235px), rgb(255 255 255 / 0.14) calc(100% - 150px), rgb(255 255 255 / 0.5));
+  }
+  body.light-theme .lp-cta__hang {
+    -webkit-box-reflect: below var(--sp-section) linear-gradient(transparent calc(100% - 270px), rgb(255 255 255 / 0.05) calc(100% - 235px), rgb(255 255 255 / 0.08) calc(100% - 140px), rgb(255 255 255 / 0.26));
+  }
+  @supports (-webkit-box-reflect: below 0) {
+    .lp .lp-footer { padding-top: calc(var(--sp-space-12) + 245px); }
+  }
+}
+
+/* The floor itself, so the mirrored buttons have something to sit on.
+   Boards are drawn flat and tipped back in real perspective, so they
+   narrow and fade as they run upstage toward the wall. On top sit a
+   rounded stage lip catching the follow spot, a lacquer sheen that
+   streaks toward the audience under the spot, and dark wings at the
+   sides. Everything only adds light (screen; multiply on the pale stage),
+   so the reflection painted under it stays fully visible. A soft shadow
+   darkens the foot of the wall. */
 .lp .lp-footer { border-top: 0; }
 
-.lp-footer::before,
+.lp-footer > .lp-floor {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 100vw;
+  height: calc(var(--sp-space-12) + 260px);
+  translate: -50% 0;
+  overflow: hidden;
+  pointer-events: none;
+  perspective: 420px;
+  perspective-origin: 50% 0;
+}
+
+/* Boards: planks of slightly different tones (three overlapping cycles
+   so neighbours never repeat), dark seams, and a fine streaky grain. */
+.lp-floor::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: -100%;
+  width: 300%;
+  height: 1000px;
+  transform-origin: 50% 100%;
+  transform: rotateX(var(--lp-floor-tilt, 72deg));
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='480'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7 0.008' numOctaves='2' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 0.93 0 0 0 0 0.8 0 0 0 0.4 -0.17'/%3E%3C/filter%3E%3Crect width='240' height='480' filter='url(%23g)'/%3E%3C/svg%3E") 0 0 / 240px 480px,
+    repeating-linear-gradient(90deg, rgb(255 236 200 / 0.065) 0 40px, transparent 40px 42px),
+    repeating-linear-gradient(90deg, rgb(255 236 200 / 0.04) 0 40px, transparent 40px 126px),
+    repeating-linear-gradient(90deg, transparent 0 84px, rgb(255 236 200 / 0.03) 84px 124px, transparent 124px 210px),
+    repeating-linear-gradient(90deg, rgb(255 226 180 / 0.03) 0 40px, transparent 40px 294px);
+  opacity: 0.9;
+  -webkit-mask-image: linear-gradient(180deg, #000 45%, rgb(0 0 0 / 0.5) 75%, transparent 96%);
+  mask-image: linear-gradient(180deg, #000 45%, rgb(0 0 0 / 0.5) 75%, transparent 96%);
+  mix-blend-mode: screen;
+}
+
+/* Light: the lip, the follow spot's pool and its sheen. */
+.lp-floor::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgb(255 240 210 / 0.75) 0, rgb(255 240 210 / 0.3) 1px, rgb(255 240 210 / 0.08) 3px, transparent 5px),
+    radial-gradient(9% 4px at 50% 1px, rgb(255 250 235 / 0.9), transparent),
+    radial-gradient(14% 85% at 50% 0, rgb(255 238 200 / 0.16), rgb(255 238 200 / 0.05) 55%, transparent),
+    radial-gradient(42% 60% at 50% 0, rgb(255 228 170 / 0.13), rgb(255 228 170 / 0.04) 60%, transparent),
+    linear-gradient(180deg, rgb(255 255 255 / 0.05), transparent 60%);
+  -webkit-mask-image: linear-gradient(180deg, #000 50%, transparent);
+  mask-image: linear-gradient(180deg, #000 50%, transparent);
+  mix-blend-mode: screen;
+}
+
 .lp-footer::after {
   content: '';
   position: absolute;
@@ -3463,33 +3569,26 @@ body.light-theme .lp-cta__hang {
   width: 100vw;
   translate: -50% 0;
   pointer-events: none;
-}
-
-.lp-footer::before {
-  top: 0;
-  height: calc(var(--sp-space-12) + 180px);
-  background:
-    linear-gradient(180deg, rgb(255 238 200 / 0.55) 0, rgb(255 238 200 / 0.16) 1.5px, rgb(255 238 200 / 0.04) 4px, transparent 6px),
-    radial-gradient(55% 70% at 50% 0%, rgb(255 232 180 / 0.2), rgb(255 232 180 / 0.06) 55%, transparent 80%),
-    repeating-conic-gradient(from 150deg at 50% -520px, rgb(255 250 235 / 0.07) 0deg 0.12deg, transparent 0.12deg 1.6deg),
-    linear-gradient(180deg, rgb(255 255 255 / 0.07), rgb(255 255 255 / 0.02) 45%, transparent 90%);
-  -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent);
-  mask-image: linear-gradient(180deg, #000 55%, transparent);
-  mix-blend-mode: screen;
-}
-
-.lp-footer::after {
   bottom: 100%;
   height: 28px;
   background: linear-gradient(0deg, rgb(0 0 0 / 0.55), transparent);
 }
 
-body.light-theme .lp-footer::before {
+body.light-theme .lp-floor::before {
   background:
-    linear-gradient(180deg, rgb(60 50 30 / 0.45) 0, rgb(60 50 30 / 0.14) 1.5px, rgb(60 50 30 / 0.04) 4px, transparent 6px),
-    radial-gradient(55% 70% at 50% 0%, rgb(236 196 112 / 0.28), rgb(236 196 112 / 0.08) 55%, transparent 80%),
-    repeating-conic-gradient(from 150deg at 50% -520px, rgb(40 50 40 / 0.07) 0deg 0.12deg, transparent 0.12deg 1.6deg),
-    linear-gradient(180deg, rgb(40 50 40 / 0.06), transparent 85%);
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='480'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7 0.008' numOctaves='2' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 0.25 0 0 0 0 0.2 0 0 0 0 0.12 0 0 0 0.4 -0.17'/%3E%3C/filter%3E%3Crect width='240' height='480' filter='url(%23g)'/%3E%3C/svg%3E") 0 0 / 240px 480px,
+    repeating-linear-gradient(90deg, transparent 0 40px, rgb(60 46 24 / 0.12) 40px 42px),
+    repeating-linear-gradient(90deg, rgb(120 90 40 / 0.05) 0 40px, transparent 40px 126px),
+    repeating-linear-gradient(90deg, transparent 0 84px, rgb(120 90 40 / 0.04) 84px 124px, transparent 124px 210px);
+  opacity: 1;
+  mix-blend-mode: multiply;
+}
+
+body.light-theme .lp-floor::after {
+  background:
+    linear-gradient(180deg, rgb(70 55 30 / 0.4) 0, rgb(70 55 30 / 0.12) 1.5px, transparent 4px),
+    radial-gradient(14% 85% at 50% 0, rgb(236 196 112 / 0.22), rgb(236 196 112 / 0.06) 55%, transparent),
+    radial-gradient(42% 60% at 50% 0, rgb(236 196 112 / 0.14), transparent);
   mix-blend-mode: multiply;
 }
 
