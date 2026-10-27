@@ -131,7 +131,11 @@
             if (date >= thisStart && date <= thisEnd) cur += amount;
             else if (date >= lastStart && date <= lastEnd) prev += amount;
         };
-        (window.bookings || []).forEach((b) => { if (money.isEarningBooking(b)) add(parseDate(b.date), money.getBookingCollected(b)); });
+        (window.bookings || []).forEach((b) => {
+            if (!money.isEarningBooking(b)) return;
+            const events = money.getBookingCashEvents ? money.getBookingCashEvents(b) : [{ date: b.date, amount: money.getBookingCollected(b) }];
+            events.forEach((event) => add(parseDate(event.date), event.amount));
+        });
         (window.otherIncome || []).forEach((e) => { if (money.isReceivedOtherIncome(e)) add(parseDate(e.date), asAmount(e.amount)); });
         return { cur, prev, lastEnd };
     }

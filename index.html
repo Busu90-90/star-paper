@@ -6,9 +6,9 @@
     <meta name="star-paper:public-root" content="app-shell">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:;">
     <title>Star Paper</title>
-    <script src="app.browser-assets.js?v=77"></script>
-    <script src="app.public-pages.js?v=3"></script>
-    <script src="app.boot-head.js?v=3"></script>
+    <script src="app.browser-assets.js?v=86"></script>
+    <script src="app.public-pages.js?v=4"></script>
+    <script src="app.boot-head.js?v=4"></script>
     <link rel="manifest" href="manifest.json?v=28">
     <meta name="theme-color" content="#0A1210">
     <meta name="mobile-web-app-capable" content="yes">
@@ -30,13 +30,13 @@
     <script src="assets/vendor/supabase/supabase.min.js?v=1" integrity="sha384-dzQgxMPp/h+N0t5qDf6Bp516wKZr3pXgGMpA7/ZM6tiWkqYo90N060L03dxnZ8Tf"></script>
     <script src="app.boot-flags.js?v=4"></script>
 
-    <link rel="stylesheet" href="styles.css?v=65">
+    <link rel="stylesheet" href="styles.css?v=66">
     <link rel="stylesheet" href="styles.utilities.css?v=2">
     <!-- Design system: tokens + signed-out pages (landing, auth). Loaded last so it owns those screens. -->
-    <link rel="stylesheet" href="sp-design-tokens.css?v=5">
-    <link rel="stylesheet" href="styles.landing.css?v=56">
-    <link rel="stylesheet" href="styles.brand.css?v=1">
-    <link rel="stylesheet" href="styles.app.css?v=24">
+    <link rel="stylesheet" href="sp-design-tokens.css?v=6">
+    <link rel="stylesheet" href="styles.landing.css?v=60">
+    <link rel="stylesheet" href="styles.brand.css?v=2">
+    <link rel="stylesheet" href="styles.app.css?v=30">
     <link rel="preload" href="assets/vendor/fonts/font-29-fraunces-latin-opsz-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="assets/vendor/fonts/font-31-inter-tight-latin-wght-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <!-- Vendored Phosphor Icons 2.1.1 - unified icon system -->
@@ -44,7 +44,7 @@
     <!-- Fill + duotone icon sheets load with the app shell (app.root-shell.js). -->
 </head>
 <body>
-    <script src="app.boot-body.js?v=4"></script>
+    <script src="app.boot-body.js?v=5"></script>
     <div class="app-boot-loader hidden" id="appBootLoader" aria-live="polite" aria-hidden="true" data-state="loading-session">
         <div class="app-boot-loader__inner">
             <img src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="Star Paper" class="app-boot-loader__logo sp-spin-mark" />
@@ -122,6 +122,7 @@
                     <a class="lp-nav__link" href="#how" data-lp-slide-link="1">How it works</a>
                     <a class="lp-nav__link" href="#proof" data-lp-slide-link="2">Proof</a>
                     <a class="lp-nav__link" href="#voices" data-lp-slide-link="3">Testimonials</a>
+                    <a class="lp-nav__link" href="pricing.html">Pricing</a>
                 </nav>
                 <div class="lp-header__actions">
                     <button class="lp-icon-btn" id="landingThemeToggle" type="button" aria-label="Switch to light mode"><i class="ph ph-moon" aria-hidden="true"></i></button>
@@ -142,9 +143,9 @@
 
                     <article class="lp-slide" id="mainstage" role="group" aria-roledescription="slide" aria-label="1 of 4: The mainstage" data-lp-slide>
                         <div class="lp-slide__copy">
-                            <p class="lp-eyebrow"><span class="lp-eyebrow__dot" aria-hidden="true"></span>The manager&rsquo;s mainstage</p>
+                            <p class="lp-eyebrow"><span class="lp-eyebrow__dot" aria-hidden="true"></span>For artist managers</p>
                             <h1 class="lp-display">Run the show.<br><em>Own the money.</em></h1>
-                            <p class="lp-lede">Bookings, deposits, payouts and your whole crew on one live ledger. Built for artist managers who are done chasing spreadsheets.</p>
+                            <p class="lp-lede">Track your artists&rsquo; shows, fees and payments in one place. Built for artist managers who are tired of chasing money in spreadsheets.</p>
                             <div class="lp-cta-row">
                                 <button class="lp-btn lp-btn--gold lp-btn--lg" id="createAccountBtn" type="button" data-action="showSignupForm">Start free <i class="ph ph-arrow-right" aria-hidden="true"></i></button>
                                 <a class="lp-btn lp-btn--ghost lp-btn--lg" href="#how" data-lp-slide-link="1"><i class="ph ph-play-circle" aria-hidden="true"></i> See how it works</a>
@@ -230,7 +231,7 @@
                     <article class="lp-slide" id="voices" role="group" aria-roledescription="slide" aria-label="4 of 4: Testimonials" data-lp-slide>
                         <div class="lp-slide__copy">
                             <p class="lp-eyebrow"><span class="lp-eyebrow__dot" aria-hidden="true"></span>From the managers</p>
-                            <h2 class="lp-display lp-display--slide">Managers who<br><em>stopped chasing.</em></h2>
+                            <h2 class="lp-display lp-display--slide">Managers who<br><em>stopped chasing payments.</em></h2>
                             <p class="lp-lede">The people running bookings, balances and crews across East Africa, in their own words.</p>
                             <div class="lp-cta-row">
                                 <button class="lp-btn lp-btn--gold lp-btn--lg" type="button" data-action="showSignupForm">Join them <i class="ph ph-arrow-right" aria-hidden="true"></i></button>
@@ -257,6 +258,7 @@
                         <button class="lp-tab" type="button" data-lp-tab="3" aria-controls="voices"><span class="lp-tab__dot" aria-hidden="true"></span><span class="lp-tab__label">Voices</span><span class="lp-tab__bar" aria-hidden="true"></span></button>
                     </div>
                     <button class="lp-icon-btn lp-show__arrow" type="button" data-lp-next aria-label="Next slide"><i class="ph ph-caret-right" aria-hidden="true"></i></button>
+                    <button class="lp-icon-btn lp-show__play" type="button" data-lp-play aria-controls="lpShow" aria-pressed="false" aria-label="Pause slideshow" hidden><i class="ph ph-pause" aria-hidden="true"></i></button>
                 </div>
             </section>
             <!-- /lp:show -->
@@ -307,11 +309,12 @@
                     <img class="lp-brand__mark sp-spin-mark" src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="" width="36" height="36">
                     <span class="lp-brand__word">Star Paper</span>
                 </div>
-                <p class="lp-footer__tag">The manager&rsquo;s mainstage for bookings, money and teams.</p>
+                <p class="lp-footer__tag">Bookings, money and teams for artist managers.</p>
                 <nav class="lp-footer__nav" aria-label="Footer">
                     <a href="#how" data-lp-slide-link="1">How it works</a>
                     <a href="#proof" data-lp-slide-link="2">Proof</a>
                     <a href="#voices" data-lp-slide-link="3">Testimonials</a>
+                    <a href="pricing.html">Pricing</a>
                     <a href="privacy.html">Privacy</a>
                     <a href="terms.html">Terms</a>
                 </nav>
@@ -402,12 +405,15 @@
                     </label>
                     <label class="lp-field">
                         <span class="lp-field__label">Password</span>
-                        <span class="lp-input-wrap"><i class="ph ph-lock-simple lp-input-wrap__icon" aria-hidden="true"></i><input class="lp-input" type="password" id="signupPassword" placeholder="Choose a password" autocomplete="new-password"><button class="lp-eye" type="button" data-lp-eye="signupPassword" aria-label="Show password" aria-pressed="false"><i class="ph ph-eye" aria-hidden="true"></i></button></span>
+                        <span class="lp-input-wrap"><i class="ph ph-lock-simple lp-input-wrap__icon" aria-hidden="true"></i><input class="lp-input" type="password" id="signupPassword" placeholder="Choose a password" autocomplete="new-password" minlength="8" aria-describedby="signupPasswordHint"><button class="lp-eye" type="button" data-lp-eye="signupPassword" aria-label="Show password" aria-pressed="false"><i class="ph ph-eye" aria-hidden="true"></i></button></span>
+                        <span class="lp-field__hint" id="signupPasswordHint">At least 8 characters.</span>
                     </label>
                     <label class="lp-field">
                         <span class="lp-field__label">Phone <span class="lp-field__opt">optional</span></span>
-                        <span class="lp-input-wrap"><i class="ph ph-phone lp-input-wrap__icon" aria-hidden="true"></i><input class="lp-input" type="tel" id="signupPhone" placeholder="+256 700 000 000" autocomplete="tel" inputmode="tel"></span>
+                        <span class="lp-input-wrap"><i class="ph ph-phone lp-input-wrap__icon" aria-hidden="true"></i><input class="lp-input" type="tel" id="signupPhone" placeholder="+256 700 000 000" autocomplete="tel" inputmode="tel" aria-describedby="signupPhoneHint"></span>
+                        <span class="lp-field__hint" id="signupPhoneHint">Only so we can reach you about your account. We never share it.</span>
                     </label>
+                    <p class="lp-field__hint">Next, we email you a 6-digit code to confirm the address is yours.</p>
                     <button class="lp-btn lp-btn--foil lp-btn--block" id="signupButton" type="button" data-action="signup">Continue</button>
                     <div class="lp-divider"><span>or continue with</span></div>
                     <button class="lp-btn lp-btn--ghost lp-btn--block" type="button" data-action="signInWithGoogle"><i class="ph ph-google-logo" aria-hidden="true"></i> Google</button>
@@ -557,7 +563,10 @@
             </button>
         </nav>
 
-        <!-- Scroll-to-top (appears after scrolling down) -->
+        <!-- Scroll down / to top (each appears when there is somewhere to go) -->
+        <button class="scroll-top-fab scroll-down-fab" id="scrollDownFab" type="button" aria-label="Scroll to bottom">
+            <i class="ph ph-arrow-down" aria-hidden="true"></i>
+        </button>
         <button class="scroll-top-fab" id="scrollTopFab" type="button" aria-label="Scroll to top">
             <i class="ph ph-arrow-up" aria-hidden="true"></i>
         </button>
@@ -636,6 +645,10 @@
             <!-- ═══ Top bar: title · search · New · sync · bell · avatar ═══ -->
             <header class="header topbar">
                 <div class="topbar__title">
+                    <div class="nav-hist-wrap" role="group" aria-label="Page history">
+                        <button class="nav-hist-btn" id="navBackBtn" type="button" aria-label="Back" disabled><i class="ph ph-caret-left" aria-hidden="true"></i></button>
+                        <button class="nav-hist-btn" id="navFwdBtn" type="button" aria-label="Forward" disabled><i class="ph ph-caret-right" aria-hidden="true"></i></button>
+                    </div>
                     <button class="app-brand topbar__mark" type="button" data-action="showSection" data-section="dashboard" aria-label="Go home">
                         <img class="sp-spin-mark" src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="" width="34" height="34">
                     </button>
@@ -693,6 +706,15 @@
                         </div>
                     </header>
 
+                    <!-- First run only (no artists and no bookings yet): say what to do first. -->
+                    <section class="card hv2-card hv2-start" id="hv2Start" aria-labelledby="hv2StartTitle" hidden>
+                        <h3 class="hv2-title" id="hv2StartTitle">Start here</h3>
+                        <ol class="hv2-start__steps">
+                            <li id="hv2StartArtist"><span>Add your first artist</span> <button class="btn-primary hv2-start__btn" type="button" data-action="openQuickAdd" data-target-section="artists">Add artist</button></li>
+                            <li id="hv2StartBooking"><span>Log a show for that artist: date, venue and fee</span> <button class="btn-primary hv2-start__btn" type="button" data-action="openQuickAdd" data-target-section="booking">Add booking</button></li>
+                        </ol>
+                    </section>
+
                     <div class="hv2-top">
                         <section class="card hv2-card hv2-hero" aria-labelledby="hv2HeroLabel">
                             <span class="sp-icon-tile sp-icon-tile--foil hv2-hero__icon" aria-hidden="true"><i class="ph ph-coins"></i></span>
@@ -700,8 +722,8 @@
                                 <p class="hv2-label" id="hv2HeroLabel">Cash in · <span id="glancePeriodLabel">this month</span></p>
                                 <p class="hv2-hero__value money" id="totalIncome"><span class="sp-skeleton"></span></p>
                                 <p class="hv2-delta" id="hv2HeroDelta"></p>
-                                <button class="hv2-bbf" type="button" data-action="openBBFModal" title="Set balance brought forward">
-                                    Brought forward <span class="bbf-month-label" id="bbfMonthLabel"></span>: <span class="money" id="dashboardBBF">UGX 0</span>
+                                <button class="hv2-bbf" type="button" data-action="openBBFModal" title="Set money carried over from before">
+                                    Carried over <span class="bbf-month-label" id="bbfMonthLabel"></span>: <span class="money" id="dashboardBBF">UGX 0</span>
                                 </button>
                             </div>
                             <svg class="hv2-spark hv2-spark--hero" id="hv2HeroSpark" viewBox="0 0 240 96" preserveAspectRatio="none" aria-hidden="true" focusable="false"></svg>
@@ -725,7 +747,7 @@
                                 </div>
                             </div>
                             <div class="monthly-goal-editor" id="monthlyGoalEditor" hidden>
-                                <input type="number" id="monthlyGoalInput" min="0" step="1000" placeholder="Monthly goal (UGX)" />
+                                <input autocomplete="off" type="number" id="monthlyGoalInput" min="0" step="1000" placeholder="Monthly goal (UGX)" />
                                 <button class="action-btn" type="button" data-action="saveMonthlyRevenueGoal">Save</button>
                                 <button class="back-btn" type="button" data-action="toggleMonthlyGoalEditor">Cancel</button>
                             </div>
@@ -776,7 +798,7 @@
                         <div class="hv2-col hv2-col--main">
                             <section class="card hv2-card today-board-card" aria-labelledby="hv2NeedsTitle">
                                 <div class="hv2-card__head">
-                                    <h3 class="hv2-title" id="hv2NeedsTitle">Needs you</h3>
+                                    <h3 class="hv2-title" id="hv2NeedsTitle">To do</h3>
                                     <span class="today-board__status" id="todayBoardStatus">All clear</span>
                                 </div>
                                 <div class="today-board__alerts timeline-list" id="todayBoardAlerts"></div>
@@ -900,7 +922,7 @@
                         </div>
                         <svg class="monthly-goal-progress" viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true" focusable="false"><rect class="monthly-goal-progress__bar" id="financialsMonthlyGoalProgressBar" x="0" y="0" width="0" height="8"/></svg>
                         <div class="monthly-goal-editor" id="financialsMonthlyGoalEditor" hidden>
-                            <input type="number" id="financialsMonthlyGoalInput" min="0" step="1000" placeholder="Enter monthly goal (UGX)" />
+                            <input autocomplete="off" type="number" id="financialsMonthlyGoalInput" min="0" step="1000" placeholder="Enter monthly goal (UGX)" />
                                 <button class="action-btn" type="button" data-action="saveFinancialsMonthlyRevenueGoal">Save Goal</button>
                                 <button class="back-btn" type="button" data-action="toggleFinancialsMonthlyGoalEditor">Cancel</button>
                         </div>
@@ -949,6 +971,11 @@
 
                 </div>
                 <div class="sp-tab-panel" id="moneyPanel-cashflow">
+                <div class="card">
+                    <h3 class="section-title" data-icon="reports"><span class="section-title__text">Cashflow (<span id="cashflowPeriodLabel">Month Year</span>)</span></h3>
+                    <div class="timeline-list" id="cashFlowTimeline"></div>
+                </div>
+
                 <div class="mv-strip">
                     <div class="card mv-tile"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-door-open"></i></span><span class="mv-label">Opening cash</span><span class="mv-tile__value money" id="mvCfOpen">UGX 0</span><span class="mv-tile__sub" id="mvCfOpenSub"></span></div>
                     <div class="card mv-tile"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-arrow-down-left"></i></span><span class="mv-label">Cash in</span><span class="mv-tile__value money is-in" id="mvCfIn">UGX 0</span><span class="mv-tile__sub" id="mvCfInSub"></span></div>
@@ -966,7 +993,7 @@
                     </div>
                     <form class="mv-mincash-editor" id="mvMinCashEditor" hidden>
                         <label class="mv-label" for="mvMinCashInput">Lowest cash you want to hold (UGX)</label>
-                        <input type="number" id="mvMinCashInput" min="0" step="10000" inputmode="numeric" />
+                        <input autocomplete="off" type="number" id="mvMinCashInput" min="0" step="10000" inputmode="numeric" />
                         <button class="btn-primary" type="submit">Save</button>
                         <button class="back-btn" type="button" data-mv-mincash-cancel>Cancel</button>
                     </form>
@@ -984,19 +1011,14 @@
                         <div class="mv-legend"><span class="mv-legend__in">Expected</span><span class="mv-legend__net">Cautious</span><span class="mv-legend__inline">Hopeful</span></div>
                     </div>
                     <form class="mv-scen__inputs" id="mvScenForm" novalidate>
-                        <label class="mv-scen__input"><span class="mv-label">Pending shows that confirm</span><span class="mv-scen__field"><input type="number" id="mvScenWin" min="0" max="100" step="5" inputmode="numeric"><span>%</span></span></label>
-                        <label class="mv-scen__input"><span class="mv-label">Spending change</span><span class="mv-scen__field"><input type="number" id="mvScenCost" min="-50" max="200" step="5" inputmode="numeric"><span>%</span></span></label>
+                        <label class="mv-scen__input"><span class="mv-label">Pending shows that confirm</span><span class="mv-scen__field"><input autocomplete="off" type="number" id="mvScenWin" min="0" max="100" step="5" inputmode="numeric"><span>%</span></span></label>
+                        <label class="mv-scen__input"><span class="mv-label">Spending change</span><span class="mv-scen__field"><input autocomplete="off" type="number" id="mvScenCost" min="-50" max="200" step="5" inputmode="numeric"><span>%</span></span></label>
                         <button class="back-btn mv-scen__save" type="submit">Update</button>
                     </form>
                     <div class="mv-scen__cases" id="mvScenCases"></div>
                     <svg class="mv-chart" id="mvScenChart" role="img" aria-label="Running profit over the next six months under three cases" focusable="false"></svg>
                     <div class="mv-pl__scroll"><table class="mv-pl__table mv-scen__table" id="mvScenTable"></table></div>
                     <p class="mv-note" id="mvScenNote"></p>
-                </div>
-
-                <div class="card">
-                    <h3 class="section-title" data-icon="reports"><span class="section-title__text">Cashflow (<span id="cashflowPeriodLabel">Month Year</span>)</span></h3>
-                    <div class="timeline-list" id="cashFlowTimeline"></div>
                 </div>
                 </div>
                 <div class="sp-tab-panel" id="moneyPanel-receivables">
@@ -1031,15 +1053,15 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label>Description</label>
-                            <input type="text" id="expenseDesc" />
+                            <input autocomplete="off" type="text" id="expenseDesc" />
                         </div>
                         <div class="form-group">
                             <label>Amount (UGX)</label>
-                            <input type="number" id="expenseAmount" />
+                            <input autocomplete="off" type="number" id="expenseAmount" />
                         </div>
                         <div class="form-group">
                             <label>Date</label>
-                            <input type="date" id="expenseDate" />
+                            <input autocomplete="off" type="date" id="expenseDate" />
                         </div>
                         <div class="form-group">
                             <label>Artist</label>
@@ -1074,11 +1096,11 @@
                         </div>
                         <div class="form-group">
                             <label>Payment Ref (Optional)</label>
-                            <input type="text" id="expensePaymentRef" placeholder="MoMo TxID or reference" maxlength="64" />
+                            <input autocomplete="off" type="text" id="expensePaymentRef" placeholder="MoMo TxID or reference" maxlength="64" />
                         </div>
                         <div class="form-group">
                             <label for="expensePaidTo">Paid To (Optional)</label>
-                            <input type="text" id="expensePaidTo" maxlength="80" list="expensePaidToList" placeholder="Vendor or person" />
+                            <input autocomplete="off" type="text" id="expensePaidTo" maxlength="80" list="expensePaidToList" placeholder="Vendor or person" />
                             <datalist id="expensePaidToList"></datalist>
                         </div>
                         <div class="form-group">
@@ -1098,7 +1120,30 @@
                     <button id="saveExpenseBtn" class="btn-primary" data-action="saveExpense">Save Expense</button>
                     <button class="back-btn" data-action="cancelExpense">Cancel</button>
                 </div>
-                <!-- Spending analysis (app.insights.js); the expense list follows. -->
+                <div class="card" id="expensesListCard">
+                    <div class="card-header-row">
+                        <h3 class="section-title" data-icon="expenses">All Expenses</h3>
+                        <button class="section-fab" aria-label="Add expense" data-action="showAddExpense">+</button>
+                    </div>
+                    <div class="table-wrap">
+                        <table id="expensesTable" class="expenses-table">
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th>Artist</th>
+                                <th>Category</th>
+                                <th>Amount</th>
+                                <th>Date</th>
+                                <th>Receipt</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                        </table>
+                    </div>
+                    <div id="expensesCards" class="expenses-cards sp-csp-style-17"></div>
+                </div>
+
+                <!-- Spending analysis (app.insights.js); it follows the expense list. -->
                 <div class="mv-strip">
                     <div class="card mv-tile mv-tile--key"><span class="sp-icon-tile sp-icon-tile--foil" aria-hidden="true"><i class="ph ph-receipt"></i></span><span class="mv-label">Spent this month</span><span class="mv-tile__value money" id="mvExTotal">UGX 0</span><span class="mv-delta" id="mvExTotalDelta"></span><svg class="mv-spark" id="mvExTotalSpark" aria-hidden="true" focusable="false"></svg></div>
                     <div class="card mv-tile" title="Spending as a share of money in this month"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-percent"></i></span><span class="mv-label">Share of money in</span><span class="mv-tile__value money" id="mvExShare">—</span><span class="mv-tile__sub" id="mvExShareSub"></span></div>
@@ -1145,28 +1190,6 @@
                 </div>
 
 
-                <div class="card" id="expensesListCard">
-                    <div class="card-header-row">
-                        <h3 class="section-title" data-icon="expenses">All Expenses</h3>
-                        <button class="section-fab" aria-label="Add expense" data-action="showAddExpense">+</button>
-                    </div>
-                    <div class="table-wrap">
-                        <table id="expensesTable" class="expenses-table">
-                        <thead>
-                            <tr>
-                                <th>Description</th>
-                                <th>Artist</th>
-                                <th>Category</th>
-                                <th>Amount</th>
-                                <th>Date</th>
-                                <th>Receipt</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                        </table>
-                    </div>
-                    <div id="expensesCards" class="expenses-cards sp-csp-style-17"></div>
-                </div>
 
                 </div>
                 <div class="sp-tab-panel" id="moneyPanel-otherIncome">
@@ -1180,15 +1203,15 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label>Source</label>
-                            <input type="text" id="otherIncomeSource" placeholder="Tips, merch, sponsorship, etc." />
+                            <input autocomplete="off" type="text" id="otherIncomeSource" placeholder="Tips, merch, sponsorship, etc." />
                         </div>
                         <div class="form-group">
                             <label>Amount (UGX)</label>
-                            <input type="number" id="otherIncomeAmount" />
+                            <input autocomplete="off" type="number" id="otherIncomeAmount" />
                         </div>
                         <div class="form-group">
                             <label>Date</label>
-                            <input type="date" id="otherIncomeDate" />
+                            <input autocomplete="off" type="date" id="otherIncomeDate" />
                         </div>
                         <div class="form-group">
                             <label>Artist</label>
@@ -1210,7 +1233,7 @@
                         </div>
                         <div class="form-group">
                             <label>Payer / Brand</label>
-                            <input type="text" id="otherIncomePayer" placeholder="Name or brand" />
+                            <input autocomplete="off" type="text" id="otherIncomePayer" placeholder="Name or brand" />
                         </div>
                         <div class="form-group">
                             <label>Method</label>
@@ -1315,19 +1338,19 @@
                         </div>
                         <div class="form-group">
                             <label>Period (Month)</label>
-                            <input type="month" id="audienceMetricPeriod" />
+                            <input autocomplete="off" type="month" id="audienceMetricPeriod" />
                         </div>
                         <div class="form-group">
                             <label>Social Media Followers (Total)</label>
-                            <input type="number" id="audienceSocialFollowers" min="0" />
+                            <input autocomplete="off" type="number" id="audienceSocialFollowers" min="0" />
                         </div>
                         <div class="form-group">
                             <label>Spotify Monthly Listeners</label>
-                            <input type="number" id="audienceSpotifyListeners" min="0" />
+                            <input autocomplete="off" type="number" id="audienceSpotifyListeners" min="0" />
                         </div>
                         <div class="form-group">
                             <label>YouTube Monthly Listeners</label>
-                            <input type="number" id="audienceYouTubeListeners" min="0" />
+                            <input autocomplete="off" type="number" id="audienceYouTubeListeners" min="0" />
                         </div>
                         <div class="form-group audience-metric-save-group">
                             <button type="button" id="audienceMetricSaveBtn" class="add-btn audience-metric-save-btn" data-action="saveAudienceMetricEntry" aria-label="Save audience growth metrics">
@@ -1379,30 +1402,32 @@
 
                 <div class="card" id="addArtistForm" hidden>
                     <h3 class="section-title" data-icon="artists">Add New Artist</h3>
+                    <p class="sp-req-note"><span class="sp-req" aria-hidden="true">*</span> Required. Everything else is optional.</p>
                     <div class="form-grid">
                         <div class="form-group">
-                            <label>Full Name</label>
-                            <input type="text" id="artistName" />
+                            <label for="artistName">Artist name <span class="sp-req" aria-hidden="true">*</span></label>
+                            <input autocomplete="off" type="text" id="artistName" required aria-required="true" aria-describedby="artistNameError" maxlength="120" />
+                            <p class="sp-field-error" id="artistNameError" role="alert" hidden>Please add the artist's name.</p>
                         </div>
                         <div class="form-group">
-                            <label>Email</label>
-                            <input type="email" id="artistEmail" />
+                            <label for="artistEmail">Email</label>
+                            <input autocomplete="off" type="email" id="artistEmail" maxlength="254" />
                         </div>
                         <div class="form-group">
-                            <label>Phone Number</label>
-                            <input type="tel" id="artistPhone" />
+                            <label for="artistPhone">Phone number</label>
+                            <input autocomplete="off" type="tel" id="artistPhone" maxlength="32" />
                         </div>
                         <div class="form-group">
-                            <label>Specialty/Genre</label>
-                            <input type="text" id="artistSpecialty" placeholder="e.g., Hip Hop, Gospel, Afrobeat" />
+                            <label for="artistSpecialty">Music style</label>
+                            <input autocomplete="off" type="text" id="artistSpecialty" maxlength="80" placeholder="e.g., Hip Hop, Gospel, Afrobeat" />
                         </div>
                     </div>
                     <div class="form-group sp-csp-style-16">
-                        <label>Strategic Goal</label>
-                        <textarea id="artistStrategicGoal" placeholder="e.g., Secure 3 festival slots this quarter"></textarea>
+                        <label for="artistStrategicGoal">Main goal for this artist</label>
+                        <textarea id="artistStrategicGoal" maxlength="500" placeholder="e.g., Secure 3 festival slots this quarter"></textarea>
                     </div>
                     <div class="form-group sp-csp-style-16">
-                        <label>Artist Photo</label>
+                        <label for="artistAvatarUpload">Artist photo</label>
                         <div class="artist-photo-row">
                             <div class="artist-photo-preview">
                                 <img id="artistAvatarPreview" class="artist-avatar-img" alt="Artist photo preview" />
@@ -1414,8 +1439,8 @@
                         </div>
                     </div>
                     <div class="form-group sp-csp-style-16">
-                        <label>Bio/Description</label>
-                        <textarea id="artistBio" placeholder="Brief description of the artist..."></textarea>
+                        <label for="artistBio">Short bio</label>
+                        <textarea id="artistBio" maxlength="2000" placeholder="Brief description of the artist…"></textarea>
                     </div>
                     <button class="btn-primary" data-action="saveArtist">Save Artist</button>
                     <button class="back-btn" data-action="cancelAddArtist">Cancel</button>
@@ -1514,35 +1539,41 @@
                         <h3 class="section-title" data-icon="bookings">New Booking</h3>
                         <button class="back-to-list" type="button" data-action="cancelBooking">Back to Bookings</button>
                     </div>
+                    <p class="sp-req-note"><span class="sp-req" aria-hidden="true">*</span> Required</p>
                     <div class="form-grid">
                         <div class="form-group">
-                            <label>Event Name</label>
-                            <input type="text" id="bookingEvent" />
+                            <label for="bookingEvent">Event name <span class="sp-req" aria-hidden="true">*</span></label>
+                            <input autocomplete="off" type="text" id="bookingEvent" required aria-required="true" placeholder="e.g. Friday night show" />
                         </div>
                         <div class="form-group">
-                            <label>Artist</label>
+                            <label for="bookingVenue">Venue (optional)</label>
+                            <input autocomplete="off" type="text" id="bookingVenue" maxlength="120" placeholder="e.g. Kampala Serena Hotel" />
+                        </div>
+                        <div class="form-group">
+                            <label>Artist <span class="sp-req" aria-hidden="true">*</span></label>
                             <select id="bookingArtist" data-native="always">
                                 <option value="">Select Artist</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Date</label>
-                            <input type="date" id="bookingDate" />
+                            <label for="bookingDate">Date <span class="sp-req" aria-hidden="true">*</span></label>
+                            <input autocomplete="off" type="date" id="bookingDate" required aria-required="true" />
                         </div>
                         <div class="form-group">
-                            <label>Total Fee (UGX)</label>
-                            <input type="number" id="bookingFee" data-input-action="calculateBalance" />
+                            <label for="bookingFee">Total fee (UGX) <span class="sp-req" aria-hidden="true">*</span></label>
+                            <input autocomplete="off" type="number" id="bookingFee" data-input-action="calculateBalance" required aria-required="true" min="0" max="999999999999" inputmode="numeric" />
                         </div>
                         <div class="form-group">
-                            <label>Deposit (UGX)</label>
-                            <input type="number" id="bookingDeposit" data-input-action="calculateBalance" />
+                            <label for="bookingDeposit">Deposit received (UGX)</label>
+                            <input autocomplete="off" type="number" id="bookingDeposit" data-input-action="calculateBalance" min="0" max="999999999999" inputmode="numeric" />
                         </div>
                         <div class="form-group">
-                            <label>Balance Due (UGX)</label>
-                            <input type="number" id="bookingBalance" readonly />
+                            <label for="bookingBalance">Balance due (UGX)</label>
+                            <input autocomplete="off" type="number" id="bookingBalance" readonly aria-describedby="bookingMoneyWarning" />
+                            <p class="sp-field-error" id="bookingMoneyWarning" role="status" hidden></p>
                         </div>
                         <div class="form-group">
-                            <label>Deposit Paid Via</label>
+                            <label for="bookingDepositMethod">Deposit paid by</label>
                             <select id="bookingDepositMethod">
                                 <option value="cash">Cash</option>
                                 <option value="mtn_momo">MTN MoMo</option>
@@ -1552,24 +1583,24 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Deposit Ref (Optional)</label>
-                            <input type="text" id="bookingDepositRef" placeholder="MoMo TxID or reference" maxlength="64" />
+                            <label for="bookingDepositRef">Payment reference (optional)</label>
+                            <input autocomplete="off" type="text" id="bookingDepositRef" placeholder="Mobile money transaction ID or receipt number" maxlength="64" />
                         </div>
                         <div class="form-group">
-                            <label>Estimated Capacity</label>
-                            <input type="number" id="bookingCapacity" min="0" />
+                            <label for="bookingCapacity">Expected crowd size (optional)</label>
+                            <input autocomplete="off" type="number" id="bookingCapacity" min="0" inputmode="numeric" />
                         </div>
                         <div class="form-group">
-                            <label>Contact Person</label>
-                            <input type="text" id="bookingContact" />
+                            <label for="bookingContact">Contact person (optional)</label>
+                            <input autocomplete="off" type="text" id="bookingContact" />
                         </div>
                         <div class="form-group">
                             <label for="bookingPromoter">Promoter / Client (Optional)</label>
-                            <input type="text" id="bookingPromoter" maxlength="80" list="bookingPromoterList" placeholder="Who pays the fee" />
+                            <input autocomplete="off" type="text" id="bookingPromoter" maxlength="80" list="bookingPromoterList" placeholder="Who pays the fee" />
                             <datalist id="bookingPromoterList"></datalist>
                         </div>
                         <div class="form-group">
-                            <label>Status</label>
+                            <label for="bookingStatus">Status</label>
                             <select id="bookingStatus">
                                 <option value="confirmed">Confirmed</option>
                                 <option value="pending">Pending</option>
@@ -1577,18 +1608,18 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Location Type</label>
+                            <label for="bookingLocationType">Show is in</label>
                             <select id="bookingLocationType" data-change-action="updateLocationDropdown">
                                 <option value="uganda">Uganda</option>
                                 <option value="abroad">Abroad</option>
                             </select>
                         </div>
                         <div class="form-group" id="ugandaLocationGroup">
-                            <label>District</label>
+                            <label for="bookingUgandaLocation">District</label>
                             <select id="bookingUgandaLocation"></select>
                         </div>
                         <div class="form-group" id="abroadLocationGroup" hidden>
-                            <label>Country</label>
+                            <label for="bookingAbroadLocation">Country</label>
                             <select id="bookingAbroadLocation"></select>
                         </div>
                     </div>
@@ -1599,16 +1630,16 @@
                         </div>
                         <ul class="sp-payments__list" id="spPaymentsList"></ul>
                         <form class="sp-payments__form" id="spPaymentForm" novalidate>
-                            <label class="sp-payments__field"><span>Amount (UGX)</span><input type="number" id="spPaymentAmount" min="0" step="1000" inputmode="numeric" required></label>
-                            <label class="sp-payments__field"><span>Date</span><input type="date" id="spPaymentDate" required></label>
+                            <label class="sp-payments__field"><span>Amount (UGX)</span><input autocomplete="off" type="number" id="spPaymentAmount" min="0" step="1000" inputmode="numeric" required></label>
+                            <label class="sp-payments__field"><span>Date</span><input autocomplete="off" type="date" id="spPaymentDate" required></label>
                             <label class="sp-payments__field"><span>Via</span><select id="spPaymentMethod"><option value="cash">Cash</option><option value="mtn_momo">MTN MoMo</option><option value="airtel_money">Airtel Money</option><option value="bank">Bank Transfer</option><option value="other">Other</option></select></label>
-                            <label class="sp-payments__field"><span>Ref (optional)</span><input type="text" id="spPaymentRef" maxlength="64" placeholder="TxID"></label>
+                            <label class="sp-payments__field"><span>Ref (optional)</span><input autocomplete="off" type="text" id="spPaymentRef" maxlength="64" placeholder="TxID"></label>
                             <button type="submit" class="btn-primary sp-payments__add">Record payment</button>
                         </form>
                     </div>
                     <div class="sp-payments dv-booking" id="spBookingDocs" hidden></div>
                     <div class="form-group sp-csp-style-16">
-                        <label>Notes</label>
+                        <label for="bookingNotes">Notes (optional)</label>
                         <textarea id="bookingNotes"></textarea>
                     </div>
                     <button id="saveBookingBtn" class="btn-primary" data-action="saveBooking">Save Booking</button>
@@ -1691,7 +1722,7 @@
                         <select class="sp-csp-style-11" id="availabilityArtist">
                             <option value="">Select Artist</option>
                         </select>
-                        <input class="sp-csp-style-11" type="date" id="availabilityDate" />
+                        <input autocomplete="off" class="sp-csp-style-11" type="date" id="availabilityDate" />
                         <button class="add-btn sp-csp-style-28" data-action="checkAvailability">Check Availability</button>
                     </div>
                     <div class="sp-csp-style-16" id="availabilityResult"></div>
@@ -1719,9 +1750,9 @@
                     </div>
                     <div class="tk-add">
                         <label class="sr-only" for="taskInput">New task</label>
-                        <input type="text" id="taskInput" class="task-input" placeholder="Add a task, then press Enter" />
+                        <input autocomplete="off" type="text" id="taskInput" class="task-input" placeholder="Add a task, then press Enter" />
                         <label class="sr-only" for="taskDueDate">Due date</label>
-                        <input type="date" id="taskDueDate" class="task-date-input">
+                        <input autocomplete="off" type="date" id="taskDueDate" class="task-date-input">
                         <button class="btn-primary tk-add__btn" type="button" data-action="handleAddTask"><i class="ph ph-plus" aria-hidden="true"></i> Add</button>
                     </div>
                     <div class="sp-chips" role="group" aria-label="Show tasks">
@@ -1828,16 +1859,16 @@
 
                         <div class="settings-panel settings-targets-card" id="spTargetsPanel">
                             <div class="settings-panel-label">Targets &amp; alerts</div>
-                            <p class="sp-targets__intro">Home's "Needs you" warns you when a number crosses one of these. Saved with your account, so every device and teammate sees the same limits.</p>
+                            <p class="sp-targets__intro">Home's "To do" list warns you when a number crosses one of these. Saved with your account, so every device and teammate sees the same limits.</p>
                             <form class="sp-targets" id="spTargetsForm" novalidate>
-                                <label class="sp-target"><span class="sp-target__name">Monthly goal</span><span class="sp-target__hint">Money in you aim for each month</span><span class="sp-target__field"><span class="sp-target__unit">UGX</span><input type="number" id="spTargetGoal" min="0" step="10000" inputmode="numeric" placeholder="Not set"></span></label>
-                                <label class="sp-target"><span class="sp-target__name">Minimum cash</span><span class="sp-target__hint">Lowest cash you want to hold. Blank means one month of spending.</span><span class="sp-target__field"><span class="sp-target__unit">UGX</span><input type="number" id="spTargetMinCash" min="0" step="10000" inputmode="numeric" placeholder="1 month of spending"></span></label>
-                                <label class="sp-target"><span class="sp-target__name">Profit margin floor</span><span class="sp-target__hint">Warn when you keep less than this share of money in</span><span class="sp-target__field"><input type="number" id="spTargetMargin" min="0" max="100" step="1" inputmode="numeric"><span class="sp-target__unit">%</span></span></label>
-                                <label class="sp-target"><span class="sp-target__name">Overdue after</span><span class="sp-target__hint">Days after a show before an unpaid balance is flagged</span><span class="sp-target__field"><input type="number" id="spTargetOverdue" min="0" step="1" inputmode="numeric"><span class="sp-target__unit">days</span></span></label>
-                                <label class="sp-target"><span class="sp-target__name">Money-in drop</span><span class="sp-target__hint">Warn when money in is down this much on the same point last month</span><span class="sp-target__field"><input type="number" id="spTargetDrop" min="0" max="100" step="1" inputmode="numeric"><span class="sp-target__unit">%</span></span></label>
-                                <label class="sp-target"><span class="sp-target__name">Spending jump</span><span class="sp-target__hint">Warn when a category is this far above its usual month</span><span class="sp-target__field"><input type="number" id="spTargetJump" min="0" step="5" inputmode="numeric"><span class="sp-target__unit">%</span></span></label>
-                                <label class="sp-target"><span class="sp-target__name">Cash runway</span><span class="sp-target__hint">Warn when cash covers fewer months of spending than this</span><span class="sp-target__field"><input type="number" id="spTargetRunway" min="0" step="0.5" inputmode="decimal"><span class="sp-target__unit">months</span></span></label>
-                                <label class="sp-target"><span class="sp-target__name">Over budget by</span><span class="sp-target__hint">Warn when a category passes its monthly budget by more than this</span><span class="sp-target__field"><input type="number" id="spTargetBudget" min="0" step="5" inputmode="numeric"><span class="sp-target__unit">%</span></span></label>
+                                <label class="sp-target"><span class="sp-target__name">Monthly goal</span><span class="sp-target__hint">Money in you aim for each month</span><span class="sp-target__field"><span class="sp-target__unit">UGX</span><input autocomplete="off" type="number" id="spTargetGoal" min="0" step="10000" inputmode="numeric" placeholder="Not set"></span></label>
+                                <label class="sp-target"><span class="sp-target__name">Minimum cash</span><span class="sp-target__hint">Lowest cash you want to hold. Blank means one month of spending.</span><span class="sp-target__field"><span class="sp-target__unit">UGX</span><input autocomplete="off" type="number" id="spTargetMinCash" min="0" step="10000" inputmode="numeric" placeholder="1 month of spending"></span></label>
+                                <label class="sp-target"><span class="sp-target__name">Profit margin floor</span><span class="sp-target__hint">Warn when you keep less than this share of money in</span><span class="sp-target__field"><input autocomplete="off" type="number" id="spTargetMargin" min="0" max="100" step="1" inputmode="numeric"><span class="sp-target__unit">%</span></span></label>
+                                <label class="sp-target"><span class="sp-target__name">Overdue after</span><span class="sp-target__hint">Days after a show before an unpaid balance is flagged</span><span class="sp-target__field"><input autocomplete="off" type="number" id="spTargetOverdue" min="0" step="1" inputmode="numeric"><span class="sp-target__unit">days</span></span></label>
+                                <label class="sp-target"><span class="sp-target__name">Money-in drop</span><span class="sp-target__hint">Warn when money in is down this much on the same point last month</span><span class="sp-target__field"><input autocomplete="off" type="number" id="spTargetDrop" min="0" max="100" step="1" inputmode="numeric"><span class="sp-target__unit">%</span></span></label>
+                                <label class="sp-target"><span class="sp-target__name">Spending jump</span><span class="sp-target__hint">Warn when a category is this far above its usual month</span><span class="sp-target__field"><input autocomplete="off" type="number" id="spTargetJump" min="0" step="5" inputmode="numeric"><span class="sp-target__unit">%</span></span></label>
+                                <label class="sp-target"><span class="sp-target__name">Cash runway</span><span class="sp-target__hint">Warn when cash covers fewer months of spending than this</span><span class="sp-target__field"><input autocomplete="off" type="number" id="spTargetRunway" min="0" step="0.5" inputmode="decimal"><span class="sp-target__unit">months</span></span></label>
+                                <label class="sp-target"><span class="sp-target__name">Over budget by</span><span class="sp-target__hint">Warn when a category passes its monthly budget by more than this</span><span class="sp-target__field"><input autocomplete="off" type="number" id="spTargetBudget" min="0" step="5" inputmode="numeric"><span class="sp-target__unit">%</span></span></label>
                                 <div class="sp-targets__actions">
                                     <button type="submit" class="btn-primary">Save targets</button>
                                     <button type="button" class="back-btn" data-sp-targets-reset>Reset to defaults</button>
@@ -1847,7 +1878,7 @@
 
                         <div class="settings-panel settings-budgets-card" id="spBudgetsPanel">
                             <div class="settings-panel-label">Monthly budgets</div>
-                            <p class="sp-targets__intro">What you plan to spend in each category every month. Expenses and Profit &amp; loss compare against these, and "Needs you" warns when a category runs over.</p>
+                            <p class="sp-targets__intro">What you plan to spend in each category every month. Expenses and Profit &amp; loss compare against these, and the Home "To do" list warns when a category runs over.</p>
                             <form class="sp-budgets" id="spBudgetsForm" novalidate>
                                 <div class="sp-budgets__grid" id="spBudgetsGrid"></div>
                                 <div class="sp-targets__actions">
@@ -1890,10 +1921,11 @@
                                     <i class="ph ph-download-simple" aria-hidden="true"></i>
                                     Export All Data
                                 </button>
-                                <button class="action-btn action-btn--danger" data-action="clearAllData" type="button">
-                                    <i class="ph ph-trash" aria-hidden="true"></i>
-                                    Reset App Data
+                                <button class="action-btn" data-action="clearAllData" type="button" aria-describedby="clearCacheHint">
+                                    <i class="ph ph-broom" aria-hidden="true"></i>
+                                    Clear this device&rsquo;s cache
                                 </button>
+                                <p class="sp-settings-hint" id="clearCacheHint">Removes saved drafts and copies on this phone or computer only. Your artists, bookings and money records stay safe in your account.</p>
                             </div>
                         </div>
 
@@ -1908,6 +1940,22 @@
                                     <i class="ph ph-sign-out" aria-hidden="true"></i>
                                     Logout
                                 </button>
+                            </div>
+                            <div class="sp-delete-account">
+                                <button type="button" class="action-btn action-btn--danger" id="settingsDeleteStart" aria-expanded="false" aria-controls="settingsDeleteConfirm">
+                                    <i class="ph ph-user-minus" aria-hidden="true"></i>
+                                    Delete my account
+                                </button>
+                                <div class="sp-delete-account__confirm" id="settingsDeleteConfirm" hidden>
+                                    <p>This permanently deletes your account and everything in it: artists, bookings, money records, tasks and documents. If you want a copy, use Export All Data first. This cannot be undone.</p>
+                                    <label for="settingsDeleteInput">Type DELETE to confirm</label>
+                                    <input type="text" id="settingsDeleteInput" autocomplete="off" autocapitalize="characters" spellcheck="false" />
+                                    <div class="sp-delete-account__actions">
+                                        <button type="button" class="action-btn action-btn--danger" id="settingsDeleteGo" disabled>Delete everything</button>
+                                        <button type="button" class="action-btn" id="settingsDeleteCancel">Keep my account</button>
+                                    </div>
+                                    <p class="sp-settings-hint" id="settingsDeleteStatus" role="status"></p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1944,19 +1992,19 @@
             <div class="form-grid">
                 <div class="form-group">
                     <label>Username</label>
-                    <input type="text" id="profileUsername" />
+                    <input autocomplete="username" type="text" id="profileUsername" />
                 </div>
                 <div class="form-group">
                     <label>Password</label>
-                    <input type="password" id="profilePassword" placeholder="Leave blank to keep current password" />
+                    <input autocomplete="new-password" type="password" id="profilePassword" placeholder="Leave blank to keep current password" />
                 </div>
                 <div class="form-group">
                     <label>Email</label>
-                    <input type="email" id="profileEmail" />
+                    <input autocomplete="email" type="email" id="profileEmail" />
                 </div>
                 <div class="form-group">
                     <label>Phone Number</label>
-                    <input type="tel" id="profilePhone" />
+                    <input autocomplete="tel" type="tel" id="profilePhone" />
                 </div>
             </div>
             <div class="form-group sp-csp-style-22">
@@ -2015,11 +2063,11 @@
               </div>
               <div class="sp-form-group">
                 <label for="spBbfPeriodInput">Period</label>
-                <input type="month" id="spBbfPeriodInput" />
+                <input autocomplete="off" type="month" id="spBbfPeriodInput" />
               </div>
               <div class="sp-form-group">
                 <label for="spBbfAmountInput">Starting Balance (UGX)</label>
-                <input type="number" id="spBbfAmountInput" min="0" step="1000" placeholder="Enter opening balance" />
+                <input autocomplete="off" type="number" id="spBbfAmountInput" min="0" step="1000" placeholder="Enter opening balance" />
               </div>
               <p class="sp-form-note" id="spBbfContext">This balance will be saved to the current account scope and used in Money Moves closing balance calculations.</p>
             </div>
@@ -2047,9 +2095,9 @@
               <div class="sp-form-group">
                 <label for="spPdfDateStart">Date Range</label>
                 <div class="sp-csp-style-45">
-                  <input class="sp-csp-style-46" type="date" id="spPdfDateStart">
+                  <input autocomplete="off" class="sp-csp-style-46" type="date" id="spPdfDateStart">
                   <span class="sp-csp-style-23">to</span>
-                  <input class="sp-csp-style-46" type="date" id="spPdfDateEnd">
+                  <input autocomplete="off" class="sp-csp-style-46" type="date" id="spPdfDateEnd">
                 </div>
               </div>
               <p class="sp-csp-style-47">Leave dates empty to use the current report period.</p>
@@ -2066,26 +2114,26 @@
           loaded above, and these deferred scripts keep document order:
           Supabase boot wiring is installed before app.js initializes UI helpers.
         -->
-<script src="app.root-shell.js?v=9" defer></script>
+<script src="app.root-shell.js?v=10" defer></script>
 <script src="app.offline-cache.js?v=1"></script>
-<script src="supabase.js?v=105" defer></script>
+<script src="supabase.js?v=107" defer></script>
         <script src="app.migrations.js?v=10"></script>
-        <script src="app.actions.js?v=10"></script>
+        <script src="app.actions.js?v=11"></script>
         <script src="app.todayboard.js?v=3"></script>
         <script src="app.tasks.js?v=7"></script>
     <script src="app.reports.js?v=23"></script>
-<script src="app.js?v=164" defer></script>
+<script src="app.js?v=171" defer></script>
 <script src="app.charts.js?v=1" defer></script>
-<script src="app.home.js?v=4" defer></script>
-<script src="app.money.js?v=3" defer></script>
-<script src="app.insights.js?v=2" defer></script>
+<script src="app.home.js?v=7" defer></script>
+<script src="app.money.js?v=4" defer></script>
+<script src="app.insights.js?v=3" defer></script>
 <script src="app.finance-ui.js?v=1" defer></script>
-<script src="app.artists.js?v=2" defer></script>
+<script src="app.artists.js?v=3" defer></script>
 <script src="app.schedule.js?v=1" defer></script>
 <script src="app.crew.js?v=3" defer></script>
 <script src="app.docs.js?v=4" defer></script>
-<script src="app.pickers.js?v=2" defer></script>
-<script src="app.landing.js?v=5" defer></script>
+<script src="app.pickers.js?v=3" defer></script>
+<script src="app.landing.js?v=6" defer></script>
 <script src="app.landing-lights.js?v=15" defer></script>
 <script src="app.chrome.js?v=4" defer></script>
 
@@ -2135,7 +2183,7 @@
                 <h4 class="sp-csp-style-54">System</h4>
                 <div class="sp-csp-style-55">
                     <button class="action-btn sp-csp-style-56" data-action="exportAllData"><i class="ph ph-download-simple" aria-hidden="true"></i> Export All Data</button>
-                    <button class="action-btn action-btn--danger sp-csp-style-56" data-action="clearAllData"><i class="ph ph-trash" aria-hidden="true"></i> Reset App Data</button>
+                    <button class="action-btn sp-csp-style-56" data-action="clearAllData"><i class="ph ph-broom" aria-hidden="true"></i> Clear this device&rsquo;s cache</button>
                 </div>
             </div>
         </div>

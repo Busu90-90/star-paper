@@ -232,6 +232,8 @@
 
   function revealLandingForLocalTesting() {
     if (window.__spAppBooted) return;
+    // Leave an auth form the visitor already opened (these timers re-fire at 750 ms and 2.5 s).
+    if (window.__spUserPublicScreen === 'loginScreen') return;
     var flowId = window.getBootTransitionId && window.getBootTransitionId();
     if (!flowId && window.beginBootTransition) {
       flowId = window.beginBootTransition('local-dev-cold-start', 'loading-session');

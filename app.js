@@ -904,7 +904,7 @@ function getSectionIconMarkup(iconKey) {
                         toastInfo('Help documentation coming soon!');
                         return;
                     case 'showContactAlert':
-                        toastInfo('Contact: jobdahimself@gmail.com');
+                        toastInfo('Contact: support@star-paper.com');
                         return;
                     default:
                         invokeAction(action);
@@ -2609,7 +2609,7 @@ function getSectionIconMarkup(iconKey) {
             'Namutumba', 'Napak', 'Nebbi', 'Ngora', 'Ntoroko', 'Ntungamo', 'Nwoya', 'Otuke',
             'Oyam', 'Pader', 'Pallisa', 'Rakai', 'Rubanda', 'Rubirizi', 'Rukungiri', 'Sembabule',
             'Serere', 'Sheema', 'Sironko', 'Soroti', 'Tororo', 'Wakiso', 'Yumbe', 'Zombo'
-        ].sort();
+        ].filter((name, index, list) => list.indexOf(name) === index).sort(); // the list above repeats some names
 
         const countries = [
             'Nigeria', 'Kenya', 'Tanzania', 'Rwanda', 'South Africa', 'Ghana', 'United Kingdom',
@@ -2661,19 +2661,40 @@ function getSectionIconMarkup(iconKey) {
                 }
             });
 
-            // ── Scroll-to-top FAB ──────────────────────────────────────
+            // ── Scroll-to-top / scroll-down FABs ───────────────────────
             const scrollFab = document.getElementById('scrollTopFab');
+            const scrollDownFab = document.getElementById('scrollDownFab');
             const mainContent = document.querySelector('.main-content');
+            const scrollRoom = () => {
+                const root = document.scrollingElement || document.documentElement;
+                const mcLeft = mainContent ? mainContent.scrollHeight - mainContent.clientHeight - mainContent.scrollTop : 0;
+                const winLeft = root.scrollHeight - window.innerHeight - window.scrollY;
+                return Math.max(mcLeft, winLeft);
+            };
+            let fabFrame = 0;
             const showFab = () => {
-                const scrolled = (mainContent?.scrollTop || 0) + window.scrollY;
-                scrollFab?.classList.toggle('visible', scrolled > 280);
+                if (fabFrame) return;
+                fabFrame = requestAnimationFrame(() => {
+                    fabFrame = 0;
+                    const scrolled = (mainContent?.scrollTop || 0) + window.scrollY;
+                    scrollFab?.classList.toggle('visible', scrolled > 280);
+                    scrollDownFab?.classList.toggle('visible', scrollRoom() > 280);
+                });
             };
             mainContent?.addEventListener('scroll', showFab, { passive: true });
             window.addEventListener('scroll', showFab, { passive: true });
+            window.addEventListener('resize', showFab, { passive: true });
+            if (mainContent && 'ResizeObserver' in window) new ResizeObserver(showFab).observe(mainContent);
             scrollFab?.addEventListener('click', () => {
                 mainContent?.scrollTo({ top: 0, behavior: 'smooth' });
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             });
+            scrollDownFab?.addEventListener('click', () => {
+                const root = document.scrollingElement || document.documentElement;
+                mainContent?.scrollTo({ top: mainContent.scrollHeight, behavior: 'smooth' });
+                window.scrollTo({ top: root.scrollHeight, behavior: 'smooth' });
+            });
+            showFab();
 
             document.getElementById('landingThemeToggle')?.addEventListener('click', toggleTheme);
             document.getElementById('sidebarLightBtn')?.addEventListener('click', () => setTheme('light'));
@@ -2888,8 +2909,9 @@ function getSectionIconMarkup(iconKey) {
             const ugandaSelect = document.getElementById('bookingUgandaLocation');
             const abroadSelect = document.getElementById('bookingAbroadLocation');
             if (!ugandaSelect || !abroadSelect) return;
-            ugandaSelect.innerHTML = ugandaDistricts.map(d => `<option value="${d}">${d}</option>`).join('');
-            abroadSelect.innerHTML = countries.map(c => `<option value="${c}">${c}</option>`).join('');
+            // A blank first choice, so no district gets saved that the user never picked.
+            ugandaSelect.innerHTML = '<option value="">Choose a district</option>' + ugandaDistricts.map(d => `<option value="${d}">${d}</option>`).join('');
+            abroadSelect.innerHTML = '<option value="">Choose a country</option>' + countries.map(c => `<option value="${c}">${c}</option>`).join('');
         }
 
         // Update location dropdown based on location type selection
@@ -3719,6 +3741,45 @@ function getSectionIconMarkup(iconKey) {
                 if (typeof window.showAboutModal === 'function') window.showAboutModal();
                 else if (typeof showAboutModal === 'function') showAboutModal();
             });
+            const deleteStart = document.getElementById('settingsDeleteStart');
+            const deleteConfirm = document.getElementById('settingsDeleteConfirm');
+            const deleteInput = document.getElementById('settingsDeleteInput');
+            const deleteGo = document.getElementById('settingsDeleteGo');
+            const deleteStatus = document.getElementById('settingsDeleteStatus');
+            const closeDeleteConfirm = () => {
+                if (deleteConfirm) deleteConfirm.hidden = true;
+                if (deleteInput) deleteInput.value = '';
+                if (deleteGo) deleteGo.disabled = true;
+                if (deleteStatus) deleteStatus.textContent = '';
+                deleteStart?.setAttribute('aria-expanded', 'false');
+            };
+            deleteStart?.addEventListener('click', () => {
+                if (!deleteConfirm) return;
+                deleteConfirm.hidden = false;
+                deleteStart.setAttribute('aria-expanded', 'true');
+                deleteInput?.focus();
+            });
+            document.getElementById('settingsDeleteCancel')?.addEventListener('click', closeDeleteConfirm);
+            deleteInput?.addEventListener('input', () => {
+                if (deleteGo) deleteGo.disabled = deleteInput.value.trim().toUpperCase() !== 'DELETE';
+            });
+            deleteGo?.addEventListener('click', async () => {
+                if (deleteInput?.value.trim().toUpperCase() !== 'DELETE') return;
+                if (typeof window.SP?.deleteMyAccount !== 'function') {
+                    if (deleteStatus) deleteStatus.textContent = 'Please sign in to the cloud first.';
+                    return;
+                }
+                deleteGo.disabled = true;
+                if (deleteStatus) deleteStatus.textContent = 'Deleting your account…';
+                const result = await window.SP.deleteMyAccount();
+                if (!result?.ok) {
+                    if (deleteStatus) deleteStatus.textContent = result?.message || 'We could not delete your account. Please try again.';
+                    deleteGo.disabled = false;
+                    return;
+                }
+                if (deleteStatus) deleteStatus.textContent = 'Your account is deleted. Taking you to the start page…';
+                setTimeout(() => window.location.replace(window.location.pathname), 1200);
+            });
             document.getElementById('settingsLogoutBtn')?.addEventListener('click', (event) => {
                 event.preventDefault();
                 if (typeof window.logout === 'function') {
@@ -4109,6 +4170,9 @@ function showAuthPanel(panel) {
         window.showAuthPanel = showAuthPanel;
 
 function showLoginForm(options = {}) {
+            // Every route here (any button, any dispatcher) marks the auth screen as
+            // chosen, so a late boot step can't throw the visitor back to the landing.
+            window.__spUserPublicScreen = 'loginScreen';
             resetCloudSaveInFlightFlags('show-login');
             const instantPublicReveal = !options.flowId && shouldUseInstantPublicReveal(options);
             const flowId = instantPublicReveal
@@ -4135,6 +4199,9 @@ function showLoginForm(options = {}) {
         }
 
         function showSignupForm(options = {}) {
+            // Every route here (any button, any dispatcher) marks the auth screen as
+            // chosen, so a late boot step can't throw the visitor back to the landing.
+            window.__spUserPublicScreen = 'loginScreen';
             resetCloudSaveInFlightFlags('show-signup');
             const instantPublicReveal = !options.flowId && shouldUseInstantPublicReveal(options);
             const flowId = instantPublicReveal
@@ -4157,6 +4224,8 @@ function showLoginForm(options = {}) {
         }
 
         function showLanding(options = {}) {
+            // A plain call is the visitor going back (Home link); boot calls pass a flow or instant.
+            if (!options.flowId && !options.instant) window.__spUserPublicScreen = null;
             resetCloudSaveInFlightFlags('show-landing');
             const instantPublicReveal = !options.flowId && shouldUseInstantPublicReveal(options);
             const flowId = instantPublicReveal
@@ -4410,13 +4479,13 @@ function showLoginForm(options = {}) {
         };
 
         window.clearAllData ||= function() {
-            if (!confirm('Clear legacy local cache and drafts on this device?')) return;
+            if (!confirm('Clear saved drafts and copies on this device? Your records stay safe in your account.')) return;
             if (typeof window.clearLegacyCloudDataKeys === 'function') {
                 window.clearLegacyCloudDataKeys();
             }
             sessionStorage.removeItem('sp_dismissed_nudges');
             if (typeof window.toastSuccess === 'function') {
-                window.toastSuccess('Local cache cleared.');
+                window.toastSuccess('This device\'s cache is cleared. Your records are still in your account.');
             }
         };
 
@@ -5226,18 +5295,24 @@ function showLoginForm(options = {}) {
             }
             persistAppSectionRoute(section);
 
-            // Scroll to top on every section change
-            window.scrollTo({ top: 0, behavior: 'instant' });
-            document.documentElement.scrollTop = 0;
-            const mc = document.querySelector('.main-content');
-            if (mc) mc.scrollTop = 0;
+            // Scroll to top on every section change. A repeat call for the section
+            // already showing (a cloud refresh restoring the route) leaves the page
+            // where the user is.
+            if (!_spSameSection) {
+                window.scrollTo({ top: 0, behavior: 'instant' });
+                document.documentElement.scrollTop = 0;
+                const mc = document.querySelector('.main-content');
+                if (mc) mc.scrollTop = 0;
+            }
 
             const target = el || null;
             target?.classList.add('active');
 
             // ── Push to in-app navigation history stack ───────────────
             if (!window._spNavSkip) {
-                if (window._spNavStack) {
+                // The data-action bridges can call this twice per click; a repeat must
+                // not push again or it would wipe the forward history.
+                if (window._spNavStack && window._spNavStack[window._spNavIndex] !== section) {
                     window._spNavStack = window._spNavStack.slice(0, window._spNavIndex + 1);
                     window._spNavStack.push(section);
                     window._spNavIndex = window._spNavStack.length - 1;
@@ -5262,8 +5337,12 @@ function showLoginForm(options = {}) {
             (function _spLegacyNoop(){})(); // keep line count stable for downstream patches
 
             // ── Sync sidebar nav active state ──────────────────────────
-            // Always show lists when navigating to sections
-            if (section === 'bookings') {
+            // Show lists when navigating to a section. Not on a repeat call for the
+            // section already showing: a background cloud refresh calls this again
+            // and used to close a half-filled form and lose what was typed.
+            if (_spSameSection) {
+                // keep any open form as it is
+            } else if (section === 'bookings') {
                 document.getElementById('addBookingForm')?.toggleAttribute('hidden', true);
                 document.getElementById('bookingsListCard')?.toggleAttribute('hidden', false);
             } else if (section === 'expenses') {
@@ -5388,6 +5467,7 @@ function showLoginForm(options = {}) {
                     status: document.getElementById('bookingStatus')?.value || '',
                     notes: document.getElementById('bookingNotes')?.value || '',
                     locationType: document.getElementById('bookingLocationType')?.value || 'uganda',
+                    venue: document.getElementById('bookingVenue')?.value || '',
                     locationUg: document.getElementById('bookingUgandaLocation')?.value || '',
                     locationAbroad: document.getElementById('bookingAbroadLocation')?.value || '',
                     formOpen: document.getElementById('addBookingForm')?.hidden === false
@@ -5440,6 +5520,7 @@ function showLoginForm(options = {}) {
                 setVal('bookingNotes', drafts.booking.notes || '');
                 setVal('bookingLocationType', drafts.booking.locationType || 'uganda');
                 updateLocationDropdown();
+                setVal('bookingVenue', drafts.booking.venue || '');
                 setVal('bookingUgandaLocation', drafts.booking.locationUg || '');
                 setVal('bookingAbroadLocation', drafts.booking.locationAbroad || '');
                 if (drafts.booking.formOpen) {
@@ -7368,6 +7449,24 @@ function showLoginForm(options = {}) {
             if (avatarUpload) avatarUpload.value = '';
         }
 
+        // Saving on the Artists page used to stop at this browser's storage, so a
+        // new artist vanished on refresh or on another device. Push to the cloud
+        // and only call it saved once the cloud says so.
+        async function syncArtistsToCloud(successMessage) {
+            // Confirm straight away (the artist is already on screen); the cloud save follows and only speaks up if it fails.
+            if (successMessage) toastSuccess(successMessage);
+            try {
+                await persistMutationWithCloudFeedback(() => {
+                    if (typeof window.SP?.saveArtists === 'function') {
+                        return window.SP.saveArtists(artists);
+                    }
+                    return saveUserData();
+                }, { suppressSuccessToast: true, failureMessage: 'Artist saved on this device only. Check your connection and try again.' });
+            } catch (err) {
+                toastError(err?.message || 'Artist saved on this device only. Check your connection and try again.');
+            }
+        }
+
         function saveArtist() {
             if (guardReadOnly('save artists')) return;
 
@@ -7379,8 +7478,29 @@ function showLoginForm(options = {}) {
                 const artistBio = sanitizeTextInput(document.getElementById('artistBio').value);
                 const artistStrategicGoal = sanitizeTextInput(document.getElementById('artistStrategicGoal').value);
 
+                const artistNameInput = document.getElementById('artistName');
+                const artistNameError = document.getElementById('artistNameError');
                 if (!artistName) {
-                    toastError('Please enter the artist name.');
+                    // Show the error under the field itself so it stays after the toast fades.
+                    artistNameInput?.classList.add('input-error');
+                    artistNameInput?.setAttribute('aria-invalid', 'true');
+                    if (artistNameError) artistNameError.hidden = false;
+                    toastError("Please add the artist's name.");
+                    artistNameInput?.focus();
+                    return;
+                }
+                artistNameInput?.classList.remove('input-error');
+                artistNameInput?.removeAttribute('aria-invalid');
+                if (artistNameError) artistNameError.hidden = true;
+
+                if (artistEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(artistEmail)) {
+                    toastError('That email address looks incomplete. Use the form name@example.com, or leave it empty.');
+                    document.getElementById('artistEmail')?.focus();
+                    return;
+                }
+                if (artistPhone && (!/^[+\d\s()-]+$/.test(artistPhone) || artistPhone.replace(/\D/g, '').length < 9)) {
+                    toastError('Please enter the phone number in digits, for example +256 772 123456, or leave it empty.');
+                    document.getElementById('artistPhone')?.focus();
                     return;
                 }
 
@@ -7452,7 +7572,7 @@ function showLoginForm(options = {}) {
                     renderArtists();
                     populateArtistDropdown();
                     cancelAddArtist();
-                    toastSuccess('Artist updated successfully!');
+                    syncArtistsToCloud('Artist updated.');
                     return;
                 }
 
@@ -7474,7 +7594,10 @@ function showLoginForm(options = {}) {
                 renderArtists();
                 populateArtistDropdown();
                 cancelAddArtist();
-                toastSuccess('Artist added successfully!');
+                // First artist and no shows yet: say what comes next.
+                syncArtistsToCloud(bookings.length === 0
+                    ? `${artistName} added. Next: log a show for them with + then Booking.`
+                    : 'Artist added.');
         
             } catch (err) {
                 console.error('[StarPaper] saveArtist failed:', err);
@@ -7517,7 +7640,7 @@ function showLoginForm(options = {}) {
                     <h4 class="sp-inline-editable" ${inlineEditAttrs('artist', artist.id, 'name', 'Artist Name')}>${artistName}</h4>
                     <p class="artist-specialty sp-inline-editable" ${inlineEditAttrs('artist', artist.id, 'specialty', 'Specialty')}>${artistSpecialty}</p>
                     <p class="artist-bio sp-inline-editable" ${inlineEditAttrs('artist', artist.id, 'bio', 'Bio')}>${artistBio}</p>
-                    <p class="artist-bio artist-bio--goal sp-inline-editable" ${inlineEditAttrs('artist', artist.id, 'strategicGoal', 'Strategic Goal')}>Goal: ${artistGoal || 'Set a strategic goal'}</p>
+                    <p class="artist-bio artist-bio--goal sp-inline-editable" ${inlineEditAttrs('artist', artist.id, 'strategicGoal', 'Main goal')}>Goal: ${artistGoal || 'Set a main goal'}</p>
                     <div class="artist-contact">
                         <div class="sp-inline-editable" ${inlineEditAttrs('artist', artist.id, 'email', 'Email')}><i class="ph ph-envelope-simple" aria-hidden="true"></i> ${artistEmail || 'No email'}</div>
                         <div class="sp-inline-editable" ${inlineEditAttrs('artist', artist.id, 'phone', 'Phone')}><i class="ph ph-phone" aria-hidden="true"></i> ${artistPhone || 'No phone'}</div>
@@ -7627,6 +7750,21 @@ function showLoginForm(options = {}) {
             const deposit = parseMoneyInputValue(document.getElementById('bookingDeposit').value);
             const balance = fee - deposit - recordedPaymentsTotal(editingBookingId);
             document.getElementById('bookingBalance').value = formatMoneyInputDisplay(balance);
+            // Warn while typing, before Save refuses it.
+            const warning = document.getElementById('bookingMoneyWarning');
+            if (warning) {
+                const message = bookingMoneyProblem(fee, deposit);
+                warning.textContent = message;
+                warning.hidden = !message;
+            }
+        }
+
+        function bookingMoneyProblem(fee, deposit) {
+            if (fee < 0) return "The total fee can't be below zero.";
+            if (deposit < 0) return "The deposit can't be below zero.";
+            if (fee > 999999999999 || deposit > 999999999999) return 'That amount is too big. Please check the fee and deposit.';
+            if (deposit > fee) return 'The deposit is bigger than the total fee. Please check both amounts.';
+            return '';
         }
 
         function showAddBooking() {
@@ -7634,10 +7772,18 @@ function showLoginForm(options = {}) {
             // Ensure schedule section + bookings tab are active before showing form
             if (typeof showSection === 'function') showSection('bookings');
             if (typeof activateScheduleTab === 'function') activateScheduleTab('bookings');
-            document.getElementById('addBookingForm').hidden = false;
+            const bookingForm = document.getElementById('addBookingForm');
+            bookingForm.hidden = false;
+            // One artist on the roster: a new booking is for them, so fill it in.
+            const artistSelect = document.getElementById('bookingArtist');
+            const roster = getArtists();
+            if (!editingBookingId && artistSelect && !artistSelect.value && roster.length === 1 && roster[0]?.name) {
+                artistSelect.value = roster[0].name;
+            }
             const listCard = document.getElementById('bookingsListCard');
             if (listCard) listCard.hidden = true;
-            (document.querySelector('.main-content') || document.documentElement).scrollTo({ top: 0, behavior: 'smooth' });
+            // Bring the form itself into view, not the stats strip above it.
+            requestAnimationFrame(() => bookingForm.scrollIntoView({ block: 'start', behavior: 'smooth' }));
             setTimeout(() => { document.getElementById('bookingEvent')?.focus(); }, 50);
         }
 
@@ -7657,6 +7803,10 @@ function showLoginForm(options = {}) {
 
         function clearBookingForm() {
             document.getElementById('bookingEvent').value = '';
+            const moneyWarning = document.getElementById('bookingMoneyWarning');
+            if (moneyWarning) moneyWarning.hidden = true;
+            const clearVenue = document.getElementById('bookingVenue');
+            if (clearVenue) clearVenue.value = '';
             document.getElementById('bookingArtist').value = '';
             document.getElementById('bookingDate').value = '';
             document.getElementById('bookingFee').value = '';
@@ -7675,8 +7825,33 @@ function showLoginForm(options = {}) {
             document.getElementById('bookingStatus').value = 'confirmed';
             document.getElementById('bookingNotes').value = '';
             document.getElementById('bookingLocationType').value = 'uganda';
+            const clearDistrict = document.getElementById('bookingUgandaLocation');
+            if (clearDistrict) clearDistrict.value = '';
+            const clearCountry = document.getElementById('bookingAbroadLocation');
+            if (clearCountry) clearCountry.value = '';
             updateLocationDropdown();
         }
+
+        // A booking keeps one location string: "Venue, District" (or "Venue, Country").
+        // The venue is free text; the place is one of the dropdown values.
+        function joinBookingLocation(venue, place) {
+            const v = String(venue || '').trim();
+            const pl = String(place || '').trim();
+            if (v && pl && v.toLowerCase() !== pl.toLowerCase()) return `${v}, ${pl}`;
+            return v || pl;
+        }
+
+        function splitBookingLocation(location, locationType) {
+            const text = String(location || '').trim();
+            const places = locationType === 'abroad' ? countries : ugandaDistricts;
+            if (places.includes(text)) return { venue: '', place: text };
+            const cut = text.lastIndexOf(', ');
+            if (cut > 0 && places.includes(text.slice(cut + 2))) {
+                return { venue: text.slice(0, cut), place: text.slice(cut + 2) };
+            }
+            return { venue: text, place: '' };
+        }
+        window.splitBookingLocation = splitBookingLocation;
 
         async function saveBooking() {
             if (guardReadOnly('save bookings')) return;
@@ -7688,9 +7863,10 @@ function showLoginForm(options = {}) {
                 previousBookings = bookings.slice();
                 previousArtists = artists.slice();
                 const locationType = document.getElementById('bookingLocationType').value;
-                const location = locationType === 'uganda' 
+                const place = locationType === 'uganda'
                     ? document.getElementById('bookingUgandaLocation').value
                     : document.getElementById('bookingAbroadLocation').value;
+                const location = joinBookingLocation(sanitizeTextInput(document.getElementById('bookingVenue')?.value || ''), place);
                 const feeValue = parseMoneyInputValue(document.getElementById('bookingFee').value);
                 const depositValue = parseMoneyInputValue(document.getElementById('bookingDeposit').value);
                 const capacityValue = Math.round(Number(document.getElementById('bookingCapacity').value) || 0);
@@ -7718,8 +7894,24 @@ function showLoginForm(options = {}) {
                     createdAt: existingBooking?.createdAt || Date.now()
                 };
 
-                if (!booking.event || !booking.artist || !booking.date || !booking.fee) {
-                    toastError('Please fill in all required fields.');
+                const missing = [
+                    [!booking.event, 'event name', 'bookingEvent'],
+                    [!booking.artist, 'artist', 'bookingArtistSearch'],
+                    [!booking.date, 'date', 'bookingDate'],
+                    [!booking.fee, 'total fee', 'bookingFee'],
+                ].filter((row) => row[0]);
+                if (missing.length) {
+                    const names = missing.map((row) => row[1]);
+                    const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0];
+                    toastError(`Please add the ${list}.`);
+                    document.getElementById(missing[0][2])?.focus();
+                    return;
+                }
+                const moneyProblem = bookingMoneyProblem(feeValue, depositValue);
+                if (moneyProblem) {
+                    toastError(moneyProblem);
+                    const feeIsWrong = feeValue < 0 || feeValue > 999999999999;
+                    document.getElementById(feeIsWrong ? 'bookingFee' : 'bookingDeposit')?.focus();
                     return;
                 }
 
@@ -7872,6 +8064,10 @@ function showLoginForm(options = {}) {
         });
 
         function renderBookings() {
+            // The number cards above the list read window.bookings; refresh them with
+            // the list so a new booking shows there straight away, not after a page change.
+            window.bookings = bookings;
+            window.SPSchedulePage?.render?.();
             const tbody = document.querySelector('#bookingsTable tbody');
             const sortedBookings = sortNewestFirst(bookings).filter(matchesBookingFilter);
 
@@ -8036,11 +8232,14 @@ function showLoginForm(options = {}) {
             
             bookings.forEach(booking => {
                 if (!isEarningBooking(booking)) return;
-                const date = new Date(booking.date);
-                const monthsDiff = (today.getFullYear() - date.getFullYear()) * 12 + (today.getMonth() - date.getMonth());
-                if (monthsDiff >= 0 && monthsDiff < 12) {
-                    monthlyIncome[11 - monthsDiff] += getBookingCollected(booking);
-                }
+                getBookingCashEvents(booking).forEach((event) => {
+                    const date = new Date(event.date);
+                    if (Number.isNaN(date.getTime())) return;
+                    const monthsDiff = (today.getFullYear() - date.getFullYear()) * 12 + (today.getMonth() - date.getMonth());
+                    if (monthsDiff >= 0 && monthsDiff < 12) {
+                        monthlyIncome[11 - monthsDiff] += event.amount;
+                    }
+                });
             });
 
             expenses.forEach(expense => {
@@ -8333,10 +8532,13 @@ function showLoginForm(options = {}) {
             // Set location fields
             document.getElementById('bookingLocationType').value = booking.locationType || 'uganda';
             updateLocationDropdown();
+            const savedLocation = splitBookingLocation(booking.location, booking.locationType);
+            const populateVenue = document.getElementById('bookingVenue');
+            if (populateVenue) populateVenue.value = savedLocation.venue;
             if (booking.locationType === 'abroad') {
-                document.getElementById('bookingAbroadLocation').value = booking.location || '';
+                document.getElementById('bookingAbroadLocation').value = savedLocation.place;
             } else {
-                document.getElementById('bookingUgandaLocation').value = booking.location || '';
+                document.getElementById('bookingUgandaLocation').value = savedLocation.place;
             }
 
             showAddBooking();
@@ -8407,6 +8609,36 @@ function showLoginForm(options = {}) {
             return Math.max(0, deposit) + balancePaid;
         }
 
+        // When each part of a booking's money came in, so cash is counted in the month it was received:
+        // the deposit on the day the booking was logged, each recorded payment on its paid date,
+        // and any older balance paid without a payment record on the show date.
+        function getBookingCashEvents(booking) {
+            const deposit = Math.max(0, Math.round(Number(booking?.deposit) || 0));
+            const events = [];
+            if (deposit > 0) events.push({ date: booking?.createdAt || booking?.date, amount: deposit, kind: 'deposit' });
+            let recorded = 0;
+            if (booking?.id) {
+                getBookingPayments(booking.id).forEach((payment) => {
+                    const amount = Math.max(0, Math.round(Number(payment?.amount) || 0));
+                    if (!amount) return;
+                    recorded += amount;
+                    events.push({ date: payment.paidOn || payment.createdAt || booking.date, amount, kind: 'payment' });
+                });
+            }
+            const unrecorded = getBookingCollected(booking) - deposit - recorded;
+            if (unrecorded > 0) events.push({ date: booking?.date, amount: unrecorded, kind: 'balance' });
+            return events;
+        }
+
+        // Cash from one booking that arrived inside [start, end).
+        function getBookingCashInRange(booking, start, end) {
+            return getBookingCashEvents(booking).reduce((sum, event) => {
+                const date = event.date ? new Date(event.date) : null;
+                if (!date || Number.isNaN(date.getTime())) return sum;
+                return date >= start && date < end ? sum + event.amount : sum;
+            }, 0);
+        }
+
         function isReceivedOtherIncome(entry) {
             return String(entry?.status || 'received').toLowerCase() === 'received';
         }
@@ -8415,6 +8647,8 @@ function showLoginForm(options = {}) {
         window.SPMoney = {
             isEarningBooking,
             getBookingCollected,
+            getBookingCashEvents,
+            getBookingCashInRange,
             isReceivedOtherIncome,
             getMonthlyGoal: () => getCurrentMonthlyRevenueGoal(),
             getBBF: () => {
@@ -8458,14 +8692,19 @@ function showLoginForm(options = {}) {
             );
             const monthExpenses = expenses.filter((entry) => isCurrentMonthDate(entry.date));
 
-            const depositsReceived = monthConfirmedBookings.reduce((sum, booking) => sum + asAmount(booking.deposit), 0);
-            const balancesReceived = monthConfirmedBookings.reduce((sum, booking) => {
-                const feeValue = asAmount(booking.fee);
-                const depositValue = asAmount(booking.deposit);
-                const balanceOutstanding = asAmount(booking.balance);
-                const collectedBeyondDeposit = feeValue - depositValue - balanceOutstanding;
-                return sum + (collectedBeyondDeposit > 0 ? collectedBeyondDeposit : 0);
-            }, 0);
+            // Cash counts in the month it arrived, whatever month the show is in.
+            const monthStartDate = new Date(currentYear, currentMonth, 1);
+            const nextMonthStartDate = new Date(currentYear, currentMonth + 1, 1);
+            let depositsReceived = 0;
+            let balancesReceived = 0;
+            bookings.filter(isConfirmedBooking).forEach((booking) => {
+                getBookingCashEvents(booking).forEach((event) => {
+                    const date = parseValidDate(event.date);
+                    if (!date || date < monthStartDate || date >= nextMonthStartDate) return;
+                    if (event.kind === 'deposit') depositsReceived += event.amount;
+                    else balancesReceived += event.amount;
+                });
+            });
             const balancesDue = monthConfirmedBookings.reduce((sum, booking) => {
                 const balanceValue = asAmount(booking.balance);
                 return sum + (balanceValue > 0 ? balanceValue : 0);
@@ -8518,7 +8757,7 @@ function showLoginForm(options = {}) {
 
             // showIncome is what was booked; deposits is what has been collected so far.
             const showIncome = rangeBookings.reduce((sum, booking) => sum + asAmount(booking.fee), 0);
-            const deposits = rangeBookings.reduce((sum, booking) => sum + getBookingCollected(booking), 0);
+            const deposits = bookings.filter(isEarningBooking).reduce((sum, booking) => sum + getBookingCashInRange(booking, start, end), 0);
             const other = rangeOtherIncome.reduce((sum, entry) => sum + asAmount(entry.amount), 0);
             const expenseTotal = rangeExpenses.reduce((sum, entry) => sum + asAmount(entry.amount), 0);
             const totalIncome = deposits + other;
@@ -8643,13 +8882,15 @@ function showLoginForm(options = {}) {
         }
 
         async function fetchGeoCoordinates(locationLabel) {
-            const normalized = String(locationLabel || '').trim().toLowerCase();
+            // "Kampala Serena Hotel, Kampala": look up the district or country only.
+            const placeLabel = String(locationLabel || '').split(', ').pop();
+            const normalized = String(placeLabel || '').trim().toLowerCase();
             if (!normalized) return null;
             if (dashboardWeatherCache.geocode.has(normalized)) {
                 return dashboardWeatherCache.geocode.get(normalized);
             }
             try {
-                const query = encodeURIComponent(String(locationLabel).trim());
+                const query = encodeURIComponent(String(placeLabel).trim());
                 const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${query}&count=1&language=en&format=json`);
                 if (!response.ok) {
                     dashboardWeatherCache.geocode.set(normalized, null);
@@ -9092,7 +9333,7 @@ function showLoginForm(options = {}) {
             };
             const items = [];
             bookings.forEach(booking => {
-                if (!isEarningBooking(booking) || !isThisMonth(booking.date)) return;
+                if (!isEarningBooking(booking) || !getBookingCashEvents(booking).some((event) => isThisMonth(event.date))) return;
                 const collected = getBookingCollected(booking);
                 if (collected <= 0) return;
                 const fee = Math.round(Number(booking.fee) || 0);
@@ -9520,6 +9761,12 @@ function showLoginForm(options = {}) {
             const durSec = (dur / 1000).toFixed(1) + 's';
             const titleText = opts.title == null ? '' : String(opts.title);
             const messageText = message == null ? '' : String(message);
+            // A double-click should not stack two copies of the same message.
+            const toastKey = `${toastType}|${titleText}|${messageText}`;
+            const now = Date.now();
+            if (showToast.lastKey === toastKey && now - (showToast.lastAt || 0) < 1500) return;
+            showToast.lastKey = toastKey;
+            showToast.lastAt = now;
 
             const toast = document.createElement('div');
             toast.className = `sp-toast sp-toast--${toastType}`;
@@ -9878,12 +10125,14 @@ function showLoginForm(options = {}) {
             }
 
             // ── Collection Nudge ──────────────────────────────────────────────
-            const unpaid = allBookings.filter(b => isEarningBooking(b) && (Math.round(Number(b.balance) || 0)) > 0);
+            // Only shows already played: a balance on a show weeks away isn't late yet
+            // (the next nudge covers shows in the coming 5 days).
+            const unpaid = allBookings.filter(b => isEarningBooking(b) && (Math.round(Number(b.balance) || 0)) > 0 && b.date && b.date < todayStr);
             if (unpaid.length > 0) {
                 const total = unpaid.reduce((s, b) => s + (Math.round(Number(b.balance) || 0)), 0);
                 nudges.push({
                     type: 'warning', icon: 'ph-money', id: 'nudge-collection',
-                    text: `${unpaid.length} booking${unpaid.length > 1 ? 's have' : ' has'} unpaid balances (UGX ${Math.round(total).toLocaleString()}). Follow up?`,
+                    text: `${unpaid.length} played show${unpaid.length > 1 ? 's still have' : ' still has'} a balance to collect (UGX ${Math.round(total).toLocaleString()}). Follow up?`,
                     action: 'followUpUnpaid',
                     actionId: String(unpaid[0]?.id ?? '')
                 });
@@ -10160,7 +10409,8 @@ function showLoginForm(options = {}) {
             const text = String(value ?? '').trim();
             if (!text) return '';
             const negative = text.startsWith('-');
-            const digits = text.replace(/[^0-9]/g, '');
+            // Cap the length so a pasted run of digits can't display as "∞" and save as 0.
+            const digits = text.replace(/[^0-9]/g, '').slice(0, 13);
             if (!digits) return '';
             const grouped = Number(digits).toLocaleString('en-US');
             return negative ? `-${grouped}` : grouped;

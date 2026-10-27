@@ -366,6 +366,12 @@ body.light-theme .lp .lp-btn--ghost {
   padding: 0 var(--sp-space-4);
 }
 
+/* Touch screens get the full 44px tap height on the small header buttons. */
+@media (pointer: coarse) {
+  .lp-btn--sm { min-height: 44px; }
+  .lp-auth__switch .lp-text-btn { min-height: 44px; padding: 0 var(--sp-space-2); }
+}
+
 .lp-btn--lg {
   min-height: 52px;
   padding: 0 var(--sp-space-6);
@@ -389,8 +395,8 @@ body.light-theme .lp .lp-btn--ghost {
 .lp-icon-btn {
   display: inline-grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: var(--sp-tap);
+  height: var(--sp-tap);
   border-radius: 50%;
   color: var(--sp-ink-2);
   font-size: 20px;
@@ -436,7 +442,7 @@ body.light-theme .lp .lp-btn--ghost {
   top: 0;
   z-index: var(--sp-z-header);
   border-bottom: 1px solid transparent;
-  transition: background-color var(--sp-dur-3), border-color var(--sp-dur-3), backdrop-filter var(--sp-dur-3);
+  transition: background-color var(--sp-dur-3), border-color var(--sp-dur-3);
 }
 
 .lp-header.is-scrolled {
@@ -762,11 +768,24 @@ body.light-theme .lp-header.is-scrolled {
   animation-play-state: paused;
 }
 
+/* Off-screen parts of the page and slides that aren't showing hold their
+   decorative loops (app.landing.js sets data-lp-offstage). */
+.lp [data-lp-offstage],
+.lp [data-lp-offstage] *,
+.lp [data-lp-offstage] *::before,
+.lp [data-lp-offstage] *::after,
+.lp-slide:not([data-active]) *,
+.lp-slide:not([data-active]) *::before,
+.lp-slide:not([data-active]) *::after {
+  animation-play-state: paused !important;
+}
+
 @keyframes lp-progress {
   to { transform: scaleX(1); }
 }
 
 @media (max-width: 599px) {
+  .lp-show__controls { gap: var(--sp-space-1); }
   .lp-tabs__count { display: inline-block; order: -1; }
   .lp-tab__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .lp-tab { padding-inline: var(--sp-space-2); }
@@ -2151,7 +2170,7 @@ body.light-theme .lp-finale__dim {
 }
 
 .lp-marquee__kicker {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.32em;
   text-transform: uppercase;
@@ -2251,7 +2270,7 @@ body.light-theme .lp-finale__dim {
   border-radius: var(--sp-radius-pill);
   background: rgb(95 211 160 / 0.14);
   color: #5FD3A0;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -2351,7 +2370,7 @@ body.light-theme .lp-finale__dim {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
   gap: clamp(8px, 3%, 14px);
-  font-size: 11px;
+  font-size: 12px;
   text-align: center;
   color: #8E9A8F;
 }
@@ -2506,7 +2525,7 @@ body.light-theme .lp-finale__dim {
 }
 
 .lp-runsheet__title {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: var(--sp-tracking-caps);
   text-transform: uppercase;
@@ -2723,7 +2742,7 @@ body.light-theme .lp-finale__dim {
   border-radius: 50%;
   background: var(--sp-gold-soft);
   color: var(--sp-gold-text);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -3001,7 +3020,7 @@ body.light-theme .lp-auth__card {
 }
 
 .lp-field__label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: var(--sp-tracking-caps);
   text-transform: uppercase;
@@ -3131,7 +3150,7 @@ body.light-theme .lp .lp-input { background: #FFFFFF; }
   align-items: center;
   gap: var(--sp-space-3);
   margin-block: var(--sp-space-2);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--sp-ink-3);
   text-transform: uppercase;
   letter-spacing: var(--sp-tracking-caps);
@@ -3850,7 +3869,8 @@ body.light-theme .lp .lp-cta__inner {
   .lp *::before,
   .lp *::after {
     animation: none !important;
-    transition: none !important;
+    /* Gentler, not zero: colour and opacity still fade, nothing moves. */
+    transition-property: opacity, color, background-color, border-color !important;
   }
 
   .lp-eq__line polyline { stroke-dashoffset: 0; }
@@ -3947,3 +3967,75 @@ body.light-theme .lp .lp-cta__inner {
 
 body:has(> .lp--page) { margin: 0; }
 .lp[data-page='legal'] .lp-header__bar { display: flex; }
+
+/* A landing tap caught before the app's scripts load (app.boot-head.js). */
+.lp-btn[aria-busy="true"],
+.lp-text-btn[aria-busy="true"] {
+    cursor: progress;
+    opacity: 0.72;
+}
+.lp-btn[aria-busy="true"]::after {
+    content: "";
+    width: 0.9em;
+    height: 0.9em;
+    margin-left: 0.5em;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: lp-busy-spin 0.8s linear infinite;
+}
+@keyframes lp-busy-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+    .lp-btn[aria-busy="true"]::after { animation: none; }
+}
+
+/* Short helper line under a sign-up field. */
+.lp-field__hint {
+  display: block;
+  margin-top: var(--sp-space-1);
+  font-size: var(--sp-text-xs, 0.8rem);
+  color: var(--sp-ink-3);
+}
+
+/* ── Pricing page (pricing.html) ───────────────────────────────────────── */
+
+.lp-pricing__doc { max-width: 72rem; }
+.lp-pricing__doc > p,
+.lp-pricing__doc > ul,
+.lp-pricing__doc > h2,
+.lp-pricing__doc .lp-legal__head { max-width: 68ch; }
+
+.lp-plans {
+  display: grid;
+  gap: var(--sp-space-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  margin-top: var(--sp-space-6);
+}
+
+.lp-plan {
+  display: grid;
+  align-content: start;
+  gap: var(--sp-space-2);
+  padding: var(--sp-space-6);
+  border: 1px solid var(--sp-line);
+  border-radius: var(--sp-radius-lg);
+  background: var(--sp-surface-1);
+}
+
+.lp-plan--main { border-color: var(--sp-gold); }
+
+.lp-legal__doc .lp-plan__name { margin: 0; font-size: 1.25rem; }
+
+.lp-plan__price {
+  font-family: var(--sp-font-display);
+  font-size: 1.75rem;
+  line-height: 1.1;
+  color: var(--sp-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-plan__price span { font-family: inherit; font-size: var(--sp-text-sm); color: var(--sp-ink-3); }
+.lp-plan__alt { font-size: var(--sp-text-sm); color: var(--sp-gold-text); }
+.lp-plan__for { color: var(--sp-ink-3); }
+.lp-legal__doc .lp-plan ul { margin-top: var(--sp-space-2); }
+.lp-legal__doc .lp-plan p + p { margin-top: 0; }

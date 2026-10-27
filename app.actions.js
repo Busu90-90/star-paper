@@ -61,7 +61,7 @@
                 alert('Help documentation coming soon!');
                 return;
             case 'showContactAlert':
-                alert('Contact: jobdahimself@gmail.com');
+                alert('Contact: support@star-paper.com');
                 return;
             default:
                 invokeAction(action);

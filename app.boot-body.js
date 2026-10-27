@@ -4,6 +4,21 @@
   } catch (_err) {}
 })();
 
+// Keep the phone's browser bar in step with the theme: theme-color follows
+// the current --sp-stage whenever body.light-theme flips.
+(function syncThemeColorMeta() {
+  try {
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta || !window.MutationObserver) return;
+    var sync = function () {
+      var stage = getComputedStyle(document.body).getPropertyValue('--sp-stage').trim();
+      if (stage) meta.setAttribute('content', stage);
+    };
+    sync();
+    new MutationObserver(sync).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  } catch (_err) {}
+})();
+
 (function forceBootForAuthOrAppRoutes() {
   try {
     var key = 'sp_boot_context';

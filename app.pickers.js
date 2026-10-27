@@ -107,9 +107,9 @@
     ap = { select: select, wrap: wrap, input: input, list: list, clear: clear, items: [], index: 0, open: false };
     syncInput();
 
-    input.addEventListener('focus', function () { input.select(); openList(); });
-    input.addEventListener('click', function () { if (!ap.open) openList(); });
-    input.addEventListener('input', function () { ap.index = 0; openList(); });
+    input.addEventListener('focus', function () { input.select(); ap.index = -1; openList(); });
+    input.addEventListener('click', function () { if (!ap.open) { ap.index = -1; openList(); } });
+    input.addEventListener('input', function () { ap.index = -1; openList(); });
     input.addEventListener('keydown', onKey);
     caret.addEventListener('mousedown', function (e) { e.preventDefault(); });
     caret.addEventListener('click', function () { if (ap.open) closeList(true); else { input.focus(); openList(true); } });
@@ -176,7 +176,8 @@
     // Opening on a chosen artist shows the whole list, not just that one name.
     var all = showAll || (query && norm(query) === norm(ap.select.value));
     ap.items = buildItems(query, all);
-    ap.index = Math.max(0, Math.min(ap.index, ap.items.length - 1));
+    // -1 = nothing highlighted yet: the first ArrowDown lands on the top match.
+    ap.index = Math.max(-1, Math.min(ap.index, ap.items.length - 1));
     if (all && ap.select.value) {
       var cur = ap.items.findIndex(function (it) { return norm(it.name) === norm(ap.select.value); });
       if (cur >= 0) ap.index = cur;
@@ -299,6 +300,11 @@
     if (next && !next.value) next.focus();
   }
 
+  function firstArtistIndex() {
+    for (var i = 0; i < ap.items.length; i++) if (ap.items[i].kind === 'artist') return i;
+    return ap.items.length === 1 ? 0 : -1;
+  }
+
   function onKey(e) {
     if (!ap) return;
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
@@ -306,12 +312,17 @@
       if (!ap.open) { openList(); return; }
       var n = ap.items.length;
       if (!n) return;
-      ap.index = (ap.index + (e.key === 'ArrowDown' ? 1 : n - 1)) % n;
+      ap.index = ap.index < 0
+        ? (e.key === 'ArrowDown' ? 0 : n - 1)
+        : (ap.index + (e.key === 'ArrowDown' ? 1 : n - 1)) % n;
       highlight();
       return;
     }
     if (e.key === 'Enter') {
-      if (ap.open && ap.items.length) { e.preventDefault(); pick(ap.index); }
+      // Enter with nothing highlighted takes the best existing match. Adding a
+      // new artist needs that row picked on purpose, so a quick Enter after
+      // typing part of a name never creates a stray artist.
+      if (ap.open && ap.items.length) { e.preventDefault(); pick(ap.index >= 0 ? ap.index : firstArtistIndex()); }
       return;
     }
     if (e.key === 'Escape' && ap.open) {

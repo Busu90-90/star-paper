@@ -680,7 +680,11 @@ assert(index.includes(versionedAssetUrl('styles.app.css')), `index.html does not
 assert(index.includes(versionedAssetUrl('app.chrome.js')), `index.html does not load ${versionedAssetUrl('app.chrome.js')}`);
 assert(!/var\(--(onyx|gold-amber|gold-deep|text-primary)\b/.test(appCss), 'styles.app.css must read only the sp-design-tokens.css roles');
 assert(!/#[0-9a-fA-F]{3,8}\b/.test(appCss.replace(/\/\*[\s\S]*?\*\//g, '')), 'styles.app.css must not hard-code colours; use the tokens');
-assert(!/id="hamburgerBtn"|id="welcomeMessage"|mainstageCoinRainCanvas|id="navBackBtn"/.test(index), 'The app shell has no hamburger, welcome banner, coin rain or back/forward buttons');
+assert(!/id="hamburgerBtn"|id="welcomeMessage"|mainstageCoinRainCanvas/.test(index), 'The app shell has no hamburger, welcome banner or coin rain');
+// Back/forward came back on request (Oct 27): in-app history in the top bar, plus a scroll-down button beside scroll-to-top.
+for (const id of ['navBackBtn', 'navFwdBtn', 'scrollDownFab', 'scrollTopFab']) {
+  assert(index.includes(`id="${id}"`), `index.html app shell must render #${id}`);
+}
 assert(index.includes('class="bottom-nav-add" id="quickAddBtn"'), 'The mobile tab bar must carry the centre (+) quick-add button');
 for (const id of ['quickAddPanel', 'spNotifySheet', 'spAccountSheet', 'spBellBtn', 'spTeamBtn', 'spTeamChatBadge']) {
   assert(index.includes(`id="${id}"`), `index.html app shell must render #${id}`);

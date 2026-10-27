@@ -48,3 +48,7 @@ html[data-logo-spin='paused'] :is(.sp-spin-mark, .app-brand img, .avatar-img--br
     animation: none;
   }
 }
+
+/* The logo pause button is drawn at 32-36px; give it a 44px tap area. */
+.sp-spin-toggle { position: relative; }
+.sp-spin-toggle::after { content: ''; position: absolute; top: 50%; left: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); }

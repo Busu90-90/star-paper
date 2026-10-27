@@ -241,7 +241,7 @@
             btn.setAttribute('data-ap-open', row.key);
             btn.setAttribute('aria-expanded', row.key === openKey ? 'true' : 'false');
             const names = el('span', 'ap-row__names');
-            names.append(el('span', 'ap-row__name', row.name), el('span', 'ap-row__meta', row.artist?.specialty || (row.artist ? '' : 'Not on your roster')));
+            names.append(el('span', 'ap-row__name', row.name), el('span', 'ap-row__meta', row.artist?.specialty || (row.artist ? '' : 'Not in your artists')));
             btn.append(avatar(row, 'sm'), names);
             th.appendChild(btn);
             const share = el('td', 'is-num');
@@ -276,7 +276,7 @@
         if (note) {
             const roster = data.list.filter((row) => row.artist).length;
             const net = data.list.reduce((sum, row) => sum + row.net, 0) - data.shared;
-            note.textContent = `${roster} artist${roster === 1 ? '' : 's'} on your roster. After shared costs, the roster ${net < 0 ? 'lost' : 'kept'} ${ugx(Math.abs(net))} in ${periodWords(period, now)}.`;
+            note.textContent = `You manage ${roster} artist${roster === 1 ? '' : 's'}. After shared costs, they ${net < 0 ? 'lost' : 'kept'} ${ugx(Math.abs(net))} in ${periodWords(period, now)}.`;
         }
     }
 

@@ -84,8 +84,12 @@
         };
         (window.bookings || []).forEach((booking) => {
             if (!m.isEarningBooking(booking)) return;
-            const row = bucket(booking.date);
-            if (row) row.in += m.getBookingCollected(booking);
+            // Cash lands in the month it was received, not the show's month.
+            const events = m.getBookingCashEvents ? m.getBookingCashEvents(booking) : [{ date: booking.date, amount: m.getBookingCollected(booking) }];
+            events.forEach((event) => {
+                const row = bucket(event.date);
+                if (row) row.in += event.amount;
+            });
         });
         (window.otherIncome || []).forEach((entry) => {
             if (!m.isReceivedOtherIncome(entry)) return;
@@ -153,9 +157,11 @@
         const totals = new Map();
         (window.bookings || []).forEach((booking) => {
             if (!m.isEarningBooking(booking)) return;
-            const date = parseDate(booking.date);
-            if (!date || monthIndex(date) !== monthIndex(now)) return;
-            const collected = m.getBookingCollected(booking);
+            const events = m.getBookingCashEvents ? m.getBookingCashEvents(booking) : [{ date: booking.date, amount: m.getBookingCollected(booking) }];
+            const collected = events.reduce((sum, event) => {
+                const date = parseDate(event.date);
+                return date && monthIndex(date) === monthIndex(now) ? sum + event.amount : sum;
+            }, 0);
             if (collected <= 0) return;
             const name = String(booking.artist || booking.artist_name || 'Unassigned').trim() || 'Unassigned';
             totals.set(name, (totals.get(name) || 0) + collected);
@@ -311,6 +317,21 @@
         const hour = now.getHours();
         const greet = $('hv2GreetWord');
         if (greet) greet.textContent = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+        // First run: until there is an artist and a booking, show the two steps.
+        const start = $('hv2Start');
+        if (start) {
+            const hasArtists = Array.isArray(window.artists) && window.artists.length > 0;
+            const hasBookings = Array.isArray(window.bookings) && window.bookings.length > 0;
+            start.hidden = hasArtists && hasBookings;
+            [['hv2StartArtist', hasArtists], ['hv2StartBooking', hasBookings]].forEach(([id, done]) => {
+                const step = $(id);
+                if (!step) return;
+                step.classList.toggle('is-done', done);
+                const btn = step.querySelector('button');
+                if (btn) btn.hidden = done; // a done step keeps no call to action
+            });
+        }
 
         const range = readRange();
         const series = monthlySeries(12, now);
