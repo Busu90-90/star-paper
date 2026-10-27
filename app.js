@@ -904,7 +904,7 @@ function getSectionIconMarkup(iconKey) {
                         toastInfo('Help documentation coming soon!');
                         return;
                     case 'showContactAlert':
-                        toastInfo('Contact: jobdahimself@gmail.com');
+                        toastInfo('Contact: support@star-paper.com');
                         return;
                     default:
                         invokeAction(action);

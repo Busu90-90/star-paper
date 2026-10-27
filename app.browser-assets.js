@@ -60,7 +60,7 @@
     ]],
     ['1', ['app.offline-cache.js']],
     ['3', ['app.todayboard.js']],
-    ['84', ['app.browser-assets.js']],
+    ['85', ['app.browser-assets.js']],
     ['4', ['app.boot-head.js']],
     ['4', ['app.money.js']],
     ['7', ['app.home.js']],
@@ -106,15 +106,15 @@
       'star_paper_logo_pack/star_paper_white.png'
     ]],
     ['7', ['app.tasks.js']],
-    ['10', ['app.actions.js']],
+    ['11', ['app.actions.js']],
     ['10', ['app.migrations.js']],
     ['15', ['app.globe.js']],
     ['23', ['app.reports.js']],
     ['28', ['manifest.json']],
     ['66', ['styles.css']],
     ['107', ['supabase.js']],
-    ['170', ['app.js']],
-    ['263', ['sw.js']]
+    ['171', ['app.js']],
+    ['264', ['sw.js']]
   ];
 
   const assetVersions = {};
