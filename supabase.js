@@ -7182,8 +7182,16 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         if (errMsg.includes('could not initialise session')) {
           msg = 'Sign-in succeeded, but your cloud data could not load. Use Retry or log out.';
         }
-        if (typeof window.toastError === 'function') window.toastError(msg);
         showLoginScreen({ flowId, reason: 'password-sign-in-failed' });
+        // Show it under the password box, where it stays until the next try. A toast
+        // alone went away in seconds and covered the Sign in button on phones.
+        const passwordError = document.getElementById('loginPasswordError');
+        if (passwordError) {
+          passwordError.textContent = msg;
+          document.getElementById('loginPassword')?.classList.add('input-error');
+        } else if (typeof window.toastError === 'function') {
+          window.toastError(msg);
+        }
       } finally {
         window.__spUserInitiatedAuth = false;
         // Guaranteed: spinner always stops, button always re-enables.
@@ -7859,11 +7867,16 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       }
     };
 
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', onAppReady, { once: true });
-    } else {
-      // DOMContentLoaded already fired (synchronous script load after app.js)
+    // This file is a deferred script, so readyState is already 'interactive'
+    // when it runs, but app.js (a later deferred script) may still be
+    // downloading on a slow phone. Running onAppReady now would patch
+    // window.login before app.js loads and app.js's placeholder login would
+    // then overwrite it, so every sign-in failed. Wait for DOMContentLoaded,
+    // which fires only after every deferred script has run.
+    if (window.__spDomContentLoaded || document.readyState === 'complete') {
       setTimeout(onAppReady, 0);
+    } else {
+      document.addEventListener('DOMContentLoaded', onAppReady, { once: true });
     }
 
   }

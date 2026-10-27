@@ -312,6 +312,16 @@
         const greet = $('hv2GreetWord');
         if (greet) greet.textContent = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
+        // First run: until there is an artist and a booking, show the two steps.
+        const start = $('hv2Start');
+        if (start) {
+            const hasArtists = Array.isArray(window.artists) && window.artists.length > 0;
+            const hasBookings = Array.isArray(window.bookings) && window.bookings.length > 0;
+            start.hidden = hasArtists && hasBookings;
+            $('hv2StartArtist')?.classList.toggle('is-done', hasArtists);
+            $('hv2StartBooking')?.classList.toggle('is-done', hasBookings);
+        }
+
         const range = readRange();
         const series = monthlySeries(12, now);
         const last6 = series.slice(-6);

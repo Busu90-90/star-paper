@@ -366,6 +366,11 @@ body.light-theme .lp .lp-btn--ghost {
   padding: 0 var(--sp-space-4);
 }
 
+/* Touch screens get the full 44px tap height on the small header buttons. */
+@media (pointer: coarse) {
+  .lp-btn--sm { min-height: 44px; }
+}
+
 .lp-btn--lg {
   min-height: 52px;
   padding: 0 var(--sp-space-6);
@@ -3961,3 +3966,24 @@ body.light-theme .lp .lp-cta__inner {
 
 body:has(> .lp--page) { margin: 0; }
 .lp[data-page='legal'] .lp-header__bar { display: flex; }
+
+/* A landing tap caught before the app's scripts load (app.boot-head.js). */
+.lp-btn[aria-busy="true"],
+.lp-text-btn[aria-busy="true"] {
+    cursor: progress;
+    opacity: 0.72;
+}
+.lp-btn[aria-busy="true"]::after {
+    content: "";
+    width: 0.9em;
+    height: 0.9em;
+    margin-left: 0.5em;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: lp-busy-spin 0.8s linear infinite;
+}
+@keyframes lp-busy-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+    .lp-btn[aria-busy="true"]::after { animation: none; }
+}

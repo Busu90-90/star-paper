@@ -6,9 +6,9 @@
     <meta name="star-paper:public-root" content="app-shell">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:;">
     <title>Star Paper</title>
-    <script src="app.browser-assets.js?v=79"></script>
+    <script src="app.browser-assets.js?v=80"></script>
     <script src="app.public-pages.js?v=3"></script>
-    <script src="app.boot-head.js?v=3"></script>
+    <script src="app.boot-head.js?v=4"></script>
     <link rel="manifest" href="manifest.json?v=28">
     <meta name="theme-color" content="#0A1210">
     <meta name="mobile-web-app-capable" content="yes">
@@ -34,9 +34,9 @@
     <link rel="stylesheet" href="styles.utilities.css?v=2">
     <!-- Design system: tokens + signed-out pages (landing, auth). Loaded last so it owns those screens. -->
     <link rel="stylesheet" href="sp-design-tokens.css?v=6">
-    <link rel="stylesheet" href="styles.landing.css?v=57">
+    <link rel="stylesheet" href="styles.landing.css?v=58">
     <link rel="stylesheet" href="styles.brand.css?v=2">
-    <link rel="stylesheet" href="styles.app.css?v=26">
+    <link rel="stylesheet" href="styles.app.css?v=27">
     <link rel="preload" href="assets/vendor/fonts/font-29-fraunces-latin-opsz-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="assets/vendor/fonts/font-31-inter-tight-latin-wght-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <!-- Vendored Phosphor Icons 2.1.1 - unified icon system -->
@@ -700,6 +700,15 @@
                             <h2 class="hv2-greet__title"><span id="hv2GreetWord">Hello</span>, <span data-sp-profile-name>Manager</span></h2>
                         </div>
                     </header>
+
+                    <!-- First run only (no artists and no bookings yet): say what to do first. -->
+                    <section class="card hv2-card hv2-start" id="hv2Start" aria-labelledby="hv2StartTitle" hidden>
+                        <h3 class="hv2-title" id="hv2StartTitle">Start here</h3>
+                        <ol class="hv2-start__steps">
+                            <li id="hv2StartArtist"><span>Add your first artist</span> <button class="btn-primary hv2-start__btn" type="button" data-action="openQuickAdd" data-target-section="artists">Add artist</button></li>
+                            <li id="hv2StartBooking"><span>Log a show for that artist: date, venue and fee</span> <button class="btn-primary hv2-start__btn" type="button" data-action="openQuickAdd" data-target-section="booking">Add booking</button></li>
+                        </ol>
+                    </section>
 
                     <div class="hv2-top">
                         <section class="card hv2-card hv2-hero" aria-labelledby="hv2HeroLabel">
@@ -1388,30 +1397,31 @@
 
                 <div class="card" id="addArtistForm" hidden>
                     <h3 class="section-title" data-icon="artists">Add New Artist</h3>
+                    <p class="sp-req-note"><span class="sp-req" aria-hidden="true">*</span> Required. Everything else is optional.</p>
                     <div class="form-grid">
                         <div class="form-group">
-                            <label>Full Name</label>
-                            <input autocomplete="off" type="text" id="artistName" />
+                            <label for="artistName">Artist name <span class="sp-req" aria-hidden="true">*</span></label>
+                            <input autocomplete="off" type="text" id="artistName" required aria-required="true" maxlength="120" />
                         </div>
                         <div class="form-group">
-                            <label>Email</label>
-                            <input autocomplete="off" type="email" id="artistEmail" />
+                            <label for="artistEmail">Email</label>
+                            <input autocomplete="off" type="email" id="artistEmail" maxlength="254" />
                         </div>
                         <div class="form-group">
-                            <label>Phone Number</label>
-                            <input autocomplete="off" type="tel" id="artistPhone" />
+                            <label for="artistPhone">Phone number</label>
+                            <input autocomplete="off" type="tel" id="artistPhone" maxlength="32" />
                         </div>
                         <div class="form-group">
-                            <label>Specialty/Genre</label>
-                            <input autocomplete="off" type="text" id="artistSpecialty" placeholder="e.g., Hip Hop, Gospel, Afrobeat" />
+                            <label for="artistSpecialty">Music style</label>
+                            <input autocomplete="off" type="text" id="artistSpecialty" maxlength="80" placeholder="e.g., Hip Hop, Gospel, Afrobeat" />
                         </div>
                     </div>
                     <div class="form-group sp-csp-style-16">
-                        <label>Strategic Goal</label>
-                        <textarea id="artistStrategicGoal" placeholder="e.g., Secure 3 festival slots this quarter"></textarea>
+                        <label for="artistStrategicGoal">Main goal for this artist</label>
+                        <textarea id="artistStrategicGoal" maxlength="500" placeholder="e.g., Secure 3 festival slots this quarter"></textarea>
                     </div>
                     <div class="form-group sp-csp-style-16">
-                        <label>Artist Photo</label>
+                        <label for="artistAvatarUpload">Artist photo</label>
                         <div class="artist-photo-row">
                             <div class="artist-photo-preview">
                                 <img id="artistAvatarPreview" class="artist-avatar-img" alt="Artist photo preview" />
@@ -1423,8 +1433,8 @@
                         </div>
                     </div>
                     <div class="form-group sp-csp-style-16">
-                        <label>Bio/Description</label>
-                        <textarea id="artistBio" placeholder="Brief description of the artist…"></textarea>
+                        <label for="artistBio">Short bio</label>
+                        <textarea id="artistBio" maxlength="2000" placeholder="Brief description of the artist…"></textarea>
                     </div>
                     <button class="btn-primary" data-action="saveArtist">Save Artist</button>
                     <button class="back-btn" data-action="cancelAddArtist">Cancel</button>
@@ -1523,35 +1533,40 @@
                         <h3 class="section-title" data-icon="bookings">New Booking</h3>
                         <button class="back-to-list" type="button" data-action="cancelBooking">Back to Bookings</button>
                     </div>
+                    <p class="sp-req-note"><span class="sp-req" aria-hidden="true">*</span> Required</p>
                     <div class="form-grid">
                         <div class="form-group">
-                            <label>Event Name</label>
-                            <input autocomplete="off" type="text" id="bookingEvent" />
+                            <label for="bookingEvent">Event name <span class="sp-req" aria-hidden="true">*</span></label>
+                            <input autocomplete="off" type="text" id="bookingEvent" required aria-required="true" placeholder="e.g. Friday night show" />
                         </div>
                         <div class="form-group">
-                            <label>Artist</label>
+                            <label for="bookingVenue">Venue (optional)</label>
+                            <input autocomplete="off" type="text" id="bookingVenue" maxlength="120" placeholder="e.g. Kampala Serena Hotel" />
+                        </div>
+                        <div class="form-group">
+                            <label>Artist <span class="sp-req" aria-hidden="true">*</span></label>
                             <select id="bookingArtist" data-native="always">
                                 <option value="">Select Artist</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Date</label>
-                            <input autocomplete="off" type="date" id="bookingDate" />
+                            <label for="bookingDate">Date <span class="sp-req" aria-hidden="true">*</span></label>
+                            <input autocomplete="off" type="date" id="bookingDate" required aria-required="true" />
                         </div>
                         <div class="form-group">
-                            <label>Total Fee (UGX)</label>
-                            <input autocomplete="off" type="number" id="bookingFee" data-input-action="calculateBalance" />
+                            <label for="bookingFee">Total fee (UGX) <span class="sp-req" aria-hidden="true">*</span></label>
+                            <input autocomplete="off" type="number" id="bookingFee" data-input-action="calculateBalance" required aria-required="true" min="0" max="999999999999" inputmode="numeric" />
                         </div>
                         <div class="form-group">
-                            <label>Deposit (UGX)</label>
-                            <input autocomplete="off" type="number" id="bookingDeposit" data-input-action="calculateBalance" />
+                            <label for="bookingDeposit">Deposit received (UGX)</label>
+                            <input autocomplete="off" type="number" id="bookingDeposit" data-input-action="calculateBalance" min="0" max="999999999999" inputmode="numeric" />
                         </div>
                         <div class="form-group">
-                            <label>Balance Due (UGX)</label>
+                            <label for="bookingBalance">Balance due (UGX)</label>
                             <input autocomplete="off" type="number" id="bookingBalance" readonly />
                         </div>
                         <div class="form-group">
-                            <label>Deposit Paid Via</label>
+                            <label for="bookingDepositMethod">Deposit paid by</label>
                             <select id="bookingDepositMethod">
                                 <option value="cash">Cash</option>
                                 <option value="mtn_momo">MTN MoMo</option>
@@ -1561,15 +1576,15 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Deposit Ref (Optional)</label>
-                            <input autocomplete="off" type="text" id="bookingDepositRef" placeholder="MoMo TxID or reference" maxlength="64" />
+                            <label for="bookingDepositRef">Payment reference (optional)</label>
+                            <input autocomplete="off" type="text" id="bookingDepositRef" placeholder="Mobile money transaction ID or receipt number" maxlength="64" />
                         </div>
                         <div class="form-group">
-                            <label>Estimated Capacity</label>
-                            <input autocomplete="off" type="number" id="bookingCapacity" min="0" />
+                            <label for="bookingCapacity">Expected crowd size (optional)</label>
+                            <input autocomplete="off" type="number" id="bookingCapacity" min="0" inputmode="numeric" />
                         </div>
                         <div class="form-group">
-                            <label>Contact Person</label>
+                            <label for="bookingContact">Contact person (optional)</label>
                             <input autocomplete="off" type="text" id="bookingContact" />
                         </div>
                         <div class="form-group">
@@ -1578,7 +1593,7 @@
                             <datalist id="bookingPromoterList"></datalist>
                         </div>
                         <div class="form-group">
-                            <label>Status</label>
+                            <label for="bookingStatus">Status</label>
                             <select id="bookingStatus">
                                 <option value="confirmed">Confirmed</option>
                                 <option value="pending">Pending</option>
@@ -1586,18 +1601,18 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Location Type</label>
+                            <label for="bookingLocationType">Show is in</label>
                             <select id="bookingLocationType" data-change-action="updateLocationDropdown">
                                 <option value="uganda">Uganda</option>
                                 <option value="abroad">Abroad</option>
                             </select>
                         </div>
                         <div class="form-group" id="ugandaLocationGroup">
-                            <label>District</label>
+                            <label for="bookingUgandaLocation">District</label>
                             <select id="bookingUgandaLocation"></select>
                         </div>
                         <div class="form-group" id="abroadLocationGroup" hidden>
-                            <label>Country</label>
+                            <label for="bookingAbroadLocation">Country</label>
                             <select id="bookingAbroadLocation"></select>
                         </div>
                     </div>
@@ -1617,7 +1632,7 @@
                     </div>
                     <div class="sp-payments dv-booking" id="spBookingDocs" hidden></div>
                     <div class="form-group sp-csp-style-16">
-                        <label>Notes</label>
+                        <label for="bookingNotes">Notes (optional)</label>
                         <textarea id="bookingNotes"></textarea>
                     </div>
                     <button id="saveBookingBtn" class="btn-primary" data-action="saveBooking">Save Booking</button>
@@ -2077,15 +2092,15 @@
         -->
 <script src="app.root-shell.js?v=9" defer></script>
 <script src="app.offline-cache.js?v=1"></script>
-<script src="supabase.js?v=105" defer></script>
+<script src="supabase.js?v=106" defer></script>
         <script src="app.migrations.js?v=10"></script>
         <script src="app.actions.js?v=10"></script>
         <script src="app.todayboard.js?v=3"></script>
         <script src="app.tasks.js?v=7"></script>
     <script src="app.reports.js?v=23"></script>
-<script src="app.js?v=165" defer></script>
+<script src="app.js?v=166" defer></script>
 <script src="app.charts.js?v=1" defer></script>
-<script src="app.home.js?v=4" defer></script>
+<script src="app.home.js?v=5" defer></script>
 <script src="app.money.js?v=3" defer></script>
 <script src="app.insights.js?v=2" defer></script>
 <script src="app.finance-ui.js?v=1" defer></script>
@@ -2093,7 +2108,7 @@
 <script src="app.schedule.js?v=1" defer></script>
 <script src="app.crew.js?v=3" defer></script>
 <script src="app.docs.js?v=4" defer></script>
-<script src="app.pickers.js?v=2" defer></script>
+<script src="app.pickers.js?v=3" defer></script>
 <script src="app.landing.js?v=6" defer></script>
 <script src="app.landing-lights.js?v=15" defer></script>
 <script src="app.chrome.js?v=4" defer></script>

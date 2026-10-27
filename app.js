@@ -2609,7 +2609,7 @@ function getSectionIconMarkup(iconKey) {
             'Namutumba', 'Napak', 'Nebbi', 'Ngora', 'Ntoroko', 'Ntungamo', 'Nwoya', 'Otuke',
             'Oyam', 'Pader', 'Pallisa', 'Rakai', 'Rubanda', 'Rubirizi', 'Rukungiri', 'Sembabule',
             'Serere', 'Sheema', 'Sironko', 'Soroti', 'Tororo', 'Wakiso', 'Yumbe', 'Zombo'
-        ].sort();
+        ].filter((name, index, list) => list.indexOf(name) === index).sort(); // the list above repeats some names
 
         const countries = [
             'Nigeria', 'Kenya', 'Tanzania', 'Rwanda', 'South Africa', 'Ghana', 'United Kingdom',
@@ -2909,8 +2909,9 @@ function getSectionIconMarkup(iconKey) {
             const ugandaSelect = document.getElementById('bookingUgandaLocation');
             const abroadSelect = document.getElementById('bookingAbroadLocation');
             if (!ugandaSelect || !abroadSelect) return;
-            ugandaSelect.innerHTML = ugandaDistricts.map(d => `<option value="${d}">${d}</option>`).join('');
-            abroadSelect.innerHTML = countries.map(c => `<option value="${c}">${c}</option>`).join('');
+            // A blank first choice, so no district gets saved that the user never picked.
+            ugandaSelect.innerHTML = '<option value="">Choose a district</option>' + ugandaDistricts.map(d => `<option value="${d}">${d}</option>`).join('');
+            abroadSelect.innerHTML = '<option value="">Choose a country</option>' + countries.map(c => `<option value="${c}">${c}</option>`).join('');
         }
 
         // Update location dropdown based on location type selection
@@ -5247,11 +5248,15 @@ function showLoginForm(options = {}) {
             }
             persistAppSectionRoute(section);
 
-            // Scroll to top on every section change
-            window.scrollTo({ top: 0, behavior: 'instant' });
-            document.documentElement.scrollTop = 0;
-            const mc = document.querySelector('.main-content');
-            if (mc) mc.scrollTop = 0;
+            // Scroll to top on every section change. A repeat call for the section
+            // already showing (a cloud refresh restoring the route) leaves the page
+            // where the user is.
+            if (!_spSameSection) {
+                window.scrollTo({ top: 0, behavior: 'instant' });
+                document.documentElement.scrollTop = 0;
+                const mc = document.querySelector('.main-content');
+                if (mc) mc.scrollTop = 0;
+            }
 
             const target = el || null;
             target?.classList.add('active');
@@ -5285,8 +5290,12 @@ function showLoginForm(options = {}) {
             (function _spLegacyNoop(){})(); // keep line count stable for downstream patches
 
             // ── Sync sidebar nav active state ──────────────────────────
-            // Always show lists when navigating to sections
-            if (section === 'bookings') {
+            // Show lists when navigating to a section. Not on a repeat call for the
+            // section already showing: a background cloud refresh calls this again
+            // and used to close a half-filled form and lose what was typed.
+            if (_spSameSection) {
+                // keep any open form as it is
+            } else if (section === 'bookings') {
                 document.getElementById('addBookingForm')?.toggleAttribute('hidden', true);
                 document.getElementById('bookingsListCard')?.toggleAttribute('hidden', false);
             } else if (section === 'expenses') {
@@ -5411,6 +5420,7 @@ function showLoginForm(options = {}) {
                     status: document.getElementById('bookingStatus')?.value || '',
                     notes: document.getElementById('bookingNotes')?.value || '',
                     locationType: document.getElementById('bookingLocationType')?.value || 'uganda',
+                    venue: document.getElementById('bookingVenue')?.value || '',
                     locationUg: document.getElementById('bookingUgandaLocation')?.value || '',
                     locationAbroad: document.getElementById('bookingAbroadLocation')?.value || '',
                     formOpen: document.getElementById('addBookingForm')?.hidden === false
@@ -5463,6 +5473,7 @@ function showLoginForm(options = {}) {
                 setVal('bookingNotes', drafts.booking.notes || '');
                 setVal('bookingLocationType', drafts.booking.locationType || 'uganda');
                 updateLocationDropdown();
+                setVal('bookingVenue', drafts.booking.venue || '');
                 setVal('bookingUgandaLocation', drafts.booking.locationUg || '');
                 setVal('bookingAbroadLocation', drafts.booking.locationAbroad || '');
                 if (drafts.booking.formOpen) {
@@ -7391,6 +7402,22 @@ function showLoginForm(options = {}) {
             if (avatarUpload) avatarUpload.value = '';
         }
 
+        // Saving on the Artists page used to stop at this browser's storage, so a
+        // new artist vanished on refresh or on another device. Push to the cloud
+        // and only call it saved once the cloud says so.
+        async function syncArtistsToCloud(successMessage) {
+            try {
+                await persistMutationWithCloudFeedback(() => {
+                    if (typeof window.SP?.saveArtists === 'function') {
+                        return window.SP.saveArtists(artists);
+                    }
+                    return saveUserData();
+                }, { successMessage, failureMessage: 'Artist saved on this device only. Check your connection and try again.' });
+            } catch (err) {
+                toastError(err?.message || 'Artist saved on this device only. Check your connection and try again.');
+            }
+        }
+
         function saveArtist() {
             if (guardReadOnly('save artists')) return;
 
@@ -7403,7 +7430,8 @@ function showLoginForm(options = {}) {
                 const artistStrategicGoal = sanitizeTextInput(document.getElementById('artistStrategicGoal').value);
 
                 if (!artistName) {
-                    toastError('Please enter the artist name.');
+                    toastError("Please add the artist's name.");
+                    document.getElementById('artistName')?.focus();
                     return;
                 }
 
@@ -7475,7 +7503,7 @@ function showLoginForm(options = {}) {
                     renderArtists();
                     populateArtistDropdown();
                     cancelAddArtist();
-                    toastSuccess('Artist updated successfully!');
+                    syncArtistsToCloud('Artist updated.');
                     return;
                 }
 
@@ -7497,7 +7525,7 @@ function showLoginForm(options = {}) {
                 renderArtists();
                 populateArtistDropdown();
                 cancelAddArtist();
-                toastSuccess('Artist added successfully!');
+                syncArtistsToCloud('Artist added.');
         
             } catch (err) {
                 console.error('[StarPaper] saveArtist failed:', err);
@@ -7657,10 +7685,12 @@ function showLoginForm(options = {}) {
             // Ensure schedule section + bookings tab are active before showing form
             if (typeof showSection === 'function') showSection('bookings');
             if (typeof activateScheduleTab === 'function') activateScheduleTab('bookings');
-            document.getElementById('addBookingForm').hidden = false;
+            const bookingForm = document.getElementById('addBookingForm');
+            bookingForm.hidden = false;
             const listCard = document.getElementById('bookingsListCard');
             if (listCard) listCard.hidden = true;
-            (document.querySelector('.main-content') || document.documentElement).scrollTo({ top: 0, behavior: 'smooth' });
+            // Bring the form itself into view, not the stats strip above it.
+            requestAnimationFrame(() => bookingForm.scrollIntoView({ block: 'start', behavior: 'smooth' }));
             setTimeout(() => { document.getElementById('bookingEvent')?.focus(); }, 50);
         }
 
@@ -7680,6 +7710,8 @@ function showLoginForm(options = {}) {
 
         function clearBookingForm() {
             document.getElementById('bookingEvent').value = '';
+            const clearVenue = document.getElementById('bookingVenue');
+            if (clearVenue) clearVenue.value = '';
             document.getElementById('bookingArtist').value = '';
             document.getElementById('bookingDate').value = '';
             document.getElementById('bookingFee').value = '';
@@ -7698,8 +7730,33 @@ function showLoginForm(options = {}) {
             document.getElementById('bookingStatus').value = 'confirmed';
             document.getElementById('bookingNotes').value = '';
             document.getElementById('bookingLocationType').value = 'uganda';
+            const clearDistrict = document.getElementById('bookingUgandaLocation');
+            if (clearDistrict) clearDistrict.value = '';
+            const clearCountry = document.getElementById('bookingAbroadLocation');
+            if (clearCountry) clearCountry.value = '';
             updateLocationDropdown();
         }
+
+        // A booking keeps one location string: "Venue, District" (or "Venue, Country").
+        // The venue is free text; the place is one of the dropdown values.
+        function joinBookingLocation(venue, place) {
+            const v = String(venue || '').trim();
+            const pl = String(place || '').trim();
+            if (v && pl && v.toLowerCase() !== pl.toLowerCase()) return `${v}, ${pl}`;
+            return v || pl;
+        }
+
+        function splitBookingLocation(location, locationType) {
+            const text = String(location || '').trim();
+            const places = locationType === 'abroad' ? countries : ugandaDistricts;
+            if (places.includes(text)) return { venue: '', place: text };
+            const cut = text.lastIndexOf(', ');
+            if (cut > 0 && places.includes(text.slice(cut + 2))) {
+                return { venue: text.slice(0, cut), place: text.slice(cut + 2) };
+            }
+            return { venue: text, place: '' };
+        }
+        window.splitBookingLocation = splitBookingLocation;
 
         async function saveBooking() {
             if (guardReadOnly('save bookings')) return;
@@ -7711,9 +7768,10 @@ function showLoginForm(options = {}) {
                 previousBookings = bookings.slice();
                 previousArtists = artists.slice();
                 const locationType = document.getElementById('bookingLocationType').value;
-                const location = locationType === 'uganda' 
+                const place = locationType === 'uganda'
                     ? document.getElementById('bookingUgandaLocation').value
                     : document.getElementById('bookingAbroadLocation').value;
+                const location = joinBookingLocation(sanitizeTextInput(document.getElementById('bookingVenue')?.value || ''), place);
                 const feeValue = parseMoneyInputValue(document.getElementById('bookingFee').value);
                 const depositValue = parseMoneyInputValue(document.getElementById('bookingDeposit').value);
                 const capacityValue = Math.round(Number(document.getElementById('bookingCapacity').value) || 0);
@@ -7741,8 +7799,27 @@ function showLoginForm(options = {}) {
                     createdAt: existingBooking?.createdAt || Date.now()
                 };
 
-                if (!booking.event || !booking.artist || !booking.date || !booking.fee) {
-                    toastError('Please fill in all required fields.');
+                const missing = [
+                    [!booking.event, 'event name', 'bookingEvent'],
+                    [!booking.artist, 'artist', 'bookingArtistSearch'],
+                    [!booking.date, 'date', 'bookingDate'],
+                    [!booking.fee, 'total fee', 'bookingFee'],
+                ].filter((row) => row[0]);
+                if (missing.length) {
+                    const names = missing.map((row) => row[1]);
+                    const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0];
+                    toastError(`Please add the ${list}.`);
+                    document.getElementById(missing[0][2])?.focus();
+                    return;
+                }
+                if (feeValue > 999999999999 || depositValue > 999999999999) {
+                    toastError('That amount is too big. Please check the fee and deposit.');
+                    document.getElementById(feeValue > 999999999999 ? 'bookingFee' : 'bookingDeposit')?.focus();
+                    return;
+                }
+                if (depositValue > feeValue) {
+                    toastError('The deposit is bigger than the total fee. Please check both amounts.');
+                    document.getElementById('bookingDeposit')?.focus();
                     return;
                 }
 
@@ -7895,6 +7972,10 @@ function showLoginForm(options = {}) {
         });
 
         function renderBookings() {
+            // The number cards above the list read window.bookings; refresh them with
+            // the list so a new booking shows there straight away, not after a page change.
+            window.bookings = bookings;
+            window.SPSchedulePage?.render?.();
             const tbody = document.querySelector('#bookingsTable tbody');
             const sortedBookings = sortNewestFirst(bookings).filter(matchesBookingFilter);
 
@@ -8356,10 +8437,13 @@ function showLoginForm(options = {}) {
             // Set location fields
             document.getElementById('bookingLocationType').value = booking.locationType || 'uganda';
             updateLocationDropdown();
+            const savedLocation = splitBookingLocation(booking.location, booking.locationType);
+            const populateVenue = document.getElementById('bookingVenue');
+            if (populateVenue) populateVenue.value = savedLocation.venue;
             if (booking.locationType === 'abroad') {
-                document.getElementById('bookingAbroadLocation').value = booking.location || '';
+                document.getElementById('bookingAbroadLocation').value = savedLocation.place;
             } else {
-                document.getElementById('bookingUgandaLocation').value = booking.location || '';
+                document.getElementById('bookingUgandaLocation').value = savedLocation.place;
             }
 
             showAddBooking();
@@ -8666,13 +8750,15 @@ function showLoginForm(options = {}) {
         }
 
         async function fetchGeoCoordinates(locationLabel) {
-            const normalized = String(locationLabel || '').trim().toLowerCase();
+            // "Kampala Serena Hotel, Kampala": look up the district or country only.
+            const placeLabel = String(locationLabel || '').split(', ').pop();
+            const normalized = String(placeLabel || '').trim().toLowerCase();
             if (!normalized) return null;
             if (dashboardWeatherCache.geocode.has(normalized)) {
                 return dashboardWeatherCache.geocode.get(normalized);
             }
             try {
-                const query = encodeURIComponent(String(locationLabel).trim());
+                const query = encodeURIComponent(String(placeLabel).trim());
                 const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${query}&count=1&language=en&format=json`);
                 if (!response.ok) {
                     dashboardWeatherCache.geocode.set(normalized, null);
