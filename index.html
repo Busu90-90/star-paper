@@ -6,9 +6,9 @@
     <meta name="star-paper:public-root" content="app-shell">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:;">
     <title>Star Paper</title>
-    <script src="app.browser-assets.js?v=79"></script>
-    <script src="app.public-pages.js?v=3"></script>
-    <script src="app.boot-head.js?v=3"></script>
+    <script src="app.browser-assets.js?v=86"></script>
+    <script src="app.public-pages.js?v=4"></script>
+    <script src="app.boot-head.js?v=4"></script>
     <link rel="manifest" href="manifest.json?v=28">
     <meta name="theme-color" content="#0A1210">
     <meta name="mobile-web-app-capable" content="yes">
@@ -34,9 +34,9 @@
     <link rel="stylesheet" href="styles.utilities.css?v=2">
     <!-- Design system: tokens + signed-out pages (landing, auth). Loaded last so it owns those screens. -->
     <link rel="stylesheet" href="sp-design-tokens.css?v=6">
-    <link rel="stylesheet" href="styles.landing.css?v=57">
+    <link rel="stylesheet" href="styles.landing.css?v=60">
     <link rel="stylesheet" href="styles.brand.css?v=2">
-    <link rel="stylesheet" href="styles.app.css?v=26">
+    <link rel="stylesheet" href="styles.app.css?v=30">
     <link rel="preload" href="assets/vendor/fonts/font-29-fraunces-latin-opsz-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="assets/vendor/fonts/font-31-inter-tight-latin-wght-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <!-- Vendored Phosphor Icons 2.1.1 - unified icon system -->
@@ -122,6 +122,7 @@
                     <a class="lp-nav__link" href="#how" data-lp-slide-link="1">How it works</a>
                     <a class="lp-nav__link" href="#proof" data-lp-slide-link="2">Proof</a>
                     <a class="lp-nav__link" href="#voices" data-lp-slide-link="3">Testimonials</a>
+                    <a class="lp-nav__link" href="pricing.html">Pricing</a>
                 </nav>
                 <div class="lp-header__actions">
                     <button class="lp-icon-btn" id="landingThemeToggle" type="button" aria-label="Switch to light mode"><i class="ph ph-moon" aria-hidden="true"></i></button>
@@ -142,9 +143,9 @@
 
                     <article class="lp-slide" id="mainstage" role="group" aria-roledescription="slide" aria-label="1 of 4: The mainstage" data-lp-slide>
                         <div class="lp-slide__copy">
-                            <p class="lp-eyebrow"><span class="lp-eyebrow__dot" aria-hidden="true"></span>The manager&rsquo;s mainstage</p>
+                            <p class="lp-eyebrow"><span class="lp-eyebrow__dot" aria-hidden="true"></span>For artist managers</p>
                             <h1 class="lp-display">Run the show.<br><em>Own the money.</em></h1>
-                            <p class="lp-lede">Bookings, deposits, payouts and your whole crew on one live ledger. Built for artist managers who are done chasing spreadsheets.</p>
+                            <p class="lp-lede">Track your artists&rsquo; shows, fees and payments in one place. Built for artist managers who are tired of chasing money in spreadsheets.</p>
                             <div class="lp-cta-row">
                                 <button class="lp-btn lp-btn--gold lp-btn--lg" id="createAccountBtn" type="button" data-action="showSignupForm">Start free <i class="ph ph-arrow-right" aria-hidden="true"></i></button>
                                 <a class="lp-btn lp-btn--ghost lp-btn--lg" href="#how" data-lp-slide-link="1"><i class="ph ph-play-circle" aria-hidden="true"></i> See how it works</a>
@@ -230,7 +231,7 @@
                     <article class="lp-slide" id="voices" role="group" aria-roledescription="slide" aria-label="4 of 4: Testimonials" data-lp-slide>
                         <div class="lp-slide__copy">
                             <p class="lp-eyebrow"><span class="lp-eyebrow__dot" aria-hidden="true"></span>From the managers</p>
-                            <h2 class="lp-display lp-display--slide">Managers who<br><em>stopped chasing.</em></h2>
+                            <h2 class="lp-display lp-display--slide">Managers who<br><em>stopped chasing payments.</em></h2>
                             <p class="lp-lede">The people running bookings, balances and crews across East Africa, in their own words.</p>
                             <div class="lp-cta-row">
                                 <button class="lp-btn lp-btn--gold lp-btn--lg" type="button" data-action="showSignupForm">Join them <i class="ph ph-arrow-right" aria-hidden="true"></i></button>
@@ -308,11 +309,12 @@
                     <img class="lp-brand__mark sp-spin-mark" src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="" width="36" height="36">
                     <span class="lp-brand__word">Star Paper</span>
                 </div>
-                <p class="lp-footer__tag">The manager&rsquo;s mainstage for bookings, money and teams.</p>
+                <p class="lp-footer__tag">Bookings, money and teams for artist managers.</p>
                 <nav class="lp-footer__nav" aria-label="Footer">
                     <a href="#how" data-lp-slide-link="1">How it works</a>
                     <a href="#proof" data-lp-slide-link="2">Proof</a>
                     <a href="#voices" data-lp-slide-link="3">Testimonials</a>
+                    <a href="pricing.html">Pricing</a>
                     <a href="privacy.html">Privacy</a>
                     <a href="terms.html">Terms</a>
                 </nav>
@@ -403,12 +405,15 @@
                     </label>
                     <label class="lp-field">
                         <span class="lp-field__label">Password</span>
-                        <span class="lp-input-wrap"><i class="ph ph-lock-simple lp-input-wrap__icon" aria-hidden="true"></i><input class="lp-input" type="password" id="signupPassword" placeholder="Choose a password" autocomplete="new-password"><button class="lp-eye" type="button" data-lp-eye="signupPassword" aria-label="Show password" aria-pressed="false"><i class="ph ph-eye" aria-hidden="true"></i></button></span>
+                        <span class="lp-input-wrap"><i class="ph ph-lock-simple lp-input-wrap__icon" aria-hidden="true"></i><input class="lp-input" type="password" id="signupPassword" placeholder="Choose a password" autocomplete="new-password" minlength="8" aria-describedby="signupPasswordHint"><button class="lp-eye" type="button" data-lp-eye="signupPassword" aria-label="Show password" aria-pressed="false"><i class="ph ph-eye" aria-hidden="true"></i></button></span>
+                        <span class="lp-field__hint" id="signupPasswordHint">At least 8 characters.</span>
                     </label>
                     <label class="lp-field">
                         <span class="lp-field__label">Phone <span class="lp-field__opt">optional</span></span>
-                        <span class="lp-input-wrap"><i class="ph ph-phone lp-input-wrap__icon" aria-hidden="true"></i><input class="lp-input" type="tel" id="signupPhone" placeholder="+256 700 000 000" autocomplete="tel" inputmode="tel"></span>
+                        <span class="lp-input-wrap"><i class="ph ph-phone lp-input-wrap__icon" aria-hidden="true"></i><input class="lp-input" type="tel" id="signupPhone" placeholder="+256 700 000 000" autocomplete="tel" inputmode="tel" aria-describedby="signupPhoneHint"></span>
+                        <span class="lp-field__hint" id="signupPhoneHint">Only so we can reach you about your account. We never share it.</span>
                     </label>
+                    <p class="lp-field__hint">Next, we email you a 6-digit code to confirm the address is yours.</p>
                     <button class="lp-btn lp-btn--foil lp-btn--block" id="signupButton" type="button" data-action="signup">Continue</button>
                     <div class="lp-divider"><span>or continue with</span></div>
                     <button class="lp-btn lp-btn--ghost lp-btn--block" type="button" data-action="signInWithGoogle"><i class="ph ph-google-logo" aria-hidden="true"></i> Google</button>
@@ -701,6 +706,15 @@
                         </div>
                     </header>
 
+                    <!-- First run only (no artists and no bookings yet): say what to do first. -->
+                    <section class="card hv2-card hv2-start" id="hv2Start" aria-labelledby="hv2StartTitle" hidden>
+                        <h3 class="hv2-title" id="hv2StartTitle">Start here</h3>
+                        <ol class="hv2-start__steps">
+                            <li id="hv2StartArtist"><span>Add your first artist</span> <button class="btn-primary hv2-start__btn" type="button" data-action="openQuickAdd" data-target-section="artists">Add artist</button></li>
+                            <li id="hv2StartBooking"><span>Log a show for that artist: date, venue and fee</span> <button class="btn-primary hv2-start__btn" type="button" data-action="openQuickAdd" data-target-section="booking">Add booking</button></li>
+                        </ol>
+                    </section>
+
                     <div class="hv2-top">
                         <section class="card hv2-card hv2-hero" aria-labelledby="hv2HeroLabel">
                             <span class="sp-icon-tile sp-icon-tile--foil hv2-hero__icon" aria-hidden="true"><i class="ph ph-coins"></i></span>
@@ -708,8 +722,8 @@
                                 <p class="hv2-label" id="hv2HeroLabel">Cash in · <span id="glancePeriodLabel">this month</span></p>
                                 <p class="hv2-hero__value money" id="totalIncome"><span class="sp-skeleton"></span></p>
                                 <p class="hv2-delta" id="hv2HeroDelta"></p>
-                                <button class="hv2-bbf" type="button" data-action="openBBFModal" title="Set balance brought forward">
-                                    Brought forward <span class="bbf-month-label" id="bbfMonthLabel"></span>: <span class="money" id="dashboardBBF">UGX 0</span>
+                                <button class="hv2-bbf" type="button" data-action="openBBFModal" title="Set money carried over from before">
+                                    Carried over <span class="bbf-month-label" id="bbfMonthLabel"></span>: <span class="money" id="dashboardBBF">UGX 0</span>
                                 </button>
                             </div>
                             <svg class="hv2-spark hv2-spark--hero" id="hv2HeroSpark" viewBox="0 0 240 96" preserveAspectRatio="none" aria-hidden="true" focusable="false"></svg>
@@ -784,7 +798,7 @@
                         <div class="hv2-col hv2-col--main">
                             <section class="card hv2-card today-board-card" aria-labelledby="hv2NeedsTitle">
                                 <div class="hv2-card__head">
-                                    <h3 class="hv2-title" id="hv2NeedsTitle">Needs you</h3>
+                                    <h3 class="hv2-title" id="hv2NeedsTitle">To do</h3>
                                     <span class="today-board__status" id="todayBoardStatus">All clear</span>
                                 </div>
                                 <div class="today-board__alerts timeline-list" id="todayBoardAlerts"></div>
@@ -1388,30 +1402,32 @@
 
                 <div class="card" id="addArtistForm" hidden>
                     <h3 class="section-title" data-icon="artists">Add New Artist</h3>
+                    <p class="sp-req-note"><span class="sp-req" aria-hidden="true">*</span> Required. Everything else is optional.</p>
                     <div class="form-grid">
                         <div class="form-group">
-                            <label>Full Name</label>
-                            <input autocomplete="off" type="text" id="artistName" />
+                            <label for="artistName">Artist name <span class="sp-req" aria-hidden="true">*</span></label>
+                            <input autocomplete="off" type="text" id="artistName" required aria-required="true" aria-describedby="artistNameError" maxlength="120" />
+                            <p class="sp-field-error" id="artistNameError" role="alert" hidden>Please add the artist's name.</p>
                         </div>
                         <div class="form-group">
-                            <label>Email</label>
-                            <input autocomplete="off" type="email" id="artistEmail" />
+                            <label for="artistEmail">Email</label>
+                            <input autocomplete="off" type="email" id="artistEmail" maxlength="254" />
                         </div>
                         <div class="form-group">
-                            <label>Phone Number</label>
-                            <input autocomplete="off" type="tel" id="artistPhone" />
+                            <label for="artistPhone">Phone number</label>
+                            <input autocomplete="off" type="tel" id="artistPhone" maxlength="32" />
                         </div>
                         <div class="form-group">
-                            <label>Specialty/Genre</label>
-                            <input autocomplete="off" type="text" id="artistSpecialty" placeholder="e.g., Hip Hop, Gospel, Afrobeat" />
+                            <label for="artistSpecialty">Music style</label>
+                            <input autocomplete="off" type="text" id="artistSpecialty" maxlength="80" placeholder="e.g., Hip Hop, Gospel, Afrobeat" />
                         </div>
                     </div>
                     <div class="form-group sp-csp-style-16">
-                        <label>Strategic Goal</label>
-                        <textarea id="artistStrategicGoal" placeholder="e.g., Secure 3 festival slots this quarter"></textarea>
+                        <label for="artistStrategicGoal">Main goal for this artist</label>
+                        <textarea id="artistStrategicGoal" maxlength="500" placeholder="e.g., Secure 3 festival slots this quarter"></textarea>
                     </div>
                     <div class="form-group sp-csp-style-16">
-                        <label>Artist Photo</label>
+                        <label for="artistAvatarUpload">Artist photo</label>
                         <div class="artist-photo-row">
                             <div class="artist-photo-preview">
                                 <img id="artistAvatarPreview" class="artist-avatar-img" alt="Artist photo preview" />
@@ -1423,8 +1439,8 @@
                         </div>
                     </div>
                     <div class="form-group sp-csp-style-16">
-                        <label>Bio/Description</label>
-                        <textarea id="artistBio" placeholder="Brief description of the artist…"></textarea>
+                        <label for="artistBio">Short bio</label>
+                        <textarea id="artistBio" maxlength="2000" placeholder="Brief description of the artist…"></textarea>
                     </div>
                     <button class="btn-primary" data-action="saveArtist">Save Artist</button>
                     <button class="back-btn" data-action="cancelAddArtist">Cancel</button>
@@ -1523,35 +1539,41 @@
                         <h3 class="section-title" data-icon="bookings">New Booking</h3>
                         <button class="back-to-list" type="button" data-action="cancelBooking">Back to Bookings</button>
                     </div>
+                    <p class="sp-req-note"><span class="sp-req" aria-hidden="true">*</span> Required</p>
                     <div class="form-grid">
                         <div class="form-group">
-                            <label>Event Name</label>
-                            <input autocomplete="off" type="text" id="bookingEvent" />
+                            <label for="bookingEvent">Event name <span class="sp-req" aria-hidden="true">*</span></label>
+                            <input autocomplete="off" type="text" id="bookingEvent" required aria-required="true" placeholder="e.g. Friday night show" />
                         </div>
                         <div class="form-group">
-                            <label>Artist</label>
+                            <label for="bookingVenue">Venue (optional)</label>
+                            <input autocomplete="off" type="text" id="bookingVenue" maxlength="120" placeholder="e.g. Kampala Serena Hotel" />
+                        </div>
+                        <div class="form-group">
+                            <label>Artist <span class="sp-req" aria-hidden="true">*</span></label>
                             <select id="bookingArtist" data-native="always">
                                 <option value="">Select Artist</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Date</label>
-                            <input autocomplete="off" type="date" id="bookingDate" />
+                            <label for="bookingDate">Date <span class="sp-req" aria-hidden="true">*</span></label>
+                            <input autocomplete="off" type="date" id="bookingDate" required aria-required="true" />
                         </div>
                         <div class="form-group">
-                            <label>Total Fee (UGX)</label>
-                            <input autocomplete="off" type="number" id="bookingFee" data-input-action="calculateBalance" />
+                            <label for="bookingFee">Total fee (UGX) <span class="sp-req" aria-hidden="true">*</span></label>
+                            <input autocomplete="off" type="number" id="bookingFee" data-input-action="calculateBalance" required aria-required="true" min="0" max="999999999999" inputmode="numeric" />
                         </div>
                         <div class="form-group">
-                            <label>Deposit (UGX)</label>
-                            <input autocomplete="off" type="number" id="bookingDeposit" data-input-action="calculateBalance" />
+                            <label for="bookingDeposit">Deposit received (UGX)</label>
+                            <input autocomplete="off" type="number" id="bookingDeposit" data-input-action="calculateBalance" min="0" max="999999999999" inputmode="numeric" />
                         </div>
                         <div class="form-group">
-                            <label>Balance Due (UGX)</label>
-                            <input autocomplete="off" type="number" id="bookingBalance" readonly />
+                            <label for="bookingBalance">Balance due (UGX)</label>
+                            <input autocomplete="off" type="number" id="bookingBalance" readonly aria-describedby="bookingMoneyWarning" />
+                            <p class="sp-field-error" id="bookingMoneyWarning" role="status" hidden></p>
                         </div>
                         <div class="form-group">
-                            <label>Deposit Paid Via</label>
+                            <label for="bookingDepositMethod">Deposit paid by</label>
                             <select id="bookingDepositMethod">
                                 <option value="cash">Cash</option>
                                 <option value="mtn_momo">MTN MoMo</option>
@@ -1561,15 +1583,15 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Deposit Ref (Optional)</label>
-                            <input autocomplete="off" type="text" id="bookingDepositRef" placeholder="MoMo TxID or reference" maxlength="64" />
+                            <label for="bookingDepositRef">Payment reference (optional)</label>
+                            <input autocomplete="off" type="text" id="bookingDepositRef" placeholder="Mobile money transaction ID or receipt number" maxlength="64" />
                         </div>
                         <div class="form-group">
-                            <label>Estimated Capacity</label>
-                            <input autocomplete="off" type="number" id="bookingCapacity" min="0" />
+                            <label for="bookingCapacity">Expected crowd size (optional)</label>
+                            <input autocomplete="off" type="number" id="bookingCapacity" min="0" inputmode="numeric" />
                         </div>
                         <div class="form-group">
-                            <label>Contact Person</label>
+                            <label for="bookingContact">Contact person (optional)</label>
                             <input autocomplete="off" type="text" id="bookingContact" />
                         </div>
                         <div class="form-group">
@@ -1578,7 +1600,7 @@
                             <datalist id="bookingPromoterList"></datalist>
                         </div>
                         <div class="form-group">
-                            <label>Status</label>
+                            <label for="bookingStatus">Status</label>
                             <select id="bookingStatus">
                                 <option value="confirmed">Confirmed</option>
                                 <option value="pending">Pending</option>
@@ -1586,18 +1608,18 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Location Type</label>
+                            <label for="bookingLocationType">Show is in</label>
                             <select id="bookingLocationType" data-change-action="updateLocationDropdown">
                                 <option value="uganda">Uganda</option>
                                 <option value="abroad">Abroad</option>
                             </select>
                         </div>
                         <div class="form-group" id="ugandaLocationGroup">
-                            <label>District</label>
+                            <label for="bookingUgandaLocation">District</label>
                             <select id="bookingUgandaLocation"></select>
                         </div>
                         <div class="form-group" id="abroadLocationGroup" hidden>
-                            <label>Country</label>
+                            <label for="bookingAbroadLocation">Country</label>
                             <select id="bookingAbroadLocation"></select>
                         </div>
                     </div>
@@ -1617,7 +1639,7 @@
                     </div>
                     <div class="sp-payments dv-booking" id="spBookingDocs" hidden></div>
                     <div class="form-group sp-csp-style-16">
-                        <label>Notes</label>
+                        <label for="bookingNotes">Notes (optional)</label>
                         <textarea id="bookingNotes"></textarea>
                     </div>
                     <button id="saveBookingBtn" class="btn-primary" data-action="saveBooking">Save Booking</button>
@@ -1837,7 +1859,7 @@
 
                         <div class="settings-panel settings-targets-card" id="spTargetsPanel">
                             <div class="settings-panel-label">Targets &amp; alerts</div>
-                            <p class="sp-targets__intro">Home's "Needs you" warns you when a number crosses one of these. Saved with your account, so every device and teammate sees the same limits.</p>
+                            <p class="sp-targets__intro">Home's "To do" list warns you when a number crosses one of these. Saved with your account, so every device and teammate sees the same limits.</p>
                             <form class="sp-targets" id="spTargetsForm" novalidate>
                                 <label class="sp-target"><span class="sp-target__name">Monthly goal</span><span class="sp-target__hint">Money in you aim for each month</span><span class="sp-target__field"><span class="sp-target__unit">UGX</span><input autocomplete="off" type="number" id="spTargetGoal" min="0" step="10000" inputmode="numeric" placeholder="Not set"></span></label>
                                 <label class="sp-target"><span class="sp-target__name">Minimum cash</span><span class="sp-target__hint">Lowest cash you want to hold. Blank means one month of spending.</span><span class="sp-target__field"><span class="sp-target__unit">UGX</span><input autocomplete="off" type="number" id="spTargetMinCash" min="0" step="10000" inputmode="numeric" placeholder="1 month of spending"></span></label>
@@ -1856,7 +1878,7 @@
 
                         <div class="settings-panel settings-budgets-card" id="spBudgetsPanel">
                             <div class="settings-panel-label">Monthly budgets</div>
-                            <p class="sp-targets__intro">What you plan to spend in each category every month. Expenses and Profit &amp; loss compare against these, and "Needs you" warns when a category runs over.</p>
+                            <p class="sp-targets__intro">What you plan to spend in each category every month. Expenses and Profit &amp; loss compare against these, and the Home "To do" list warns when a category runs over.</p>
                             <form class="sp-budgets" id="spBudgetsForm" novalidate>
                                 <div class="sp-budgets__grid" id="spBudgetsGrid"></div>
                                 <div class="sp-targets__actions">
@@ -1899,10 +1921,11 @@
                                     <i class="ph ph-download-simple" aria-hidden="true"></i>
                                     Export All Data
                                 </button>
-                                <button class="action-btn action-btn--danger" data-action="clearAllData" type="button">
-                                    <i class="ph ph-trash" aria-hidden="true"></i>
-                                    Reset App Data
+                                <button class="action-btn" data-action="clearAllData" type="button" aria-describedby="clearCacheHint">
+                                    <i class="ph ph-broom" aria-hidden="true"></i>
+                                    Clear this device&rsquo;s cache
                                 </button>
+                                <p class="sp-settings-hint" id="clearCacheHint">Removes saved drafts and copies on this phone or computer only. Your artists, bookings and money records stay safe in your account.</p>
                             </div>
                         </div>
 
@@ -1917,6 +1940,22 @@
                                     <i class="ph ph-sign-out" aria-hidden="true"></i>
                                     Logout
                                 </button>
+                            </div>
+                            <div class="sp-delete-account">
+                                <button type="button" class="action-btn action-btn--danger" id="settingsDeleteStart" aria-expanded="false" aria-controls="settingsDeleteConfirm">
+                                    <i class="ph ph-user-minus" aria-hidden="true"></i>
+                                    Delete my account
+                                </button>
+                                <div class="sp-delete-account__confirm" id="settingsDeleteConfirm" hidden>
+                                    <p>This permanently deletes your account and everything in it: artists, bookings, money records, tasks and documents. If you want a copy, use Export All Data first. This cannot be undone.</p>
+                                    <label for="settingsDeleteInput">Type DELETE to confirm</label>
+                                    <input type="text" id="settingsDeleteInput" autocomplete="off" autocapitalize="characters" spellcheck="false" />
+                                    <div class="sp-delete-account__actions">
+                                        <button type="button" class="action-btn action-btn--danger" id="settingsDeleteGo" disabled>Delete everything</button>
+                                        <button type="button" class="action-btn" id="settingsDeleteCancel">Keep my account</button>
+                                    </div>
+                                    <p class="sp-settings-hint" id="settingsDeleteStatus" role="status"></p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2075,25 +2114,25 @@
           loaded above, and these deferred scripts keep document order:
           Supabase boot wiring is installed before app.js initializes UI helpers.
         -->
-<script src="app.root-shell.js?v=9" defer></script>
+<script src="app.root-shell.js?v=10" defer></script>
 <script src="app.offline-cache.js?v=1"></script>
-<script src="supabase.js?v=105" defer></script>
+<script src="supabase.js?v=107" defer></script>
         <script src="app.migrations.js?v=10"></script>
-        <script src="app.actions.js?v=10"></script>
+        <script src="app.actions.js?v=11"></script>
         <script src="app.todayboard.js?v=3"></script>
         <script src="app.tasks.js?v=7"></script>
     <script src="app.reports.js?v=23"></script>
-<script src="app.js?v=165" defer></script>
+<script src="app.js?v=171" defer></script>
 <script src="app.charts.js?v=1" defer></script>
-<script src="app.home.js?v=4" defer></script>
-<script src="app.money.js?v=3" defer></script>
-<script src="app.insights.js?v=2" defer></script>
+<script src="app.home.js?v=7" defer></script>
+<script src="app.money.js?v=4" defer></script>
+<script src="app.insights.js?v=3" defer></script>
 <script src="app.finance-ui.js?v=1" defer></script>
-<script src="app.artists.js?v=2" defer></script>
+<script src="app.artists.js?v=3" defer></script>
 <script src="app.schedule.js?v=1" defer></script>
 <script src="app.crew.js?v=3" defer></script>
 <script src="app.docs.js?v=4" defer></script>
-<script src="app.pickers.js?v=2" defer></script>
+<script src="app.pickers.js?v=3" defer></script>
 <script src="app.landing.js?v=6" defer></script>
 <script src="app.landing-lights.js?v=15" defer></script>
 <script src="app.chrome.js?v=4" defer></script>
@@ -2144,7 +2183,7 @@
                 <h4 class="sp-csp-style-54">System</h4>
                 <div class="sp-csp-style-55">
                     <button class="action-btn sp-csp-style-56" data-action="exportAllData"><i class="ph ph-download-simple" aria-hidden="true"></i> Export All Data</button>
-                    <button class="action-btn action-btn--danger sp-csp-style-56" data-action="clearAllData"><i class="ph ph-trash" aria-hidden="true"></i> Reset App Data</button>
+                    <button class="action-btn sp-csp-style-56" data-action="clearAllData"><i class="ph ph-broom" aria-hidden="true"></i> Clear this device&rsquo;s cache</button>
                 </div>
             </div>
         </div>

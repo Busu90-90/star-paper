@@ -1,3 +1,9 @@
+// Lets deferred scripts tell "parsing done" (readyState 'interactive') from
+// "every deferred script has run" (DOMContentLoaded).
+document.addEventListener('DOMContentLoaded', function markDomContentLoaded() {
+  window.__spDomContentLoaded = true;
+}, { once: true });
+
 (function redirectLegacyNetlifyOrigin() {
   if (window.location.hostname !== 'starpaper.netlify.app') return;
   var canonicalUrl = new URL(window.location.href);
@@ -54,4 +60,35 @@
   if (target !== current) {
     window.location.replace(target);
   }
+})();
+
+// On a slow phone the landing page shows long before the app's scripts arrive,
+// so "Sign in" and "Start free" used to do nothing for many seconds. Catch
+// those taps early, show the button is working, and replay the tap once the
+// app is ready.
+(function queueEarlyAuthTaps() {
+  var pending = null;
+  var timer = null;
+  function ready() { return Boolean(window.__starPaperMainEventsBound); }
+  function replay() {
+    if (!ready()) return;
+    clearInterval(timer);
+    timer = null;
+    var btn = pending;
+    pending = null;
+    if (!btn) return;
+    btn.removeAttribute('aria-busy');
+    if (document.contains(btn)) btn.click();
+  }
+  document.addEventListener('click', function (event) {
+    if (ready() || !event.target || !event.target.closest) return;
+    var btn = event.target.closest('[data-action="showLoginForm"], [data-action="showSignupForm"]');
+    if (!btn) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (pending && pending !== btn) pending.removeAttribute('aria-busy');
+    pending = btn;
+    btn.setAttribute('aria-busy', 'true');
+    if (!timer) timer = setInterval(replay, 150);
+  }, true);
 })();

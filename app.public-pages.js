@@ -7,7 +7,8 @@
     Object.freeze({ file: 'index.html', marker: 'app-shell', routes: Object.freeze([]) }),
     // Legal pages stand alone so they open without the app.
     Object.freeze({ file: 'privacy.html', marker: 'public-landing', routes: Object.freeze(['/privacy', '/privacy.html']) }),
-    Object.freeze({ file: 'terms.html', marker: 'public-landing', routes: Object.freeze(['/terms', '/terms.html']) })
+    Object.freeze({ file: 'terms.html', marker: 'public-landing', routes: Object.freeze(['/terms', '/terms.html']) }),
+    Object.freeze({ file: 'pricing.html', marker: 'public-landing', routes: Object.freeze(['/pricing', '/pricing.html']) })
   ]);
 
   function landingTarget(file) {

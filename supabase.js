@@ -7182,8 +7182,16 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         if (errMsg.includes('could not initialise session')) {
           msg = 'Sign-in succeeded, but your cloud data could not load. Use Retry or log out.';
         }
-        if (typeof window.toastError === 'function') window.toastError(msg);
         showLoginScreen({ flowId, reason: 'password-sign-in-failed' });
+        // Show it under the password box, where it stays until the next try. A toast
+        // alone went away in seconds and covered the Sign in button on phones.
+        const passwordError = document.getElementById('loginPasswordError');
+        if (passwordError) {
+          passwordError.textContent = msg;
+          document.getElementById('loginPassword')?.classList.add('input-error');
+        } else if (typeof window.toastError === 'function') {
+          window.toastError(msg);
+        }
       } finally {
         window.__spUserInitiatedAuth = false;
         // Guaranteed: spinner always stops, button always re-enables.
@@ -7200,6 +7208,11 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
 
       if (!name || !pw || !email) {
         if (typeof window.toastError === 'function') window.toastError('Name, email, and password are required.');
+        return;
+      }
+      if (pw.length < 8) {
+        if (typeof window.toastError === 'function') window.toastError('Please choose a password of at least 8 characters.');
+        document.getElementById('signupPassword')?.focus();
         return;
       }
 
@@ -7859,11 +7872,16 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
       }
     };
 
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', onAppReady, { once: true });
-    } else {
-      // DOMContentLoaded already fired (synchronous script load after app.js)
+    // This file is a deferred script, so readyState is already 'interactive'
+    // when it runs, but app.js (a later deferred script) may still be
+    // downloading on a slow phone. Running onAppReady now would patch
+    // window.login before app.js loads and app.js's placeholder login would
+    // then overwrite it, so every sign-in failed. Wait for DOMContentLoaded,
+    // which fires only after every deferred script has run.
+    if (window.__spDomContentLoaded || document.readyState === 'complete') {
       setTimeout(onAppReady, 0);
+    } else {
+      document.addEventListener('DOMContentLoaded', onAppReady, { once: true });
     }
 
   }
@@ -7898,11 +7916,44 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   }
   window.SP_debugCloudScope = inspectCloudScope;
 
+  // Permanently deletes the signed-in user's account and everything it owns.
+  // Uploaded document files are removed from storage first, because the
+  // database cascade cannot reach the file store.
+  async function deleteMyAccount() {
+    const { data: userData } = await db.auth.getUser();
+    const uid = userData?.user?.id;
+    if (!uid) return { ok: false, message: 'Please sign in again, then try once more.' };
+    try {
+      const { data: files } = await db.from('document_files').select('path').eq('owner_id', uid);
+      const paths = (files || []).map((row) => row.path).filter(Boolean);
+      if (paths.length) {
+        const { error: storageError } = await db.storage.from('team-docs').remove(paths);
+        if (storageError) warn('deleteMyAccount: file cleanup failed', storageError);
+      }
+    } catch (err) {
+      warn('deleteMyAccount: file lookup failed', err);
+    }
+    const { error } = await db.rpc('delete_my_account');
+    if (error) {
+      const teamBlock = String(error.message || '').includes('TEAM_HAS_MEMBERS');
+      return {
+        ok: false,
+        message: teamBlock
+          ? 'Your team still has other members. Remove them in Team first, so their records are not deleted with yours.'
+          : 'We could not delete your account just now. Check your connection and try again.',
+      };
+    }
+    try { await db.auth.signOut({ scope: 'local' }); } catch (_) { /* the account is already gone */ }
+    try { localStorage.clear(); sessionStorage.clear(); } catch (_) { /* storage may be blocked */ }
+    return { ok: true };
+  }
+
   window.SP = {
     // Auth
     login:           (email, password) => signIn(email, password),
     signup:          signUp,
     logout:          signOut,
+    deleteMyAccount,
     getSession,
     getProfile,
     updateProfile,

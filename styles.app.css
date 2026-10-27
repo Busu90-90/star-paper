@@ -3171,3 +3171,23 @@ html body.light-theme.light-theme :where(#appContainer) button,
 html body.light-theme.light-theme :where(#appContainer) .btn { box-shadow: none; }
 html body.light-theme.light-theme :where(#appContainer) button:hover,
 html body.light-theme.light-theme :where(#appContainer) .btn:hover { box-shadow: none; }
+
+/* Required-field markers on app forms (QA: users couldn't tell what was needed). */
+.sp-req { color: var(--sp-gold); font-weight: 700; }
+.sp-req-note { margin: 0 0 12px; font-size: 0.85rem; opacity: 0.8; }
+
+/* Home "Start here" card for a brand-new account (app.home.js). */
+.hv2-start { margin-bottom: 16px; }
+.hv2-start__steps { margin: 8px 0 0; padding-left: 1.4em; display: grid; gap: 10px; }
+.hv2-start__steps li { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.hv2-start__btn { min-height: 44px; }
+.hv2-start__steps li.is-done span { text-decoration: line-through; opacity: 0.6; }
+
+/* Inline field error (artist name). */
+.sp-field-error { margin: 4px 0 0; font-size: 0.85rem; font-weight: 600; color: var(--sp-out); }
+#artistName.input-error { border-color: var(--sp-out); }
+.sp-settings-hint { margin: 6px 0 0; font-size: 0.85rem; color: var(--sp-ink-3); max-width: 60ch; }
+.sp-delete-account { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--sp-line); display: grid; gap: 10px; justify-items: start; }
+.sp-delete-account__confirm { display: grid; gap: 8px; max-width: 46ch; }
+.sp-delete-account__confirm p { margin: 0; }
+.sp-delete-account__actions { display: flex; flex-wrap: wrap; gap: 8px; }
