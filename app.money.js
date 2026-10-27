@@ -92,7 +92,9 @@
         };
         const lines = { shows: 0, other: 0, categories: new Map() };
         (window.bookings || []).forEach((booking) => {
-            if (m.isEarningBooking(booking) && inMonth(booking.date)) lines.shows += m.getBookingCollected(booking);
+            if (!m.isEarningBooking(booking)) return;
+            const events = m.getBookingCashEvents ? m.getBookingCashEvents(booking) : [{ date: booking.date, amount: m.getBookingCollected(booking) }];
+            events.forEach((event) => { if (inMonth(event.date)) lines.shows += event.amount; });
         });
         (window.otherIncome || []).forEach((entry) => {
             if (m.isReceivedOtherIncome(entry) && inMonth(entry.date)) lines.other += asAmount(entry.amount);
@@ -404,7 +406,7 @@
         const close = open + cur.in - cur.out;
 
         setText('mvCfOpen', ugx(open));
-        setText('mvCfOpenSub', open ? `Brought forward${bbf.label ? ` for ${bbf.label}` : ''}` : 'No balance brought forward set');
+        setText('mvCfOpenSub', open ? `Carried over${bbf.label ? ` into ${bbf.label}` : ''}` : 'No money carried over from before');
         setText('mvCfIn', ugx(cur.in));
         setText('mvCfInSub', `Shows ${H.fmt.compact(cur.shows)}, other ${H.fmt.compact(cur.other)}`);
         setText('mvCfOut', ugx(cur.out));

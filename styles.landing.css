@@ -3988,3 +3988,54 @@ body:has(> .lp--page) { margin: 0; }
 @media (prefers-reduced-motion: reduce) {
     .lp-btn[aria-busy="true"]::after { animation: none; }
 }
+
+/* Short helper line under a sign-up field. */
+.lp-field__hint {
+  display: block;
+  margin-top: var(--sp-space-1);
+  font-size: var(--sp-text-xs, 0.8rem);
+  color: var(--sp-ink-3);
+}
+
+/* ── Pricing page (pricing.html) ───────────────────────────────────────── */
+
+.lp-pricing__doc { max-width: 72rem; }
+.lp-pricing__doc > p,
+.lp-pricing__doc > ul,
+.lp-pricing__doc > h2,
+.lp-pricing__doc .lp-legal__head { max-width: 68ch; }
+
+.lp-plans {
+  display: grid;
+  gap: var(--sp-space-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  margin-top: var(--sp-space-6);
+}
+
+.lp-plan {
+  display: grid;
+  align-content: start;
+  gap: var(--sp-space-2);
+  padding: var(--sp-space-6);
+  border: 1px solid var(--sp-line);
+  border-radius: var(--sp-radius-lg);
+  background: var(--sp-surface-1);
+}
+
+.lp-plan--main { border-color: var(--sp-gold); }
+
+.lp-legal__doc .lp-plan__name { margin: 0; font-size: 1.25rem; }
+
+.lp-plan__price {
+  font-family: var(--sp-font-display);
+  font-size: 1.75rem;
+  line-height: 1.1;
+  color: var(--sp-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-plan__price span { font-family: inherit; font-size: var(--sp-text-sm); color: var(--sp-ink-3); }
+.lp-plan__alt { font-size: var(--sp-text-sm); color: var(--sp-gold-text); }
+.lp-plan__for { color: var(--sp-ink-3); }
+.lp-legal__doc .lp-plan ul { margin-top: var(--sp-space-2); }
+.lp-legal__doc .lp-plan p + p { margin-top: 0; }

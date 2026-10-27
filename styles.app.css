@@ -3186,3 +3186,8 @@ html body.light-theme.light-theme :where(#appContainer) .btn:hover { box-shadow:
 /* Inline field error (artist name). */
 .sp-field-error { margin: 4px 0 0; font-size: 0.85rem; font-weight: 600; color: var(--sp-out); }
 #artistName.input-error { border-color: var(--sp-out); }
+.sp-settings-hint { margin: 6px 0 0; font-size: 0.85rem; color: var(--sp-ink-3); max-width: 60ch; }
+.sp-delete-account { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--sp-line); display: grid; gap: 10px; justify-items: start; }
+.sp-delete-account__confirm { display: grid; gap: 8px; max-width: 46ch; }
+.sp-delete-account__confirm p { margin: 0; }
+.sp-delete-account__actions { display: flex; flex-wrap: wrap; gap: 8px; }

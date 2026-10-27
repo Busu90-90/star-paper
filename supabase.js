@@ -7210,6 +7210,11 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
         if (typeof window.toastError === 'function') window.toastError('Name, email, and password are required.');
         return;
       }
+      if (pw.length < 8) {
+        if (typeof window.toastError === 'function') window.toastError('Please choose a password of at least 8 characters.');
+        document.getElementById('signupPassword')?.focus();
+        return;
+      }
 
       try {
         window.__spUserInitiatedAuth = true;
@@ -7911,11 +7916,44 @@ const SP_TEAM_ROLE_ORDER = ['viewer', 'editor', 'finance', 'reports', 'admin'];
   }
   window.SP_debugCloudScope = inspectCloudScope;
 
+  // Permanently deletes the signed-in user's account and everything it owns.
+  // Uploaded document files are removed from storage first, because the
+  // database cascade cannot reach the file store.
+  async function deleteMyAccount() {
+    const { data: userData } = await db.auth.getUser();
+    const uid = userData?.user?.id;
+    if (!uid) return { ok: false, message: 'Please sign in again, then try once more.' };
+    try {
+      const { data: files } = await db.from('document_files').select('path').eq('owner_id', uid);
+      const paths = (files || []).map((row) => row.path).filter(Boolean);
+      if (paths.length) {
+        const { error: storageError } = await db.storage.from('team-docs').remove(paths);
+        if (storageError) warn('deleteMyAccount: file cleanup failed', storageError);
+      }
+    } catch (err) {
+      warn('deleteMyAccount: file lookup failed', err);
+    }
+    const { error } = await db.rpc('delete_my_account');
+    if (error) {
+      const teamBlock = String(error.message || '').includes('TEAM_HAS_MEMBERS');
+      return {
+        ok: false,
+        message: teamBlock
+          ? 'Your team still has other members. Remove them in Team first, so their records are not deleted with yours.'
+          : 'We could not delete your account just now. Check your connection and try again.',
+      };
+    }
+    try { await db.auth.signOut({ scope: 'local' }); } catch (_) { /* the account is already gone */ }
+    try { localStorage.clear(); sessionStorage.clear(); } catch (_) { /* storage may be blocked */ }
+    return { ok: true };
+  }
+
   window.SP = {
     // Auth
     login:           (email, password) => signIn(email, password),
     signup:          signUp,
     logout:          signOut,
+    deleteMyAccount,
     getSession,
     getProfile,
     updateProfile,

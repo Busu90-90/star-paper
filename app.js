@@ -3741,6 +3741,45 @@ function getSectionIconMarkup(iconKey) {
                 if (typeof window.showAboutModal === 'function') window.showAboutModal();
                 else if (typeof showAboutModal === 'function') showAboutModal();
             });
+            const deleteStart = document.getElementById('settingsDeleteStart');
+            const deleteConfirm = document.getElementById('settingsDeleteConfirm');
+            const deleteInput = document.getElementById('settingsDeleteInput');
+            const deleteGo = document.getElementById('settingsDeleteGo');
+            const deleteStatus = document.getElementById('settingsDeleteStatus');
+            const closeDeleteConfirm = () => {
+                if (deleteConfirm) deleteConfirm.hidden = true;
+                if (deleteInput) deleteInput.value = '';
+                if (deleteGo) deleteGo.disabled = true;
+                if (deleteStatus) deleteStatus.textContent = '';
+                deleteStart?.setAttribute('aria-expanded', 'false');
+            };
+            deleteStart?.addEventListener('click', () => {
+                if (!deleteConfirm) return;
+                deleteConfirm.hidden = false;
+                deleteStart.setAttribute('aria-expanded', 'true');
+                deleteInput?.focus();
+            });
+            document.getElementById('settingsDeleteCancel')?.addEventListener('click', closeDeleteConfirm);
+            deleteInput?.addEventListener('input', () => {
+                if (deleteGo) deleteGo.disabled = deleteInput.value.trim().toUpperCase() !== 'DELETE';
+            });
+            deleteGo?.addEventListener('click', async () => {
+                if (deleteInput?.value.trim().toUpperCase() !== 'DELETE') return;
+                if (typeof window.SP?.deleteMyAccount !== 'function') {
+                    if (deleteStatus) deleteStatus.textContent = 'Please sign in to the cloud first.';
+                    return;
+                }
+                deleteGo.disabled = true;
+                if (deleteStatus) deleteStatus.textContent = 'Deleting your account…';
+                const result = await window.SP.deleteMyAccount();
+                if (!result?.ok) {
+                    if (deleteStatus) deleteStatus.textContent = result?.message || 'We could not delete your account. Please try again.';
+                    deleteGo.disabled = false;
+                    return;
+                }
+                if (deleteStatus) deleteStatus.textContent = 'Your account is deleted. Taking you to the start page…';
+                setTimeout(() => window.location.replace(window.location.pathname), 1200);
+            });
             document.getElementById('settingsLogoutBtn')?.addEventListener('click', (event) => {
                 event.preventDefault();
                 if (typeof window.logout === 'function') {
@@ -4440,13 +4479,13 @@ function showLoginForm(options = {}) {
         };
 
         window.clearAllData ||= function() {
-            if (!confirm('Clear legacy local cache and drafts on this device?')) return;
+            if (!confirm('Clear saved drafts and copies on this device? Your records stay safe in your account.')) return;
             if (typeof window.clearLegacyCloudDataKeys === 'function') {
                 window.clearLegacyCloudDataKeys();
             }
             sessionStorage.removeItem('sp_dismissed_nudges');
             if (typeof window.toastSuccess === 'function') {
-                window.toastSuccess('Local cache cleared.');
+                window.toastSuccess('This device\'s cache is cleared. Your records are still in your account.');
             }
         };
 
@@ -7414,13 +7453,15 @@ function showLoginForm(options = {}) {
         // new artist vanished on refresh or on another device. Push to the cloud
         // and only call it saved once the cloud says so.
         async function syncArtistsToCloud(successMessage) {
+            // Confirm straight away (the artist is already on screen); the cloud save follows and only speaks up if it fails.
+            if (successMessage) toastSuccess(successMessage);
             try {
                 await persistMutationWithCloudFeedback(() => {
                     if (typeof window.SP?.saveArtists === 'function') {
                         return window.SP.saveArtists(artists);
                     }
                     return saveUserData();
-                }, { successMessage, failureMessage: 'Artist saved on this device only. Check your connection and try again.' });
+                }, { suppressSuccessToast: true, failureMessage: 'Artist saved on this device only. Check your connection and try again.' });
             } catch (err) {
                 toastError(err?.message || 'Artist saved on this device only. Check your connection and try again.');
             }
@@ -7451,6 +7492,17 @@ function showLoginForm(options = {}) {
                 artistNameInput?.classList.remove('input-error');
                 artistNameInput?.removeAttribute('aria-invalid');
                 if (artistNameError) artistNameError.hidden = true;
+
+                if (artistEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(artistEmail)) {
+                    toastError('That email address looks incomplete. Use the form name@example.com, or leave it empty.');
+                    document.getElementById('artistEmail')?.focus();
+                    return;
+                }
+                if (artistPhone && (!/^[+\d\s()-]+$/.test(artistPhone) || artistPhone.replace(/\D/g, '').length < 9)) {
+                    toastError('Please enter the phone number in digits, for example +256 772 123456, or leave it empty.');
+                    document.getElementById('artistPhone')?.focus();
+                    return;
+                }
 
                 if (!currentManagerId) {
                     toastError('Please sign in first.');
@@ -7588,7 +7640,7 @@ function showLoginForm(options = {}) {
                     <h4 class="sp-inline-editable" ${inlineEditAttrs('artist', artist.id, 'name', 'Artist Name')}>${artistName}</h4>
                     <p class="artist-specialty sp-inline-editable" ${inlineEditAttrs('artist', artist.id, 'specialty', 'Specialty')}>${artistSpecialty}</p>
                     <p class="artist-bio sp-inline-editable" ${inlineEditAttrs('artist', artist.id, 'bio', 'Bio')}>${artistBio}</p>
-                    <p class="artist-bio artist-bio--goal sp-inline-editable" ${inlineEditAttrs('artist', artist.id, 'strategicGoal', 'Strategic Goal')}>Goal: ${artistGoal || 'Set a strategic goal'}</p>
+                    <p class="artist-bio artist-bio--goal sp-inline-editable" ${inlineEditAttrs('artist', artist.id, 'strategicGoal', 'Main goal')}>Goal: ${artistGoal || 'Set a main goal'}</p>
                     <div class="artist-contact">
                         <div class="sp-inline-editable" ${inlineEditAttrs('artist', artist.id, 'email', 'Email')}><i class="ph ph-envelope-simple" aria-hidden="true"></i> ${artistEmail || 'No email'}</div>
                         <div class="sp-inline-editable" ${inlineEditAttrs('artist', artist.id, 'phone', 'Phone')}><i class="ph ph-phone" aria-hidden="true"></i> ${artistPhone || 'No phone'}</div>
@@ -7698,6 +7750,21 @@ function showLoginForm(options = {}) {
             const deposit = parseMoneyInputValue(document.getElementById('bookingDeposit').value);
             const balance = fee - deposit - recordedPaymentsTotal(editingBookingId);
             document.getElementById('bookingBalance').value = formatMoneyInputDisplay(balance);
+            // Warn while typing, before Save refuses it.
+            const warning = document.getElementById('bookingMoneyWarning');
+            if (warning) {
+                const message = bookingMoneyProblem(fee, deposit);
+                warning.textContent = message;
+                warning.hidden = !message;
+            }
+        }
+
+        function bookingMoneyProblem(fee, deposit) {
+            if (fee < 0) return "The total fee can't be below zero.";
+            if (deposit < 0) return "The deposit can't be below zero.";
+            if (fee > 999999999999 || deposit > 999999999999) return 'That amount is too big. Please check the fee and deposit.';
+            if (deposit > fee) return 'The deposit is bigger than the total fee. Please check both amounts.';
+            return '';
         }
 
         function showAddBooking() {
@@ -7736,6 +7803,8 @@ function showLoginForm(options = {}) {
 
         function clearBookingForm() {
             document.getElementById('bookingEvent').value = '';
+            const moneyWarning = document.getElementById('bookingMoneyWarning');
+            if (moneyWarning) moneyWarning.hidden = true;
             const clearVenue = document.getElementById('bookingVenue');
             if (clearVenue) clearVenue.value = '';
             document.getElementById('bookingArtist').value = '';
@@ -7838,14 +7907,11 @@ function showLoginForm(options = {}) {
                     document.getElementById(missing[0][2])?.focus();
                     return;
                 }
-                if (feeValue > 999999999999 || depositValue > 999999999999) {
-                    toastError('That amount is too big. Please check the fee and deposit.');
-                    document.getElementById(feeValue > 999999999999 ? 'bookingFee' : 'bookingDeposit')?.focus();
-                    return;
-                }
-                if (depositValue > feeValue) {
-                    toastError('The deposit is bigger than the total fee. Please check both amounts.');
-                    document.getElementById('bookingDeposit')?.focus();
+                const moneyProblem = bookingMoneyProblem(feeValue, depositValue);
+                if (moneyProblem) {
+                    toastError(moneyProblem);
+                    const feeIsWrong = feeValue < 0 || feeValue > 999999999999;
+                    document.getElementById(feeIsWrong ? 'bookingFee' : 'bookingDeposit')?.focus();
                     return;
                 }
 
@@ -8166,11 +8232,14 @@ function showLoginForm(options = {}) {
             
             bookings.forEach(booking => {
                 if (!isEarningBooking(booking)) return;
-                const date = new Date(booking.date);
-                const monthsDiff = (today.getFullYear() - date.getFullYear()) * 12 + (today.getMonth() - date.getMonth());
-                if (monthsDiff >= 0 && monthsDiff < 12) {
-                    monthlyIncome[11 - monthsDiff] += getBookingCollected(booking);
-                }
+                getBookingCashEvents(booking).forEach((event) => {
+                    const date = new Date(event.date);
+                    if (Number.isNaN(date.getTime())) return;
+                    const monthsDiff = (today.getFullYear() - date.getFullYear()) * 12 + (today.getMonth() - date.getMonth());
+                    if (monthsDiff >= 0 && monthsDiff < 12) {
+                        monthlyIncome[11 - monthsDiff] += event.amount;
+                    }
+                });
             });
 
             expenses.forEach(expense => {
@@ -8540,6 +8609,36 @@ function showLoginForm(options = {}) {
             return Math.max(0, deposit) + balancePaid;
         }
 
+        // When each part of a booking's money came in, so cash is counted in the month it was received:
+        // the deposit on the day the booking was logged, each recorded payment on its paid date,
+        // and any older balance paid without a payment record on the show date.
+        function getBookingCashEvents(booking) {
+            const deposit = Math.max(0, Math.round(Number(booking?.deposit) || 0));
+            const events = [];
+            if (deposit > 0) events.push({ date: booking?.createdAt || booking?.date, amount: deposit, kind: 'deposit' });
+            let recorded = 0;
+            if (booking?.id) {
+                getBookingPayments(booking.id).forEach((payment) => {
+                    const amount = Math.max(0, Math.round(Number(payment?.amount) || 0));
+                    if (!amount) return;
+                    recorded += amount;
+                    events.push({ date: payment.paidOn || payment.createdAt || booking.date, amount, kind: 'payment' });
+                });
+            }
+            const unrecorded = getBookingCollected(booking) - deposit - recorded;
+            if (unrecorded > 0) events.push({ date: booking?.date, amount: unrecorded, kind: 'balance' });
+            return events;
+        }
+
+        // Cash from one booking that arrived inside [start, end).
+        function getBookingCashInRange(booking, start, end) {
+            return getBookingCashEvents(booking).reduce((sum, event) => {
+                const date = event.date ? new Date(event.date) : null;
+                if (!date || Number.isNaN(date.getTime())) return sum;
+                return date >= start && date < end ? sum + event.amount : sum;
+            }, 0);
+        }
+
         function isReceivedOtherIncome(entry) {
             return String(entry?.status || 'received').toLowerCase() === 'received';
         }
@@ -8548,6 +8647,8 @@ function showLoginForm(options = {}) {
         window.SPMoney = {
             isEarningBooking,
             getBookingCollected,
+            getBookingCashEvents,
+            getBookingCashInRange,
             isReceivedOtherIncome,
             getMonthlyGoal: () => getCurrentMonthlyRevenueGoal(),
             getBBF: () => {
@@ -8591,14 +8692,19 @@ function showLoginForm(options = {}) {
             );
             const monthExpenses = expenses.filter((entry) => isCurrentMonthDate(entry.date));
 
-            const depositsReceived = monthConfirmedBookings.reduce((sum, booking) => sum + asAmount(booking.deposit), 0);
-            const balancesReceived = monthConfirmedBookings.reduce((sum, booking) => {
-                const feeValue = asAmount(booking.fee);
-                const depositValue = asAmount(booking.deposit);
-                const balanceOutstanding = asAmount(booking.balance);
-                const collectedBeyondDeposit = feeValue - depositValue - balanceOutstanding;
-                return sum + (collectedBeyondDeposit > 0 ? collectedBeyondDeposit : 0);
-            }, 0);
+            // Cash counts in the month it arrived, whatever month the show is in.
+            const monthStartDate = new Date(currentYear, currentMonth, 1);
+            const nextMonthStartDate = new Date(currentYear, currentMonth + 1, 1);
+            let depositsReceived = 0;
+            let balancesReceived = 0;
+            bookings.filter(isConfirmedBooking).forEach((booking) => {
+                getBookingCashEvents(booking).forEach((event) => {
+                    const date = parseValidDate(event.date);
+                    if (!date || date < monthStartDate || date >= nextMonthStartDate) return;
+                    if (event.kind === 'deposit') depositsReceived += event.amount;
+                    else balancesReceived += event.amount;
+                });
+            });
             const balancesDue = monthConfirmedBookings.reduce((sum, booking) => {
                 const balanceValue = asAmount(booking.balance);
                 return sum + (balanceValue > 0 ? balanceValue : 0);
@@ -8651,7 +8757,7 @@ function showLoginForm(options = {}) {
 
             // showIncome is what was booked; deposits is what has been collected so far.
             const showIncome = rangeBookings.reduce((sum, booking) => sum + asAmount(booking.fee), 0);
-            const deposits = rangeBookings.reduce((sum, booking) => sum + getBookingCollected(booking), 0);
+            const deposits = bookings.filter(isEarningBooking).reduce((sum, booking) => sum + getBookingCashInRange(booking, start, end), 0);
             const other = rangeOtherIncome.reduce((sum, entry) => sum + asAmount(entry.amount), 0);
             const expenseTotal = rangeExpenses.reduce((sum, entry) => sum + asAmount(entry.amount), 0);
             const totalIncome = deposits + other;
@@ -9227,7 +9333,7 @@ function showLoginForm(options = {}) {
             };
             const items = [];
             bookings.forEach(booking => {
-                if (!isEarningBooking(booking) || !isThisMonth(booking.date)) return;
+                if (!isEarningBooking(booking) || !getBookingCashEvents(booking).some((event) => isThisMonth(event.date))) return;
                 const collected = getBookingCollected(booking);
                 if (collected <= 0) return;
                 const fee = Math.round(Number(booking.fee) || 0);
