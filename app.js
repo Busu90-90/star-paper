@@ -9646,6 +9646,12 @@ function showLoginForm(options = {}) {
             const durSec = (dur / 1000).toFixed(1) + 's';
             const titleText = opts.title == null ? '' : String(opts.title);
             const messageText = message == null ? '' : String(message);
+            // A double-click should not stack two copies of the same message.
+            const toastKey = `${toastType}|${titleText}|${messageText}`;
+            const now = Date.now();
+            if (showToast.lastKey === toastKey && now - (showToast.lastAt || 0) < 1500) return;
+            showToast.lastKey = toastKey;
+            showToast.lastAt = now;
 
             const toast = document.createElement('div');
             toast.className = `sp-toast sp-toast--${toastType}`;
@@ -10288,7 +10294,8 @@ function showLoginForm(options = {}) {
             const text = String(value ?? '').trim();
             if (!text) return '';
             const negative = text.startsWith('-');
-            const digits = text.replace(/[^0-9]/g, '');
+            // Cap the length so a pasted run of digits can't display as "∞" and save as 0.
+            const digits = text.replace(/[^0-9]/g, '').slice(0, 13);
             if (!digits) return '';
             const grouped = Number(digits).toLocaleString('en-US');
             return negative ? `-${grouped}` : grouped;
