@@ -369,6 +369,7 @@ body.light-theme .lp .lp-btn--ghost {
 /* Touch screens get the full 44px tap height on the small header buttons. */
 @media (pointer: coarse) {
   .lp-btn--sm { min-height: 44px; }
+  .lp-auth__switch .lp-text-btn { min-height: 44px; padding: 0 var(--sp-space-2); }
 }
 
 .lp-btn--lg {

@@ -7437,11 +7437,20 @@ function showLoginForm(options = {}) {
                 const artistBio = sanitizeTextInput(document.getElementById('artistBio').value);
                 const artistStrategicGoal = sanitizeTextInput(document.getElementById('artistStrategicGoal').value);
 
+                const artistNameInput = document.getElementById('artistName');
+                const artistNameError = document.getElementById('artistNameError');
                 if (!artistName) {
+                    // Show the error under the field itself so it stays after the toast fades.
+                    artistNameInput?.classList.add('input-error');
+                    artistNameInput?.setAttribute('aria-invalid', 'true');
+                    if (artistNameError) artistNameError.hidden = false;
                     toastError("Please add the artist's name.");
-                    document.getElementById('artistName')?.focus();
+                    artistNameInput?.focus();
                     return;
                 }
+                artistNameInput?.classList.remove('input-error');
+                artistNameInput?.removeAttribute('aria-invalid');
+                if (artistNameError) artistNameError.hidden = true;
 
                 if (!currentManagerId) {
                     toastError('Please sign in first.');
