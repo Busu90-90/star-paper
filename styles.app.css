@@ -3182,4 +3182,3 @@ html body.light-theme.light-theme :where(#appContainer) .btn:hover { box-shadow:
 .hv2-start__steps li { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .hv2-start__btn { min-height: 44px; }
 .hv2-start__steps li.is-done span { text-decoration: line-through; opacity: 0.6; }
-.hv2-start__steps li.is-done .hv2-start__btn { display: none; }

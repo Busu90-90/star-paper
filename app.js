@@ -4131,6 +4131,9 @@ function showAuthPanel(panel) {
         window.showAuthPanel = showAuthPanel;
 
 function showLoginForm(options = {}) {
+            // Every route here (any button, any dispatcher) marks the auth screen as
+            // chosen, so a late boot step can't throw the visitor back to the landing.
+            window.__spUserPublicScreen = 'loginScreen';
             resetCloudSaveInFlightFlags('show-login');
             const instantPublicReveal = !options.flowId && shouldUseInstantPublicReveal(options);
             const flowId = instantPublicReveal
@@ -4157,6 +4160,9 @@ function showLoginForm(options = {}) {
         }
 
         function showSignupForm(options = {}) {
+            // Every route here (any button, any dispatcher) marks the auth screen as
+            // chosen, so a late boot step can't throw the visitor back to the landing.
+            window.__spUserPublicScreen = 'loginScreen';
             resetCloudSaveInFlightFlags('show-signup');
             const instantPublicReveal = !options.flowId && shouldUseInstantPublicReveal(options);
             const flowId = instantPublicReveal
@@ -4179,6 +4185,8 @@ function showLoginForm(options = {}) {
         }
 
         function showLanding(options = {}) {
+            // A plain call is the visitor going back (Home link); boot calls pass a flow or instant.
+            if (!options.flowId && !options.instant) window.__spUserPublicScreen = null;
             resetCloudSaveInFlightFlags('show-landing');
             const instantPublicReveal = !options.flowId && shouldUseInstantPublicReveal(options);
             const flowId = instantPublicReveal
@@ -7525,7 +7533,10 @@ function showLoginForm(options = {}) {
                 renderArtists();
                 populateArtistDropdown();
                 cancelAddArtist();
-                syncArtistsToCloud('Artist added.');
+                // First artist and no shows yet: say what comes next.
+                syncArtistsToCloud(bookings.length === 0
+                    ? `${artistName} added. Next: log a show for them with + then Booking.`
+                    : 'Artist added.');
         
             } catch (err) {
                 console.error('[StarPaper] saveArtist failed:', err);
@@ -7687,6 +7698,12 @@ function showLoginForm(options = {}) {
             if (typeof activateScheduleTab === 'function') activateScheduleTab('bookings');
             const bookingForm = document.getElementById('addBookingForm');
             bookingForm.hidden = false;
+            // One artist on the roster: a new booking is for them, so fill it in.
+            const artistSelect = document.getElementById('bookingArtist');
+            const roster = getArtists();
+            if (!editingBookingId && artistSelect && !artistSelect.value && roster.length === 1 && roster[0]?.name) {
+                artistSelect.value = roster[0].name;
+            }
             const listCard = document.getElementById('bookingsListCard');
             if (listCard) listCard.hidden = true;
             // Bring the form itself into view, not the stats strip above it.
@@ -9987,12 +10004,14 @@ function showLoginForm(options = {}) {
             }
 
             // ── Collection Nudge ──────────────────────────────────────────────
-            const unpaid = allBookings.filter(b => isEarningBooking(b) && (Math.round(Number(b.balance) || 0)) > 0);
+            // Only shows already played: a balance on a show weeks away isn't late yet
+            // (the next nudge covers shows in the coming 5 days).
+            const unpaid = allBookings.filter(b => isEarningBooking(b) && (Math.round(Number(b.balance) || 0)) > 0 && b.date && b.date < todayStr);
             if (unpaid.length > 0) {
                 const total = unpaid.reduce((s, b) => s + (Math.round(Number(b.balance) || 0)), 0);
                 nudges.push({
                     type: 'warning', icon: 'ph-money', id: 'nudge-collection',
-                    text: `${unpaid.length} booking${unpaid.length > 1 ? 's have' : ' has'} unpaid balances (UGX ${Math.round(total).toLocaleString()}). Follow up?`,
+                    text: `${unpaid.length} played show${unpaid.length > 1 ? 's still have' : ' still has'} a balance to collect (UGX ${Math.round(total).toLocaleString()}). Follow up?`,
                     action: 'followUpUnpaid',
                     actionId: String(unpaid[0]?.id ?? '')
                 });

@@ -318,8 +318,13 @@
             const hasArtists = Array.isArray(window.artists) && window.artists.length > 0;
             const hasBookings = Array.isArray(window.bookings) && window.bookings.length > 0;
             start.hidden = hasArtists && hasBookings;
-            $('hv2StartArtist')?.classList.toggle('is-done', hasArtists);
-            $('hv2StartBooking')?.classList.toggle('is-done', hasBookings);
+            [['hv2StartArtist', hasArtists], ['hv2StartBooking', hasBookings]].forEach(([id, done]) => {
+                const step = $(id);
+                if (!step) return;
+                step.classList.toggle('is-done', done);
+                const btn = step.querySelector('button');
+                if (btn) btn.hidden = done; // a done step keeps no call to action
+            });
         }
 
         const range = readRange();

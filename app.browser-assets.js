@@ -60,10 +60,10 @@
     ]],
     ['1', ['app.offline-cache.js']],
     ['3', ['app.todayboard.js']],
-    ['80', ['app.browser-assets.js']],
+    ['81', ['app.browser-assets.js']],
     ['4', ['app.boot-head.js']],
     ['3', ['app.money.js']],
-    ['5', ['app.home.js']],
+    ['6', ['app.home.js']],
     ['1', ['assets/fonts/pdf/roschild.ttf', 'assets/fonts/pdf/inter-400.ttf', 'assets/fonts/pdf/inter-600.ttf', 'assets/fonts/pdf/mono-500.ttf', 'assets/fonts/pdf/mono-700.ttf']],
     ['1', ['assets/fonts/roschild.woff2', 'app.charts.js', 'app.finance-ui.js', 'app.schedule.js']],
     ['2', ['app.artists.js']],
@@ -75,8 +75,8 @@
     ['58', ['styles.landing.css']],
     ['2', ['assets/landing/brick-wall.webp']],
     ['2', ['styles.brand.css']],
-    ['27', ['styles.app.css']],
-    ['9', ['app.root-shell.js']],
+    ['28', ['styles.app.css']],
+    ['10', ['app.root-shell.js']],
     ['3', ['app.public-pages.js']],
     ['4', ['app.boot-flags.js']],
     ['5', ['app.boot-body.js']],
@@ -113,8 +113,8 @@
     ['28', ['manifest.json']],
     ['66', ['styles.css']],
     ['106', ['supabase.js']],
-    ['166', ['app.js']],
-    ['259', ['sw.js']]
+    ['167', ['app.js']],
+    ['260', ['sw.js']]
   ];
 
   const assetVersions = {};
