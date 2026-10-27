@@ -6,7 +6,7 @@
     <meta name="star-paper:public-root" content="app-shell">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:;">
     <title>Star Paper</title>
-    <script src="app.browser-assets.js?v=67"></script>
+    <script src="app.browser-assets.js?v=77"></script>
     <script src="app.public-pages.js?v=3"></script>
     <script src="app.boot-head.js?v=3"></script>
     <link rel="manifest" href="manifest.json?v=28">
@@ -34,7 +34,7 @@
     <link rel="stylesheet" href="styles.utilities.css?v=2">
     <!-- Design system: tokens + signed-out pages (landing, auth). Loaded last so it owns those screens. -->
     <link rel="stylesheet" href="sp-design-tokens.css?v=5">
-    <link rel="stylesheet" href="styles.landing.css?v=46">
+    <link rel="stylesheet" href="styles.landing.css?v=56">
     <link rel="stylesheet" href="styles.brand.css?v=1">
     <link rel="stylesheet" href="styles.app.css?v=24">
     <link rel="preload" href="assets/vendor/fonts/font-29-fraunces-latin-opsz-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
@@ -124,7 +124,6 @@
                     <a class="lp-nav__link" href="#voices" data-lp-slide-link="3">Testimonials</a>
                 </nav>
                 <div class="lp-header__actions">
-                    <button class="lp-icon-btn" type="button" data-lp-install hidden aria-label="Install the Star Paper app"><i class="ph ph-download-simple" aria-hidden="true"></i></button>
                     <button class="lp-icon-btn" id="landingThemeToggle" type="button" aria-label="Switch to light mode"><i class="ph ph-moon" aria-hidden="true"></i></button>
                     <button class="lp-btn lp-btn--quiet lp-btn--sm" type="button" data-action="showLoginForm">Sign in</button>
                     <button class="lp-btn lp-btn--gold lp-btn--sm lp-from-tablet" type="button" data-action="showSignupForm">Start free</button>
@@ -301,6 +300,7 @@
         </main>
 
         <footer class="lp-footer">
+            <span class="lp-floor" aria-hidden="true"></span>
             <span class="lp-twinkles lp-twinkles--foot" aria-hidden="true"><i></i><i></i><i></i></span>
             <div class="lp-footer__top">
                 <div class="lp-brand">
@@ -2086,7 +2086,7 @@
 <script src="app.docs.js?v=4" defer></script>
 <script src="app.pickers.js?v=2" defer></script>
 <script src="app.landing.js?v=5" defer></script>
-<script src="app.landing-lights.js?v=14" defer></script>
+<script src="app.landing-lights.js?v=15" defer></script>
 <script src="app.chrome.js?v=4" defer></script>
 
     <!-- Premium toast stack -->
