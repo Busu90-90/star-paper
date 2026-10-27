@@ -6,7 +6,7 @@
     <meta name="star-paper:public-root" content="app-shell">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://browser.sentry-cdn.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://fxcyocdwvjiyatqnaahg.supabase.co wss://fxcyocdwvjiyatqnaahg.supabase.co https://o4511079351189504.ingest.de.sentry.io https://geocoding-api.open-meteo.com https://api.open-meteo.com; manifest-src 'self'; worker-src 'self' blob:;">
     <title>Star Paper</title>
-    <script src="app.browser-assets.js?v=78"></script>
+    <script src="app.browser-assets.js?v=79"></script>
     <script src="app.public-pages.js?v=3"></script>
     <script src="app.boot-head.js?v=3"></script>
     <link rel="manifest" href="manifest.json?v=28">
@@ -36,7 +36,7 @@
     <link rel="stylesheet" href="sp-design-tokens.css?v=6">
     <link rel="stylesheet" href="styles.landing.css?v=57">
     <link rel="stylesheet" href="styles.brand.css?v=2">
-    <link rel="stylesheet" href="styles.app.css?v=25">
+    <link rel="stylesheet" href="styles.app.css?v=26">
     <link rel="preload" href="assets/vendor/fonts/font-29-fraunces-latin-opsz-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="assets/vendor/fonts/font-31-inter-tight-latin-wght-normal.woff2?v=1" as="font" type="font/woff2" crossorigin>
     <!-- Vendored Phosphor Icons 2.1.1 - unified icon system -->
@@ -558,7 +558,10 @@
             </button>
         </nav>
 
-        <!-- Scroll-to-top (appears after scrolling down) -->
+        <!-- Scroll down / to top (each appears when there is somewhere to go) -->
+        <button class="scroll-top-fab scroll-down-fab" id="scrollDownFab" type="button" aria-label="Scroll to bottom">
+            <i class="ph ph-arrow-down" aria-hidden="true"></i>
+        </button>
         <button class="scroll-top-fab" id="scrollTopFab" type="button" aria-label="Scroll to top">
             <i class="ph ph-arrow-up" aria-hidden="true"></i>
         </button>
@@ -637,6 +640,10 @@
             <!-- ═══ Top bar: title · search · New · sync · bell · avatar ═══ -->
             <header class="header topbar">
                 <div class="topbar__title">
+                    <div class="nav-hist-wrap" role="group" aria-label="Page history">
+                        <button class="nav-hist-btn" id="navBackBtn" type="button" aria-label="Back" disabled><i class="ph ph-caret-left" aria-hidden="true"></i></button>
+                        <button class="nav-hist-btn" id="navFwdBtn" type="button" aria-label="Forward" disabled><i class="ph ph-caret-right" aria-hidden="true"></i></button>
+                    </div>
                     <button class="app-brand topbar__mark" type="button" data-action="showSection" data-section="dashboard" aria-label="Go home">
                         <img class="sp-spin-mark" src="star_paper_logo_pack/star-paper-mark.svg?v=2" alt="" width="34" height="34">
                     </button>
@@ -950,6 +957,11 @@
 
                 </div>
                 <div class="sp-tab-panel" id="moneyPanel-cashflow">
+                <div class="card">
+                    <h3 class="section-title" data-icon="reports"><span class="section-title__text">Cashflow (<span id="cashflowPeriodLabel">Month Year</span>)</span></h3>
+                    <div class="timeline-list" id="cashFlowTimeline"></div>
+                </div>
+
                 <div class="mv-strip">
                     <div class="card mv-tile"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-door-open"></i></span><span class="mv-label">Opening cash</span><span class="mv-tile__value money" id="mvCfOpen">UGX 0</span><span class="mv-tile__sub" id="mvCfOpenSub"></span></div>
                     <div class="card mv-tile"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-arrow-down-left"></i></span><span class="mv-label">Cash in</span><span class="mv-tile__value money is-in" id="mvCfIn">UGX 0</span><span class="mv-tile__sub" id="mvCfInSub"></span></div>
@@ -993,11 +1005,6 @@
                     <svg class="mv-chart" id="mvScenChart" role="img" aria-label="Running profit over the next six months under three cases" focusable="false"></svg>
                     <div class="mv-pl__scroll"><table class="mv-pl__table mv-scen__table" id="mvScenTable"></table></div>
                     <p class="mv-note" id="mvScenNote"></p>
-                </div>
-
-                <div class="card">
-                    <h3 class="section-title" data-icon="reports"><span class="section-title__text">Cashflow (<span id="cashflowPeriodLabel">Month Year</span>)</span></h3>
-                    <div class="timeline-list" id="cashFlowTimeline"></div>
                 </div>
                 </div>
                 <div class="sp-tab-panel" id="moneyPanel-receivables">
@@ -1099,7 +1106,30 @@
                     <button id="saveExpenseBtn" class="btn-primary" data-action="saveExpense">Save Expense</button>
                     <button class="back-btn" data-action="cancelExpense">Cancel</button>
                 </div>
-                <!-- Spending analysis (app.insights.js); the expense list follows. -->
+                <div class="card" id="expensesListCard">
+                    <div class="card-header-row">
+                        <h3 class="section-title" data-icon="expenses">All Expenses</h3>
+                        <button class="section-fab" aria-label="Add expense" data-action="showAddExpense">+</button>
+                    </div>
+                    <div class="table-wrap">
+                        <table id="expensesTable" class="expenses-table">
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th>Artist</th>
+                                <th>Category</th>
+                                <th>Amount</th>
+                                <th>Date</th>
+                                <th>Receipt</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                        </table>
+                    </div>
+                    <div id="expensesCards" class="expenses-cards sp-csp-style-17"></div>
+                </div>
+
+                <!-- Spending analysis (app.insights.js); it follows the expense list. -->
                 <div class="mv-strip">
                     <div class="card mv-tile mv-tile--key"><span class="sp-icon-tile sp-icon-tile--foil" aria-hidden="true"><i class="ph ph-receipt"></i></span><span class="mv-label">Spent this month</span><span class="mv-tile__value money" id="mvExTotal">UGX 0</span><span class="mv-delta" id="mvExTotalDelta"></span><svg class="mv-spark" id="mvExTotalSpark" aria-hidden="true" focusable="false"></svg></div>
                     <div class="card mv-tile" title="Spending as a share of money in this month"><span class="sp-icon-tile" aria-hidden="true"><i class="ph ph-percent"></i></span><span class="mv-label">Share of money in</span><span class="mv-tile__value money" id="mvExShare">—</span><span class="mv-tile__sub" id="mvExShareSub"></span></div>
@@ -1146,28 +1176,6 @@
                 </div>
 
 
-                <div class="card" id="expensesListCard">
-                    <div class="card-header-row">
-                        <h3 class="section-title" data-icon="expenses">All Expenses</h3>
-                        <button class="section-fab" aria-label="Add expense" data-action="showAddExpense">+</button>
-                    </div>
-                    <div class="table-wrap">
-                        <table id="expensesTable" class="expenses-table">
-                        <thead>
-                            <tr>
-                                <th>Description</th>
-                                <th>Artist</th>
-                                <th>Category</th>
-                                <th>Amount</th>
-                                <th>Date</th>
-                                <th>Receipt</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                        </table>
-                    </div>
-                    <div id="expensesCards" class="expenses-cards sp-csp-style-17"></div>
-                </div>
 
                 </div>
                 <div class="sp-tab-panel" id="moneyPanel-otherIncome">
@@ -2075,7 +2083,7 @@
         <script src="app.todayboard.js?v=3"></script>
         <script src="app.tasks.js?v=7"></script>
     <script src="app.reports.js?v=23"></script>
-<script src="app.js?v=164" defer></script>
+<script src="app.js?v=165" defer></script>
 <script src="app.charts.js?v=1" defer></script>
 <script src="app.home.js?v=4" defer></script>
 <script src="app.money.js?v=3" defer></script>

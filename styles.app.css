@@ -633,6 +633,33 @@ body.light-theme #appContainer .bottom-nav { background: color-mix(in srgb, var(
   transition: opacity var(--sp-dur-2), transform var(--sp-dur-2) var(--sp-ease-out);
 }
 #appContainer .scroll-top-fab.visible { opacity: 1; pointer-events: auto; transform: none; }
+#appContainer .scroll-top-fab { transition: opacity var(--sp-dur-2), transform var(--sp-dur-2) var(--sp-ease-out), translate var(--sp-dur-2) var(--sp-ease-out); }
+#appContainer .scroll-down-fab { transform: translateY(-8px); }
+/* Both showing: "to top" stacks above "down". */
+#appContainer .scroll-down-fab.visible + .scroll-top-fab { translate: 0 calc((var(--sp-tap) + var(--sp-space-2)) * -1); }
+
+/* Back / forward through the pages visited in this session */
+#appContainer .nav-hist-wrap { display: flex; align-items: center; gap: var(--sp-space-1); flex: none; margin: 0; }
+#appContainer .nav-hist-btn {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid var(--sp-line);
+  border-radius: 50%;
+  background: var(--sp-surface-2);
+  color: var(--sp-ink-2);
+  font-size: 16px;
+  box-shadow: none;
+  cursor: pointer;
+  transition: color var(--sp-dur-2), background-color var(--sp-dur-2), border-color var(--sp-dur-2), opacity var(--sp-dur-2);
+}
+#appContainer .nav-hist-btn:not(:disabled):hover { color: var(--sp-ink); background: var(--sp-surface-3); border-color: var(--sp-line-strong); }
+#appContainer .nav-hist-btn:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+@media (min-width: 1025px) { #appContainer .nav-hist-wrap { display: flex; } }
 
 /* ── 5. Sheets ──────────────────────────────────────────────────────────── */
 #appContainer .sp-scrim {
@@ -690,8 +717,11 @@ body.light-theme #appContainer .bottom-nav { background: color-mix(in srgb, var(
   color: var(--sp-ink-2);
   font-size: 16px;
   cursor: pointer;
+  min-width: 0;
+  min-height: 0;
+  box-shadow: none;
 }
-#appContainer .sp-sheet__close:hover { color: var(--sp-ink); }
+#appContainer .sp-sheet__close:hover { color: var(--sp-ink); background: var(--sp-surface-2); }
 
 /* Quick add */
 #appContainer .quick-add-panel {
@@ -1333,8 +1363,15 @@ canvas.is-pin-hover { cursor: pointer; }
 #appContainer #dashboard .hv2-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-space-3); }
 @media (min-width: 1024px) {
   #appContainer #dashboard .hv2-top { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
-  #appContainer #dashboard .hv2-cols { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; }
-  #appContainer #dashboard .hv2-col { display: flex; flex-direction: column; gap: var(--sp-space-4); min-width: 0; }
+  /* Rows read across: each main card shares a row (and its height) with
+     the side card beside it, so the eye can follow left to right. */
+  #appContainer #dashboard .hv2-cols { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: stretch; }
+  #appContainer #dashboard .hv2-col { display: contents; }
+  #appContainer #dashboard .hv2-col--main > * { grid-column: 1; }
+  #appContainer #dashboard .hv2-col--side > * { grid-column: 2; }
+  #appContainer #dashboard .hv2-col > :nth-child(1) { grid-row: 1; }
+  #appContainer #dashboard .hv2-col > :nth-child(2) { grid-row: 2; }
+  #appContainer #dashboard .hv2-col > :nth-child(3) { grid-row: 3; }
   #appContainer #dashboard .hv2-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-space-4); }
 }
 
@@ -2936,6 +2973,13 @@ body.light-theme #spCurrencyBadge { color: var(--sp-gold-text); }
   body.sidebar--collapsed #appContainer .nav-item,
   body.sidebar--collapsed #appContainer .sidebar:hover .nav-item { height: 38px; min-height: 38px; }
   body.sidebar--collapsed #appContainer .sidebar-nav--more { margin-top: var(--sp-space-2); padding-top: var(--sp-space-2); }
+  /* The rail can't scroll (its tooltips sit outside it), so it has to fit. */
+  body.sidebar--collapsed #appContainer .sb-group-label + .sidebar-nav { margin-top: var(--sp-space-2); padding-top: var(--sp-space-2); }
+  body.sidebar--collapsed #appContainer .sb-profile { min-height: 44px; padding: 0; }
+}
+@media (min-width: 1024px) and (max-height: 620px) {
+  body.sidebar--collapsed #appContainer .nav-item,
+  body.sidebar--collapsed #appContainer .sidebar:hover .nav-item { height: 34px; min-height: 34px; }
 }
 
 /* ==========================================================================
@@ -3118,3 +3162,12 @@ body.light-theme #spCurrencyBadge { color: var(--sp-gold-text); }
   height: max(100%, 44px);
   transform: translate(-50%, -50%);
 }
+
+/* Legacy styles.css gives every light-theme button a gold drop shadow and a
+   glow on hover, which makes icon and ghost buttons look smudged. Inside the
+   app shell, buttons only get the shadows their own #appContainer rules set
+   (those still win: this selector is weaker than any id rule). */
+html body.light-theme.light-theme :where(#appContainer) button,
+html body.light-theme.light-theme :where(#appContainer) .btn { box-shadow: none; }
+html body.light-theme.light-theme :where(#appContainer) button:hover,
+html body.light-theme.light-theme :where(#appContainer) .btn:hover { box-shadow: none; }

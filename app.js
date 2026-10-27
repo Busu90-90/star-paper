@@ -2661,19 +2661,40 @@ function getSectionIconMarkup(iconKey) {
                 }
             });
 
-            // ── Scroll-to-top FAB ──────────────────────────────────────
+            // ── Scroll-to-top / scroll-down FABs ───────────────────────
             const scrollFab = document.getElementById('scrollTopFab');
+            const scrollDownFab = document.getElementById('scrollDownFab');
             const mainContent = document.querySelector('.main-content');
+            const scrollRoom = () => {
+                const root = document.scrollingElement || document.documentElement;
+                const mcLeft = mainContent ? mainContent.scrollHeight - mainContent.clientHeight - mainContent.scrollTop : 0;
+                const winLeft = root.scrollHeight - window.innerHeight - window.scrollY;
+                return Math.max(mcLeft, winLeft);
+            };
+            let fabFrame = 0;
             const showFab = () => {
-                const scrolled = (mainContent?.scrollTop || 0) + window.scrollY;
-                scrollFab?.classList.toggle('visible', scrolled > 280);
+                if (fabFrame) return;
+                fabFrame = requestAnimationFrame(() => {
+                    fabFrame = 0;
+                    const scrolled = (mainContent?.scrollTop || 0) + window.scrollY;
+                    scrollFab?.classList.toggle('visible', scrolled > 280);
+                    scrollDownFab?.classList.toggle('visible', scrollRoom() > 280);
+                });
             };
             mainContent?.addEventListener('scroll', showFab, { passive: true });
             window.addEventListener('scroll', showFab, { passive: true });
+            window.addEventListener('resize', showFab, { passive: true });
+            if (mainContent && 'ResizeObserver' in window) new ResizeObserver(showFab).observe(mainContent);
             scrollFab?.addEventListener('click', () => {
                 mainContent?.scrollTo({ top: 0, behavior: 'smooth' });
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             });
+            scrollDownFab?.addEventListener('click', () => {
+                const root = document.scrollingElement || document.documentElement;
+                mainContent?.scrollTo({ top: mainContent.scrollHeight, behavior: 'smooth' });
+                window.scrollTo({ top: root.scrollHeight, behavior: 'smooth' });
+            });
+            showFab();
 
             document.getElementById('landingThemeToggle')?.addEventListener('click', toggleTheme);
             document.getElementById('sidebarLightBtn')?.addEventListener('click', () => setTheme('light'));
@@ -5237,7 +5258,9 @@ function showLoginForm(options = {}) {
 
             // ── Push to in-app navigation history stack ───────────────
             if (!window._spNavSkip) {
-                if (window._spNavStack) {
+                // The data-action bridges can call this twice per click; a repeat must
+                // not push again or it would wipe the forward history.
+                if (window._spNavStack && window._spNavStack[window._spNavIndex] !== section) {
                     window._spNavStack = window._spNavStack.slice(0, window._spNavIndex + 1);
                     window._spNavStack.push(section);
                     window._spNavIndex = window._spNavStack.length - 1;
