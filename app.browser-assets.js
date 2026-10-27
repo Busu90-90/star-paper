@@ -60,7 +60,7 @@
     ]],
     ['1', ['app.offline-cache.js']],
     ['3', ['app.todayboard.js']],
-    ['77', ['app.browser-assets.js']],
+    ['78', ['app.browser-assets.js']],
     ['3', ['app.boot-head.js']],
     ['3', ['app.money.js']],
     ['4', ['app.home.js']],
@@ -72,20 +72,20 @@
     ['4', ['app.docs.js']],
     ['4', ['app.chrome.js']],
     ['2', ['app.insights.js']],
-    ['56', ['styles.landing.css']],
+    ['57', ['styles.landing.css']],
     ['2', ['assets/landing/brick-wall.webp']],
-    ['1', ['styles.brand.css']],
-    ['24', ['styles.app.css']],
+    ['2', ['styles.brand.css']],
+    ['25', ['styles.app.css']],
     ['9', ['app.root-shell.js']],
     ['3', ['app.public-pages.js']],
     ['4', ['app.boot-flags.js']],
-    ['4', ['app.boot-body.js']],
+    ['5', ['app.boot-body.js']],
     ['2', ['styles.utilities.css']],
-    ['5', ['app.landing.js']],
+    ['6', ['app.landing.js']],
     ['15', ['app.landing-lights.js']],
     ['1', ['app.legal.js']],
     ['2', ['assets/vendor/fonts/star-paper-fonts.css']],
-    ['5', ['sp-design-tokens.css']],
+    ['6', ['sp-design-tokens.css']],
     ['2', [
       'favicon.svg',
       'star_paper_logo_pack/star-paper-mark.svg',
@@ -111,10 +111,10 @@
     ['15', ['app.globe.js']],
     ['23', ['app.reports.js']],
     ['28', ['manifest.json']],
-    ['65', ['styles.css']],
+    ['66', ['styles.css']],
     ['105', ['supabase.js']],
     ['164', ['app.js']],
-    ['256', ['sw.js']]
+    ['257', ['sw.js']]
   ];
 
   const assetVersions = {};

@@ -389,8 +389,8 @@ body.light-theme .lp .lp-btn--ghost {
 .lp-icon-btn {
   display: inline-grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: var(--sp-tap);
+  height: var(--sp-tap);
   border-radius: 50%;
   color: var(--sp-ink-2);
   font-size: 20px;
@@ -436,7 +436,7 @@ body.light-theme .lp .lp-btn--ghost {
   top: 0;
   z-index: var(--sp-z-header);
   border-bottom: 1px solid transparent;
-  transition: background-color var(--sp-dur-3), border-color var(--sp-dur-3), backdrop-filter var(--sp-dur-3);
+  transition: background-color var(--sp-dur-3), border-color var(--sp-dur-3);
 }
 
 .lp-header.is-scrolled {
@@ -762,11 +762,24 @@ body.light-theme .lp-header.is-scrolled {
   animation-play-state: paused;
 }
 
+/* Off-screen parts of the page and slides that aren't showing hold their
+   decorative loops (app.landing.js sets data-lp-offstage). */
+.lp [data-lp-offstage],
+.lp [data-lp-offstage] *,
+.lp [data-lp-offstage] *::before,
+.lp [data-lp-offstage] *::after,
+.lp-slide:not([data-active]) *,
+.lp-slide:not([data-active]) *::before,
+.lp-slide:not([data-active]) *::after {
+  animation-play-state: paused !important;
+}
+
 @keyframes lp-progress {
   to { transform: scaleX(1); }
 }
 
 @media (max-width: 599px) {
+  .lp-show__controls { gap: var(--sp-space-1); }
   .lp-tabs__count { display: inline-block; order: -1; }
   .lp-tab__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .lp-tab { padding-inline: var(--sp-space-2); }
@@ -2151,7 +2164,7 @@ body.light-theme .lp-finale__dim {
 }
 
 .lp-marquee__kicker {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.32em;
   text-transform: uppercase;
@@ -2251,7 +2264,7 @@ body.light-theme .lp-finale__dim {
   border-radius: var(--sp-radius-pill);
   background: rgb(95 211 160 / 0.14);
   color: #5FD3A0;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -2351,7 +2364,7 @@ body.light-theme .lp-finale__dim {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
   gap: clamp(8px, 3%, 14px);
-  font-size: 11px;
+  font-size: 12px;
   text-align: center;
   color: #8E9A8F;
 }
@@ -2506,7 +2519,7 @@ body.light-theme .lp-finale__dim {
 }
 
 .lp-runsheet__title {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: var(--sp-tracking-caps);
   text-transform: uppercase;
@@ -2723,7 +2736,7 @@ body.light-theme .lp-finale__dim {
   border-radius: 50%;
   background: var(--sp-gold-soft);
   color: var(--sp-gold-text);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -3001,7 +3014,7 @@ body.light-theme .lp-auth__card {
 }
 
 .lp-field__label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: var(--sp-tracking-caps);
   text-transform: uppercase;
@@ -3131,7 +3144,7 @@ body.light-theme .lp .lp-input { background: #FFFFFF; }
   align-items: center;
   gap: var(--sp-space-3);
   margin-block: var(--sp-space-2);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--sp-ink-3);
   text-transform: uppercase;
   letter-spacing: var(--sp-tracking-caps);
@@ -3850,7 +3863,8 @@ body.light-theme .lp .lp-cta__inner {
   .lp *::before,
   .lp *::after {
     animation: none !important;
-    transition: none !important;
+    /* Gentler, not zero: colour and opacity still fade, nothing moves. */
+    transition-property: opacity, color, background-color, border-color !important;
   }
 
   .lp-eq__line polyline { stroke-dashoffset: 0; }

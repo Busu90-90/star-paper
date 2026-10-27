@@ -82,8 +82,23 @@
           if (event.animationName === 'lp-progress' && tab.getAttribute('aria-current') === 'true') go(active + 1);
         });
       });
-      // A touch or swipe hands control to the reader: stop auto-advancing.
-      track.addEventListener('pointerdown', function () { show.removeAttribute('data-autoplay'); }, { passive: true });
+      // A visible pause/play button, so the slideshow can be stopped without
+      // hovering (WCAG 2.2.2). A touch or swipe on the track also stops it.
+      var play = show.querySelector('[data-lp-play]');
+      function setAutoplay(on) {
+        show.toggleAttribute('data-autoplay', false);
+        if (on) show.setAttribute('data-autoplay', 'on');
+        if (!play) return;
+        play.setAttribute('aria-pressed', on ? 'false' : 'true');
+        play.setAttribute('aria-label', on ? 'Pause slideshow' : 'Play slideshow');
+        var icon = play.querySelector('.ph');
+        if (icon) icon.className = 'ph ' + (on ? 'ph-pause' : 'ph-play');
+      }
+      if (play) {
+        play.hidden = false;
+        play.addEventListener('click', function () { setAutoplay(!show.hasAttribute('data-autoplay')); });
+      }
+      track.addEventListener('pointerdown', function () { setAutoplay(false); }, { passive: true });
       document.addEventListener('visibilitychange', function () {
         show.toggleAttribute('data-paused', document.hidden);
       });
@@ -100,6 +115,21 @@
 
     setActive(0);
     return { go: go, indexOf: function (id) { return slides.findIndex(function (s) { return s.id === id; }); } };
+  }
+
+  // Decorative CSS loops (lamps, dust, twinkles, floats, foil) pause while
+  // their part of the page is off-screen; styles.landing.css holds them on
+  // [data-lp-offstage]. Slides that aren't showing are held in CSS too.
+  function setupOffstage(root) {
+    if (!('IntersectionObserver' in window)) return;
+    var parts = root.querySelectorAll('.lp-house, .lp-wall, .lp-rig, .lp-show, .lp-cta, .lp-footer');
+    if (!parts.length) return;
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        entry.target.toggleAttribute('data-lp-offstage', !entry.isIntersecting);
+      });
+    }, { rootMargin: '120px 0px' });
+    Array.prototype.forEach.call(parts, function (part) { observer.observe(part); });
   }
 
   // Voices slide: the three review cards take turns at the front, Aggie
@@ -335,6 +365,7 @@
     setupHeader(root);
     setupSlideLinks(root, setupShow(root));
     setupQuotes(root);
+    setupOffstage(root);
     setupReveal(root);
     setupCountUp(root);
     setupInstall();

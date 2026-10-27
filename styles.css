@@ -235,7 +235,7 @@ label:where(:not(.lp *)) {
     padding: 20px;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    transition: all 220ms cubic-bezier(0.4, 0, 0.2, 1);
+    transition: 220ms cubic-bezier(0.4, 0, 0.2, 1); transition-property: color, background-color, border-color, outline-color, box-shadow, opacity, transform, filter;
 }
 
 .stat-card:hover {
@@ -259,7 +259,7 @@ button:where(:not(.lp *)) {
     padding: 0;
     margin: 0;
     line-height: 1;
-    transition: all 0.2s ease;
+    transition: 0.2s ease; transition-property: color, background-color, border-color, outline-color, box-shadow, opacity, transform, filter;
     position: relative;
     display: inline-flex;
     align-items: center;
@@ -285,7 +285,7 @@ input[type="button"]:where(:not(.lp *)) {
     border: 1px solid rgba(255, 179, 0, 0.4);
     box-shadow: 0 4px 12px rgba(255, 179, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2);
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); transition-property: color, background-color, border-color, outline-color, box-shadow, opacity, transform, filter;
     overflow: hidden;
     display: inline-flex;
     align-items: center;
@@ -390,7 +390,7 @@ body.light-theme .bbf-editor input:where(:not(.lp *))::placeholder { color: #7a6
     color: #FFB300;
     border: 1px solid #FFB300;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: 0.2s ease; transition-property: color, background-color, border-color, outline-color, box-shadow, opacity, transform, filter;
 }
 .logout-btn:hover {
     background: #FFB300;
@@ -410,7 +410,7 @@ body.light-theme .bbf-editor input:where(:not(.lp *))::placeholder { color: #7a6
     text-transform: uppercase;
     letter-spacing: 0.3px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: 0.2s ease; transition-property: color, background-color, border-color, outline-color, box-shadow, opacity, transform, filter;
 }
 
 .back-to-list {
@@ -462,7 +462,7 @@ select:where(:not(.lp *)) {
     font-weight: 400;
     padding: 14px 18px;
     width: 100%;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); transition-property: color, background-color, border-color, outline-color, box-shadow, opacity, transform, filter;
 }
 
 input:where(:not(.lp *))::placeholder, textarea:where(:not(.lp *))::placeholder {
@@ -1195,7 +1195,7 @@ body.light-theme .sidebar-profile-edit-btn:hover {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s ease;
+    transition: 0.2s ease; transition-property: color, background-color, border-color, outline-color, box-shadow, opacity, transform, filter;
     flex-shrink: 0;
     margin: 0;
 }
@@ -1242,7 +1242,7 @@ body.light-theme .sidebar-theme-toggle {
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: 0.2s ease; transition-property: color, background-color, border-color, outline-color, box-shadow, opacity, transform, filter;
     font-family: 'Montserrat', sans-serif;
     min-height: 44px;
     text-transform: none;
@@ -1273,7 +1273,7 @@ body.light-theme .theme-btn.active { background: #FFB300; color: #0B0B0B; }
     font-size: 15px;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: 0.2s ease; transition-property: color, background-color, border-color, outline-color, box-shadow, opacity, transform, filter;
     position: relative;
     text-decoration: none;
     min-height: 44px;
@@ -1440,8 +1440,6 @@ select:focus-visible:where(:not(.lp *)),
     min-height: 100dvh;
     overflow-x: hidden;
     overflow-y: auto;
-    transition: margin-left 0.28s cubic-bezier(0.4,0,0.2,1),
-                width 0.28s cubic-bezier(0.4,0,0.2,1);
 }
 
 .header {
@@ -1594,7 +1592,7 @@ select:focus-visible:where(:not(.lp *)),
 .stat-card-clickable {
     cursor: pointer;
     position: relative;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); transition-property: color, background-color, border-color, outline-color, box-shadow, opacity, transform, filter;
 }
 .stat-card-clickable:hover {
     transform: translateY(-4px);
@@ -1719,7 +1717,7 @@ body.light-theme .status-cancelled {
     min-width: 84px;
     padding: 4px 10px;
     border-radius: 999px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -1943,7 +1941,7 @@ body.light-theme .search-center-label {
     border: 2px solid #FFB300;
     background: rgba(255, 179, 0, 0.15);
     box-shadow: 0 0 20px rgba(255, 179, 0, 0.4);
-    transition: all 0.3s ease;
+    transition: 0.3s ease; transition-property: color, background-color, border-color, outline-color, box-shadow, opacity, transform, filter;
 }
 
 body.light-theme .search-results { background: rgba(255,255,255,0.9); border-color: rgba(0,0,0,0.08); }
@@ -2071,7 +2069,7 @@ body.light-theme .sp-inline-edit-control {
     font-size: 13px;
     border-radius: 8px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: 0.2s; transition-property: color, background-color, border-color, outline-color, box-shadow, opacity, transform, filter;
     position: relative;
     border: 1px solid transparent;
     padding: 5px;
@@ -2567,7 +2565,7 @@ body.light-theme .sp-empty__sub   { color: #666; }
     border: 1px solid #FFB300;
     border-radius: 999px;
     box-shadow: 0 0 0 rgba(255,179,0,0);
-    transition: all 220ms cubic-bezier(0.4, 0, 0.2, 1);
+    transition: 220ms cubic-bezier(0.4, 0, 0.2, 1); transition-property: color, background-color, border-color, outline-color, box-shadow, opacity, transform, filter;
 }
 .theme-toggle:hover { background: #FFB300; color: #000; box-shadow: 0 0 15px rgba(255,179,0,0.5); }
 body.light-theme .theme-toggle { box-shadow: 0 0 15px rgba(255,179,0,0.8); }
@@ -2799,7 +2797,7 @@ body.light-theme .custom-select__option { color: #1b1b1b; }
 
 .performance-map { width: 100%; height: 400px; background: linear-gradient(135deg, #0B0B0B 0%, #1a1200 100%); border-radius: 10px; overflow: hidden; position: relative; margin-top: 20px; border: 1px solid rgba(255,179,0,0.2); }
 
-.map-pin { position: absolute; width: 12px; height: 12px; background: #FFB300; border-radius: 50%; border: 2px solid #fff; cursor: pointer; transform: translate(-50%, -50%); transition: all 0.3s; }
+.map-pin { position: absolute; width: 12px; height: 12px; background: #FFB300; border-radius: 50%; border: 2px solid #fff; cursor: pointer; transform: translate(-50%, -50%); transition: 0.3s; transition-property: color, background-color, border-color, outline-color, box-shadow, opacity, transform, filter; }
 .map-pin.upcoming { background: #4caf50; }
 .map-pin.past     { background: #f44336; }
 .map-pin:hover    { transform: translate(-50%, -50%) scale(1.5); box-shadow: 0 0 15px rgba(255,179,0,0.5); }
@@ -3899,7 +3897,7 @@ body.light-theme #closingThoughtsCount {
 .sp-modal-close {
   background: none; border: none; color: #888; font-size: 22px; cursor: pointer;
   width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-  border-radius: 50%; transition: all 0.2s;
+  border-radius: 50%; transition: 0.2s; transition-property: color, background-color, border-color, outline-color, box-shadow, opacity, transform, filter;
 }
 .sp-modal-close:hover { background: rgba(255,255,255,0.1); color: #fff; }
 .sp-modal-body { padding: 20px; }
@@ -4014,7 +4012,7 @@ body.light-theme .forgot-password-hint--success { background: rgba(76,175,80,0.0
     -webkit-backdrop-filter: blur(15px);
     border: 1px solid rgba(212,175,55,0.3);
     box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 0 20px rgba(212,175,55,0.1);
-    transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+    transition: 0.3s cubic-bezier(0.4,0,0.2,1); transition-property: color, background-color, border-color, outline-color, box-shadow, opacity, transform, filter;
     width: 100%;
     max-width: 420px;
     height: 240px;
@@ -4487,7 +4485,7 @@ body.light-theme .confirm-delete-title { color: #1b1b1b; }
     font-size: 14px;
     font-weight: 800;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: 0.15s ease; transition-property: color, background-color, border-color, outline-color, box-shadow, opacity, transform, filter;
     text-transform: none;
     letter-spacing: normal;
     display: flex;
@@ -4582,13 +4580,13 @@ body.light-theme #userName, body.light-theme #sidebarUserName { color: #1b1b1b; 
 .mainstage-glance-grid { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
 .mainstage-pulse-grid  { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
 
-.mainstage-kpi { border: 1px solid rgba(255,179,0,0.16); border-radius: 12px; background: rgba(0,0,0,0.24); padding: 12px 14px; transition: all 0.2s ease; }
+.mainstage-kpi { border: 1px solid rgba(255,179,0,0.16); border-radius: 12px; background: rgba(0,0,0,0.24); padding: 12px 14px; transition: 0.2s ease; transition-property: color, background-color, border-color, outline-color, box-shadow, opacity, transform, filter; }
 .mainstage-kpi:hover { border-color: rgba(255,179,0,0.34); transform: translateY(-1px); }
 .mainstage-kpi__label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.09em; color: #d6c9ad; margin-bottom: 8px; }
 .mainstage-kpi__value { font-size: 24px; font-weight: 800; color: #fff; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .mainstage-kpi__sub { margin-top: 6px; font-size: 13px; line-height: 1.45; color: #bfb29a; font-variant-numeric: tabular-nums; }
 
-.pulse-item { border: 1px solid rgba(255,179,0,0.16); border-radius: 12px; background: rgba(0,0,0,0.2); padding: 14px; transition: all 0.2s ease; }
+.pulse-item { border: 1px solid rgba(255,179,0,0.16); border-radius: 12px; background: rgba(0,0,0,0.2); padding: 14px; transition: 0.2s ease; transition-property: color, background-color, border-color, outline-color, box-shadow, opacity, transform, filter; }
 .pulse-item:hover { border-color: rgba(255,179,0,0.34); transform: translateY(-1px); }
 .pulse-item__label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: #a9a9a9; margin-bottom: 8px; }
 .pulse-item__value { font-size: 24px; font-weight: 800; color: #fff; line-height: 1.15; font-variant-numeric: tabular-nums; }
@@ -4669,7 +4667,7 @@ body.light-theme .pulse-item__value.expense-red { color: #c62828; }
     font-size: 18px;
     color: var(--text-primary);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: 0.2s ease; transition-property: color, background-color, border-color, outline-color, box-shadow, opacity, transform, filter;
     flex-shrink: 0;
 }
 .nudge-banner__dismiss:hover {
@@ -4889,7 +4887,7 @@ body.light-theme .mainstage-live-chip strong { color: #8a6d1a; }
 
 /* Dashboard financials */
 .dashboard-financials-card .stats-grid { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-bottom: 0; }
-.dashboard-financials-card .stat-card { border: 1px solid rgba(255,179,0,0.16); border-radius: 12px; background: rgba(0,0,0,0.2); padding: 20px; margin-bottom: 0; box-shadow: none; transform: none; transition: all 0.2s ease; }
+.dashboard-financials-card .stat-card { border: 1px solid rgba(255,179,0,0.16); border-radius: 12px; background: rgba(0,0,0,0.2); padding: 20px; margin-bottom: 0; box-shadow: none; transform: none; transition: 0.2s ease; transition-property: color, background-color, border-color, outline-color, box-shadow, opacity, transform, filter; }
 .dashboard-financials-card .stat-card:hover { border-color: rgba(255,179,0,0.34); background: rgba(0,0,0,0.24); transform: translateY(-1px); box-shadow: none; }
 .dashboard-financials-card .stat-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: #a9a9a9; margin-bottom: 8px; }
 .dashboard-financials-card .stat-value { font-size: 24px; font-weight: 800; color: #fff; line-height: 1.15; }
@@ -6616,7 +6614,7 @@ body.light-theme .sp-tabs { border-bottom-color: rgba(138,109,26,0.12); }
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.18s ease;
+    transition: 0.18s ease; transition-property: color, background-color, border-color, outline-color, box-shadow, opacity, transform, filter;
     white-space: nowrap;
     min-height: auto;
     line-height: 1.4;
@@ -6819,7 +6817,7 @@ body.light-theme .sidebar-util-row { border-top-color: rgba(138,109,26,0.12); }
     font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.03em;
-    transition: all 0.18s ease;
+    transition: 0.18s ease; transition-property: color, background-color, border-color, outline-color, box-shadow, opacity, transform, filter;
     min-height: 0;
 }
 .sidebar-util-btn .nav-label {
@@ -6927,7 +6925,7 @@ body.light-theme .sp-modal-box {
     align-items: center;
     justify-content: center;
     font-size: 16px;
-    transition: all 0.15s;
+    transition: 0.15s; transition-property: color, background-color, border-color, outline-color, box-shadow, opacity, transform, filter;
 }
 .sp-modal-close:hover { background: rgba(255,179,0,0.14); color: #FFB300; }
 .sp-modal-logo {
@@ -7465,7 +7463,7 @@ body.light-theme .sp-muted { color: rgba(0,0,0,0.4); }
     font-weight: 700;
     cursor: pointer;
     border: 1px solid;
-    transition: all 0.15s;
+    transition: 0.15s; transition-property: color, background-color, border-color, outline-color, box-shadow, opacity, transform, filter;
 }
 .sp-admin-btn--approve {
     background: rgba(76,175,80,0.1);

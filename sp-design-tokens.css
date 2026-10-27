@@ -125,13 +125,16 @@
   --sp-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --sp-dur-1: 90ms;
   --sp-dur-2: 200ms;
-  --sp-dur-3: 400ms;
+  --sp-dur-3: 280ms;
   --sp-dur-4: 700ms;
 
   /* ── Layers ────────────────────────────────────────────────────────────── */
   --sp-z-header: 40;
   --sp-z-sheet: 60;
   --sp-z-toast: 80;
+  /* Floating layers above the legacy app chrome (styles.css still uses 1000+). */
+  --sp-z-popover: 1200;
+  --sp-z-dialog: 1300;
 }
 
 body.light-theme {
