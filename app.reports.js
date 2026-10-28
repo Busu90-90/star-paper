@@ -179,10 +179,7 @@
   }
 
   function getCurrentReportArtistFilter() {
-    const currentFilter = document.getElementById('spRptArtistFilter')?.value
-      || document.getElementById('spPdfArtistSelect')?.value
-      || '';
-    return String(currentFilter || '').trim();
+    return String(document.getElementById('spPdfArtistSelect')?.value || '').trim();
   }
 
   function reportRecordMatchesArtist(record, artistName = '', artistId = '') {
@@ -845,7 +842,8 @@
   function renderDashboard() {
     const container = document.getElementById('spMomentumDashboard');
     if (!container) return;
-    const previousArtistFilter = document.getElementById('spRptArtistFilter')?.value || '';
+    fillReportArtists();
+    const previousArtistFilter = getCurrentReportArtistFilter();
 
     // Get period data
     const getPeriod = window.getReportPeriodSelection || (() => ({ period: 'month', periodLabel: new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' }) }));
@@ -867,11 +865,6 @@
     const prevData = getData(prevPeriod, { sortNewestFirst: false, selectedArtist, artistId: selectedArtistId });
 
     const m = computeMetrics(data, prevData);
-    const artistOptions = artists.map(a => {
-      const name = escapeHTML(a.name);
-      const selectedAttr = a.name === selectedArtist ? ' selected' : '';
-      return `<option value="${name}"${selectedAttr}>${name}</option>`;
-    }).join('');
     const artistObj = selectedArtistObj;
     const audienceTrend = getAudienceTrend(Array.isArray(window.audienceMetrics) ? window.audienceMetrics : [], selectedArtist, artistObj?.id);
     const upcomingShows = (Array.isArray(window.bookings) ? window.bookings : [])
@@ -910,12 +903,6 @@
           <div class="sp-rpt-hero__trend ${trendToneClass}">
             <i class="ph ${trendIcon}" aria-hidden="true"></i> ${fmtPct(m.trendPct)} vs previous
           </div>
-        </div>
-        <div class="sp-rpt-hero__filter">
-          <select id="spRptArtistFilter">
-            <option value="">All Artists</option>
-            ${artistOptions}
-          </select>
         </div>
       </div>
 
@@ -1042,11 +1029,6 @@
       </details>
     `;
 
-    const artistFilter = document.getElementById('spRptArtistFilter');
-    if (artistFilter) {
-      artistFilter.addEventListener('change', () => renderDashboard());
-    }
-
     // Render charts after DOM is in place. Chart.js is lazy-loaded so auth boot
     // is not competing with report visuals on first paint.
     requestAnimationFrame(() => {
@@ -1121,42 +1103,27 @@
     </table>${all.length > 100 ? '<p class="sp-rpt-ledger-note sp-rpt-ledger-note--small">Showing first 100 of ' + all.length + ' entries</p>' : ''}`;
   }
 
-  // ── PDF EXPORT MODAL ────────────────────────────────────────────────────────
-
-  function openPdfExportModal() {
-    const modal = document.getElementById('spPdfExportModal');
-    if (!modal) return;
-
-    // Populate artist selector
+  // ── REPORT PICKER ───────────────────────────────────────────────────────────
+  // The "Who" list on the report card: the whole roster or one artist. Kept in
+  // step with the roster, and the choice survives a refresh.
+  function fillReportArtists() {
     const sel = document.getElementById('spPdfArtistSelect');
-    if (sel) {
-      const artists = Array.isArray(window.artists) ? window.artists : [];
-      const preferredArtist = getCurrentReportArtistFilter();
-      sel.innerHTML = '<option value="">All Artists</option>';
-      artists.forEach(a => {
-        const opt = document.createElement('option');
-        opt.value = a.name;
-        opt.textContent = a.name;
-        sel.appendChild(opt);
-      });
-      if (preferredArtist && artists.some((artist) => artist.name === preferredArtist)) {
-        sel.value = preferredArtist;
-      }
-    }
-
-    const startEl = document.getElementById('spPdfDateStart');
-    const endEl = document.getElementById('spPdfDateEnd');
-    if (startEl && endEl) {
-      startEl.value = '';
-      endEl.value = '';
-    }
-
-    modal.hidden = false;
+    if (!sel) return;
+    const artists = Array.isArray(window.artists) ? window.artists : [];
+    const picked = sel.value;
+    sel.replaceChildren(new Option('Whole roster', ''));
+    artists.forEach((a) => { if (a && a.name) sel.appendChild(new Option(a.name, a.name)); });
+    sel.value = artists.some((a) => a && a.name === picked) ? picked : '';
   }
 
-  function closePdfExportModal() {
-    const modal = document.getElementById('spPdfExportModal');
-    if (modal) modal.hidden = true;
+  // Home's "Report" shortcut opens the Reports tab with the picker ready.
+  function openPdfExportModal() {
+    if (typeof window.showSection === 'function') window.showSection('money');
+    document.querySelector('[data-action="switchMoneyTab"][data-tab="reports"]')?.click();
+    const card = document.getElementById('reportControlsCard');
+    if (!card) return;
+    card.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    setTimeout(() => document.getElementById('spPdfArtistSelect')?.focus({ preventScroll: true }), 300);
   }
 
   // ── AVATAR LOADING ─────────────────────────────────────────────────────────
@@ -2237,9 +2204,6 @@
     if (generateMomentumPDF._busy) return;
     generateMomentumPDF._busy = true;
 
-    // Close modal if open
-    closePdfExportModal();
-
     try {
       const dataReady = await waitForPdfDataHydration();
       if (!dataReady) {
@@ -2253,10 +2217,11 @@
       const { jsPDF } = window.jspdf || {};
       if (!jsPDF) { window.toastError?.('PDF library not loaded'); return; }
 
-      // ── Read modal selections ──
+      // ── Read the report picker ──
       const selectedArtist = (document.getElementById('spPdfArtistSelect')?.value || '').trim();
-      const dateStart = (document.getElementById('spPdfDateStart')?.value || '').trim();
-      const dateEnd = (document.getElementById('spPdfDateEnd')?.value || '').trim();
+      let dateStart = (document.getElementById('spPdfDateStart')?.value || '').trim();
+      let dateEnd = (document.getElementById('spPdfDateEnd')?.value || '').trim();
+      if (dateStart && dateEnd && dateStart > dateEnd) [dateStart, dateEnd] = [dateEnd, dateStart];
 
       // ── Gather data ──
       const getPeriod = window.getReportPeriodSelection || (() => ({ period: 'month', periodLabel: new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' }) }));
@@ -2489,19 +2454,16 @@
   window.renderMomentumDashboard ||= renderDashboard;
   window.generateMomentumPDF ||= generateMomentumPDF;
   window.openPdfExportModal ||= openPdfExportModal;
-  window.closePdfExportModal ||= closePdfExportModal;
   window.getReportStartPeriodKey ||= getReportStartPeriodKey;
   window.getActualReportPeriodLabel ||= getActualPeriodLabel;
 
-  // Listen for period changes to auto-refresh
-  document.addEventListener('DOMContentLoaded', () => {
-    const periodEl = document.getElementById('reportPeriod');
-    if (periodEl) {
-      periodEl.addEventListener('change', () => {
-        setTimeout(renderDashboard, 50);
-      });
-    }
-  });
+  // The report picker (app.js handleReportPeriodChange) re-renders through this.
+  // Only while the Reports tab is showing: charts drawn in a hidden tab come
+  // out the wrong size. Opening the tab renders with the picker as it stands.
+  window.SPRenderReports = () => {
+    if (!document.getElementById('moneyPanel-reports')?.classList.contains('sp-tab-panel--active')) return;
+    setTimeout(renderDashboard, 0);
+  };
 
   // Auto-render when reports tab becomes visible
   const _origShowSection = window.showSection;

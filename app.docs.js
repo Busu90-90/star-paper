@@ -726,6 +726,8 @@
         if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) return false;
         const ua = navigator.userAgent || '';
         const ipad = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
+        // No touch screen at all can't be a phone, whatever the browser says.
+        if (!navigator.maxTouchPoints) return true;
         const phone = (navigator.userAgentData && navigator.userAgentData.mobile) || /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || ipad;
         return !phone;
     }

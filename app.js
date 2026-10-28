@@ -5979,8 +5979,10 @@ function showLoginForm(options = {}) {
                 dateStart = '',
                 dateEnd = ''
             } = options;
-            const normalizedDateStart = String(dateStart || '').trim();
-            const normalizedDateEnd = String(dateEnd || '').trim();
+            // "Pick dates…" on the report picker: the dates come from its From/To fields.
+            const pickedRange = period === 'custom' && !dateStart && !dateEnd ? getReportDateRange() : null;
+            const normalizedDateStart = String(pickedRange ? pickedRange.dateStart : dateStart || '').trim();
+            const normalizedDateEnd = String(pickedRange ? pickedRange.dateEnd : dateEnd || '').trim();
             const hasExplicitDateRange = Boolean(normalizedDateStart || normalizedDateEnd);
             const maybeSort = (items) => {
                 if (!sortNewestFirst) return items;
@@ -6438,9 +6440,28 @@ function showLoginForm(options = {}) {
             }
         }
 
+        // The report picker's own dates, only while "Pick dates…" is chosen.
+        // Swapped round if From is after To.
+        function getReportDateRange() {
+            if (document.getElementById('reportPeriod')?.value !== 'custom') return { dateStart: '', dateEnd: '' };
+            let dateStart = String(document.getElementById('spPdfDateStart')?.value || '').trim();
+            let dateEnd = String(document.getElementById('spPdfDateEnd')?.value || '').trim();
+            if (dateStart && dateEnd && dateStart > dateEnd) [dateStart, dateEnd] = [dateEnd, dateStart];
+            return { dateStart, dateEnd };
+        }
+
         function getReportPeriodSelection() {
             const periodEl = document.getElementById('reportPeriod');
             const period = periodEl?.value || 'month';
+            if (period === 'custom') {
+                const { dateStart, dateEnd } = getReportDateRange();
+                // No dates yet: everything, until From or To is filled in.
+                if (!dateStart && !dateEnd) return { periodEl, period: 'all', periodLabel: 'All time' };
+                const periodLabel = dateStart && dateEnd
+                    ? `${formatDisplayDate(dateStart)} to ${formatDisplayDate(dateEnd)}`
+                    : dateStart ? `From ${formatDisplayDate(dateStart)}` : `Up to ${formatDisplayDate(dateEnd)}`;
+                return { periodEl, period, periodLabel };
+            }
             const periodLabel = periodEl?.selectedOptions?.[0]?.textContent || getPeriodString(period);
             return { periodEl, period, periodLabel };
         }
@@ -6472,9 +6493,9 @@ function showLoginForm(options = {}) {
             const reportPeriod = document.getElementById('reportPeriod');
             if (reportPeriod) {
                 const currentOpt = document.getElementById('reportPeriodCurrentOption');
-                if (currentOpt) currentOpt.textContent = currentLabel;
+                if (currentOpt) currentOpt.textContent = `This month (${currentLabel})`;
                 const prevOpt = document.getElementById('reportPeriodPrevOption');
-                if (prevOpt) prevOpt.textContent = prevLabel;
+                if (prevOpt) prevOpt.textContent = `Last month (${prevLabel})`;
             }
         }
 
@@ -6537,9 +6558,21 @@ function showLoginForm(options = {}) {
             updateClosingThoughtsMeta();
         }
 
+        // One picker drives the whole Reports tab: who (an artist or the whole
+        // roster) and when (a preset or picked dates).
         function handleReportPeriodChange() {
+            const custom = document.getElementById('reportPeriod')?.value === 'custom';
+            const dates = document.getElementById('reportCustomDates');
+            if (dates) dates.hidden = !custom;
+            if (!custom) {
+                ['spPdfDateStart', 'spPdfDateEnd'].forEach((id) => {
+                    const input = document.getElementById(id);
+                    if (input) input.value = '';
+                });
+            }
             updateReportStatistics();
             loadClosingThoughtsForPeriod();
+            if (typeof window.SPRenderReports === 'function') window.SPRenderReports();
         }
 
         function toggleClosingThoughts() {
@@ -8413,6 +8446,7 @@ function showLoginForm(options = {}) {
             if (!select) return;
             
             const artists = getArtists().map((artist) => artist.name);
+            const picked = select.value;
             select.textContent = '';
             const placeholder = document.createElement('option');
             placeholder.value = '';
@@ -8424,6 +8458,8 @@ function showLoginForm(options = {}) {
                 option.textContent = String(artist || '');
                 select.appendChild(option);
             });
+            // Keeps the choice (and the searchable picker over it) through a refresh.
+            select.value = artists.includes(picked) ? picked : '';
         }
 
         function checkAvailability() {
