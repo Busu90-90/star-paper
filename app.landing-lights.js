@@ -642,6 +642,13 @@
       if (!running) return;
       var dt = Math.min(0.05, (now - (last || now)) / 1000);
       last = now;
+      // The rig holds still while the page scrolls: a lamp turning mid-scroll
+      // repaints the lit brick on every frame, which is what made the scroll
+      // stutter. It picks up again, eased, once the page settles.
+      if (now - scrolledAt < 160) {
+        requestAnimationFrame(frame);
+        return;
+      }
       var piv = pivots();
       setCue(cuesBySlide[activeSlide()] || 'mainstage', now);
       var following = plan(now, piv);
@@ -683,7 +690,6 @@
       // panel keeps up): no measuring in the middle of a swipe.
       var settled = now - scrolledAt > 160;
       measureGlass(!settled);
-      slideWashes();
       placeSpot(piv, following, lamps.c.level);
       swing(dt);
       castGlass(piv, dt, now);
@@ -722,34 +728,37 @@
       requestAnimationFrame(frame);
     }
 
-    // Keeps the screen-tall washes over the part of the wall on screen.
+    // Keeps the washes over the part of the wall on screen. Each wash is a
+    // few screens tall and stays put on the wall (so it scrolls with the
+    // page and is never repainted for the scroll); it only hops to a new
+    // spot, once, when the screen gets near either of its ends.
     var washHeight = 0;
-    var scrollDriven = !!(window.CSS && CSS.supports && CSS.supports('animation-timeline: scroll()'));
-    // With scroll timelines the washes ride on their own; script only notes
-    // where the ride starts and ends, whenever the page's size changes.
-    function measureRide() {
-      var box = wall.getBoundingClientRect();
-      var height = wall.querySelector('.lp-wall__wash').offsetHeight || window.innerHeight;
-      var start = box.top + window.scrollY;
-      setVars(wall, {
-        '--lp-ride-a': Math.round(start) + 'px',
-        '--lp-ride-b': Math.round(start + Math.max(1, box.height - height)) + 'px'
-      });
-      wall.setAttribute('data-lp-ride', '');
-    }
-    if (scrollDriven) {
-      measureRide();
-      window.addEventListener('resize', measureRide, { passive: true });
-      if ('ResizeObserver' in window) new ResizeObserver(measureRide).observe(wall);
-    }
+    var washOff = -1;
     function slideWashes() {
-      if (scrollDriven) return;
       var box = wall.getBoundingClientRect();
-      if (!washHeight) washHeight = wall.querySelector('.lp-wall__wash').offsetHeight || window.innerHeight;
-      var off = clamp(-box.top, 0, Math.max(0, box.height - washHeight));
-      setVars(wall, { '--lp-off': Math.round(off) + 'px' });
+      if (!washHeight) washHeight = wall.querySelector('.lp-wall__wash').offsetHeight || window.innerHeight * 3;
+      var view = window.innerHeight;
+      var top = -box.top;
+      var max = Math.max(0, box.height - washHeight);
+      var margin = Math.min(view * 0.5, Math.max(0, (washHeight - view) / 2));
+      var nearTop = washOff > 0 && top < washOff + margin;
+      var nearEnd = washOff < max && top + view > washOff + washHeight - margin;
+      if (washOff >= 0 && washOff <= max && !nearTop && !nearEnd) return;
+      var off = Math.round(clamp(top - (washHeight - view) / 2, 0, max));
+      if (off === washOff) return;
+      washOff = off;
+      setVars(wall, { '--lp-off': off + 'px' });
     }
-    window.addEventListener('resize', function () { washHeight = 0; }, { passive: true });
+    var hopQueued = false;
+    window.addEventListener('scroll', function () {
+      if (hopQueued) return;
+      hopQueued = true;
+      requestAnimationFrame(function () { hopQueued = false; slideWashes(); });
+    }, { passive: true });
+    function resetWashes() { washHeight = 0; washOff = -1; slideWashes(); }
+    window.addEventListener('resize', resetWashes, { passive: true });
+    if ('ResizeObserver' in window) new ResizeObserver(resetWashes).observe(wall);
+    slideWashes();
 
     function sync() {
       var should = visible && !document.hidden;

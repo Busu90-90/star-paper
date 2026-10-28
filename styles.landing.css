@@ -608,6 +608,29 @@ body.light-theme .lp-header.is-scrolled {
   min-width: 0;
 }
 
+/* The slide words sit on a plate of their own, like the cards beside them,
+   above the beams, so the haze and the bright brick never wash them out. The plate is
+   nearly opaque on purpose: no blur behind it, which would cost a repaint on
+   every lamp move. */
+.lp-slide:not(#mainstage) .lp-slide__copy {
+  position: relative;
+  z-index: 5;
+  padding: clamp(20px, 3vw, 32px);
+  border-radius: 24px;
+  background: rgb(4 8 7 / 0.92);
+  border: 1px solid rgb(255 255 255 / 0.08);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 0.45);
+}
+
+/* On the plate a long accent line wraps instead of running past its edge. */
+#landingScreen .lp-slide:not(#mainstage) .lp-display em { white-space: normal; }
+
+body.light-theme .lp-slide:not(#mainstage) .lp-slide__copy {
+  background: rgb(248 250 246 / 0.92);
+  border-color: rgb(15 28 21 / 0.08);
+  box-shadow: 0 20px 50px rgb(24 52 36 / 0.16);
+}
+
 .lp-display--slide {
   font-size: var(--sp-text-3xl);
   line-height: 1.04;
@@ -866,7 +889,9 @@ body.light-theme .lp-art::before {
   container-type: size;
 }
 
-.lp-show__track { position: relative; z-index: 1; }
+/* No stacking context of its own, so a slide's words can sit above the beams
+   (see .lp-slide__copy) while its cards stay under the haze. */
+.lp-show__track { position: relative; }
 
 /* The follow spot's pool: a warm circle of lit brick where the centre lamp
    points. app.landing-lights.js moves it (--lp-sx/--lp-sy, wall coordinates)
@@ -1902,37 +1927,16 @@ body.light-theme .lp-twinkles i {
 /* Turning heads stay on their own layers, so a new angle never repaints them. */
 .lp-main[data-lp-lights] :is(.lp-rig__lamp, .lp-bee, .lp-rig__beam, .lp-rig__torch) { will-change: rotate; }
 
-/* The wall runs the length of the page, but repainting its masked washes
-   that tall every frame is heavy. So each wash is one screen tall and rides
-   down the wall with the scroll (--lp-off), its wedge and bricks offset to
-   match, and only the part of the wall on screen is ever painted. */
+/* The wall runs the length of the page, but painting its masked washes that
+   tall is heavy. So each wash is three screens tall and sits still on the
+   wall at --lp-off (its wedge and bricks offset to match): it scrolls with
+   the page like any other layer and is never repainted for the scroll.
+   app.landing-lights.js hops it, in one frame, when the screen nears
+   either of its ends. */
 .lp-main[data-lp-lights] .lp-wall__wash {
   bottom: auto;
-  height: 100lvh;
+  height: 300lvh;
   translate: 0 var(--lp-off, 0px);
-}
-
-/* Where the browser can, the page scroll itself drives --lp-off (a scroll
-   timeline), so the washes move in the same frame as the page instead of a
-   frame late from script. The ride starts when the wall's top reaches the
-   top of the screen and ends when its bottom reaches the bottom; script
-   measures those two scroll positions on load and resize only
-   (--lp-ride-a/-b) and drives --lp-off itself where this isn't supported. */
-@property --lp-off {
-  syntax: '<length>';
-  inherits: true;
-  initial-value: 0px;
-}
-@keyframes lp-wall-ride {
-  from { --lp-off: 0px; }
-  to { --lp-off: calc(100cqh - 100lvh); }
-}
-@supports (animation-timeline: scroll()) {
-  .lp-main[data-lp-lights] .lp-wall[data-lp-ride] .lp-wall__wash {
-    animation: lp-wall-ride linear both;
-    animation-timeline: scroll(root block);
-    animation-range: var(--lp-ride-a, 0px) var(--lp-ride-b, 1px);
-  }
 }
 
 /* Text caught in the follow spot (app.landing-lights.js) lights up. The
