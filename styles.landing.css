@@ -612,7 +612,7 @@ body.light-theme .lp-header.is-scrolled {
    above the beams, so the haze and the bright brick never wash them out. The plate is
    nearly opaque on purpose: no blur behind it, which would cost a repaint on
    every lamp move. */
-.lp-slide:not(#mainstage) .lp-slide__copy {
+.lp-slide .lp-slide__copy {
   position: relative;
   z-index: 5;
   padding: clamp(20px, 3vw, 32px);
@@ -623,9 +623,9 @@ body.light-theme .lp-header.is-scrolled {
 }
 
 /* On the plate a long accent line wraps instead of running past its edge. */
-#landingScreen .lp-slide:not(#mainstage) .lp-display em { white-space: normal; }
+#landingScreen .lp-slide .lp-display em { white-space: normal; }
 
-body.light-theme .lp-slide:not(#mainstage) .lp-slide__copy {
+body.light-theme .lp-slide .lp-slide__copy {
   background: rgb(248 250 246 / 0.92);
   border-color: rgb(15 28 21 / 0.08);
   box-shadow: 0 20px 50px rgb(24 52 36 / 0.16);
