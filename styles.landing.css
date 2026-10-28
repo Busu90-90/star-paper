@@ -622,6 +622,39 @@ body.light-theme .lp-header.is-scrolled {
   box-shadow: 0 24px 60px rgb(0 0 0 / 0.45);
 }
 
+/* The follow spot on a plate: a soft pool where the centre lamp points
+   (app.landing-lights.js sets --lp-gx/--lp-gy/--lp-go on the plate under it). */
+.lp-slide .lp-slide__copy::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: -1;
+  background: radial-gradient(260px circle at var(--lp-gx, 50%) var(--lp-gy, 50%), rgb(255 230 175 / 0.4), rgb(255 220 160 / 0.15) 50%, transparent 74%);
+  opacity: var(--lp-go, 0);
+  transition: opacity 400ms var(--sp-ease-out);
+}
+
+body.light-theme .lp-slide .lp-slide__copy::after {
+  background: radial-gradient(260px circle at var(--lp-gx, 50%) var(--lp-gy, 50%), rgb(240 190 90 / 0.4), rgb(240 190 90 / 0.14) 50%, transparent 74%);
+}
+
+/* Words the spot touches on a plate turn green, not just brighter. */
+body .lp .lp-slide__copy .is-beamlit,
+body .lp .lp-slide__copy .is-beamlit :is(em, strong, span) {
+  color: #8CF7C8;
+  -webkit-text-fill-color: #8CF7C8;
+  text-shadow: 0 0 14px rgb(46 230 150 / 0.55), 0 0 30px rgb(46 230 150 / 0.3);
+}
+
+body.light-theme .lp .lp-slide__copy .is-beamlit,
+body.light-theme .lp .lp-slide__copy .is-beamlit :is(em, strong, span) {
+  color: #0A7446;
+  -webkit-text-fill-color: #0A7446;
+  text-shadow: 0 0 12px rgb(30 190 120 / 0.35);
+}
+
 /* On the plate a long accent line wraps instead of running past its edge. */
 #landingScreen .lp-slide .lp-display em { white-space: normal; }
 

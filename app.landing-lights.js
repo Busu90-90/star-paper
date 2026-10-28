@@ -349,11 +349,41 @@
     // beam's current angle at the pointer's distance, so it trails the lamp
     // exactly. Only this one small element moves; its bricks stay put.
     var spotShown = false;
+    // The slide words sit on plates above the beams, so the spot's pool on
+    // the wall can't reach them. Each plate carries its own soft pool
+    // (::after) that follows the same point, so the light still lands on the
+    // words. Only the plate under the spot is touched.
+    var plates = slides.map(function (slide) { return slide.querySelector('.lp-slide__copy'); }).filter(Boolean);
+    var glowing = null;
+    function glowPlates(point) {
+      var hit = null;
+      var hitBox = null;
+      if (point) {
+        for (var i = 0; i < plates.length; i += 1) {
+          var box = plates[i].getBoundingClientRect();
+          if (box.width && point.x > box.left - 120 && point.x < box.right + 120 && point.y > box.top - 120 && point.y < box.bottom + 120) {
+            hit = plates[i];
+            hitBox = box;
+            break;
+          }
+        }
+      }
+      if (glowing && glowing !== hit) setVars(glowing, { '--lp-go': '0' });
+      glowing = hit;
+      if (!hit) return;
+      setVars(hit, {
+        '--lp-gx': Math.round(point.x - hitBox.left) + 'px',
+        '--lp-gy': Math.round(point.y - hitBox.top) + 'px',
+        '--lp-go': '1'
+      });
+    }
+
     function placeSpot(piv, following, level) {
       if (!spot) return;
       if (!following || level < 0.05) {
         if (spotShown) { spot.classList.remove('is-on'); spotShown = false; }
         lightText(null);
+        glowPlates(null);
         return;
       }
       var dx = pointer.x - piv.c.x;
@@ -365,7 +395,9 @@
       var y = piv.c.y + dist * Math.cos(rad) - box.top - SPOT / 2;
       setVars(spot, { '--lp-sx': Math.round(x) + 'px', '--lp-sy': Math.round(y) + 'px' });
       if (!spotShown) { spot.classList.add('is-on'); spotShown = true; }
-      lightText({ x: piv.c.x - dist * Math.sin(rad), y: piv.c.y + dist * Math.cos(rad) });
+      var point = { x: piv.c.x - dist * Math.sin(rad), y: piv.c.y + dist * Math.cos(rad) };
+      lightText(point);
+      glowPlates(point);
     }
 
     // Text caught in the follow spot (or under the visitor's thumb) lights up
