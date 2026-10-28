@@ -359,12 +359,17 @@
       var hit = null;
       var hitBox = null;
       if (point) {
+        // The plate nearest the point wins, so on a phone the slide parked
+        // just off screen can't steal the pool from the one in view.
+        var best = 120;
         for (var i = 0; i < plates.length; i += 1) {
           var box = plates[i].getBoundingClientRect();
-          if (box.width && point.x > box.left - 120 && point.x < box.right + 120 && point.y > box.top - 120 && point.y < box.bottom + 120) {
+          if (!box.width) continue;
+          var gap = Math.hypot(Math.max(box.left - point.x, 0, point.x - box.right), Math.max(box.top - point.y, 0, point.y - box.bottom));
+          if (gap < best) {
+            best = gap;
             hit = plates[i];
             hitBox = box;
-            break;
           }
         }
       }
@@ -425,11 +430,17 @@
       }
       return null;
     }
+    var NEAR = [[0, 0], [0, -14], [0, 14], [-24, 0], [24, 0], [0, -28], [0, 28]];
     function lightText(point) {
       var now = performance.now();
       if (point && now - litAt < 90) return;
       litAt = now;
-      var next = point ? textAt(point.x, point.y) : null;
+      // A thumb or spot that lands between lines or beside a word still
+      // catches the nearest one: try the point, then a few steps around it.
+      var next = null;
+      for (var i = 0; point && !next && i < NEAR.length; i += 1) {
+        next = textAt(point.x + NEAR[i][0], point.y + NEAR[i][1]);
+      }
       if (next === litEl) return;
       if (litEl) litEl.classList.remove('is-beamlit');
       litEl = next;
