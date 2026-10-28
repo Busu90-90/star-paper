@@ -60,7 +60,7 @@
     ]],
     ['1', ['app.offline-cache.js']],
     ['3', ['app.todayboard.js']],
-    ['92', ['app.browser-assets.js']],
+    ['93', ['app.browser-assets.js']],
     ['4', ['app.boot-head.js']],
     ['4', ['app.money.js']],
     ['7', ['app.home.js']],
@@ -76,7 +76,7 @@
     ['2', ['assets/landing/brick-wall.webp']],
     ['2', ['styles.brand.css']],
     ['31', ['styles.app.css']],
-    ['10', ['app.root-shell.js']],
+    ['11', ['app.root-shell.js']],
     ['4', ['app.public-pages.js']],
     ['4', ['app.boot-flags.js']],
     ['5', ['app.boot-body.js']],
@@ -109,12 +109,12 @@
     ['11', ['app.actions.js']],
     ['10', ['app.migrations.js']],
     ['15', ['app.globe.js']],
-    ['24', ['app.reports.js']],
+    ['25', ['app.reports.js']],
     ['28', ['manifest.json']],
     ['66', ['styles.css']],
     ['107', ['supabase.js']],
-    ['172', ['app.js']],
-    ['271', ['sw.js']]
+    ['173', ['app.js']],
+    ['272', ['sw.js']]
   ];
 
   const assetVersions = {};
@@ -198,6 +198,11 @@
       src: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
       crossOrigin: 'anonymous',
       integrity: 'sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk'
+    }),
+    exceljs: Object.freeze({
+      src: 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js',
+      crossOrigin: 'anonymous',
+      integrity: 'sha384-Pqp51FUN2/qzfxZxBCtF0stpc9ONI6MYZpVqmo8m20SoaQCzf+arZvACkLkirlPz'
     })
   });
 

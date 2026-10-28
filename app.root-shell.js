@@ -34,6 +34,7 @@
         sentry: externalLibrary('sentry', 'Sentry'),
         chart: externalLibrary('chart', 'Chart'),
         jspdf: externalLibrary('jspdf', 'jspdf'),
+        exceljs: externalLibrary('exceljs', 'ExcelJS'),
         globe: localLibrary('app.globe.js', { module: true, optional: true })
       };
     } catch (error) {

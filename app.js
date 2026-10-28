@@ -6785,13 +6785,63 @@ function showLoginForm(options = {}) {
             return header + '\n' + body;
         }
 
-        function exportCSV() {
-            const { period } = getReportPeriodSelection();
-            const selectedArtist = String(document.getElementById('spRptArtistFilter')?.value || document.getElementById('spPdfArtistSelect')?.value || '').trim();
+        // "Export Excel": a styled workbook (app.reports.js builds it).
+        // The plain CSV below stays as the fallback if the Excel library can't load.
+        async function exportCSV() {
+            const { period, periodLabel } = getReportPeriodSelection();
+            const selectedArtist = String(document.getElementById('spPdfArtistSelect')?.value || '').trim();
             const selectedArtistId = selectedArtist ? (findArtistByName(selectedArtist)?.id || '') : '';
             const data = getReportPeriodData(period, { sortNewestFirst: true, selectedArtist, artistId: selectedArtistId });
             const fmtMoney = (v) => Math.round(Number(v) || 0);
             const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '';
+
+            if (typeof window.SPExportMoneyWorkbook === 'function') {
+                let logoDataUrl = '';
+                try {
+                    const res = await fetch('./star_paper_logo_pack/star_paper_128.png');
+                    if (res.ok) {
+                        const blob = await res.blob();
+                        logoDataUrl = await new Promise((resolve) => {
+                            const reader = new FileReader();
+                            reader.onload = () => resolve(String(reader.result || ''));
+                            reader.onerror = () => resolve('');
+                            reader.readAsDataURL(blob);
+                        });
+                    }
+                } catch (_e) { /* the workbook is fine without the logo */ }
+                try {
+                    const done = await window.SPExportMoneyWorkbook({
+                        who: selectedArtist,
+                        isRoster: !selectedArtist,
+                        periodLabel: periodLabel || getPeriodString(period),
+                        logoDataUrl,
+                        bookings: data.filteredBookings.map((b) => ({
+                            date: b.date, event: b.event || b.name || '', artist: b.artist || '',
+                            venue: b.venue || '', promoter: b.promoter || '', capacity: b.capacity,
+                            fee: b.fee, deposit: b.deposit, balance: b.balance, status: String(b.status || '').toLowerCase()
+                        })),
+                        expenses: data.filteredExpenses.map((e) => ({
+                            date: e.date, artist: getFinanceArtistLabel(e), category: e.category || '',
+                            description: e.description || e.name || '', paidTo: e.paidTo || '', amount: e.amount
+                        })),
+                        otherIncome: data.filteredOtherIncome.map((i) => ({
+                            date: i.date, artist: getFinanceArtistLabel(i), source: i.source || i.name || '',
+                            description: i.description || '', amount: i.amount
+                        })),
+                        totals: {
+                            shows: data.totalBookings, income: data.totalIncome, otherIncome: data.totalOtherIncome,
+                            expenses: data.totalExpenses, netProfit: data.netProfit, balancesDue: data.balancesDue,
+                            bbf: data.bbf, closingBalance: data.closingBalance
+                        }
+                    });
+                    if (done) {
+                        if (typeof window.toastSuccess === 'function') window.toastSuccess('Excel report downloaded');
+                        return;
+                    }
+                } catch (err) {
+                    console.warn('Excel export failed, falling back to CSV:', err);
+                }
+            }
 
             const bookingsCSV = arrayToCSV(data.filteredBookings, [
                 { label: 'Date',    value: b => fmtDate(b.date) },

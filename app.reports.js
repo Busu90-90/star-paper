@@ -244,10 +244,14 @@
       .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
     if (future.length > 0) return future.slice(0, maxItems);
 
-    return relevant
+    // Nothing ahead: the most recent shows, flagged so the report titles them
+    // "Last on stage" and never passes them off as coming up.
+    const past = relevant
       .slice()
       .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
       .slice(0, maxItems);
+    past.isPast = true;
+    return past;
   }
 
   function buildPdfForecastBookings(bookings, artistName, anchorDateIso, maxDays = 31, artistId = '') {
@@ -1885,9 +1889,11 @@
       cats.forEach((c, i) => {
         fill(P.series[i % P.series.length]);
         pdf.roundedRect(lx, ly - 2.4, 2.4, 2.4, 0.6, 0.6, 'F');
-        put(c.label, lx + 4, ly, 'ui', 7.2, P.ink, { maxW: lw - 24 });
+        // One line per cost: name, share, amount. The share used to sit under
+        // the name and ran into the next row.
+        put(c.label, lx + 4, ly, 'ui', 7.2, P.ink, { maxW: lw - 34 });
+        put(pct((c.value / m.totalExpenses) * 100), lx + lw - 15, ly, 'mono', 6.4, P.ink3, { align: 'right' });
         put(compact(c.value), lx + lw, ly, 'mono', 7, P.ink2, { align: 'right' });
-        put(pct((c.value / m.totalExpenses) * 100), lx + 4, ly + 3.3, 'mono', 6, P.ink3);
         ly += rowGap;
       });
     } else {
@@ -2013,6 +2019,10 @@
       const tsH = footerY - 6 - tsY;
       card(mg, tsY, leftW, tsH);
       cardTitle('Biggest shows', mg, tsY, leftW, 'By fee, this period');
+      // Each row needs about 8.4mm for the name and date line; when the card
+      // is short, show fewer of the biggest shows rather than squash them.
+      const fits = Math.max(1, Math.floor((tsH - 16) / 8.4));
+      topShows.splice(fits);
       const maxFee = Math.max(1, ...topShows.map((b) => b.fee));
       const rowT = Math.min(8.4, (tsH - 16) / topShows.length);
       const labelW = leftW * 0.36;
@@ -2030,16 +2040,17 @@
     }
 
     // Right column: next 30 days + next on stage
-    const fcH = 34;
+    // Same height as the pipeline card, so both columns line up.
+    const fcH = pipeH;
     card(rightX, y, rightW, fcH, { fill: P.card2, line: P.lineStrong });
-    caps('Booked for the next 30 days', rightX + 5, y + 8, P.ink2, { size: 6.8 });
-    put(money(d.projectedRevenue), rightX + 5, y + 20, 'monoBold', 16, P.goldText, { maxW: rightW - 10, minSize: 10 });
-    put(`${d.projectedShows} show${d.projectedShows === 1 ? '' : 's'} on the calendar`, rightX + 5, y + 27, 'ui', 7, P.ink3);
+    caps(d.projectedFrom ? `Booked for the 30 days after ${fmtDate(d.projectedFrom)}` : 'Booked for the next 30 days', rightX + 5, y + 9, P.ink2, { size: 6.8, maxW: rightW - 10 });
+    put(money(d.projectedRevenue), rightX + 5, y + 23, 'monoBold', 16, P.goldText, { maxW: rightW - 10, minSize: 10 });
+    put(`${d.projectedShows} show${d.projectedShows === 1 ? '' : 's'} on the calendar`, rightX + 5, y + 31, 'ui', 7, P.ink3);
 
     const nsY = y + fcH + gap;
     const nsH = footerY - 6 - nsY;
     card(rightX, nsY, rightW, nsH);
-    cardTitle('Next on stage', rightX, nsY, rightW);
+    cardTitle(d.nextOnStagePast ? 'Last on stage' : 'Next on stage', rightX, nsY, rightW, d.nextOnStagePast ? 'Nothing booked ahead yet' : '');
     const upcoming = (d.nextOnStage || []).slice(0, 5);
     if (upcoming.length) {
       const itemH = Math.min(17, (nsH - 16) / upcoming.length);
@@ -2284,14 +2295,10 @@
       };
       const allBookings = Array.isArray(window.bookings) ? window.bookings : [];
       const pdfNextOnStage = buildPdfNextOnStage(allBookings, selectedArtist, 5, selectedArtistId);
-      const periodDates = [
-        ...data.filteredBookings.map((entry) => entry?.date),
-        ...data.filteredExpenses.map((entry) => entry?.date),
-        ...data.filteredOtherIncome.map((entry) => entry?.date),
-      ].filter(Boolean).sort((a, b) => String(a || '').localeCompare(String(b || '')));
-      const forecastAnchorIso = dateEnd
-        || periodDates[periodDates.length - 1]
-        || new Date().toISOString().slice(0, 10);
+      // "The next 30 days" counts from today; a picked date range counts from
+      // its last day instead, and the card says so.
+      const todayIso = new Date().toISOString().slice(0, 10);
+      const forecastAnchorIso = dateEnd || todayIso;
       const pdfForecastBookings = buildPdfForecastBookings(allBookings, selectedArtist, forecastAnchorIso, 31, selectedArtistId);
 
       const m = computeMetrics(data, prevData);
@@ -2422,6 +2429,8 @@
         history,
         projectedRevenue: pdfForecastBookings.reduce((sum, booking) => sum + Math.round(Number(booking?.fee) || 0), 0),
         projectedShows: pdfForecastBookings.length,
+        projectedFrom: forecastAnchorIso === todayIso ? '' : forecastAnchorIso,
+        nextOnStagePast: Boolean(pdfNextOnStage.isPast),
         nextOnStage: pdfNextOnStage.map((b) => ({
           date: b.date,
           event: b.event,
@@ -2450,12 +2459,367 @@
     }
   }
 
+  // ── EXCEL EXPORT ─────────────────────────────────────────────────────────────
+  // The "Export Excel" button. app.js (exportCSV) gathers the rows; this lays
+  // them out as a styled workbook in the app's colours: a dark banner with the
+  // logo, gold headings, real dates and UGX number formats, status colours and
+  // bold totals. Returns false if ExcelJS can't load, so app.js can fall back
+  // to the plain CSV.
+  const XL = {
+    night: 'FF0A1210', ink: 'FF0F1C15', ink3: 'FF4F5E54', mist: 'FF8E9A8F',
+    gold: 'FFD9B45A', goldText: 'FF7A5818', goldBright: 'FFE3C46B', cream: 'FFF7F3E8',
+    zebra: 'FFF5F8F5', total: 'FFEAF0EB', line: 'FFD5DDD7', white: 'FFFFFFFF',
+    inn: 'FF13704C', innSoft: 'FFE2F1E9', out: 'FFA3402B', outSoft: 'FFF7E6E1',
+    steel: 'FF557489', steelSoft: 'FFE6EEF3', goldSoft: 'FFF6EEDA'
+  };
+  const XL_MONEY = '#,##0;[Red]-#,##0';
+  const XL_DATE = 'dd mmm yyyy';
+  const xlFill = (argb) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
+  const xlFont = ({ argb, ...o } = {}) => ({ name: 'Calibri', size: 11, ...o, color: { argb: argb || XL.ink } });
+
+  function xlDate(value) {
+    const iso = String(value || '').slice(0, 10);
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+    if (!m) return value ? String(value) : '';
+    // UTC midnight, so Excel shows the same day whatever the phone's timezone.
+    return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  }
+
+  function xlStatusTone(status) {
+    const s = String(status || '').toLowerCase();
+    if (s === 'confirmed' || s === 'paid' || s === 'completed') return { argb: XL.inn, fill: XL.innSoft };
+    if (s === 'cancelled') return { argb: XL.out, fill: XL.outSoft };
+    return { argb: XL.steel, fill: XL.steelSoft };
+  }
+
+  // Dark band across the top of every sheet: title, who, period.
+  function xlBanner(ws, cols, title, subtitle, note, textCol = 1) {
+    const last = cols;
+    for (let r = 1; r <= 3; r += 1) {
+      ws.getRow(r).height = r === 1 ? 30 : 18;
+      for (let c = 1; c <= last; c += 1) ws.getCell(r, c).fill = xlFill(XL.night);
+    }
+    const t = ws.getCell(1, textCol);
+    t.value = title;
+    t.font = xlFont({ size: 18, bold: true, argb: XL.goldBright });
+    t.alignment = { vertical: 'middle' };
+    const s = ws.getCell(2, textCol);
+    s.value = subtitle;
+    s.font = xlFont({ size: 12, bold: true, argb: XL.cream });
+    const n = ws.getCell(3, textCol);
+    n.value = note;
+    n.font = xlFont({ size: 10, argb: XL.mist });
+    for (let c = 1; c <= last; c += 1) {
+      ws.getCell(3, c).border = { bottom: { style: 'medium', color: { argb: XL.gold } } };
+    }
+  }
+
+  function xlHeader(ws, rowNo, labels, start = 1) {
+    const row = ws.getRow(rowNo);
+    row.height = 22;
+    labels.forEach((label, i) => {
+      const cell = row.getCell(i + start);
+      cell.value = label;
+      cell.font = xlFont({ bold: true, size: 10, argb: XL.goldBright });
+      cell.fill = xlFill(XL.ink);
+      cell.alignment = { vertical: 'middle', horizontal: label === 'Status' ? 'center' : (/UGX|Share|Shows|Capacity/.test(label) ? 'right' : 'left') };
+      cell.border = { bottom: { style: 'thin', color: { argb: XL.gold } } };
+    });
+  }
+
+  function xlBodyRow(ws, rowNo, values, formats, zebra, start = 1) {
+    const row = ws.getRow(rowNo);
+    values.forEach((v, i) => {
+      const cell = row.getCell(i + start);
+      cell.value = v;
+      cell.font = xlFont();
+      if (formats[i]) cell.numFmt = formats[i];
+      if (zebra) cell.fill = xlFill(XL.zebra);
+      cell.border = { bottom: { style: 'hair', color: { argb: XL.line } } };
+      cell.alignment = { vertical: 'middle', horizontal: v instanceof Date ? 'left' : undefined, wrapText: typeof v === 'string' && v.length > 28 };
+    });
+    return row;
+  }
+
+  function xlTotalRow(ws, rowNo, cols, label, sums, formats, start = 1) {
+    const row = ws.getRow(rowNo);
+    row.height = 20;
+    for (let c = 1; c <= cols; c += 1) {
+      const cell = row.getCell(c + start - 1);
+      cell.fill = xlFill(XL.total);
+      cell.font = xlFont({ bold: true });
+      cell.border = { top: { style: 'medium', color: { argb: XL.gold } } };
+      if (sums[c - 1] != null) {
+        cell.value = sums[c - 1];
+        cell.numFmt = formats[c - 1] || XL_MONEY;
+      }
+    }
+    row.getCell(start).value = label;
+  }
+
+  // One data sheet (Bookings / Expenses / Other income).
+  function xlTableSheet(wb, cfg) {
+    const ws = wb.addWorksheet(cfg.name, {
+      properties: { tabColor: { argb: cfg.tab } },
+      views: [{ state: 'frozen', ySplit: 5, showGridLines: false }],
+      pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 }
+    });
+    ws.columns = cfg.columns.map((c) => ({ width: c.width }));
+    xlBanner(ws, cfg.columns.length, cfg.title, cfg.who, cfg.note);
+    xlHeader(ws, 5, cfg.columns.map((c) => c.label));
+    const formats = cfg.columns.map((c) => c.fmt || null);
+    let r = 6;
+    if (!cfg.rows.length) {
+      const cell = ws.getCell(r, 1);
+      cell.value = cfg.empty;
+      cell.font = xlFont({ italic: true, argb: XL.ink3 });
+      r += 1;
+    }
+    cfg.rows.forEach((item, i) => {
+      const row = xlBodyRow(ws, r, cfg.columns.map((c) => c.value(item)), formats, i % 2 === 1);
+      if (cfg.decorate) cfg.decorate(row, item);
+      r += 1;
+    });
+    if (cfg.rows.length) {
+      ws.autoFilter = { from: { row: 5, column: 1 }, to: { row: r - 1, column: cfg.columns.length } };
+      xlTotalRow(ws, r, cfg.columns.length, cfg.totalLabel, cfg.columns.map((c) => (c.total == null ? null : c.total)), formats);
+      if (cfg.footnote) {
+        const f = ws.getCell(r + 1, 1);
+        f.value = cfg.footnote;
+        f.font = xlFont({ italic: true, size: 9, argb: XL.ink3 });
+      }
+    }
+    return ws;
+  }
+
+  async function exportMoneyWorkbook(input) {
+    let ExcelJS = window.ExcelJS;
+    if (!ExcelJS && typeof window.__spLoadDeferredLibrary === 'function') {
+      try { await window.__spLoadDeferredLibrary('exceljs'); } catch (_e) { /* fall back below */ }
+      ExcelJS = window.ExcelJS;
+    }
+    if (!ExcelJS) return false;
+
+    const { who, isRoster, periodLabel, bookings, expenses, otherIncome, totals } = input;
+    const prepared = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const note = `${periodLabel}  ·  Prepared ${prepared}  ·  Amounts in UGX`;
+    const isCancelled = (b) => String(b.status || '').toLowerCase() === 'cancelled';
+    const sum = (list, key) => list.reduce((s, x) => s + (Math.round(Number(x[key]) || 0)), 0);
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Star Paper';
+    wb.created = new Date();
+
+    // ── Summary ──
+    const ws = wb.addWorksheet('Summary', {
+      properties: { tabColor: { argb: XL.gold } },
+      views: [{ showGridLines: false }],
+      pageSetup: { orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 }
+    });
+    // Column A is a narrow gutter that holds the logo; everything else starts at B.
+    ws.columns = [{ width: 8 }, { width: 30 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 16 }];
+    xlBanner(ws, 8, 'MONEY MOVES', isRoster ? 'Whole roster' : who, note, 2);
+    if (input.logoDataUrl && /^data:image\/png/.test(input.logoDataUrl)) {
+      try {
+        const logoId = wb.addImage({ base64: input.logoDataUrl, extension: 'png' });
+        ws.addImage(logoId, { tl: { col: 0.15, row: 0.2 }, ext: { width: 44, height: 44 }, editAs: 'oneCell' });
+      } catch (_e) { /* the sheet is fine without the logo */ }
+    }
+
+    let r = 5;
+    const section = (label) => {
+      const cell = ws.getCell(r, 2);
+      cell.value = label;
+      cell.font = xlFont({ bold: true, size: 11, argb: XL.goldText });
+      for (let c = 2; c <= 8; c += 1) ws.getCell(r, c).border = { bottom: { style: 'thin', color: { argb: XL.gold } } };
+      r += 1;
+    };
+    section('THE NUMBERS');
+    const net = totals.netProfit;
+    const lines = [
+      ['Shows booked', totals.shows, '0', null],
+      ['Show fees', totals.income, XL_MONEY, null],
+      ['Other income', totals.otherIncome, XL_MONEY, null],
+      ['Total money in', totals.income + totals.otherIncome, XL_MONEY, 'in'],
+      ['Expenses', totals.expenses, XL_MONEY, 'out'],
+      [net >= 0 ? 'Net profit' : 'Net loss', net, XL_MONEY, 'net'],
+      ['Still owed on shows (balances)', totals.balancesDue, XL_MONEY, null]
+    ];
+    if (Number.isFinite(totals.bbf) && totals.bbf !== 0) {
+      lines.push(['Brought forward', totals.bbf, XL_MONEY, null]);
+      lines.push(['Closing balance', totals.closingBalance, XL_MONEY, 'net']);
+    }
+    lines.forEach(([label, value, fmt, tone], i) => {
+      const a = ws.getCell(r, 2);
+      const b = ws.getCell(r, 3);
+      a.value = label;
+      b.value = value;
+      b.numFmt = fmt;
+      b.alignment = { horizontal: 'right' };
+      a.font = xlFont({ bold: Boolean(tone) });
+      b.font = xlFont({ bold: Boolean(tone) });
+      const zebra = i % 2 === 1 ? XL.zebra : XL.white;
+      a.fill = xlFill(zebra); b.fill = xlFill(zebra);
+      if (tone === 'in') b.font = xlFont({ bold: true, argb: XL.inn });
+      if (tone === 'out') b.font = xlFont({ bold: true, argb: XL.out });
+      if (tone === 'net') {
+        const good = Number(value) >= 0;
+        a.fill = xlFill(good ? XL.innSoft : XL.outSoft);
+        b.fill = xlFill(good ? XL.innSoft : XL.outSoft);
+        a.font = xlFont({ bold: true, size: 12 });
+        b.font = xlFont({ bold: true, size: 12, argb: good ? XL.inn : XL.out });
+      }
+      a.border = { bottom: { style: 'hair', color: { argb: XL.line } } };
+      b.border = { bottom: { style: 'hair', color: { argb: XL.line } } };
+      r += 1;
+    });
+    r += 1;
+
+    const liveBookings = bookings.filter((b) => !isCancelled(b));
+    if (isRoster) {
+      section('BY ARTIST');
+      const byArtist = new Map();
+      const slot = (name) => {
+        const key = name || 'Roster / Shared';
+        if (!byArtist.has(key)) byArtist.set(key, { name: key, shows: 0, fees: 0, other: 0, spent: 0, owed: 0 });
+        return byArtist.get(key);
+      };
+      liveBookings.forEach((b) => { const s = slot(b.artist); s.shows += 1; s.fees += Math.round(Number(b.fee) || 0); s.owed += Math.round(Number(b.balance) || 0); });
+      otherIncome.forEach((i) => { slot(i.artist).other += Math.round(Number(i.amount) || 0); });
+      expenses.forEach((e) => { slot(e.artist).spent += Math.round(Number(e.amount) || 0); });
+      const rows = Array.from(byArtist.values()).sort((a, b) => (b.fees + b.other) - (a.fees + a.other));
+      const labels = ['Artist', 'Shows', 'Show fees (UGX)', 'Other income (UGX)', 'Expenses (UGX)', 'Net (UGX)', 'Still owed (UGX)'];
+      xlHeader(ws, r, labels, 2);
+      r += 1;
+      const fmts = [null, '0', XL_MONEY, XL_MONEY, XL_MONEY, XL_MONEY, XL_MONEY];
+      if (!rows.length) {
+        ws.getCell(r, 2).value = 'Nothing recorded in this period.';
+        ws.getCell(r, 2).font = xlFont({ italic: true, argb: XL.ink3 });
+        r += 1;
+      }
+      rows.forEach((a, i) => {
+        const row = xlBodyRow(ws, r, [a.name, a.shows, a.fees, a.other, a.spent, a.fees + a.other - a.spent, a.owed], fmts, i % 2 === 1, 2);
+        row.getCell(2).font = xlFont({ bold: true });
+        const netCell = row.getCell(7);
+        netCell.font = xlFont({ bold: true, argb: (a.fees + a.other - a.spent) >= 0 ? XL.inn : XL.out });
+        r += 1;
+      });
+      if (rows.length) {
+        xlTotalRow(ws, r, 7, 'Total', [null, totals.shows, totals.income, totals.otherIncome, totals.expenses, net, totals.balancesDue], fmts, 2);
+        r += 1;
+      }
+      r += 1;
+    }
+
+    section('WHERE COSTS WENT');
+    const byCategory = new Map();
+    expenses.forEach((e) => {
+      const raw = String(e.category || 'Other').trim();
+      const key = raw.charAt(0).toUpperCase() + raw.slice(1);
+      byCategory.set(key, (byCategory.get(key) || 0) + Math.round(Number(e.amount) || 0));
+    });
+    const cats = Array.from(byCategory.entries()).sort((a, b) => b[1] - a[1]);
+    xlHeader(ws, r, ['Category', 'Amount (UGX)', 'Share'], 2);
+    r += 1;
+    if (!cats.length) {
+      ws.getCell(r, 2).value = 'No expenses in this period.';
+      ws.getCell(r, 2).font = xlFont({ italic: true, argb: XL.ink3 });
+      r += 1;
+    }
+    cats.forEach(([name, amount], i) => {
+      xlBodyRow(ws, r, [name, amount, totals.expenses ? amount / totals.expenses : 0], [null, XL_MONEY, '0%'], i % 2 === 1, 2);
+      r += 1;
+    });
+    if (cats.length) xlTotalRow(ws, r, 3, 'Total', [null, totals.expenses, 1], [null, XL_MONEY, '0%'], 2);
+
+    // ── Bookings ──
+    const whoLine = isRoster ? 'Whole roster' : who;
+    const cancelledCount = bookings.length - liveBookings.length;
+    xlTableSheet(wb, {
+      name: 'Bookings', tab: XL.inn, title: 'BOOKINGS', who: whoLine, note,
+      empty: 'No shows in this period.',
+      totalLabel: `Total · ${liveBookings.length} show${liveBookings.length === 1 ? '' : 's'}`,
+      footnote: cancelledCount ? `Cancelled shows (${cancelledCount}) are greyed out and not counted in the totals.` : '',
+      rows: bookings,
+      columns: [
+        { label: 'Date', width: 13, fmt: XL_DATE, value: (b) => xlDate(b.date) },
+        { label: 'Show', width: 28, value: (b) => b.event || '' },
+        { label: 'Artist', width: 18, value: (b) => b.artist || '' },
+        { label: 'Venue', width: 22, value: (b) => b.venue || '' },
+        { label: 'Promoter', width: 18, value: (b) => b.promoter || '' },
+        { label: 'Capacity', width: 10, fmt: '#,##0', value: (b) => Math.round(Number(b.capacity) || 0) || null },
+        { label: 'Fee (UGX)', width: 15, fmt: XL_MONEY, total: totals.income, value: (b) => Math.round(Number(b.fee) || 0) },
+        { label: 'Deposit (UGX)', width: 15, fmt: XL_MONEY, total: sum(liveBookings, 'deposit'), value: (b) => Math.round(Number(b.deposit) || 0) },
+        { label: 'Balance (UGX)', width: 15, fmt: XL_MONEY, total: totals.balancesDue, value: (b) => Math.round(Number(b.balance) || 0) },
+        { label: 'Status', width: 12, value: (b) => b.status ? b.status.charAt(0).toUpperCase() + b.status.slice(1) : '' }
+      ],
+      decorate: (row, b) => {
+        const tone = xlStatusTone(b.status);
+        const status = row.getCell(10);
+        status.font = xlFont({ bold: true, size: 10, argb: tone.argb });
+        status.fill = xlFill(tone.fill);
+        status.alignment = { horizontal: 'center', vertical: 'middle' };
+        if (isCancelled(b)) {
+          for (let c = 1; c <= 9; c += 1) row.getCell(c).font = xlFont({ argb: XL.mist, strike: c >= 7 });
+        } else {
+          row.getCell(9).font = xlFont({ bold: Number(b.balance) > 0, argb: Number(b.balance) > 0 ? XL.out : XL.ink });
+        }
+      }
+    });
+
+    // ── Expenses ──
+    xlTableSheet(wb, {
+      name: 'Expenses', tab: XL.out, title: 'EXPENSES', who: whoLine, note,
+      empty: 'No expenses in this period.',
+      totalLabel: `Total · ${expenses.length} item${expenses.length === 1 ? '' : 's'}`,
+      rows: expenses,
+      columns: [
+        { label: 'Date', width: 13, fmt: XL_DATE, value: (e) => xlDate(e.date) },
+        { label: 'Artist', width: 18, value: (e) => e.artist || '' },
+        { label: 'Category', width: 16, value: (e) => { const c = String(e.category || ''); return c.charAt(0).toUpperCase() + c.slice(1); } },
+        { label: 'Description', width: 34, value: (e) => e.description || '' },
+        { label: 'Paid to', width: 20, value: (e) => e.paidTo || '' },
+        { label: 'Amount (UGX)', width: 16, fmt: XL_MONEY, total: totals.expenses, value: (e) => Math.round(Number(e.amount) || 0) }
+      ],
+      decorate: (row) => { row.getCell(6).font = xlFont({ argb: XL.out }); }
+    });
+
+    // ── Other income ──
+    xlTableSheet(wb, {
+      name: 'Other income', tab: XL.steel, title: 'OTHER INCOME', who: whoLine, note,
+      empty: 'No other income in this period.',
+      totalLabel: `Total · ${otherIncome.length} item${otherIncome.length === 1 ? '' : 's'}`,
+      rows: otherIncome,
+      columns: [
+        { label: 'Date', width: 13, fmt: XL_DATE, value: (i) => xlDate(i.date) },
+        { label: 'Artist', width: 18, value: (i) => i.artist || '' },
+        { label: 'Source', width: 22, value: (i) => i.source || '' },
+        { label: 'Description', width: 34, value: (i) => i.description || '' },
+        { label: 'Amount (UGX)', width: 16, fmt: XL_MONEY, total: totals.otherIncome, value: (i) => Math.round(Number(i.amount) || 0) }
+      ],
+      decorate: (row) => { row.getCell(5).font = xlFont({ argb: XL.inn }); }
+    });
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const slug = (s) => String(s || '').trim().replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'Report';
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `Money-Moves-${slug(isRoster ? 'Roster' : who)}-${slug((/\(([^)]+)\)/.exec(periodLabel) || [])[1] || periodLabel)}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    return true;
+  }
+
   // ── WINDOW EXPOSURE ──────────────────────────────────────────────────────────
   window.renderMomentumDashboard ||= renderDashboard;
   window.generateMomentumPDF ||= generateMomentumPDF;
   window.openPdfExportModal ||= openPdfExportModal;
   window.getReportStartPeriodKey ||= getReportStartPeriodKey;
   window.getActualReportPeriodLabel ||= getActualPeriodLabel;
+  window.SPExportMoneyWorkbook ||= exportMoneyWorkbook;
 
   // The report picker (app.js handleReportPeriodChange) re-renders through this.
   // Only while the Reports tab is showing: charts drawn in a hidden tab come

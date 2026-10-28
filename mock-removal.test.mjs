@@ -33,7 +33,7 @@ test('mock data feature is absent from production files', () => {
 
 test('report controls keep production actions', () => {
   assert.match(files.html, /data-action="generateMomentumPDF"[^>]*>[\s\S]*?Download PDF/);
-  assert.match(files.html, /Export CSV/);
+  assert.match(files.html, /Export Excel/);
   assert.match(files.html, /Closing Thoughts/);
 });
 
