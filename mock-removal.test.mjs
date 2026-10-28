@@ -32,13 +32,15 @@ test('mock data feature is absent from production files', () => {
 });
 
 test('report controls keep production actions', () => {
-  assert.match(files.html, /Generate\s*&amp;\s*Download PDF/);
-  assert.match(files.html, /Export CSV/);
+  assert.match(files.html, /data-action="generateMomentumPDF"[^>]*>[\s\S]*?Download PDF/);
+  assert.match(files.html, /Export Excel/);
   assert.match(files.html, /Closing Thoughts/);
 });
 
 test('pdf export interface remains available', () => {
-  assert.match(files.html, /id="spPdfExportModal"/);
+  // One report picker on the Reports card (who + period, or picked dates)
+  // replaced the old export modal.
+  assert.match(files.html, /id="reportCustomDates"/);
   assert.match(files.html, /id="spPdfArtistSelect"/);
   assert.match(files.html, /id="spPdfDateStart"/);
   assert.match(files.html, /id="spPdfDateEnd"/);

@@ -7565,8 +7565,18 @@ body.light-theme .sp-muted { color: rgba(0,0,0,0.4); }
 .sp-rpt-kpi__sub { font-size: 11px; color: #666; margin-top: 2px; }
 
 /* Charts */
+/* minmax(0, …) lets the cards shrink: plain fr columns can't go below the
+   width Chart.js last drew the canvas at, which pushed Booking Status off
+   the right edge on laptop screens. */
 .sp-rpt-charts {
-  display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; margin-top: 16px;
+  display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-top: 16px;
+}
+.sp-rpt-chart-card { min-width: 0; }
+/* Below about 1440px the three cards get too thin for a doughnut and its
+   legend, so the momentum chart takes the full row and the two doughnuts share the next. */
+@media (min-width: 769px) and (max-width: 1439px) {
+  .sp-rpt-charts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sp-rpt-charts > .sp-rpt-chart-card:first-child { grid-column: 1 / -1; }
 }
 .sp-rpt-chart-card {
   padding: 20px; border-radius: 12px;

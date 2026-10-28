@@ -5979,8 +5979,10 @@ function showLoginForm(options = {}) {
                 dateStart = '',
                 dateEnd = ''
             } = options;
-            const normalizedDateStart = String(dateStart || '').trim();
-            const normalizedDateEnd = String(dateEnd || '').trim();
+            // "Pick dates…" on the report picker: the dates come from its From/To fields.
+            const pickedRange = period === 'custom' && !dateStart && !dateEnd ? getReportDateRange() : null;
+            const normalizedDateStart = String(pickedRange ? pickedRange.dateStart : dateStart || '').trim();
+            const normalizedDateEnd = String(pickedRange ? pickedRange.dateEnd : dateEnd || '').trim();
             const hasExplicitDateRange = Boolean(normalizedDateStart || normalizedDateEnd);
             const maybeSort = (items) => {
                 if (!sortNewestFirst) return items;
@@ -6438,9 +6440,28 @@ function showLoginForm(options = {}) {
             }
         }
 
+        // The report picker's own dates, only while "Pick dates…" is chosen.
+        // Swapped round if From is after To.
+        function getReportDateRange() {
+            if (document.getElementById('reportPeriod')?.value !== 'custom') return { dateStart: '', dateEnd: '' };
+            let dateStart = String(document.getElementById('spPdfDateStart')?.value || '').trim();
+            let dateEnd = String(document.getElementById('spPdfDateEnd')?.value || '').trim();
+            if (dateStart && dateEnd && dateStart > dateEnd) [dateStart, dateEnd] = [dateEnd, dateStart];
+            return { dateStart, dateEnd };
+        }
+
         function getReportPeriodSelection() {
             const periodEl = document.getElementById('reportPeriod');
             const period = periodEl?.value || 'month';
+            if (period === 'custom') {
+                const { dateStart, dateEnd } = getReportDateRange();
+                // No dates yet: everything, until From or To is filled in.
+                if (!dateStart && !dateEnd) return { periodEl, period: 'all', periodLabel: 'All time' };
+                const periodLabel = dateStart && dateEnd
+                    ? `${formatDisplayDate(dateStart)} to ${formatDisplayDate(dateEnd)}`
+                    : dateStart ? `From ${formatDisplayDate(dateStart)}` : `Up to ${formatDisplayDate(dateEnd)}`;
+                return { periodEl, period, periodLabel };
+            }
             const periodLabel = periodEl?.selectedOptions?.[0]?.textContent || getPeriodString(period);
             return { periodEl, period, periodLabel };
         }
@@ -6472,9 +6493,9 @@ function showLoginForm(options = {}) {
             const reportPeriod = document.getElementById('reportPeriod');
             if (reportPeriod) {
                 const currentOpt = document.getElementById('reportPeriodCurrentOption');
-                if (currentOpt) currentOpt.textContent = currentLabel;
+                if (currentOpt) currentOpt.textContent = `This month (${currentLabel})`;
                 const prevOpt = document.getElementById('reportPeriodPrevOption');
-                if (prevOpt) prevOpt.textContent = prevLabel;
+                if (prevOpt) prevOpt.textContent = `Last month (${prevLabel})`;
             }
         }
 
@@ -6537,9 +6558,21 @@ function showLoginForm(options = {}) {
             updateClosingThoughtsMeta();
         }
 
+        // One picker drives the whole Reports tab: who (an artist or the whole
+        // roster) and when (a preset or picked dates).
         function handleReportPeriodChange() {
+            const custom = document.getElementById('reportPeriod')?.value === 'custom';
+            const dates = document.getElementById('reportCustomDates');
+            if (dates) dates.hidden = !custom;
+            if (!custom) {
+                ['spPdfDateStart', 'spPdfDateEnd'].forEach((id) => {
+                    const input = document.getElementById(id);
+                    if (input) input.value = '';
+                });
+            }
             updateReportStatistics();
             loadClosingThoughtsForPeriod();
+            if (typeof window.SPRenderReports === 'function') window.SPRenderReports();
         }
 
         function toggleClosingThoughts() {
@@ -6752,13 +6785,63 @@ function showLoginForm(options = {}) {
             return header + '\n' + body;
         }
 
-        function exportCSV() {
-            const { period } = getReportPeriodSelection();
-            const selectedArtist = String(document.getElementById('spRptArtistFilter')?.value || document.getElementById('spPdfArtistSelect')?.value || '').trim();
+        // "Export Excel": a styled workbook (app.reports.js builds it).
+        // The plain CSV below stays as the fallback if the Excel library can't load.
+        async function exportCSV() {
+            const { period, periodLabel } = getReportPeriodSelection();
+            const selectedArtist = String(document.getElementById('spPdfArtistSelect')?.value || '').trim();
             const selectedArtistId = selectedArtist ? (findArtistByName(selectedArtist)?.id || '') : '';
             const data = getReportPeriodData(period, { sortNewestFirst: true, selectedArtist, artistId: selectedArtistId });
             const fmtMoney = (v) => Math.round(Number(v) || 0);
             const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '';
+
+            if (typeof window.SPExportMoneyWorkbook === 'function') {
+                let logoDataUrl = '';
+                try {
+                    const res = await fetch('./star_paper_logo_pack/star_paper_128.png');
+                    if (res.ok) {
+                        const blob = await res.blob();
+                        logoDataUrl = await new Promise((resolve) => {
+                            const reader = new FileReader();
+                            reader.onload = () => resolve(String(reader.result || ''));
+                            reader.onerror = () => resolve('');
+                            reader.readAsDataURL(blob);
+                        });
+                    }
+                } catch (_e) { /* the workbook is fine without the logo */ }
+                try {
+                    const done = await window.SPExportMoneyWorkbook({
+                        who: selectedArtist,
+                        isRoster: !selectedArtist,
+                        periodLabel: periodLabel || getPeriodString(period),
+                        logoDataUrl,
+                        bookings: data.filteredBookings.map((b) => ({
+                            date: b.date, event: b.event || b.name || '', artist: b.artist || '',
+                            venue: b.venue || '', promoter: b.promoter || '', capacity: b.capacity,
+                            fee: b.fee, deposit: b.deposit, balance: b.balance, status: String(b.status || '').toLowerCase()
+                        })),
+                        expenses: data.filteredExpenses.map((e) => ({
+                            date: e.date, artist: getFinanceArtistLabel(e), category: e.category || '',
+                            description: e.description || e.name || '', paidTo: e.paidTo || '', amount: e.amount
+                        })),
+                        otherIncome: data.filteredOtherIncome.map((i) => ({
+                            date: i.date, artist: getFinanceArtistLabel(i), source: i.source || i.name || '',
+                            description: i.description || '', amount: i.amount
+                        })),
+                        totals: {
+                            shows: data.totalBookings, income: data.totalIncome, otherIncome: data.totalOtherIncome,
+                            expenses: data.totalExpenses, netProfit: data.netProfit, balancesDue: data.balancesDue,
+                            bbf: data.bbf, closingBalance: data.closingBalance
+                        }
+                    });
+                    if (done) {
+                        if (typeof window.toastSuccess === 'function') window.toastSuccess('Excel report downloaded');
+                        return;
+                    }
+                } catch (err) {
+                    console.warn('Excel export failed, falling back to CSV:', err);
+                }
+            }
 
             const bookingsCSV = arrayToCSV(data.filteredBookings, [
                 { label: 'Date',    value: b => fmtDate(b.date) },
@@ -8413,6 +8496,7 @@ function showLoginForm(options = {}) {
             if (!select) return;
             
             const artists = getArtists().map((artist) => artist.name);
+            const picked = select.value;
             select.textContent = '';
             const placeholder = document.createElement('option');
             placeholder.value = '';
@@ -8424,6 +8508,8 @@ function showLoginForm(options = {}) {
                 option.textContent = String(artist || '');
                 select.appendChild(option);
             });
+            // Keeps the choice (and the searchable picker over it) through a refresh.
+            select.value = artists.includes(picked) ? picked : '';
         }
 
         function checkAvailability() {

@@ -349,11 +349,46 @@
     // beam's current angle at the pointer's distance, so it trails the lamp
     // exactly. Only this one small element moves; its bricks stay put.
     var spotShown = false;
+    // The slide words sit on plates above the beams, so the spot's pool on
+    // the wall can't reach them. Each plate carries its own soft pool
+    // (::after) that follows the same point, so the light still lands on the
+    // words. Only the plate under the spot is touched.
+    var plates = slides.map(function (slide) { return slide.querySelector('.lp-slide__copy'); }).filter(Boolean);
+    var glowing = null;
+    function glowPlates(point) {
+      var hit = null;
+      var hitBox = null;
+      if (point) {
+        // The plate nearest the point wins, so on a phone the slide parked
+        // just off screen can't steal the pool from the one in view.
+        var best = 120;
+        for (var i = 0; i < plates.length; i += 1) {
+          var box = plates[i].getBoundingClientRect();
+          if (!box.width) continue;
+          var gap = Math.hypot(Math.max(box.left - point.x, 0, point.x - box.right), Math.max(box.top - point.y, 0, point.y - box.bottom));
+          if (gap < best) {
+            best = gap;
+            hit = plates[i];
+            hitBox = box;
+          }
+        }
+      }
+      if (glowing && glowing !== hit) setVars(glowing, { '--lp-go': '0' });
+      glowing = hit;
+      if (!hit) return;
+      setVars(hit, {
+        '--lp-gx': Math.round(point.x - hitBox.left) + 'px',
+        '--lp-gy': Math.round(point.y - hitBox.top) + 'px',
+        '--lp-go': '1'
+      });
+    }
+
     function placeSpot(piv, following, level) {
       if (!spot) return;
       if (!following || level < 0.05) {
         if (spotShown) { spot.classList.remove('is-on'); spotShown = false; }
         lightText(null);
+        glowPlates(null);
         return;
       }
       var dx = pointer.x - piv.c.x;
@@ -365,7 +400,9 @@
       var y = piv.c.y + dist * Math.cos(rad) - box.top - SPOT / 2;
       setVars(spot, { '--lp-sx': Math.round(x) + 'px', '--lp-sy': Math.round(y) + 'px' });
       if (!spotShown) { spot.classList.add('is-on'); spotShown = true; }
-      lightText({ x: piv.c.x - dist * Math.sin(rad), y: piv.c.y + dist * Math.cos(rad) });
+      var point = { x: piv.c.x - dist * Math.sin(rad), y: piv.c.y + dist * Math.cos(rad) };
+      lightText(point);
+      glowPlates(point);
     }
 
     // Text caught in the follow spot (or under the visitor's thumb) lights up
@@ -393,11 +430,17 @@
       }
       return null;
     }
+    var NEAR = [[0, 0], [0, -14], [0, 14], [-24, 0], [24, 0], [0, -28], [0, 28]];
     function lightText(point) {
       var now = performance.now();
       if (point && now - litAt < 90) return;
       litAt = now;
-      var next = point ? textAt(point.x, point.y) : null;
+      // A thumb or spot that lands between lines or beside a word still
+      // catches the nearest one: try the point, then a few steps around it.
+      var next = null;
+      for (var i = 0; point && !next && i < NEAR.length; i += 1) {
+        next = textAt(point.x + NEAR[i][0], point.y + NEAR[i][1]);
+      }
       if (next === litEl) return;
       if (litEl) litEl.classList.remove('is-beamlit');
       litEl = next;
@@ -642,6 +685,13 @@
       if (!running) return;
       var dt = Math.min(0.05, (now - (last || now)) / 1000);
       last = now;
+      // The rig holds still while the page scrolls: a lamp turning mid-scroll
+      // repaints the lit brick on every frame, which is what made the scroll
+      // stutter. It picks up again, eased, once the page settles.
+      if (now - scrolledAt < 160) {
+        requestAnimationFrame(frame);
+        return;
+      }
       var piv = pivots();
       setCue(cuesBySlide[activeSlide()] || 'mainstage', now);
       var following = plan(now, piv);
@@ -683,7 +733,6 @@
       // panel keeps up): no measuring in the middle of a swipe.
       var settled = now - scrolledAt > 160;
       measureGlass(!settled);
-      slideWashes();
       placeSpot(piv, following, lamps.c.level);
       swing(dt);
       castGlass(piv, dt, now);
@@ -722,34 +771,37 @@
       requestAnimationFrame(frame);
     }
 
-    // Keeps the screen-tall washes over the part of the wall on screen.
+    // Keeps the washes over the part of the wall on screen. Each wash is a
+    // few screens tall and stays put on the wall (so it scrolls with the
+    // page and is never repainted for the scroll); it only hops to a new
+    // spot, once, when the screen gets near either of its ends.
     var washHeight = 0;
-    var scrollDriven = !!(window.CSS && CSS.supports && CSS.supports('animation-timeline: scroll()'));
-    // With scroll timelines the washes ride on their own; script only notes
-    // where the ride starts and ends, whenever the page's size changes.
-    function measureRide() {
-      var box = wall.getBoundingClientRect();
-      var height = wall.querySelector('.lp-wall__wash').offsetHeight || window.innerHeight;
-      var start = box.top + window.scrollY;
-      setVars(wall, {
-        '--lp-ride-a': Math.round(start) + 'px',
-        '--lp-ride-b': Math.round(start + Math.max(1, box.height - height)) + 'px'
-      });
-      wall.setAttribute('data-lp-ride', '');
-    }
-    if (scrollDriven) {
-      measureRide();
-      window.addEventListener('resize', measureRide, { passive: true });
-      if ('ResizeObserver' in window) new ResizeObserver(measureRide).observe(wall);
-    }
+    var washOff = -1;
     function slideWashes() {
-      if (scrollDriven) return;
       var box = wall.getBoundingClientRect();
-      if (!washHeight) washHeight = wall.querySelector('.lp-wall__wash').offsetHeight || window.innerHeight;
-      var off = clamp(-box.top, 0, Math.max(0, box.height - washHeight));
-      setVars(wall, { '--lp-off': Math.round(off) + 'px' });
+      if (!washHeight) washHeight = wall.querySelector('.lp-wall__wash').offsetHeight || window.innerHeight * 3;
+      var view = window.innerHeight;
+      var top = -box.top;
+      var max = Math.max(0, box.height - washHeight);
+      var margin = Math.min(view * 0.5, Math.max(0, (washHeight - view) / 2));
+      var nearTop = washOff > 0 && top < washOff + margin;
+      var nearEnd = washOff < max && top + view > washOff + washHeight - margin;
+      if (washOff >= 0 && washOff <= max && !nearTop && !nearEnd) return;
+      var off = Math.round(clamp(top - (washHeight - view) / 2, 0, max));
+      if (off === washOff) return;
+      washOff = off;
+      setVars(wall, { '--lp-off': off + 'px' });
     }
-    window.addEventListener('resize', function () { washHeight = 0; }, { passive: true });
+    var hopQueued = false;
+    window.addEventListener('scroll', function () {
+      if (hopQueued) return;
+      hopQueued = true;
+      requestAnimationFrame(function () { hopQueued = false; slideWashes(); });
+    }, { passive: true });
+    function resetWashes() { washHeight = 0; washOff = -1; slideWashes(); }
+    window.addEventListener('resize', resetWashes, { passive: true });
+    if ('ResizeObserver' in window) new ResizeObserver(resetWashes).observe(wall);
+    slideWashes();
 
     function sync() {
       var should = visible && !document.hidden;
@@ -830,13 +882,39 @@
       return;
     }
     // Lit while Start free sits in the lower two thirds of the screen, so a
-    // panel taller than a phone screen still gets its finale.
-    new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (entry.isIntersecting) measure();
-        panel.classList.toggle('is-lit', entry.isIntersecting);
-      });
-    }, { rootMargin: '-30% 0px -8% 0px', threshold: 1 }).observe(target);
+    // panel taller than a phone screen still gets its finale. Measured from
+    // the page layout, not the swinging panel: the swing used to carry the
+    // button across the edge and back, flicking the finale on and off. The
+    // band to stay lit is a little wider than the band to light up.
+    var targetTop = 0;
+    var targetHeight = 0;
+    function place() {
+      targetTop = 0;
+      for (var el = target; el; el = el.offsetParent) targetTop += el.offsetTop;
+      targetHeight = target.offsetHeight;
+    }
+    function check() {
+      var view = window.innerHeight;
+      var top = targetTop - window.scrollY;
+      var lit = panel.classList.contains('is-lit');
+      var inBand = lit
+        ? top > view * 0.2 && top + targetHeight < view
+        : top > view * 0.3 && top + targetHeight < view * 0.92;
+      if (inBand === lit) return;
+      if (inBand) measure();
+      panel.classList.toggle('is-lit', inBand);
+    }
+    var checkQueued = false;
+    function queueCheck() {
+      if (checkQueued) return;
+      checkQueued = true;
+      requestAnimationFrame(function () { checkQueued = false; check(); });
+    }
+    place();
+    check();
+    window.addEventListener('scroll', queueCheck, { passive: true });
+    window.addEventListener('resize', function () { place(); queueCheck(); }, { passive: true });
+    if ('ResizeObserver' in window) new ResizeObserver(function () { place(); queueCheck(); }).observe(document.body);
   }
 
   // ── House lights on theme switch ────────────────────────────────────────

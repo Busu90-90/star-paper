@@ -22,11 +22,8 @@
   function norm(v) { return String(v || '').trim().toLowerCase(); }
 
   // ── Artist picker ─────────────────────────────────────────────────────────
-  // The hidden <select id="bookingArtist"> stays the source of truth: every
-  // existing read and write of its value keeps working, and the picker mirrors it.
-  var AP_SELECT = 'bookingArtist';
-  var ap = null; // { select, wrap, input, list, clear, items, index, open }
-
+  // The hidden <select> stays the source of truth: every existing read and
+  // write of its value keeps working, and the picker mirrors it.
   function artistList() {
     var list = typeof window.getArtists === 'function' ? window.getArtists() : window.artists;
     return Array.isArray(list) ? list.filter(function (a) { return a && String(a.name || '').trim(); }) : [];
@@ -52,109 +49,6 @@
     select.appendChild(opt);
   }
 
-  function initArtistPicker() {
-    var select = $(AP_SELECT);
-    if (!select || select.dataset.spPicker === '1') return;
-    select.dataset.spPicker = '1';
-
-    // Writes from app code (edit, prefill, clear, drafts) go through here, so a
-    // booking whose artist isn't in the list yet still keeps its name.
-    var desc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
-    if (desc && desc.set && desc.get) {
-      Object.defineProperty(select, 'value', {
-        configurable: true,
-        get: function () { return desc.get.call(this); },
-        set: function (v) { ensureOption(this, v); desc.set.call(this, v); syncInput(); }
-      });
-    }
-
-    var wrap = el('div', 'ap');
-    var field = el('div', 'ap__field');
-    var input = el('input', 'ap__input');
-    input.type = 'text';
-    input.id = 'bookingArtistSearch';
-    input.autocomplete = 'off';
-    input.spellcheck = false;
-    input.placeholder = 'Search artists';
-    input.setAttribute('role', 'combobox');
-    input.setAttribute('aria-autocomplete', 'list');
-    input.setAttribute('aria-expanded', 'false');
-    input.setAttribute('aria-controls', 'bookingArtistList');
-    var clear = el('button', 'ap__clear');
-    clear.type = 'button';
-    clear.setAttribute('aria-label', 'Clear artist');
-    clear.appendChild(icon('ph-x'));
-    clear.hidden = true;
-    var caret = el('button', 'ap__caret');
-    caret.type = 'button';
-    caret.tabIndex = -1;
-    caret.setAttribute('aria-label', 'Show artists');
-    caret.appendChild(icon('ph-caret-down'));
-    field.append(icon('ph-microphone-stage ap__lead'), input, clear, caret);
-    var list = el('ul', 'ap__list');
-    list.id = 'bookingArtistList';
-    list.setAttribute('role', 'listbox');
-    list.hidden = true;
-    wrap.append(field, list);
-
-    select.hidden = true;
-    select.tabIndex = -1;
-    select.setAttribute('aria-hidden', 'true');
-    select.insertAdjacentElement('afterend', wrap);
-    var label = select.closest('.form-group') && select.closest('.form-group').querySelector('label');
-    if (label) label.htmlFor = input.id;
-
-    ap = { select: select, wrap: wrap, input: input, list: list, clear: clear, items: [], index: 0, open: false };
-    syncInput();
-
-    input.addEventListener('focus', function () { input.select(); ap.index = -1; openList(); });
-    input.addEventListener('click', function () { if (!ap.open) { ap.index = -1; openList(); } });
-    input.addEventListener('input', function () { ap.index = -1; openList(); });
-    input.addEventListener('keydown', onKey);
-    caret.addEventListener('mousedown', function (e) { e.preventDefault(); });
-    caret.addEventListener('click', function () { if (ap.open) closeList(true); else { input.focus(); openList(true); } });
-    clear.addEventListener('click', function () { choose(''); input.focus(); openList(true); });
-    list.addEventListener('mousedown', function (e) { e.preventDefault(); }); // keep focus in the input
-    list.addEventListener('click', function (e) {
-      var opt = e.target.closest('[data-ap-index]');
-      if (opt) pick(Number(opt.getAttribute('data-ap-index')));
-    });
-    wrap.addEventListener('focusout', function (e) {
-      if (wrap.contains(e.relatedTarget)) return;
-      closeList(true);
-    });
-  }
-
-  function syncInput() {
-    if (!ap) return;
-    var v = ap.select.value;
-    if (document.activeElement !== ap.input || !ap.open) ap.input.value = v;
-    ap.clear.hidden = !v;
-    ap.wrap.classList.toggle('has-value', !!v);
-  }
-
-  function buildItems(query, showAll) {
-    var q = showAll ? '' : norm(query);
-    var counts = showCounts();
-    var artists = artistList().slice().sort(function (a, b) {
-      return String(a.name).localeCompare(String(b.name), undefined, { sensitivity: 'base' });
-    });
-    var hits = artists.filter(function (a) {
-      if (!q) return true;
-      return norm(a.name).indexOf(q) !== -1 || norm(a.specialty).indexOf(q) !== -1;
-    });
-    // Names that start with the query come first.
-    if (q) hits.sort(function (a, b) { return (norm(a.name).indexOf(q) === 0 ? 0 : 1) - (norm(b.name).indexOf(q) === 0 ? 0 : 1); });
-    var items = hits.map(function (a) {
-      return { kind: 'artist', name: String(a.name).trim(), meta: a.specialty || '', shows: counts[norm(a.name)] || 0, avatar: a.avatar || '', artist: a };
-    });
-    var typed = String(query || '').trim();
-    if (!showAll && typed && !artists.some(function (a) { return norm(a.name) === norm(typed); })) {
-      items.push({ kind: 'add', name: typed });
-    }
-    return items;
-  }
-
   function avatarFor(item) {
     var box = el('span', 'ap__avatar');
     var src = typeof window.SPArtistAvatar === 'function' ? window.SPArtistAvatar(item.artist) : item.avatar;
@@ -170,169 +64,280 @@
     return box;
   }
 
-  function openList(showAll) {
-    if (!ap) return;
-    var query = ap.input.value;
-    // Opening on a chosen artist shows the whole list, not just that one name.
-    var all = showAll || (query && norm(query) === norm(ap.select.value));
-    ap.items = buildItems(query, all);
-    // -1 = nothing highlighted yet: the first ArrowDown lands on the top match.
-    ap.index = Math.max(-1, Math.min(ap.index, ap.items.length - 1));
-    if (all && ap.select.value) {
-      var cur = ap.items.findIndex(function (it) { return norm(it.name) === norm(ap.select.value); });
-      if (cur >= 0) ap.index = cur;
-    }
-    ap.list.replaceChildren();
-    if (!ap.items.length) {
-      var empty = el('li', 'ap__empty');
-      empty.appendChild(icon('ph-microphone-stage'));
-      empty.appendChild(el('span', '', artistList().length ? 'No artist matches that name.' : 'No artists yet. Type a name to add your first one.'));
-      ap.list.appendChild(empty);
-    }
-    ap.items.forEach(function (it, i) {
-      var li = el('li', 'ap__opt' + (it.kind === 'add' ? ' ap__opt--add' : ''));
-      li.id = 'bookingArtistOpt' + i;
-      li.setAttribute('role', 'option');
-      li.setAttribute('data-ap-index', String(i));
-      if (it.kind === 'add') {
-        var plus = el('span', 'ap__avatar ap__avatar--add');
-        plus.appendChild(icon('ph-plus'));
-        var txt = el('span', 'ap__name');
-        txt.append('Add ', el('strong', '', '“' + it.name + '”'), ' as a new artist');
-        li.append(plus, txt);
-      } else {
-        var body = el('span', 'ap__body');
-        body.appendChild(el('span', 'ap__name', it.name));
-        var meta = [it.meta, it.shows ? it.shows + (it.shows === 1 ? ' show' : ' shows') : ''].filter(Boolean).join(' · ');
-        if (meta) body.appendChild(el('span', 'ap__meta', meta));
-        li.append(avatarFor(it), body);
-        if (norm(it.name) === norm(ap.select.value)) {
-          li.classList.add('is-picked');
-          li.appendChild(icon('ph-check ap__tick'));
-        }
+  // One picker per <select>: the booking form's (which can add a new artist)
+  // and the availability checker's (which only picks from the roster).
+  function makeArtistPicker(cfg) {
+    var ap = null; // { select, wrap, input, list, clear, items, index, open }
+
+    function initArtistPicker() {
+      var select = $(cfg.select);
+      if (!select || select.dataset.spPicker === '1') return;
+      select.dataset.spPicker = '1';
+
+      // Writes from app code (edit, prefill, clear, drafts) go through here, so a
+      // booking whose artist isn't in the list yet still keeps its name.
+      var desc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+      if (desc && desc.set && desc.get) {
+        Object.defineProperty(select, 'value', {
+          configurable: true,
+          get: function () { return desc.get.call(this); },
+          set: function (v) { ensureOption(this, v); desc.set.call(this, v); syncInput(); }
+        });
       }
-      ap.list.appendChild(li);
-    });
-    var opening = !ap.open;
-    ap.list.hidden = false;
-    ap.open = true;
-    ap.input.setAttribute('aria-expanded', 'true');
-    ap.wrap.classList.add('is-open');
-    if (opening) roomForList(true);
-    highlight();
-  }
 
-  // Phones: the list opens below the field, so lift the field up the screen
-  // and keep the list clear of the keyboard and the bottom bar.
-  var phone = window.matchMedia ? window.matchMedia('(max-width: 899px)') : { matches: false };
-  function roomForList(lift) {
-    if (!ap || !ap.open) return;
-    if (!phone.matches) { ap.list.style.removeProperty('--ap-room'); return; }
-    var vv = window.visualViewport;
-    var bottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
-    var nav = $('bottomNav');
-    if (nav && nav.offsetParent !== null) {
-      var navTop = nav.getBoundingClientRect().top;
-      if (navTop > 0) bottom = Math.min(bottom, navTop);
+      var wrap = el('div', 'ap' + (cfg.wrapClass ? ' ' + cfg.wrapClass : ''));
+      var field = el('div', 'ap__field');
+      var input = el('input', 'ap__input');
+      input.type = 'text';
+      input.id = cfg.select + 'Search';
+      input.autocomplete = 'off';
+      input.spellcheck = false;
+      input.placeholder = 'Search artists';
+      input.setAttribute('role', 'combobox');
+      input.setAttribute('aria-autocomplete', 'list');
+      input.setAttribute('aria-expanded', 'false');
+      input.setAttribute('aria-controls', cfg.select + 'List');
+      var clear = el('button', 'ap__clear');
+      clear.type = 'button';
+      clear.setAttribute('aria-label', 'Clear artist');
+      clear.appendChild(icon('ph-x'));
+      clear.hidden = true;
+      var caret = el('button', 'ap__caret');
+      caret.type = 'button';
+      caret.tabIndex = -1;
+      caret.setAttribute('aria-label', 'Show artists');
+      caret.appendChild(icon('ph-caret-down'));
+      field.append(icon('ph-microphone-stage ap__lead'), input, clear, caret);
+      var list = el('ul', 'ap__list');
+      list.id = cfg.select + 'List';
+      list.setAttribute('role', 'listbox');
+      list.hidden = true;
+      wrap.append(field, list);
+
+      select.hidden = true;
+      select.tabIndex = -1;
+      select.setAttribute('aria-hidden', 'true');
+      select.insertAdjacentElement('afterend', wrap);
+      var label = select.closest('.form-group') && select.closest('.form-group').querySelector('label');
+      if (label) label.htmlFor = input.id;
+
+      ap = { select: select, wrap: wrap, input: input, list: list, clear: clear, items: [], index: 0, open: false };
+      syncInput();
+
+      input.addEventListener('focus', function () { input.select(); ap.index = -1; openList(); });
+      input.addEventListener('click', function () { if (!ap.open) { ap.index = -1; openList(); } });
+      input.addEventListener('input', function () { ap.index = -1; openList(); });
+      input.addEventListener('keydown', onKey);
+      caret.addEventListener('mousedown', function (e) { e.preventDefault(); });
+      caret.addEventListener('click', function () { if (ap.open) closeList(true); else { input.focus(); openList(true); } });
+      clear.addEventListener('click', function () { choose(''); input.focus(); openList(true); });
+      list.addEventListener('mousedown', function (e) { e.preventDefault(); }); // keep focus in the input
+      list.addEventListener('click', function (e) {
+        var opt = e.target.closest('[data-ap-index]');
+        if (opt) pick(Number(opt.getAttribute('data-ap-index')));
+      });
+      wrap.addEventListener('focusout', function (e) {
+        if (wrap.contains(e.relatedTarget)) return;
+        closeList(true);
+      });
     }
-    var top = ap.input.getBoundingClientRect().bottom + 6;
-    if (lift && bottom - top < 260) {
-      ap.wrap.scrollIntoView({ block: 'start' });
-      top = ap.input.getBoundingClientRect().bottom + 6;
+
+    function syncInput() {
+      if (!ap) return;
+      var v = ap.select.value;
+      if (document.activeElement !== ap.input || !ap.open) ap.input.value = v;
+      ap.clear.hidden = !v;
+      ap.wrap.classList.toggle('has-value', !!v);
     }
-    ap.list.style.setProperty('--ap-room', Math.max(150, Math.floor(bottom - top - 10)) + 'px');
-  }
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', function () { roomForList(true); });
-  }
 
-  function highlight() {
-    if (!ap) return;
-    var opts = ap.list.querySelectorAll('.ap__opt');
-    opts.forEach(function (o, i) {
-      var on = i === ap.index;
-      o.classList.toggle('is-on', on);
-      o.setAttribute('aria-selected', on ? 'true' : 'false');
-      if (on) o.scrollIntoView({ block: 'nearest' });
-    });
-    if (opts[ap.index]) ap.input.setAttribute('aria-activedescendant', opts[ap.index].id);
-    else ap.input.removeAttribute('aria-activedescendant');
-  }
-
-  function closeList(commit) {
-    if (!ap) return;
-    if (commit) {
-      // Typing an existing artist's full name and leaving the field picks them.
-      var typed = norm(ap.input.value);
-      var exact = typed && artistList().find(function (a) { return norm(a.name) === typed; });
-      if (exact) choose(String(exact.name).trim());
-      else if (!typed) choose('');
+    function buildItems(query, showAll) {
+      var q = showAll ? '' : norm(query);
+      var counts = showCounts();
+      var artists = artistList().slice().sort(function (a, b) {
+        return String(a.name).localeCompare(String(b.name), undefined, { sensitivity: 'base' });
+      });
+      var hits = artists.filter(function (a) {
+        if (!q) return true;
+        return norm(a.name).indexOf(q) !== -1 || norm(a.specialty).indexOf(q) !== -1;
+      });
+      // Names that start with the query come first.
+      if (q) hits.sort(function (a, b) { return (norm(a.name).indexOf(q) === 0 ? 0 : 1) - (norm(b.name).indexOf(q) === 0 ? 0 : 1); });
+      var items = hits.map(function (a) {
+        return { kind: 'artist', name: String(a.name).trim(), meta: a.specialty || '', shows: counts[norm(a.name)] || 0, avatar: a.avatar || '', artist: a };
+      });
+      var typed = String(query || '').trim();
+      if (cfg.allowAdd && !showAll && typed && !artists.some(function (a) { return norm(a.name) === norm(typed); })) {
+        items.push({ kind: 'add', name: typed });
+      }
+      return items;
     }
-    ap.list.hidden = true;
-    ap.open = false;
-    ap.input.setAttribute('aria-expanded', 'false');
-    ap.input.removeAttribute('aria-activedescendant');
-    ap.wrap.classList.remove('is-open');
-    syncInput();
-  }
 
-  function choose(name) {
-    if (!ap) return;
-    var before = ap.select.value;
-    ap.select.value = name;
-    ap.input.value = name;
-    syncInput();
-    if (before !== name) ap.select.dispatchEvent(new Event('change', { bubbles: true }));
-  }
-
-  function pick(i) {
-    var it = ap && ap.items[i];
-    if (!it) return;
-    if (it.kind === 'add') {
-      var added = typeof window.SPQuickAddArtist === 'function' ? window.SPQuickAddArtist(it.name) : null;
-      if (!added) return;
-      choose(added);
-    } else {
-      choose(it.name);
-    }
-    closeList(false);
-    var next = $('bookingDate');
-    if (next && !next.value) next.focus();
-  }
-
-  function firstArtistIndex() {
-    for (var i = 0; i < ap.items.length; i++) if (ap.items[i].kind === 'artist') return i;
-    return ap.items.length === 1 ? 0 : -1;
-  }
-
-  function onKey(e) {
-    if (!ap) return;
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (!ap.open) { openList(); return; }
-      var n = ap.items.length;
-      if (!n) return;
-      ap.index = ap.index < 0
-        ? (e.key === 'ArrowDown' ? 0 : n - 1)
-        : (ap.index + (e.key === 'ArrowDown' ? 1 : n - 1)) % n;
+    function openList(showAll) {
+      if (!ap) return;
+      var query = ap.input.value;
+      // Opening on a chosen artist shows the whole list, not just that one name.
+      var all = showAll || (query && norm(query) === norm(ap.select.value));
+      ap.items = buildItems(query, all);
+      // -1 = nothing highlighted yet: the first ArrowDown lands on the top match.
+      ap.index = Math.max(-1, Math.min(ap.index, ap.items.length - 1));
+      if (all && ap.select.value) {
+        var cur = ap.items.findIndex(function (it) { return norm(it.name) === norm(ap.select.value); });
+        if (cur >= 0) ap.index = cur;
+      }
+      ap.list.replaceChildren();
+      if (!ap.items.length) {
+        var empty = el('li', 'ap__empty');
+        empty.appendChild(icon('ph-microphone-stage'));
+        empty.appendChild(el('span', '', artistList().length ? 'No artist matches that name.' : 'No artists yet. Type a name to add your first one.'));
+        ap.list.appendChild(empty);
+      }
+      ap.items.forEach(function (it, i) {
+        var li = el('li', 'ap__opt' + (it.kind === 'add' ? ' ap__opt--add' : ''));
+        li.id = cfg.select + 'Opt' + i;
+        li.setAttribute('role', 'option');
+        li.setAttribute('data-ap-index', String(i));
+        if (it.kind === 'add') {
+          var plus = el('span', 'ap__avatar ap__avatar--add');
+          plus.appendChild(icon('ph-plus'));
+          var txt = el('span', 'ap__name');
+          txt.append('Add ', el('strong', '', '“' + it.name + '”'), ' as a new artist');
+          li.append(plus, txt);
+        } else {
+          var body = el('span', 'ap__body');
+          body.appendChild(el('span', 'ap__name', it.name));
+          var meta = [it.meta, it.shows ? it.shows + (it.shows === 1 ? ' show' : ' shows') : ''].filter(Boolean).join(' · ');
+          if (meta) body.appendChild(el('span', 'ap__meta', meta));
+          li.append(avatarFor(it), body);
+          if (norm(it.name) === norm(ap.select.value)) {
+            li.classList.add('is-picked');
+            li.appendChild(icon('ph-check ap__tick'));
+          }
+        }
+        ap.list.appendChild(li);
+      });
+      var opening = !ap.open;
+      ap.list.hidden = false;
+      ap.open = true;
+      ap.input.setAttribute('aria-expanded', 'true');
+      ap.wrap.classList.add('is-open');
+      if (opening) roomForList(true);
       highlight();
-      return;
     }
-    if (e.key === 'Enter') {
-      // Enter with nothing highlighted takes the best existing match. Adding a
-      // new artist needs that row picked on purpose, so a quick Enter after
-      // typing part of a name never creates a stray artist.
-      if (ap.open && ap.items.length) { e.preventDefault(); pick(ap.index >= 0 ? ap.index : firstArtistIndex()); }
-      return;
+
+    // Phones: the list opens below the field, so lift the field up the screen
+    // and keep the list clear of the keyboard and the bottom bar.
+    var phone = window.matchMedia ? window.matchMedia('(max-width: 899px)') : { matches: false };
+    function roomForList(lift) {
+      if (!ap || !ap.open) return;
+      if (!phone.matches) { ap.list.style.removeProperty('--ap-room'); return; }
+      var vv = window.visualViewport;
+      var bottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
+      var nav = $('bottomNav');
+      if (nav && nav.offsetParent !== null) {
+        var navTop = nav.getBoundingClientRect().top;
+        if (navTop > 0) bottom = Math.min(bottom, navTop);
+      }
+      var top = ap.input.getBoundingClientRect().bottom + 6;
+      if (lift && bottom - top < 260) {
+        ap.wrap.scrollIntoView({ block: 'start' });
+        top = ap.input.getBoundingClientRect().bottom + 6;
+      }
+      ap.list.style.setProperty('--ap-room', Math.max(150, Math.floor(bottom - top - 10)) + 'px');
     }
-    if (e.key === 'Escape' && ap.open) {
-      e.preventDefault();
-      e.stopPropagation();
-      ap.input.value = ap.select.value;
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', function () { roomForList(true); });
+    }
+
+    function highlight() {
+      if (!ap) return;
+      var opts = ap.list.querySelectorAll('.ap__opt');
+      opts.forEach(function (o, i) {
+        var on = i === ap.index;
+        o.classList.toggle('is-on', on);
+        o.setAttribute('aria-selected', on ? 'true' : 'false');
+        if (on) o.scrollIntoView({ block: 'nearest' });
+      });
+      if (opts[ap.index]) ap.input.setAttribute('aria-activedescendant', opts[ap.index].id);
+      else ap.input.removeAttribute('aria-activedescendant');
+    }
+
+    function closeList(commit) {
+      if (!ap) return;
+      if (commit) {
+        // Typing an existing artist's full name and leaving the field picks them.
+        var typed = norm(ap.input.value);
+        var exact = typed && artistList().find(function (a) { return norm(a.name) === typed; });
+        if (exact) choose(String(exact.name).trim());
+        else if (!typed) choose('');
+      }
+      ap.list.hidden = true;
+      ap.open = false;
+      ap.input.setAttribute('aria-expanded', 'false');
+      ap.input.removeAttribute('aria-activedescendant');
+      ap.wrap.classList.remove('is-open');
+      syncInput();
+    }
+
+    function choose(name) {
+      if (!ap) return;
+      var before = ap.select.value;
+      ap.select.value = name;
+      ap.input.value = name;
+      syncInput();
+      if (before !== name) ap.select.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    function pick(i) {
+      var it = ap && ap.items[i];
+      if (!it) return;
+      if (it.kind === 'add') {
+        var added = typeof window.SPQuickAddArtist === 'function' ? window.SPQuickAddArtist(it.name) : null;
+        if (!added) return;
+        choose(added);
+      } else {
+        choose(it.name);
+      }
       closeList(false);
-      return;
+      var next = cfg.next && $(cfg.next);
+      if (next && !next.value) next.focus();
     }
-    if (e.key === 'Tab' && ap.open) closeList(true);
+
+    function firstArtistIndex() {
+      for (var i = 0; i < ap.items.length; i++) if (ap.items[i].kind === 'artist') return i;
+      return ap.items.length === 1 ? 0 : -1;
+    }
+
+    function onKey(e) {
+      if (!ap) return;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (!ap.open) { openList(); return; }
+        var n = ap.items.length;
+        if (!n) return;
+        ap.index = ap.index < 0
+          ? (e.key === 'ArrowDown' ? 0 : n - 1)
+          : (ap.index + (e.key === 'ArrowDown' ? 1 : n - 1)) % n;
+        highlight();
+        return;
+      }
+      if (e.key === 'Enter') {
+        // Enter with nothing highlighted takes the best existing match. Adding a
+        // new artist needs that row picked on purpose, so a quick Enter after
+        // typing part of a name never creates a stray artist.
+        if (ap.open && ap.items.length) { e.preventDefault(); pick(ap.index >= 0 ? ap.index : firstArtistIndex()); }
+        return;
+      }
+      if (e.key === 'Escape' && ap.open) {
+        e.preventDefault();
+        e.stopPropagation();
+        ap.input.value = ap.select.value;
+        closeList(false);
+        return;
+      }
+      if (e.key === 'Tab' && ap.open) closeList(true);
+    }
+
+    return { init: initArtistPicker, sync: syncInput };
   }
 
   // ── Emoji picker ──────────────────────────────────────────────────────────
@@ -592,9 +597,11 @@
   window.addEventListener('resize', function () { if (pop && !pop.hidden && anchorBtn && document.contains(anchorBtn)) place(anchorBtn); });
 
   // ── Boot ──────────────────────────────────────────────────────────────────
-  function boot() { initArtistPicker(); }
+  var bookingPicker = makeArtistPicker({ select: 'bookingArtist', next: 'bookingDate', allowAdd: true });
+  var availabilityPicker = makeArtistPicker({ select: 'availabilityArtist', next: 'availabilityDate', wrapClass: 'ap--inline' });
+  function boot() { bookingPicker.init(); availabilityPicker.init(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 
-  window.SPPickers = { syncArtist: syncInput, closeEmoji: closeEmoji };
+  window.SPPickers = { syncArtist: bookingPicker.sync, syncAvailability: availabilityPicker.sync, closeEmoji: closeEmoji };
 })();

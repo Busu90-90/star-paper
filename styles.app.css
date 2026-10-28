@@ -1645,7 +1645,7 @@ canvas.is-pin-hover { cursor: pointer; }
 
 /* Overview, Cash flow, Receivables (app.money.js): rows of one wide card and
    one narrow card, a strip of four tiles, and charts drawn at card width. */
-#appContainer #money .sp-tab-panel--active { display: grid; gap: var(--sp-space-4); }
+#appContainer #money .sp-tab-panel--active { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-space-4); }
 #appContainer #money .sp-tab-panel > .card { margin: 0; }
 #appContainer #money .mv-row { display: grid; gap: var(--sp-space-4); min-width: 0; }
 #appContainer #money :is(.mv-card, .mv-tile) { margin: 0; min-width: 0; }
@@ -2879,13 +2879,25 @@ body.light-theme #appContainer .cr-online { box-shadow: 0 0 0 2px var(--sp-surfa
 #appContainer input[type="file"]::file-selector-button:hover { background: var(--sp-gold-soft); border-color: var(--sp-gold); }
 #appContainer :is(.artist-photo-actions, .receipt-upload) { min-width: 0; flex: 1; }
 
+/* Report picker: who (artist or whole roster) and when, in one place */
+#appContainer .report-picker__lede { margin: var(--sp-space-1) 0 var(--sp-space-4); color: var(--sp-ink-3); font-size: var(--sp-text-sm); }
+#appContainer .report-picker { display: grid; contain: inline-size; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: var(--sp-space-3) var(--sp-space-4); }
+#appContainer .report-picker__dates { display: contents; }
+#appContainer .report-picker__dates[hidden] { display: none; }
+#appContainer .report-picker__field { display: grid; gap: var(--sp-space-2); min-width: 0; }
+#appContainer .report-picker__field label { font-size: 12px; font-weight: 600; letter-spacing: var(--sp-tracking-caps); text-transform: uppercase; color: var(--sp-ink-3); }
+#appContainer .report-picker + .report-controls { margin-top: var(--sp-space-4); }
+#appContainer .report-picker select { appearance: none; -webkit-appearance: none; padding-right: 44px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath fill='none' stroke='%23C9A54A' stroke-linecap='round' stroke-linejoin='round' stroke-width='24' d='M208 96l-80 80-80-80'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 16px center; background-size: 16px; cursor: pointer; }
+
 /* Booking artist picker (app.pickers.js) */
-#appContainer #bookingArtist[hidden] { display: none; }
+#appContainer :is(#bookingArtist, #availabilityArtist)[hidden] { display: none; }
 #appContainer .ap { position: relative; scroll-margin-top: 96px; }
+/* In the availability checker it sits in the field row like the date input. */
+#appContainer .ap--inline { flex: 1 1 auto; min-width: min(100%, 200px); }
 #appContainer .ap__field { position: relative; display: flex; align-items: center; }
 #appContainer .ap__field > .ap__lead { position: absolute; left: 14px; z-index: 1; color: var(--sp-ink-3); font-size: 17px; pointer-events: none; }
 #appContainer .ap.has-value .ap__field > .ap__lead { color: var(--sp-gold-text); }
-#appContainer .form-group .ap__input { width: 100%; padding-left: 42px; padding-right: 72px; }
+#appContainer :is(.form-group, .ap--inline) .ap__input { width: 100%; padding-left: 42px; padding-right: 72px; }
 #appContainer .ap__clear, #appContainer .ap__caret { position: absolute; display: grid; place-items: center; width: 30px; height: 30px; margin: 0; padding: 0; border: 0; border-radius: var(--sp-radius-md); background: transparent; color: var(--sp-ink-3); font-size: 15px; box-shadow: none; cursor: pointer; }
 #appContainer .ap__clear { right: 38px; }
 #appContainer .ap__clear[hidden] { display: none; }

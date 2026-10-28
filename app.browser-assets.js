@@ -60,29 +60,29 @@
     ]],
     ['1', ['app.offline-cache.js']],
     ['3', ['app.todayboard.js']],
-    ['86', ['app.browser-assets.js']],
+    ['94', ['app.browser-assets.js']],
     ['4', ['app.boot-head.js']],
     ['4', ['app.money.js']],
     ['7', ['app.home.js']],
     ['1', ['assets/fonts/pdf/roschild.ttf', 'assets/fonts/pdf/inter-400.ttf', 'assets/fonts/pdf/inter-600.ttf', 'assets/fonts/pdf/mono-500.ttf', 'assets/fonts/pdf/mono-700.ttf']],
     ['1', ['assets/fonts/roschild.woff2', 'app.charts.js', 'app.finance-ui.js', 'app.schedule.js']],
     ['3', ['app.artists.js']],
-    ['3', ['app.pickers.js']],
+    ['4', ['app.pickers.js']],
     ['3', ['app.crew.js']],
-    ['4', ['app.docs.js']],
+    ['5', ['app.docs.js']],
     ['4', ['app.chrome.js']],
     ['3', ['app.insights.js']],
-    ['60', ['styles.landing.css']],
+    ['64', ['styles.landing.css']],
     ['2', ['assets/landing/brick-wall.webp']],
     ['2', ['styles.brand.css']],
-    ['30', ['styles.app.css']],
-    ['10', ['app.root-shell.js']],
+    ['31', ['styles.app.css']],
+    ['11', ['app.root-shell.js']],
     ['4', ['app.public-pages.js']],
     ['4', ['app.boot-flags.js']],
     ['5', ['app.boot-body.js']],
     ['2', ['styles.utilities.css']],
     ['6', ['app.landing.js']],
-    ['15', ['app.landing-lights.js']],
+    ['19', ['app.landing-lights.js']],
     ['1', ['app.legal.js']],
     ['2', ['assets/vendor/fonts/star-paper-fonts.css']],
     ['6', ['sp-design-tokens.css']],
@@ -109,12 +109,12 @@
     ['11', ['app.actions.js']],
     ['10', ['app.migrations.js']],
     ['15', ['app.globe.js']],
-    ['23', ['app.reports.js']],
+    ['25', ['app.reports.js']],
     ['28', ['manifest.json']],
-    ['66', ['styles.css']],
+    ['67', ['styles.css']],
     ['107', ['supabase.js']],
-    ['171', ['app.js']],
-    ['265', ['sw.js']]
+    ['173', ['app.js']],
+    ['273', ['sw.js']]
   ];
 
   const assetVersions = {};
@@ -198,6 +198,11 @@
       src: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
       crossOrigin: 'anonymous',
       integrity: 'sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk'
+    }),
+    exceljs: Object.freeze({
+      src: 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js',
+      crossOrigin: 'anonymous',
+      integrity: 'sha384-Pqp51FUN2/qzfxZxBCtF0stpc9ONI6MYZpVqmo8m20SoaQCzf+arZvACkLkirlPz'
     })
   });
 
