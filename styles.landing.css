@@ -530,6 +530,12 @@ body.light-theme .lp-header.is-scrolled {
   margin-left: auto;
 }
 
+/* The theme toggle sits right up against Sign in: no gap, and Sign in
+   drops its left padding (it has no fill, so nothing looks cut off). Both
+   keep their full tap size. */
+.lp-header__actions .lp-icon-btn { margin-right: calc(var(--sp-space-2) * -1); }
+.lp-header__actions .lp-icon-btn + .lp-btn--quiet { padding-left: 2px; }
+
 .lp-from-tablet {
   display: none;
 }

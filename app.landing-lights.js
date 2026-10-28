@@ -882,13 +882,39 @@
       return;
     }
     // Lit while Start free sits in the lower two thirds of the screen, so a
-    // panel taller than a phone screen still gets its finale.
-    new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (entry.isIntersecting) measure();
-        panel.classList.toggle('is-lit', entry.isIntersecting);
-      });
-    }, { rootMargin: '-30% 0px -8% 0px', threshold: 1 }).observe(target);
+    // panel taller than a phone screen still gets its finale. Measured from
+    // the page layout, not the swinging panel: the swing used to carry the
+    // button across the edge and back, flicking the finale on and off. The
+    // band to stay lit is a little wider than the band to light up.
+    var targetTop = 0;
+    var targetHeight = 0;
+    function place() {
+      targetTop = 0;
+      for (var el = target; el; el = el.offsetParent) targetTop += el.offsetTop;
+      targetHeight = target.offsetHeight;
+    }
+    function check() {
+      var view = window.innerHeight;
+      var top = targetTop - window.scrollY;
+      var lit = panel.classList.contains('is-lit');
+      var inBand = lit
+        ? top > view * 0.2 && top + targetHeight < view
+        : top > view * 0.3 && top + targetHeight < view * 0.92;
+      if (inBand === lit) return;
+      if (inBand) measure();
+      panel.classList.toggle('is-lit', inBand);
+    }
+    var checkQueued = false;
+    function queueCheck() {
+      if (checkQueued) return;
+      checkQueued = true;
+      requestAnimationFrame(function () { checkQueued = false; check(); });
+    }
+    place();
+    check();
+    window.addEventListener('scroll', queueCheck, { passive: true });
+    window.addEventListener('resize', function () { place(); queueCheck(); }, { passive: true });
+    if ('ResizeObserver' in window) new ResizeObserver(function () { place(); queueCheck(); }).observe(document.body);
   }
 
   // ── House lights on theme switch ────────────────────────────────────────
